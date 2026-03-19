@@ -2,7 +2,7 @@
 id: TASK-013
 title: Task 바 컴포넌트
 sprint: SPRINT-002
-status: backlog
+status: done
 priority: critical
 depends_on:
   - TASK-011
