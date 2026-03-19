@@ -2,7 +2,7 @@
 id: TASK-008
 title: Task frontmatter 파싱 API Route 구현
 sprint: SPRINT-001
-status: backlog
+status: done
 priority: critical
 depends_on:
   - TASK-007
