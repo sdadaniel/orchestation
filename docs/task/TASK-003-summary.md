@@ -1,7 +1,7 @@
 ---
 id: TASK-003
 title: 완료 파일 생성
-status: backlog
+status: done
 priority: medium
 depends_on:
     - TASK-002
