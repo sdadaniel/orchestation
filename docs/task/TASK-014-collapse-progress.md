@@ -2,7 +2,7 @@
 id: TASK-014
 title: Sprint 접기/펼치기 + 진행률 바
 sprint: SPRINT-002
-status: backlog
+status: done
 priority: high
 depends_on:
   - TASK-011
