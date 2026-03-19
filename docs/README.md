@@ -340,7 +340,7 @@ affected_files:          # 이 Task가 수정하는 파일/디렉토리
 
 **정리 규칙**
 
-* Task 머지 완료 후 Task 파일을 삭제하고 커밋
+* Task 머지 완료 후 Task 파일을 `docs/task/archive/`로 이동하고 커밋
 * Sprint 완료 후 Sprint 브랜치 및 Task 브랜치 삭제
 * Worktree 정리 (`git worktree remove`)
 
