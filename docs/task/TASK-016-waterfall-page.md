@@ -2,7 +2,7 @@
 id: TASK-016
 title: 워터폴 페이지 통합
 sprint: SPRINT-002
-status: backlog
+status: done
 priority: critical
 depends_on:
   - TASK-012
