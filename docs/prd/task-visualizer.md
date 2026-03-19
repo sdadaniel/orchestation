@@ -23,6 +23,13 @@
 
 - Plan → Sprint → Task 전체 흐름 조감도
 
+### 4단계: 오케스트레이션 실행 (향후)
+
+- **Task/Sprint CRUD**: 웹 UI에서 md 파일 생성·수정·삭제, 상태 변경 (backlog → in_progress → in_review → done)
+- **작업자 에이전트 실행**: Claude API / Agent SDK를 통해 작업자 에이전트를 spawn하고 Task를 배정
+- **실행 상태 실시간 모니터링**: 에이전트 실행 로그, 진행률, 결과를 대시보드에서 실시간 확인
+- **감독 역할의 웹 UI화**: TBD 해소, 작업자 배정, PR 승인 등 감독 워크플로를 웹에서 수행
+
 ## 기술 스택
 
 - **프레임워크**: Next.js (App Router, TypeScript)

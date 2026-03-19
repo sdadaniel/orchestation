@@ -9,7 +9,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TASK_DIR="$REPO_ROOT/docs/task"
 RUN_TASK="$REPO_ROOT/scripts/run-task.sh"
 RUN_REVIEW="$REPO_ROOT/scripts/run-review.sh"
-MAX_REVIEW_RETRY=2
+MAX_REVIEW_RETRY=10
 SIGNAL_DIR="/tmp/orchestrate-$$"
 mkdir -p "$SIGNAL_DIR"
 
