@@ -2,7 +2,7 @@
 id: TASK-007
 title: Next.js 프로젝트 초기화 + 대시보드 레이아웃
 sprint: SPRINT-001
-status: backlog
+status: done
 priority: critical
 depends_on: []
 blocks:
