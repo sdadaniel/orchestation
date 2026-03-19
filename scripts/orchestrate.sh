@@ -162,8 +162,8 @@ while true; do
     done_signal="${SIGNAL_DIR}/${task_id}-done"
     fail_signal="${SIGNAL_DIR}/${task_id}-failed"
 
-    # run-task.sh → run-review.sh → 승인 시 done / 실패 시 재작업 (최대 MAX_REVIEW_RETRY회)
-    cmd="cd ${REPO_ROOT} && for i in \$(seq 0 ${MAX_REVIEW_RETRY}); do bash scripts/run-task.sh ${task_id} && bash scripts/run-review.sh ${task_id} && touch ${done_signal} && break || { if [ \$i -eq ${MAX_REVIEW_RETRY} ]; then touch ${fail_signal}; else echo \"[retry] review failed, retrying...\"; fi; }; done"
+    # run-worker.sh: run-task.sh → run-review.sh (리뷰 실패 시 최대 MAX_REVIEW_RETRY회 재시도)
+    cmd="bash ${REPO_ROOT}/scripts/run-worker.sh ${task_id} ${SIGNAL_DIR} ${MAX_REVIEW_RETRY}"
 
     osascript <<EOF
 tell application "iTerm"
