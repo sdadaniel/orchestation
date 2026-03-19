@@ -13,6 +13,8 @@ export type WaterfallTask = {
   depends_on: string[];
   blocks: string[];
   parallel_with: string[];
+  affected_files: string[];
+  sprint: string;
 };
 
 export type WaterfallGroup = {

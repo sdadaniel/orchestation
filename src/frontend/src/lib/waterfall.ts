@@ -20,7 +20,10 @@ const VALID_STATUSES: Set<string> = new Set([
 
 const UNASSIGNED_SPRINT = { id: "unassigned", title: "미배정" };
 
-function toWaterfallTask(task: TaskFrontmatter): WaterfallTask {
+function toWaterfallTask(
+  task: TaskFrontmatter,
+  sprintTitle: string,
+): WaterfallTask {
   return {
     id: task.id,
     title: task.title,
@@ -32,6 +35,8 @@ function toWaterfallTask(task: TaskFrontmatter): WaterfallTask {
     depends_on: task.depends_on,
     blocks: task.blocks,
     parallel_with: task.parallel_with,
+    affected_files: task.affected_files,
+    sprint: sprintTitle,
   };
 }
 
@@ -63,7 +68,7 @@ export function buildWaterfallGroups(
     for (const taskId of sprint.tasks) {
       const task = taskMap.get(taskId);
       if (task) {
-        sprintTasks.push(toWaterfallTask(task));
+        sprintTasks.push(toWaterfallTask(task, sprint.title));
         assignedTaskIds.add(taskId);
       }
     }
@@ -78,7 +83,7 @@ export function buildWaterfallGroups(
   const unassignedTasks: WaterfallTask[] = [];
   for (const task of tasks) {
     if (!assignedTaskIds.has(task.id)) {
-      unassignedTasks.push(toWaterfallTask(task));
+      unassignedTasks.push(toWaterfallTask(task, UNASSIGNED_SPRINT.title));
     }
   }
 
