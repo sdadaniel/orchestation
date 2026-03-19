@@ -5,6 +5,9 @@ set -euo pipefail
 
 TASK_ID="${1:?Usage: ./scripts/run-task.sh TASK-XXX}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# claude CLI가 PATH에 없을 수 있으므로 추가
+export PATH="$HOME/.local/bin:$PATH"
 TASK_DIR="$REPO_ROOT/docs/task"
 
 # TASK 파일 찾기
