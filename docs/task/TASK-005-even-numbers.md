@@ -1,7 +1,7 @@
 ---
 id: TASK-005
 title: 짝수 파일 생성
-status: backlog
+status: done
 priority: medium
 depends_on:
     - TASK-004
