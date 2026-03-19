@@ -163,7 +163,8 @@ while true; do
     fail_signal="${SIGNAL_DIR}/${task_id}-failed"
 
     # run-worker.sh: run-task.sh → run-review.sh (리뷰 실패 시 최대 MAX_REVIEW_RETRY회 재시도)
-    cmd="bash ${REPO_ROOT}/scripts/run-worker.sh ${task_id} ${SIGNAL_DIR} ${MAX_REVIEW_RETRY}"
+    log_file="${SIGNAL_DIR}/${task_id}.log"
+    cmd="bash ${REPO_ROOT}/scripts/run-worker.sh ${task_id} ${SIGNAL_DIR} ${MAX_REVIEW_RETRY} 2>&1 | tee ${log_file}"
 
     osascript <<EOF
 tell application "iTerm"
@@ -171,7 +172,7 @@ tell application "iTerm"
         create window with default profile
     end if
     tell current session of current window
-        split vertically with same profile command "/bin/zsh -lc '${cmd}; echo; echo \"[완료] 패널을 닫으려면 exit\"; exec /bin/zsh -l'"
+        split vertically with same profile command "/bin/zsh -lc '${cmd}; echo; echo done - exit to close; exec /bin/zsh -l'"
     end tell
 end tell
 EOF
