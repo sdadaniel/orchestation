@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { WaterfallGroup, WaterfallTask } from "@/types/waterfall";
-import { SprintHeader } from "./SprintHeader";
+import { SprintProgress } from "./SprintProgress";
 import { TaskBar } from "./TaskBar";
 import { TaskDetailPanel } from "./TaskDetailPanel";
 
@@ -17,8 +17,12 @@ export function WaterfallContainer({ groups }: WaterfallContainerProps) {
     <>
       <div className="flex flex-col gap-4">
         {groups.map((group) => (
-          <section key={group.sprint.id} className="rounded-lg border bg-card">
-            <SprintHeader sprint={group.sprint} progress={group.progress} />
+          <SprintProgress
+            key={group.sprint.id}
+            title={group.sprint.title}
+            done={group.progress.done}
+            total={group.progress.total}
+          >
             <div className="flex flex-col gap-1 p-4">
               {group.tasks.length > 0 ? (
                 group.tasks.map((task) => (
@@ -34,7 +38,7 @@ export function WaterfallContainer({ groups }: WaterfallContainerProps) {
                 </p>
               )}
             </div>
-          </section>
+          </SprintProgress>
         ))}
       </div>
 
