@@ -2,7 +2,7 @@
 id: TASK-009
 title: Sprint frontmatter 파싱 API Route 구현
 sprint: SPRINT-002
-status: backlog
+status: done
 priority: critical
 depends_on: []
 blocks:
