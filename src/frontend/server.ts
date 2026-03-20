@@ -1,4 +1,5 @@
 import { createServer } from "http";
+import fs from "fs";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
@@ -19,20 +20,51 @@ app.prepare().then(() => {
   const wss = new WebSocketServer({ server });
 
   wss.on("connection", (ws: WebSocket) => {
-    const shell =
-      os.platform() === "win32"
-        ? "powershell.exe"
-        : process.env.SHELL || "/bin/bash";
+    // Resolve shell path with fallback chain
+    const resolveShell = (): string => {
+      if (os.platform() === "win32") return "powershell.exe";
+      const candidates = [
+        process.env.SHELL,
+        "/bin/zsh",
+        "/bin/bash",
+        "/bin/sh",
+      ];
+      for (const candidate of candidates) {
+        if (candidate && fs.existsSync(candidate)) return candidate;
+      }
+      return "/bin/sh";
+    };
 
-    const ptyProcess = pty.spawn(shell, [], {
-      name: "xterm-256color",
-      cols: 80,
-      rows: 24,
-      cwd: process.cwd(),
-      env: process.env as Record<string, string>,
-    });
+    const shell = resolveShell();
 
-    console.log(`[pty] spawned pid=${ptyProcess.pid}`);
+    // Filter out undefined values from process.env
+    const cleanEnv: Record<string, string> = {};
+    for (const [key, value] of Object.entries(process.env)) {
+      if (value !== undefined) {
+        cleanEnv[key] = value;
+      }
+    }
+
+    let ptyProcess: pty.IPty;
+    try {
+      ptyProcess = pty.spawn(shell, [], {
+        name: "xterm-256color",
+        cols: 80,
+        rows: 24,
+        cwd: process.cwd(),
+        env: cleanEnv,
+      });
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      console.error(`[pty] failed to spawn shell="${shell}": ${reason}`);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(`[error] Failed to spawn terminal: ${reason}\r\n`);
+        ws.close();
+      }
+      return;
+    }
+
+    console.log(`[pty] spawned shell="${shell}" pid=${ptyProcess.pid}`);
 
     ptyProcess.onData((data: string) => {
       if (ws.readyState === WebSocket.OPEN) {
