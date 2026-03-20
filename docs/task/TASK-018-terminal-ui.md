@@ -2,7 +2,7 @@
 id: TASK-018
 title: xterm.js 터미널 컴포넌트 + /terminal 페이지
 sprint: SPRINT-003
-status: backlog
+status: done
 priority: critical
 depends_on:
   - TASK-017
