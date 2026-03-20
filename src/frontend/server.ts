@@ -5,6 +5,16 @@ import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
 import os from "os";
 
+// Suppress benign WebSocket frame errors from race conditions
+process.on("uncaughtException", (err) => {
+  if (err.message?.includes("Invalid WebSocket frame")) {
+    console.warn(`[ws] suppressed frame error: ${err.message}`);
+    return;
+  }
+  console.error("[fatal] uncaughtException:", err);
+  process.exit(1);
+});
+
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
 const port = parseInt(process.env.PORT || "3000", 10);
@@ -17,7 +27,17 @@ app.prepare().then(() => {
     handle(req, res);
   });
 
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({ noServer: true });
+
+  // Only upgrade /ws/terminal — let Next.js HMR handle its own WebSockets
+  server.on("upgrade", (req, socket, head) => {
+    if (req.url === "/ws/terminal") {
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit("connection", ws, req);
+      });
+    }
+    // Other upgrade requests (e.g. /_next/webpack-hmr) pass through to Next.js
+  });
 
   wss.on("connection", (ws: WebSocket) => {
     // Resolve shell path with fallback chain
@@ -58,8 +78,8 @@ app.prepare().then(() => {
       const reason = err instanceof Error ? err.message : String(err);
       console.error(`[pty] failed to spawn shell="${shell}": ${reason}`);
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(`[error] Failed to spawn terminal: ${reason}\r\n`);
-        ws.close();
+        ws.send(JSON.stringify({ type: "error", message: reason }));
+        ws.close(4000, "pty-spawn-failed");
       }
       return;
     }
@@ -80,22 +100,26 @@ app.prepare().then(() => {
     });
 
     ws.on("message", (msg: Buffer | string) => {
-      const input = typeof msg === "string" ? msg : msg.toString("utf-8");
+      try {
+        const input = typeof msg === "string" ? msg : msg.toString("utf-8");
 
-      // Handle resize messages (JSON format: {"type":"resize","cols":N,"rows":N})
-      if (typeof input === "string" && input.startsWith("{")) {
-        try {
-          const parsed = JSON.parse(input);
-          if (parsed.type === "resize" && parsed.cols && parsed.rows) {
-            ptyProcess.resize(parsed.cols, parsed.rows);
-            return;
+        // Handle resize messages (JSON format: {"type":"resize","cols":N,"rows":N})
+        if (typeof input === "string" && input.startsWith("{")) {
+          try {
+            const parsed = JSON.parse(input);
+            if (parsed.type === "resize" && parsed.cols && parsed.rows) {
+              ptyProcess.resize(parsed.cols, parsed.rows);
+              return;
+            }
+          } catch {
+            // Not JSON, treat as regular input
           }
-        } catch {
-          // Not JSON, treat as regular input
         }
-      }
 
-      ptyProcess.write(input);
+        ptyProcess.write(input);
+      } catch (err) {
+        console.warn(`[ws] message handling error: ${err}`);
+      }
     });
 
     ws.on("close", () => {
