@@ -2,7 +2,7 @@
 id: TASK-019
 title: 사이드바 라우트 기반 네비게이션 전환 + Terminal 탭 추가
 sprint: SPRINT-003
-status: backlog
+status: done
 priority: high
 depends_on: []
 blocks: []
