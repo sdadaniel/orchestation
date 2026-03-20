@@ -1,9 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-# Usage: ./scripts/run-task.sh TASK-001
+# Usage: ./scripts/run-task.sh TASK-001 [REVIEW_FEEDBACK_FILE]
 
 TASK_ID="${1:?Usage: ./scripts/run-task.sh TASK-XXX}"
+REVIEW_FEEDBACK_FILE="${2:-}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # claude CLI가 PATH에 없을 수 있으므로 추가
@@ -73,6 +74,18 @@ PROMPT="${ROLE_PROMPT}
 
 지금 수행할 Task는 docs/task/${TASK_FILENAME} 에 정의되어 있다.
 해당 파일을 읽고, 완료 조건을 모두 충족하도록 작업해라."
+
+# 리뷰 피드백이 있으면 프롬프트에 추가 (재시도 시)
+if [ -n "$REVIEW_FEEDBACK_FILE" ] && [ -f "$REVIEW_FEEDBACK_FILE" ]; then
+  FEEDBACK=$(cat "$REVIEW_FEEDBACK_FILE")
+  PROMPT="${PROMPT}
+
+## 이전 리뷰 피드백 (수정 요청)
+아래는 이전 리뷰에서 받은 수정 요청이다. 반드시 이 피드백을 반영하여 작업해라:
+
+${FEEDBACK}"
+  echo "📝 이전 리뷰 피드백 포함"
+fi
 
 echo ""
 echo "🚀 작업자 Agent 실행 중..."

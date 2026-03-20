@@ -62,6 +62,8 @@ PROMPT="${ROLE_PROMPT}
 ## 리뷰 규칙
 - 코드를 직접 수정하지 않는다
 - Task 파일의 완료 조건을 기준으로 검증한다
+- git diff main에 나온 파일만 검증하라. 관련 없는 코드를 읽지 마라
+- 불필요한 파일 탐색을 하지 마라. 간결하게 리뷰하고 결론을 빠르게 내라
 
 지금 리뷰할 Task는 docs/task/${TASK_FILENAME} 에 정의되어 있다.
 
@@ -101,6 +103,10 @@ echo "$RESULT"
 OUTPUT_DIR="$REPO_ROOT/output"
 mkdir -p "$OUTPUT_DIR"
 echo "$JSON_OUTPUT" | jq . > "$OUTPUT_DIR/${TASK_ID}-review.json"
+
+# 리뷰 피드백 저장 (재시도 시 작업자에게 전달용)
+FEEDBACK_FILE="$OUTPUT_DIR/${TASK_ID}-review-feedback.txt"
+echo "$RESULT" > "$FEEDBACK_FILE"
 
 # 토큰 사용량 기록
 TOKEN_LOG="$OUTPUT_DIR/token-usage.log"
