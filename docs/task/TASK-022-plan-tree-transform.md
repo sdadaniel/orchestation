@@ -2,7 +2,7 @@
 id: TASK-022
 title: Plan 트리 데이터 변환 유틸
 sprint: SPRINT-004
-status: in_progress
+status: backlog
 priority: high
 depends_on:
   - TASK-021
