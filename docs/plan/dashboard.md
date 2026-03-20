@@ -1,3 +1,14 @@
+---
+id: PLAN-001
+title: 오케스트레이션 대시보드
+status: in_progress
+sprints:
+  - SPRINT-001
+  - SPRINT-002
+  - SPRINT-003
+  - SPRINT-004
+---
+
 # Plan: 오케스트레이션 대시보드
 
 ## 목표
