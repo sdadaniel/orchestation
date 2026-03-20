@@ -1,7 +1,7 @@
 ---
 id: TASK-026
 title: Sprint 파서 개선
-status: in_progress
+status: done
 priority: high
 sprint: SPRINT-005
 depends_on: []
