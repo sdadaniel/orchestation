@@ -153,6 +153,21 @@ while true; do
   echo "▶ 병렬 실행: ${BATCH[*]}"
   echo ""
 
+  # ── status → in_progress ──
+  IN_PROGRESS_FILES=()
+  for task_id in "${BATCH[@]}"; do
+    tf=$(find "$TASK_DIR" -name "${task_id}-*.md" | head -1)
+    if [ -n "$tf" ]; then
+      sed -i '' "s/^status: backlog/status: in_progress/" "$tf"
+      IN_PROGRESS_FILES+=("$tf")
+    fi
+  done
+  if [ ${#IN_PROGRESS_FILES[@]} -gt 0 ]; then
+    git -C "$REPO_ROOT" add "${IN_PROGRESS_FILES[@]}"
+    BATCH_LABEL=$(IFS=,; echo "${BATCH[*]}")
+    git -C "$REPO_ROOT" commit -m "chore(${BATCH_LABEL}): status → in_progress"
+  fi
+
   # ── 각 태스크를 별도 iTerm 패널에서 실행 ──
 
   for task_id in "${BATCH[@]}"; do
