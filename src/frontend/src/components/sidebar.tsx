@@ -41,7 +41,7 @@ const navItems: NavItem[] = [
     label: "Plan",
     icon: <FileText className="h-4 w-4" />,
     href: "/plan",
-    disabled: true,
+    disabled: false,
   },
 ];
 

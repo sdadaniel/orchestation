@@ -9,12 +9,14 @@ import type { PlanTreeData } from "@/types/plan";
 
 type UsePlanTreeResult = {
   data: PlanTreeData | null;
+  allTasks: TaskFrontmatter[];
   loading: boolean;
   error: string | null;
 };
 
 export function usePlanTree(): UsePlanTreeResult {
   const [data, setData] = useState<PlanTreeData | null>(null);
+  const [allTasks, setAllTasks] = useState<TaskFrontmatter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +45,7 @@ export function usePlanTree(): UsePlanTreeResult {
           } else {
             setData(buildPlanTree(plans[0], sprints, tasks));
           }
+          setAllTasks(tasks);
           setError(null);
         }
       } catch (err) {
@@ -67,5 +70,5 @@ export function usePlanTree(): UsePlanTreeResult {
     };
   }, []);
 
-  return { data, loading, error };
+  return { data, allTasks, loading, error };
 }
