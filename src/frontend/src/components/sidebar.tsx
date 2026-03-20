@@ -35,7 +35,7 @@ const navItems: NavItem[] = [
     label: "Sprint",
     icon: <Calendar className="h-4 w-4" />,
     href: "/sprint",
-    disabled: true,
+    disabled: false,
   },
   {
     label: "Plan",
