@@ -94,6 +94,10 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   flex-shrink: 0;
+  scrollbar-width: none;
+}
+.ide-sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Middle task list */
