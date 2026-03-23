@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const listRef = useRef<HTMLDivElement>(null);
 
   const [showTaskView, setShowTaskView] = useState(true);
-  const isTaskView = pathname === "/" && showTaskView;
+  const isTaskView = (pathname === "/" || pathname === "/tasks") && showTaskView;
 
   // Flatten all tasks
   const allTasks = useMemo(() => groups.flatMap((g) => g.tasks), [groups]);
@@ -151,7 +151,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // 다른 페이지로 이동하면 Task 뷰 닫기
   useEffect(() => {
-    if (pathname !== "/") setShowTaskView(false);
+    if (pathname === "/" || pathname === "/tasks") {
+      setShowTaskView(true);
+    } else {
+      setShowTaskView(false);
+    }
   }, [pathname]);
 
   if (isLoading) {

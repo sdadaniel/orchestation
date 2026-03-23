@@ -473,7 +473,7 @@ export function TaskSidebar({
         {/* ── Docs (문서 트리) ── */}
         <div className="mb-2">
           <div className="px-2 mb-1 flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Docs
             </span>
             <div className="relative">
@@ -542,7 +542,7 @@ export function TaskSidebar({
 
         {/* ── Sprints (일정) ── */}
         <div className="mb-2">
-          <div className="px-2 mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="px-2 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Sprints
           </div>
           <Link
@@ -576,13 +576,13 @@ export function TaskSidebar({
 
         {/* ── Tasks (작업) ── */}
         <div className="mb-2">
-          <div className="px-2 mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="px-2 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Tasks
           </div>
 
           <Link
-            href="/"
-            className={cn("tree-item no-underline text-sidebar-foreground", filter.type === "all" && currentPath === "/" && "active")}
+            href="/tasks"
+            className={cn("tree-item no-underline text-sidebar-foreground", (currentPath === "/tasks" || (currentPath === "/" && filter.type === "all")) && "active")}
             onClick={() => onFilterChange({ type: "all" })}
           >
             <Layers className="h-3 w-3 text-muted-foreground shrink-0" />
