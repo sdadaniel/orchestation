@@ -13,7 +13,125 @@ import { cn } from "@/lib/utils";
 import { Search, ArrowUpDown, SearchIcon } from "lucide-react";
 import { ChatBot } from "@/components/ChatBot";
 import { STATUS_STYLES, type TaskStatus } from "../../lib/constants";
-import type { WaterfallTask } from "@/types/waterfall";
+import type { WaterfallTask, WaterfallGroup } from "@/types/waterfall";
+import Link from "next/link";
+import { Progress } from "@/components/ui/progress";
+
+/* ── Home Dashboard ── */
+
+function HomeDashboard({ groups }: { groups: WaterfallGroup[] }) {
+  const allTasks = groups.flatMap((g) => g.tasks);
+  const inProgress = allTasks.filter((t) => t.status === "in_progress");
+  const inReview = allTasks.filter((t) => t.status === "in_review");
+  const backlog = allTasks.filter((t) => t.status === "backlog");
+  const done = allTasks.filter((t) => t.status === "done");
+
+  const activeSprints = groups.filter((g) => g.progress.done < g.progress.total);
+  const completedSprints = groups.filter((g) => g.progress.done === g.progress.total && g.progress.total > 0);
+
+  return (
+    <div className="space-y-6">
+      {/* 상태 요약 */}
+      <div>
+        <h2 className="text-sm font-semibold mb-3">Overview</h2>
+        <div className="grid grid-cols-4 gap-3">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-xs text-muted-foreground mb-1">In Progress</div>
+            <div className="text-2xl font-bold text-blue-500">{inProgress.length}</div>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-xs text-muted-foreground mb-1">In Review</div>
+            <div className="text-2xl font-bold text-orange-400">{inReview.length}</div>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-xs text-muted-foreground mb-1">Backlog</div>
+            <div className="text-2xl font-bold text-zinc-400">{backlog.length}</div>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-xs text-muted-foreground mb-1">Done</div>
+            <div className="text-2xl font-bold text-emerald-500">{done.length}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 진행 중인 Sprint */}
+      {activeSprints.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold mb-3">Active Sprints</h2>
+          <div className="space-y-2">
+            {activeSprints.map((g) => {
+              const pct = g.progress.total > 0 ? Math.round((g.progress.done / g.progress.total) * 100) : 0;
+              return (
+                <Link
+                  key={g.sprint.id}
+                  href={`/sprint/${g.sprint.id}`}
+                  className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 no-underline text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                  <span className="text-sm font-medium flex-1">{g.sprint.title}</span>
+                  <span className="text-xs text-muted-foreground">{g.progress.done}/{g.progress.total}</span>
+                  <Progress value={pct} className="h-1.5 w-24 shrink-0" />
+                  <span className="text-xs text-muted-foreground">{pct}%</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 완료된 Sprint */}
+      {completedSprints.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold mb-3">Completed Sprints</h2>
+          <div className="space-y-2">
+            {completedSprints.map((g) => (
+              <Link
+                key={g.sprint.id}
+                href={`/sprint/${g.sprint.id}`}
+                className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 no-underline text-foreground hover:bg-muted/50 transition-colors opacity-70"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-sm font-medium flex-1">{g.sprint.title}</span>
+                <span className="text-xs text-muted-foreground">{g.progress.done}/{g.progress.total}</span>
+                <span className="text-xs text-emerald-500">Complete</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 진행 중인 Task */}
+      {(inProgress.length > 0 || inReview.length > 0) && (
+        <div>
+          <h2 className="text-sm font-semibold mb-3">Active Tasks</h2>
+          <div className="space-y-1">
+            {[...inProgress, ...inReview].map((task) => {
+              const style = STATUS_STYLES[task.status as TaskStatus];
+              return (
+                <div
+                  key={task.id}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2"
+                >
+                  <span className={cn("w-2 h-2 rounded-full shrink-0", style?.dot ?? "bg-gray-400")} />
+                  <span className="font-mono text-xs text-muted-foreground w-24 shrink-0">{task.id}</span>
+                  <span className="text-sm flex-1 truncate">{task.title}</span>
+                  <span className="text-xs text-muted-foreground">{style?.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 모든 Task 완료 시 */}
+      {inProgress.length === 0 && inReview.length === 0 && backlog.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <p className="text-sm">모든 태스크가 완료되었습니다 ✓</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ── Sort ── */
 type SortKey = "id" | "title" | "priority" | "status" | "role";
@@ -51,7 +169,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const listRef = useRef<HTMLDivElement>(null);
 
   const [showTaskView, setShowTaskView] = useState(true);
-  const isTaskView = (pathname === "/" || pathname === "/tasks") && showTaskView;
+  const isTaskView = pathname === "/tasks" && showTaskView;
+  const isHome = pathname === "/";
 
   // Flatten all tasks
   const allTasks = useMemo(() => groups.flatMap((g) => g.tasks), [groups]);
@@ -151,7 +270,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // 다른 페이지로 이동하면 Task 뷰 닫기
   useEffect(() => {
-    if (pathname === "/" || pathname === "/tasks") {
+    if (pathname === "/tasks") {
       setShowTaskView(true);
     } else {
       setShowTaskView(false);
@@ -208,7 +327,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Main content */}
         <div className="flex flex-1 overflow-hidden">
-          {isTaskView ? (
+          {isHome ? (
+            /* 홈 대시보드 */
+            <div className="flex-1 overflow-auto bg-background p-4">
+              <div className="content-container">
+                <HomeDashboard groups={groups} />
+              </div>
+            </div>
+          ) : isTaskView ? (
         <>
           <div className="ide-main flex flex-col flex-1">
             <div className="content-container flex flex-col flex-1 overflow-hidden">
