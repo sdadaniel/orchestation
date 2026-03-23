@@ -309,13 +309,12 @@
       const scores = parseCodeReviewScores(codeReview, data);
       data.forEach(d => { d.code_score = scores[d.name] || null; });
 
-      const best = [...data].sort((a, b) => {
-        const sa = a.code_score || 0, sb = b.code_score || 0;
-        const ca = a.cost_usd, cb = b.cost_usd;
-        // 코드 점수가 있으면 점수/비용 효율로 정렬
-        if (sa && sb) return (sb / cb) - (sa / ca);
-        return ca - cb;
-      })[0];
+      // Best Value: 코드 점수 45점 이상 중 최저 비용. 없으면 전체 최저 비용.
+      const MIN_QUALITY = 45;
+      const qualified = data.filter(d => d.code_score && d.code_score >= MIN_QUALITY);
+      const best = qualified.length
+        ? [...qualified].sort((a, b) => a.cost_usd - b.cost_usd)[0]
+        : [...data].sort((a, b) => a.cost_usd - b.cost_usd)[0];
       const totalCost = data.reduce((s, d) => s + d.cost_usd, 0);
       const avgTime = data.reduce((s, d) => s + d.duration_sec, 0) / data.length;
       const totalTokens = data.reduce((s, d) => s + d.output_tokens, 0);
@@ -402,7 +401,7 @@
           <div class="winner-icon">&#x1f3c6;</div>
           <div class="winner-text">
             <div class="name">${best.name} \u2014 Best Value</div>
-            <div class="desc">$${best.cost_usd.toFixed(4)} \u00b7 ${fmtTime(best.duration_sec)} \u00b7 ${best.num_turns} turns${scoreText}</div>
+            <div class="desc">$${best.cost_usd.toFixed(4)} \u00b7 ${fmtTime(best.duration_sec)} \u00b7 ${best.num_turns} turns${scoreText} \u00b7 ${qualified.length ? 'Code \u2265 45점 중 최저 비용' : '최저 비용'}</div>
           </div>
         </div>
       `;

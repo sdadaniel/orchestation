@@ -48,6 +48,9 @@ RULE="[절대 규칙]
 
 mkdir -p "$ROOT_DIR/prompt${i}/src" "$ROOT_DIR/prompt${i}/spec"
 
+# 사용한 PRD 번호 기록
+echo "$PRD_NUM" > "$ROOT_DIR/prompt${i}/spec/_prd_num"
+
 PROMPT_FILE="$ROOT_DIR/prompt${i}/spec/_prompt.txt"
 {
   cat "$ROOT_DIR/docs/prompts/prompt${i}.md"

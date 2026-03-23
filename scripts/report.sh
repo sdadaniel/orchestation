@@ -9,25 +9,23 @@ mkdir -p "$REPORT_DIR"
 # index.html 복사
 cp "$ROOT_DIR/report/_template.html" "$REPORT_DIR/index.html"
 
-# PRD 내용 읽기 (prd/ 폴더에서 가장 최근 사용된 PRD 탐색)
+# PRD 내용 읽기 (실제 실행에 사용된 PRD)
+PRD_NUM="1"
+for dir in "$ROOT_DIR"/prompt*/; do
+  if [ -f "$dir/spec/_prd_num" ]; then
+    PRD_NUM=$(cat "$dir/spec/_prd_num")
+    break
+  fi
+done
+PRD_FILE="$ROOT_DIR/docs/prd/prd${PRD_NUM}.md"
 PRD_CONTENT='""'
-for prd_file in "$ROOT_DIR"/docs/prd/prd*.md; do
-  if [ -f "$prd_file" ]; then
-    PRD_CONTENT=$(python3 -c "
+if [ -f "$PRD_FILE" ]; then
+  PRD_CONTENT=$(python3 -c "
 import json
-with open('$prd_file') as f:
+with open('$PRD_FILE') as f:
     print(json.dumps(f.read()))
 " 2>/dev/null)
-    break
-  fi
-done
-# prompt의 _prompt.txt에서 PRD 정보 추출 (실제 사용된 PRD)
-for dir in "$ROOT_DIR"/prompt*/; do
-  if [ -f "$dir/spec/output.jsonl" ] && [ -s "$dir/spec/output.jsonl" ]; then
-    # output.jsonl이 있는 첫 번째 prompt의 PRD를 사용
-    break
-  fi
-done
+fi
 
 echo "{\"prd\": ${PRD_CONTENT}, \"prompts\": [" > "$REPORT_DIR/data.json"
 
@@ -183,7 +181,7 @@ for d in sorted(os.listdir(root)):
 print('\n\n'.join(results))
 " 2>/dev/null)
 
-PRD_TEXT=$(cat "$ROOT_DIR"/docs/prd/prd*.md 2>/dev/null | head -100)
+PRD_TEXT=$(cat "$PRD_FILE" 2>/dev/null)
 
 CODE_REVIEW=$(echo "$CODE_SUMMARY" | claude --print --model claude-sonnet-4-6 --system-prompt "당신은 시니어 코드 리뷰어입니다. 아래는 동일한 PRD를 서로 다른 프롬프트로 구현한 코드입니다.
 

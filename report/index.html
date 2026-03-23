@@ -17,14 +17,27 @@
     .sub { color: #6e6e80; font-size: 0.82rem; margin-bottom: 32px; }
 
     /* PRD 그룹 */
-    .prd-group { margin-bottom: 28px; }
+    .prd-group { margin-bottom: 16px; }
     .prd-header {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 10px;
-      padding: 0 4px;
+      padding: 12px 16px;
+      background: #191a1f;
+      border: 1px solid #2a2a30;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+      user-select: none;
     }
+    .prd-header:hover { background: #1e1e24; }
+    .prd-chevron {
+      font-size: 0.8rem;
+      color: #6e6e80;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+    .prd-group.open .prd-chevron { transform: rotate(90deg); }
     .prd-icon {
       width: 28px; height: 28px;
       background: #1a2e1f;
@@ -33,22 +46,32 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.75rem;
+      font-size: 0.65rem;
       font-weight: 700;
       flex-shrink: 0;
     }
-    .prd-title { font-size: 0.95rem; font-weight: 600; color: #fff; }
+    .prd-title { font-size: 0.92rem; font-weight: 600; color: #fff; flex: 1; }
     .prd-count {
       font-size: 0.68rem;
       color: #6e6e80;
       background: #1e1e24;
       padding: 2px 8px;
       border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .prd-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .prd-group.open .prd-body { max-height: 2000px; }
+    .prd-body-inner {
+      padding: 8px 0 0 0;
     }
     .prd-preview {
       font-size: 0.72rem;
       color: #6e6e80;
-      padding: 0 4px 8px 42px;
+      padding: 4px 16px 8px;
       line-height: 1.4;
     }
 
@@ -121,6 +144,7 @@
         app.innerHTML = groups.map((g, gi) => {
           const reports = g.reports || [];
           const preview = g.prd_preview ? g.prd_preview.replace(/[#\n]/g, ' ').trim() : '';
+          const openClass = gi === 0 ? 'open' : '';
 
           const items = reports.map((r, ri) => {
             const m = r.dir.match(/report_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/);
@@ -142,14 +166,19 @@
           }).join('');
 
           return `
-            <div class="prd-group">
-              <div class="prd-header">
+            <div class="prd-group ${openClass}" data-group="${gi}">
+              <div class="prd-header" onclick="toggleGroup(${gi})">
+                <span class="prd-chevron">&#x25B6;</span>
                 <div class="prd-icon">PRD</div>
                 <div class="prd-title">${g.title}</div>
                 <span class="prd-count">${reports.length}개 리포트</span>
               </div>
-              ${preview ? `<div class="prd-preview">${preview.slice(0, 120)}${preview.length > 120 ? '...' : ''}</div>` : ''}
-              <div class="list">${items}</div>
+              <div class="prd-body">
+                <div class="prd-body-inner">
+                  ${preview ? `<div class="prd-preview">${preview.slice(0, 120)}${preview.length > 120 ? '...' : ''}</div>` : ''}
+                  <div class="list">${items}</div>
+                </div>
+              </div>
             </div>
           `;
         }).join('');
@@ -157,6 +186,11 @@
       } catch (e) {
         app.innerHTML = '<div class="empty">리포트 목록을 불러올 수 없습니다.</div>';
       }
+    }
+
+    function toggleGroup(gi) {
+      const group = document.querySelector(`.prd-group[data-group="${gi}"]`);
+      group.classList.toggle('open');
     }
 
     init();
