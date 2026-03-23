@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import type { TaskFrontmatter } from "@/lib/parser";
 import type { SprintResponse } from "@/lib/waterfall";
 import { buildWaterfallGroups } from "@/lib/waterfall";
@@ -10,18 +10,25 @@ type UseTasksResult = {
   groups: WaterfallGroup[];
   isLoading: boolean;
   error: string | null;
+  refetch: () => void;
 };
 
 export function useTasks(): UseTasksResult {
   const [groups, setGroups] = useState<WaterfallGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fetchKey, setFetchKey] = useState(0);
+
+  const refetch = useCallback(() => {
+    setFetchKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
     async function fetchData() {
       try {
+        setIsLoading(true);
         const [tasksRes, sprintsRes] = await Promise.all([
           fetch("/api/tasks"),
           fetch("/api/sprints"),
@@ -58,7 +65,7 @@ export function useTasks(): UseTasksResult {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchKey]);
 
-  return { groups, isLoading, error };
+  return { groups, isLoading, error, refetch };
 }

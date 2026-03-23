@@ -1,18 +1,11 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useCallback } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, FileQuestion } from "lucide-react";
+import { AlertCircle, ArrowLeft, FileQuestion, Plus, Pencil, ListChecks } from "lucide-react";
 import { useSprintDetail } from "@/hooks/useSprintDetail";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import {
   STATUS_STYLES,
@@ -21,6 +14,10 @@ import {
   type TaskPriority,
 } from "../../../../lib/constants";
 import type { SprintDetail, SprintDetailTask } from "@/hooks/useSprintDetail";
+import { TaskCreateDialog } from "@/components/TaskCreateDialog";
+import { TaskEditSheet } from "@/components/TaskEditSheet";
+import { TaskDeleteDialog } from "@/components/TaskDeleteDialog";
+import { BatchEditor } from "@/components/BatchEditor";
 
 type TabKey = "list" | "board" | "timeline";
 
@@ -128,7 +125,6 @@ function TimelineView({
   const allTasks = batches.flatMap((b) => b.tasks);
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
 
-  // Map task id -> batch index & row index
   const taskBatchIndex = new Map<string, number>();
   const taskRowIndex = new Map<string, number>();
   batches.forEach((batch, idx) => {
@@ -148,7 +144,6 @@ function TimelineView({
   const totalHeight = HEADER_HEIGHT + allTasks.length * ROW_HEIGHT;
   const totalWidth = LABEL_WIDTH + batches.length * COL_WIDTH;
 
-  // Build dependency links
   const links: { from: string; to: string; fromRow: number; toRow: number; fromCol: number; toCol: number }[] = [];
   allTasks.forEach((task) => {
     const toRow = taskRowIndex.get(task.id) ?? 0;
@@ -165,48 +160,32 @@ function TimelineView({
   return (
     <div className="relative overflow-x-auto border border-border rounded-md">
       <div style={{ width: totalWidth, minHeight: totalHeight, position: "relative" }}>
-
-        {/* SVG layer for dependency curves */}
         <svg
           style={{ position: "absolute", top: 0, left: 0, width: totalWidth, height: totalHeight, pointerEvents: "none" }}
         >
           {links.map((link) => {
             const linkId = `${link.from}->${link.to}`;
             const isHovered = hoveredLink === linkId;
-
-            // Source: right edge of source bar
             const x1 = LABEL_WIDTH + link.fromCol * COL_WIDTH + COL_WIDTH - 10;
             const y1 = HEADER_HEIGHT + link.fromRow * ROW_HEIGHT + ROW_HEIGHT / 2;
-            // Target: left edge of target bar
             const x2 = LABEL_WIDTH + link.toCol * COL_WIDTH + 10;
             const y2 = HEADER_HEIGHT + link.toRow * ROW_HEIGHT + ROW_HEIGHT / 2;
-
             const dx = Math.abs(x2 - x1) * 0.5;
             const path = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
 
             return (
               <g key={linkId}>
-                {/* Hit area (wider, invisible) */}
-                <path
-                  d={path}
-                  fill="none"
-                  stroke="transparent"
-                  strokeWidth={12}
+                <path d={path} fill="none" stroke="transparent" strokeWidth={12}
                   style={{ pointerEvents: "stroke", cursor: "pointer" }}
                   onMouseEnter={() => setHoveredLink(linkId)}
                   onMouseLeave={() => setHoveredLink(null)}
                 />
-                {/* Visible curve */}
-                <path
-                  d={path}
-                  fill="none"
+                <path d={path} fill="none"
                   stroke={isHovered ? "var(--primary)" : "var(--muted-foreground)"}
                   strokeWidth={isHovered ? 2.5 : 1.5}
-                  strokeDasharray={isHovered ? "none" : "none"}
                   opacity={isHovered ? 1 : 0.4}
                   style={{ transition: "all 0.15s ease" }}
                 />
-                {/* Arrow at target end */}
                 <polygon
                   points={`${x2},${y2} ${x2 - 6},${y2 - 4} ${x2 - 6},${y2 + 4}`}
                   fill={isHovered ? "var(--primary)" : "var(--muted-foreground)"}
@@ -218,7 +197,6 @@ function TimelineView({
           })}
         </svg>
 
-        {/* Header row */}
         <div className="flex" style={{ height: HEADER_HEIGHT, borderBottom: "1px solid var(--border)", background: "var(--muted)" }}>
           <div style={{ width: LABEL_WIDTH, minWidth: LABEL_WIDTH }} className="flex items-center px-3 text-xs font-medium text-muted-foreground uppercase border-r border-border">
             Task
@@ -230,12 +208,10 @@ function TimelineView({
           ))}
         </div>
 
-        {/* Task rows */}
-        {allTasks.map((task, rowIdx) => {
+        {allTasks.map((task) => {
           const batchIdx = taskBatchIndex.get(task.id) ?? 0;
           const statusStyle = STATUS_STYLES[task.status as TaskStatus];
           const barColor = statusStyle?.bg.replace("bg-", "") ?? "gray-400";
-          // Map tailwind color to CSS
           const colorMap: Record<string, string> = {
             "gray-500": "#6b7280", "blue-500": "#3b82f6", "orange-500": "#f97316",
             "green-500": "#22c55e", "emerald-500": "#10b981", "gray-400": "#9ca3af",
@@ -244,14 +220,10 @@ function TimelineView({
           const bgColor = colorMap[barColor] ?? "#6b7280";
 
           return (
-            <div
-              key={task.id}
-              className="flex hover:bg-muted/30 transition-colors"
+            <div key={task.id} className="flex hover:bg-muted/30 transition-colors"
               style={{ height: ROW_HEIGHT, borderBottom: "1px solid var(--border)" }}
             >
-              {/* Task label */}
-              <button
-                type="button"
+              <button type="button"
                 className="flex items-center gap-2 px-3 text-left border-r border-border hover:bg-muted/50 transition-colors"
                 style={{ width: LABEL_WIDTH, minWidth: LABEL_WIDTH }}
                 onClick={() => onSelectTask(task)}
@@ -260,17 +232,12 @@ function TimelineView({
                 <span className="font-mono text-xs text-muted-foreground shrink-0">{task.id}</span>
                 <span className="text-sm truncate">{task.title}</span>
               </button>
-
-              {/* Bar columns */}
               {batches.map((_, colIdx) => (
-                <div
-                  key={colIdx}
-                  className="flex items-center px-2 border-r border-border last:border-r-0"
+                <div key={colIdx} className="flex items-center px-2 border-r border-border last:border-r-0"
                   style={{ width: COL_WIDTH }}
                 >
                   {colIdx === batchIdx && (
-                    <div
-                      style={{ width: "100%", height: BAR_HEIGHT, borderRadius: 4, background: bgColor, opacity: 0.85 }}
+                    <div style={{ width: "100%", height: BAR_HEIGHT, borderRadius: 4, background: bgColor, opacity: 0.85 }}
                       title={task.title}
                     />
                   )}
@@ -281,7 +248,6 @@ function TimelineView({
         })}
       </div>
 
-      {/* Hover tooltip for links */}
       {hoveredLink && (
         <div className="fixed bottom-16 right-8 bg-card border border-border rounded px-2 py-1 text-xs shadow-lg z-50">
           {hoveredLink.replace("->", " → ")}
@@ -291,7 +257,7 @@ function TimelineView({
   );
 }
 
-/* ── List View (extracted from original) ────────────────── */
+/* ── List View ────────────────── */
 
 function ListView({
   sprint,
@@ -302,15 +268,12 @@ function ListView({
 }) {
   return (
     <>
-      {/* Table header for tasks */}
       <div className="flex items-center gap-2 px-2 py-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
         <span className="w-2" />
         <span className="w-20">ID</span>
         <span className="flex-1">Title</span>
         <span className="w-16 text-right">Status</span>
       </div>
-
-      {/* Batches */}
       <div className="flex flex-col">
         {sprint.batches.map((batch) => (
           <section key={batch.name}>
@@ -336,7 +299,7 @@ function ListView({
                       {statusStyle?.label ?? task.status}
                     </span>
                     <span className="hover-actions text-[10px] text-primary cursor-pointer">
-                      View
+                      Edit
                     </span>
                   </button>
                 );
@@ -382,10 +345,7 @@ function NotFoundState() {
     <div className="py-8 text-center">
       <FileQuestion className="mx-auto h-6 w-6 text-muted-foreground mb-2" />
       <p className="text-xs text-muted-foreground mb-2">Sprint not found.</p>
-      <Link
-        href="/sprint"
-        className="text-xs text-primary underline underline-offset-4"
-      >
+      <Link href="/sprint" className="text-xs text-primary underline underline-offset-4">
         Back to sprints
       </Link>
     </div>
@@ -403,123 +363,53 @@ function ErrorState({ message }: { message: string }) {
   );
 }
 
-function TaskDetailSheet({
-  task,
-  onClose,
-}: {
-  task: SprintDetailTask | null;
-  onClose: () => void;
-}) {
-  const open = task !== null;
-  const statusStyle = task
-    ? STATUS_STYLES[task.status as TaskStatus]
-    : undefined;
-  const priorityStyle = task
-    ? (PRIORITY_STYLES[task.priority as TaskPriority] ?? PRIORITY_STYLES.medium)
-    : undefined;
-
-  return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="overflow-y-auto">
-        {task && (
-          <>
-            <SheetHeader>
-              <SheetDescription className="font-mono text-xs">
-                {task.id}
-              </SheetDescription>
-              <SheetTitle>{task.title}</SheetTitle>
-            </SheetHeader>
-
-            <div className="flex flex-col gap-3 px-4 pb-4">
-              <div className="flex flex-wrap gap-1.5">
-                {statusStyle && (
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold text-white",
-                      statusStyle.bg,
-                    )}
-                  >
-                    {statusStyle.label}
-                  </span>
-                )}
-                {priorityStyle && (
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold",
-                      priorityStyle.bg,
-                      priorityStyle.text,
-                    )}
-                  >
-                    {priorityStyle.label}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-medium text-muted-foreground">
-                  Role
-                </span>
-                <span className="text-xs">{task.role || "-"}</span>
-              </div>
-
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-medium text-muted-foreground">
-                  Depends On
-                </span>
-                {task.depends_on.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {task.depends_on.map((id) => (
-                      <span
-                        key={id}
-                        className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]"
-                      >
-                        {id}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-xs text-muted-foreground">-</span>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-medium text-muted-foreground">
-                  Blocks
-                </span>
-                {task.blocks.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {task.blocks.map((id) => (
-                      <span
-                        key={id}
-                        className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]"
-                      >
-                        {id}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-xs text-muted-foreground">-</span>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-      </SheetContent>
-    </Sheet>
-  );
-}
-
 export default function SprintDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { sprint, isLoading, error, notFound } = useSprintDetail(id);
-  const [selectedTask, setSelectedTask] = useState<SprintDetailTask | null>(
-    null,
-  );
+  const { sprint, isLoading, error, notFound, refetch } = useSprintDetail(id);
+  const [selectedTask, setSelectedTask] = useState<SprintDetailTask | null>(null);
+  const [editingTask, setEditingTask] = useState<SprintDetailTask | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("list");
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
+  const [showBatchEditor, setShowBatchEditor] = useState(false);
+
+  const allTaskIds = sprint?.batches.flatMap((b) => b.tasks.map((t) => t.id)) ?? [];
+
+  const handleTaskSelect = useCallback((task: SprintDetailTask) => {
+    setEditingTask(task);
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  const handleBatchSave = useCallback(
+    async (updates: { id: string; status?: string; priority?: string }[]) => {
+      const results = await Promise.allSettled(
+        updates.map((update) =>
+          fetch(`/api/tasks/${update.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...(update.status && { status: update.status }),
+              ...(update.priority && { priority: update.priority }),
+            }),
+          }),
+        ),
+      );
+      const failures = results.filter((r) => r.status === "rejected");
+      if (failures.length > 0) {
+        console.error("Some batch updates failed:", failures);
+      }
+      handleRefresh();
+      setShowBatchEditor(false);
+    },
+    [handleRefresh],
+  );
 
   if (isLoading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} />;
@@ -542,7 +432,7 @@ export default function SprintDetailPage({
           Sprints
         </Link>
 
-        {/* Header - compact inline */}
+        {/* Header */}
         <div className="flex items-center gap-3 pb-2 border-b border-border">
           <span className={cn("status-dot", SPRINT_STATUS_DOT[sprint.status] ?? "bg-gray-400")} />
           <h1 className="text-sm font-semibold">{sprint.title}</h1>
@@ -558,7 +448,7 @@ export default function SprintDetailPage({
           </div>
         </div>
 
-        {/* Tab bar */}
+        {/* Tab bar + Action buttons */}
         <div className="flex items-center gap-1.5">
           {TABS.map((tab) => (
             <button
@@ -570,23 +460,75 @@ export default function SprintDetailPage({
               {tab.label}
             </button>
           ))}
+
+          <div className="ml-auto flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setShowBatchEditor(!showBatchEditor)}
+              className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded border border-border hover:bg-muted transition-colors"
+              title="배치 편집"
+            >
+              <ListChecks className="h-3 w-3" />
+              배치 편집
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddTask(true)}
+              className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded bg-primary text-white hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="h-3 w-3" />
+              Add Task
+            </button>
+          </div>
         </div>
+
+        {/* Batch Editor */}
+        {showBatchEditor && (
+          <BatchEditor
+            batches={sprint.batches}
+            onSave={handleBatchSave}
+            onClose={() => setShowBatchEditor(false)}
+          />
+        )}
 
         {/* Tab content */}
         {activeTab === "list" && (
-          <ListView sprint={sprint} onSelectTask={setSelectedTask} />
+          <ListView sprint={sprint} onSelectTask={handleTaskSelect} />
         )}
         {activeTab === "board" && (
-          <BoardView sprint={sprint} onSelectTask={setSelectedTask} />
+          <BoardView sprint={sprint} onSelectTask={handleTaskSelect} />
         )}
         {activeTab === "timeline" && (
-          <TimelineView sprint={sprint} onSelectTask={setSelectedTask} />
+          <TimelineView sprint={sprint} onSelectTask={handleTaskSelect} />
         )}
       </div>
 
-      <TaskDetailSheet
-        task={selectedTask}
-        onClose={() => setSelectedTask(null)}
+      {/* Task Edit Sheet */}
+      <TaskEditSheet
+        task={editingTask}
+        onClose={() => setEditingTask(null)}
+        onUpdated={handleRefresh}
+        onDeleteRequest={(taskId) => {
+          setEditingTask(null);
+          setDeleteTaskId(taskId);
+        }}
+        existingTaskIds={allTaskIds}
+      />
+
+      {/* Task Create Dialog */}
+      <TaskCreateDialog
+        open={showAddTask}
+        onClose={() => setShowAddTask(false)}
+        onCreated={handleRefresh}
+        sprintId={id}
+        existingTaskIds={allTaskIds}
+      />
+
+      {/* Task Delete Confirmation */}
+      <TaskDeleteDialog
+        taskId={deleteTaskId}
+        onClose={() => setDeleteTaskId(null)}
+        onDeleted={handleRefresh}
       />
     </>
   );

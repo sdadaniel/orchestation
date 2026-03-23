@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Search, ArrowUpDown, SearchIcon } from "lucide-react";
 import { ChatBot } from "@/components/ChatBot";
+import { SprintCreateDialog } from "@/components/SprintCreateDialog";
 import { STATUS_STYLES, type TaskStatus } from "../../lib/constants";
 import type { WaterfallTask, WaterfallGroup } from "@/types/waterfall";
 import Link from "next/link";
@@ -162,7 +163,7 @@ const ALL_STATUSES: TaskStatus[] = ["backlog", "in_progress", "in_review", "done
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { groups, isLoading, error } = useTasks();
+  const { groups, isLoading, error, refetch } = useTasks();
   const { prds } = usePrds();
   const { tree: docTree, createDoc, updateDoc, deleteDoc, reorderDoc } = useDocTree();
 
@@ -175,6 +176,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const listRef = useRef<HTMLDivElement>(null);
 
   const [showTaskView, setShowTaskView] = useState(true);
+  const [showSprintCreate, setShowSprintCreate] = useState(false);
   const isTaskView = pathname === "/tasks" && showTaskView;
   const isHome = pathname === "/";
 
@@ -318,6 +320,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onDocDelete={handleDocDelete}
         onDocRename={handleDocRename}
         onDocReorder={handleDocReorder}
+        onNewSprint={() => setShowSprintCreate(true)}
         currentPath={pathname}
       />
 
@@ -412,6 +415,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ChatBot */}
       <ChatBot />
+
+      {/* Sprint Create Dialog */}
+      <SprintCreateDialog
+        open={showSprintCreate}
+        onClose={() => setShowSprintCreate(false)}
+        onCreated={refetch}
+      />
     </div>
   );
 }

@@ -70,6 +70,7 @@ type TaskSidebarProps = {
   onDocDelete?: (id: string) => Promise<void>;
   onDocRename?: (id: string, title: string) => Promise<void>;
   onDocReorder?: (nodeId: string, targetParentId: string | null, position: number) => Promise<void>;
+  onNewSprint?: () => void;
   currentPath?: string;
 };
 
@@ -400,6 +401,7 @@ export function TaskSidebar({
   onDocDelete,
   onDocRename,
   onDocReorder,
+  onNewSprint,
   currentPath = "/",
 }: TaskSidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
@@ -542,8 +544,20 @@ export function TaskSidebar({
 
         {/* ── Sprints (일정) ── */}
         <div className="mb-2">
-          <div className="px-2 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Sprints
+          <div className="px-2 mb-1 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Sprints
+            </span>
+            {onNewSprint && (
+              <button
+                type="button"
+                title="New Sprint"
+                className="p-0.5 rounded hover:bg-sidebar-accent text-muted-foreground hover:text-foreground"
+                onClick={onNewSprint}
+              >
+                <Plus className="h-3 w-3" />
+              </button>
+            )}
           </div>
           <Link
             href="/sprint"
