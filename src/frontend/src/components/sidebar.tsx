@@ -12,6 +12,7 @@ import {
   FileText,
   SquareTerminal,
   Layers,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WaterfallGroup } from "@/types/waterfall";
@@ -24,6 +25,7 @@ import {
 
 export type SidebarFilter =
   | { type: "all" }
+  | { type: "prd"; prdId: string }
   | { type: "sprint"; sprintId: string }
   | { type: "status"; status: TaskStatus };
 
@@ -42,16 +44,36 @@ const navItems: NavItem[] = [
 
 /* ── Sidebar for IDE Task page ── */
 
+export interface PrdInfo {
+  id: string;
+  title: string;
+  status: string;
+  sprints: string[];
+}
+
 type TaskSidebarProps = {
   groups: WaterfallGroup[];
+  prds: PrdInfo[];
   filter: SidebarFilter;
   onFilterChange: (filter: SidebarFilter) => void;
 };
 
-export function TaskSidebar({ groups, filter, onFilterChange }: TaskSidebarProps) {
+export function TaskSidebar({ groups, prds, filter, onFilterChange }: TaskSidebarProps) {
+  const [expandedPrds, setExpandedPrds] = useState<Set<string>>(
+    () => new Set(prds.map((p) => p.id)),
+  );
   const [expandedSprints, setExpandedSprints] = useState<Set<string>>(
     () => new Set(groups.map((g) => g.sprint.id)),
   );
+
+  const togglePrd = (id: string) => {
+    setExpandedPrds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const toggleSprint = (id: string) => {
     setExpandedSprints((prev) => {
@@ -85,74 +107,125 @@ export function TaskSidebar({ groups, filter, onFilterChange }: TaskSidebarProps
         </h1>
       </div>
 
-      {/* Sprint tree */}
+      {/* PRD → Sprint → Task tree */}
       <div className="flex-1 overflow-y-auto px-2 py-2">
-        <div className="mb-3">
-          <div className="px-2 mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Sprints
-          </div>
+        {/* PRDs */}
+        {prds.length > 0 && (
+          <div className="mb-3">
+            <div className="px-2 mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              PRD
+            </div>
 
-          {groups.map((group) => {
-            const isExpanded = expandedSprints.has(group.sprint.id);
-            const isActive =
-              filter.type === "sprint" && filter.sprintId === group.sprint.id;
+            {prds.map((prd) => {
+              const isPrdExpanded = expandedPrds.has(prd.id);
+              const isPrdActive = filter.type === "prd" && filter.prdId === prd.id;
+              const prdSprints = groups.filter((g) => prd.sprints.includes(g.sprint.id));
 
-            return (
-              <div key={group.sprint.id}>
-                <div
-                  className={cn("tree-item", isActive && "active")}
-                  onClick={() => {
-                    onFilterChange({ type: "sprint", sprintId: group.sprint.id });
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="shrink-0 p-0 bg-transparent border-none cursor-pointer text-muted-foreground"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleSprint(group.sprint.id);
-                    }}
+              return (
+                <div key={prd.id}>
+                  <div
+                    className={cn("tree-item", isPrdActive && "active")}
+                    onClick={() => onFilterChange({ type: "prd", prdId: prd.id })}
                   >
-                    {isExpanded ? (
-                      <ChevronDown className="h-3 w-3" />
-                    ) : (
-                      <ChevronRight className="h-3 w-3" />
-                    )}
-                  </button>
-                  <span className="truncate flex-1">{group.sprint.title}</span>
-                  <span className="text-[10px] text-muted-foreground shrink-0">
-                    {group.progress.done}/{group.progress.total}
-                  </span>
-                </div>
+                    <button
+                      type="button"
+                      className="shrink-0 p-0 bg-transparent border-none cursor-pointer text-muted-foreground"
+                      onClick={(e) => { e.stopPropagation(); togglePrd(prd.id); }}
+                    >
+                      {isPrdExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                    </button>
+                    <BookOpen className="h-3 w-3 text-primary shrink-0" />
+                    <span className="truncate flex-1">{prd.title}</span>
+                  </div>
 
-                {isExpanded && group.tasks.length > 0 && (
-                  <div className="ml-5 border-l border-sidebar-border">
-                    {/* Group tasks by batch if possible - show as simple list */}
-                    {group.tasks.slice(0, 8).map((task) => (
-                      <div
-                        key={task.id}
-                        className="flex items-center gap-1.5 px-2 py-0.5 text-[11px] text-muted-foreground truncate"
-                      >
-                        <span
-                          className={cn(
-                            "w-1.5 h-1.5 rounded-full shrink-0",
-                            STATUS_STYLES[task.status as TaskStatus]?.dot ?? "bg-gray-400",
-                          )}
-                        />
-                        <span className="font-mono truncate">{task.id}</span>
+                  {isPrdExpanded && prdSprints.map((group) => {
+                    const isSprintExpanded = expandedSprints.has(group.sprint.id);
+                    const isSprintActive = filter.type === "sprint" && filter.sprintId === group.sprint.id;
+
+                    return (
+                      <div key={group.sprint.id} className="ml-4">
+                        <div
+                          className={cn("tree-item", isSprintActive && "active")}
+                          onClick={() => onFilterChange({ type: "sprint", sprintId: group.sprint.id })}
+                        >
+                          <button
+                            type="button"
+                            className="shrink-0 p-0 bg-transparent border-none cursor-pointer text-muted-foreground"
+                            onClick={(e) => { e.stopPropagation(); toggleSprint(group.sprint.id); }}
+                          >
+                            {isSprintExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                          </button>
+                          <span className="truncate flex-1">{group.sprint.title}</span>
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {group.progress.done}/{group.progress.total}
+                          </span>
+                        </div>
+
+                        {isSprintExpanded && group.tasks.length > 0 && (
+                          <div className="ml-5 border-l border-sidebar-border">
+                            {group.tasks.slice(0, 8).map((task) => (
+                              <div
+                                key={task.id}
+                                className="flex items-center gap-1.5 px-2 py-0.5 text-[11px] text-muted-foreground truncate"
+                              >
+                                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", STATUS_STYLES[task.status as TaskStatus]?.dot ?? "bg-gray-400")} />
+                                <span className="font-mono truncate">{task.id}</span>
+                              </div>
+                            ))}
+                            {group.tasks.length > 8 && (
+                              <div className="px-2 py-0.5 text-[10px] text-muted-foreground">+{group.tasks.length - 8} more</div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    ))}
-                    {group.tasks.length > 8 && (
-                      <div className="px-2 py-0.5 text-[10px] text-muted-foreground">
-                        +{group.tasks.length - 8} more
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Unlinked sprints (not in any PRD) */}
+        {(() => {
+          const linkedSprints = new Set(prds.flatMap((p) => p.sprints));
+          const unlinked = groups.filter((g) => !linkedSprints.has(g.sprint.id));
+          if (unlinked.length === 0) return null;
+
+          return (
+            <div className="mb-3">
+              <div className="px-2 mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Sprints
+              </div>
+              {unlinked.map((group) => {
+                const isExpanded = expandedSprints.has(group.sprint.id);
+                const isActive = filter.type === "sprint" && filter.sprintId === group.sprint.id;
+
+                return (
+                  <div key={group.sprint.id}>
+                    <div className={cn("tree-item", isActive && "active")} onClick={() => onFilterChange({ type: "sprint", sprintId: group.sprint.id })}>
+                      <button type="button" className="shrink-0 p-0 bg-transparent border-none cursor-pointer text-muted-foreground" onClick={(e) => { e.stopPropagation(); toggleSprint(group.sprint.id); }}>
+                        {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                      </button>
+                      <span className="truncate flex-1">{group.sprint.title}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{group.progress.done}/{group.progress.total}</span>
+                    </div>
+                    {isExpanded && group.tasks.length > 0 && (
+                      <div className="ml-5 border-l border-sidebar-border">
+                        {group.tasks.slice(0, 8).map((task) => (
+                          <div key={task.id} className="flex items-center gap-1.5 px-2 py-0.5 text-[11px] text-muted-foreground truncate">
+                            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", STATUS_STYLES[task.status as TaskStatus]?.dot ?? "bg-gray-400")} />
+                            <span className="font-mono truncate">{task.id}</span>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Divider */}
         <div className="border-t border-sidebar-border my-2" />

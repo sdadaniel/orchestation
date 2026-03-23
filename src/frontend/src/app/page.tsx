@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { AlertCircle, Search, ArrowUpDown } from "lucide-react";
 import { useTasks } from "@/hooks/useTasks";
+import { usePrds } from "@/hooks/usePrds";
 import { TaskSidebar, type SidebarFilter } from "@/components/sidebar";
 import { TaskRow } from "@/components/TaskRow";
 import { RightPanel } from "@/components/RightPanel";
@@ -95,6 +96,7 @@ const ALL_STATUSES: TaskStatus[] = ["backlog", "in_progress", "in_review", "done
 
 export default function TaskPage() {
   const { groups, isLoading, error } = useTasks();
+  const { prds } = usePrds();
 
   // State
   const [filter, setFilter] = useState<SidebarFilter>({ type: "all" });
@@ -115,6 +117,14 @@ export default function TaskPage() {
     switch (filter.type) {
       case "all":
         return allTasks;
+      case "prd": {
+        const prd = prds.find((p) => p.id === filter.prdId);
+        if (!prd) return allTasks;
+        const prdSprintIds = new Set(prd.sprints);
+        return allTasks.filter((t) => {
+          return groups.some((g) => prdSprintIds.has(g.sprint.id) && g.tasks.some((gt) => gt.id === t.id));
+        });
+      }
       case "sprint":
         return allTasks.filter((t) => {
           const group = groups.find((g) => g.sprint.id === filter.sprintId);
@@ -125,7 +135,7 @@ export default function TaskPage() {
       default:
         return allTasks;
     }
-  }, [allTasks, filter, groups]);
+  }, [allTasks, filter, groups, prds]);
 
   // Apply search + status filter + sort
   const filteredTasks = useMemo(() => {
@@ -234,7 +244,7 @@ export default function TaskPage() {
   return (
     <div className={cn("ide-layout", !selectedTask && "no-right-panel")}>
       {/* Left: Sidebar */}
-      <TaskSidebar groups={groups} filter={filter} onFilterChange={setFilter} />
+      <TaskSidebar groups={groups} prds={prds} filter={filter} onFilterChange={setFilter} />
 
       {/* Middle: Task list */}
       <div className="ide-main flex flex-col">
