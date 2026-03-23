@@ -50,7 +50,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const listRef = useRef<HTMLDivElement>(null);
 
-  const isTaskView = filter.type === "all" || filter.type === "status" || filter.type === "sprint";
+  const isTaskView = pathname === "/" && (filter.type === "all" || filter.type === "status" || filter.type === "sprint");
+  const isSubPage = pathname !== "/" && !pathname.startsWith("/docs/");
 
   // Flatten all tasks
   const allTasks = useMemo(() => groups.flatMap((g) => g.tasks), [groups]);
@@ -188,6 +189,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Main content */}
         <div className="flex flex-1 overflow-hidden">
           {pathname === "/" && !isTaskView ? (
+            /* 홈: 빈 화면 */
             <div className="flex-1" />
           ) : isTaskView ? (
         <>
