@@ -52,7 +52,7 @@ export function ChatBot() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -95,7 +95,7 @@ export function ChatBot() {
   }, [sessions]);
 
   const sendMessage = useCallback(async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isStreaming) return;
 
     const userMsg: Message = {
       id: generateId(),
@@ -127,7 +127,24 @@ export function ChatBot() {
       );
     }
     setInput("");
-    setIsLoading(true);
+    setIsStreaming(true);
+
+    // 어시스턴트 메시지를 빈 상태로 먼저 추가
+    const assistantMsgId = generateId();
+    const assistantMsg: Message = {
+      id: assistantMsgId,
+      role: "assistant",
+      content: "",
+      timestamp: Date.now(),
+    };
+
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === currentSessionId
+          ? { ...s, messages: [...s.messages, assistantMsg] }
+          : s,
+      ),
+    );
 
     try {
       const res = await fetch("/api/chat", {
@@ -143,39 +160,79 @@ export function ChatBot() {
         }),
       });
 
-      const data = await res.json();
-      const assistantMsg: Message = {
-        id: generateId(),
-        role: "assistant",
-        content: data.response ?? "응답을 받지 못했습니다.",
-        timestamp: Date.now(),
-      };
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
 
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === currentSessionId
-            ? { ...s, messages: [...s.messages, assistantMsg] }
-            : s,
-        ),
-      );
+      const reader = res.body?.getReader();
+      if (!reader) {
+        throw new Error("ReadableStream not supported");
+      }
+
+      const decoder = new TextDecoder();
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        accumulated += chunk;
+
+        // 어시스턴트 메시지 content를 점진적으로 업데이트
+        const updatedContent = accumulated;
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === currentSessionId
+              ? {
+                  ...s,
+                  messages: s.messages.map((m) =>
+                    m.id === assistantMsgId
+                      ? { ...m, content: updatedContent }
+                      : m,
+                  ),
+                }
+              : s,
+          ),
+        );
+      }
+
+      // 스트리밍 완료 후 빈 응답 처리
+      if (!accumulated.trim()) {
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === currentSessionId
+              ? {
+                  ...s,
+                  messages: s.messages.map((m) =>
+                    m.id === assistantMsgId
+                      ? { ...m, content: "응답을 받지 못했습니다." }
+                      : m,
+                  ),
+                }
+              : s,
+          ),
+        );
+      }
     } catch {
-      const errorMsg: Message = {
-        id: generateId(),
-        role: "assistant",
-        content: "오류가 발생했습니다. 다시 시도해주세요.",
-        timestamp: Date.now(),
-      };
       setSessions((prev) =>
         prev.map((s) =>
           s.id === currentSessionId
-            ? { ...s, messages: [...s.messages, errorMsg] }
+            ? {
+                ...s,
+                messages: s.messages.map((m) =>
+                  m.id === assistantMsgId
+                    ? { ...m, content: "오류가 발생했습니다. 다시 시도해주세요." }
+                    : m,
+                ),
+              }
             : s,
         ),
       );
     } finally {
-      setIsLoading(false);
+      setIsStreaming(false);
     }
-  }, [input, activeSessionId, isLoading, activeSession]);
+  }, [input, activeSessionId, isStreaming, activeSession]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -276,13 +333,16 @@ export function ChatBot() {
                       : "mr-auto bg-muted text-foreground",
                   )}
                 >
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                  <div className="whitespace-pre-wrap">
+                    {msg.content}
+                    {isStreaming && msg.role === "assistant" && msg.content === "" && (
+                      <span className="animate-pulse">▍</span>
+                    )}
+                  </div>
                 </div>
               ))}
-              {isLoading && (
-                <div className="mr-auto bg-muted rounded-lg px-3 py-2 text-xs text-muted-foreground">
-                  <span className="animate-pulse">응답 중...</span>
-                </div>
+              {isStreaming && activeSession?.messages.at(-1)?.role === "assistant" && (activeSession?.messages.at(-1)?.content ?? "") !== "" && (
+                <span className="text-xs text-muted-foreground animate-pulse ml-1">▍</span>
               )}
               <div ref={messagesEndRef} />
             </div>
@@ -296,12 +356,13 @@ export function ChatBot() {
                 onKeyDown={handleKeyDown}
                 placeholder="메시지 입력... (Enter로 전송)"
                 rows={1}
-                className="flex-1 resize-none bg-muted border border-border rounded-md px-2.5 py-1.5 text-xs outline-none focus:border-primary leading-relaxed max-h-20 overflow-y-auto"
+                disabled={isStreaming}
+                className="flex-1 resize-none bg-muted border border-border rounded-md px-2.5 py-1.5 text-xs outline-none focus:border-primary leading-relaxed max-h-20 overflow-y-auto disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 type="button"
                 onClick={sendMessage}
-                disabled={!input.trim() || isLoading}
+                disabled={!input.trim() || isStreaming}
                 className="flex items-center justify-center w-7 h-7 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 shrink-0 transition-colors"
               >
                 <Send className="h-3.5 w-3.5" />
