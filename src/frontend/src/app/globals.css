@@ -489,3 +489,19 @@ button.timeline-task-label:hover {
   border-left: 7px solid var(--foreground);
   opacity: 0.4;
 }
+
+/* Toast slide-in animation */
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.toast-slide-in {
+  animation: toast-slide-in 0.3s ease-out;
+}

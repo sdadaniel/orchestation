@@ -10,9 +10,11 @@ import { useRequests } from "@/hooks/useRequests";
 import { TaskSidebar, type SidebarFilter } from "@/components/sidebar";
 import { TaskRow } from "@/components/TaskRow";
 import { RightPanel } from "@/components/RightPanel";
+import { TaskLogModal } from "@/components/TaskLogModal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { Search, ArrowUpDown, SearchIcon } from "lucide-react";
+import { Search, ArrowUpDown, SearchIcon, ChevronDown, ChevronRight } from "lucide-react";
 import { ChatBot } from "@/components/ChatBot";
 import { SprintCreateDialog } from "@/components/SprintCreateDialog";
 import { STATUS_STYLES, type TaskStatus } from "../../lib/constants";
@@ -22,7 +24,85 @@ import { Progress } from "@/components/ui/progress";
 
 /* ── Home Dashboard ── */
 
-function HomeDashboard({ groups }: { groups: WaterfallGroup[] }) {
+function SprintTaskList({
+  group,
+  onTaskClick,
+}: {
+  group: WaterfallGroup;
+  onTaskClick: (task: WaterfallTask) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const pct = group.progress.total > 0 ? Math.round((group.progress.done / group.progress.total) * 100) : 0;
+  const isActive = group.progress.done < group.progress.total;
+
+  return (
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      {/* Sprint header */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left"
+      >
+        {expanded ? (
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        )}
+        {isActive ? (
+          <span className="w-3 h-3 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+        )}
+        <span className="text-sm font-medium flex-1 truncate">{group.sprint.title}</span>
+        <span className="text-xs text-muted-foreground">{group.progress.done}/{group.progress.total}</span>
+        <Progress value={pct} className="h-1.5 w-20 shrink-0" />
+        <span className="text-xs text-muted-foreground w-8 text-right">{pct}%</span>
+      </button>
+
+      {/* Task list */}
+      {expanded && group.tasks.length > 0 && (
+        <div className="border-t border-border">
+          {group.tasks.map((task) => {
+            const style = STATUS_STYLES[task.status as TaskStatus];
+            return (
+              <button
+                type="button"
+                key={task.id}
+                onClick={() => onTaskClick(task)}
+                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-muted/40 transition-colors text-left border-b border-border/50 last:border-b-0"
+              >
+                {task.status === "in_progress" ? (
+                  <span className="w-3 h-3 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin ml-3" />
+                ) : (
+                  <span className={cn("w-2 h-2 rounded-full shrink-0 ml-3.5", style?.dot ?? "bg-gray-400")} />
+                )}
+                <span className="font-mono text-[11px] text-muted-foreground w-20 shrink-0">{task.id}</span>
+                <span className={cn("text-sm flex-1 truncate", task.status === "done" && "text-muted-foreground line-through")}>{task.title}</span>
+                <span className={cn(
+                  "text-[11px] px-1.5 py-0.5 rounded",
+                  task.status === "done" && "text-emerald-500 bg-emerald-500/10",
+                  task.status === "in_progress" && "text-blue-500 bg-blue-500/10",
+                  task.status === "in_review" && "text-orange-400 bg-orange-500/10",
+                  task.status === "backlog" && "text-zinc-400 bg-zinc-500/10",
+                )}>
+                  {style?.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HomeDashboard({
+  groups,
+  onTaskClick,
+}: {
+  groups: WaterfallGroup[];
+  onTaskClick: (task: WaterfallTask) => void;
+}) {
   const allTasks = groups.flatMap((g) => g.tasks);
   const inProgress = allTasks.filter((t) => t.status === "in_progress");
   const inReview = allTasks.filter((t) => t.status === "in_review");
@@ -57,77 +137,26 @@ function HomeDashboard({ groups }: { groups: WaterfallGroup[] }) {
         </div>
       </div>
 
-      {/* 진행 중인 Sprint */}
+      {/* 진행 중인 Sprint + 태스크 목록 */}
       {activeSprints.length > 0 && (
         <div>
           <h2 className="text-sm font-semibold mb-3">Active Sprints</h2>
-          <div className="space-y-2">
-            {activeSprints.map((g) => {
-              const pct = g.progress.total > 0 ? Math.round((g.progress.done / g.progress.total) * 100) : 0;
-              return (
-                <Link
-                  key={g.sprint.id}
-                  href={`/sprint/${g.sprint.id}`}
-                  className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 no-underline text-foreground hover:bg-muted/50 transition-colors"
-                >
-                  <span className="w-3.5 h-3.5 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-sm font-medium flex-1">{g.sprint.title}</span>
-                  <span className="text-xs text-muted-foreground">{g.progress.done}/{g.progress.total}</span>
-                  <Progress value={pct} className="h-1.5 w-24 shrink-0" />
-                  <span className="text-xs text-muted-foreground">{pct}%</span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 완료된 Sprint */}
-      {completedSprints.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold mb-3">Completed Sprints</h2>
-          <div className="space-y-2">
-            {completedSprints.map((g) => (
-              <Link
-                key={g.sprint.id}
-                href={`/sprint/${g.sprint.id}`}
-                className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 no-underline text-foreground hover:bg-muted/50 transition-colors opacity-70"
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span className="text-sm font-medium flex-1">{g.sprint.title}</span>
-                <span className="text-xs text-muted-foreground">{g.progress.done}/{g.progress.total}</span>
-                <span className="text-xs text-emerald-500">Complete</span>
-              </Link>
+          <div className="space-y-3">
+            {activeSprints.map((g) => (
+              <SprintTaskList key={g.sprint.id} group={g} onTaskClick={onTaskClick} />
             ))}
           </div>
         </div>
       )}
 
-      {/* 진행 중인 Task */}
-      {(inProgress.length > 0 || inReview.length > 0) && (
+      {/* 완료된 Sprint + 태스크 목록 */}
+      {completedSprints.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold mb-3">Active Tasks</h2>
-          <div className="space-y-1">
-            {[...inProgress, ...inReview].map((task) => {
-              const style = STATUS_STYLES[task.status as TaskStatus];
-              return (
-                <div
-                  key={task.id}
-                  className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2"
-                >
-                  {task.status === "in_progress" ? (
-                    <span className="w-3.5 h-3.5 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <span className={cn("w-2 h-2 rounded-full shrink-0", style?.dot ?? "bg-gray-400")} />
-                  )}
-                  <span className="font-mono text-xs text-muted-foreground w-24 shrink-0">{task.id}</span>
-                  <span className="text-sm flex-1 truncate">{task.title}</span>
-                  <span className={cn("text-xs", task.status === "in_progress" ? "text-blue-500" : "text-muted-foreground")}>
-                    {style?.label}
-                  </span>
-                </div>
-              );
-            })}
+          <h2 className="text-sm font-semibold mb-3">Completed Sprints</h2>
+          <div className="space-y-3">
+            {completedSprints.map((g) => (
+              <SprintTaskList key={g.sprint.id} group={g} onTaskClick={onTaskClick} />
+            ))}
           </div>
         </div>
       )}
@@ -170,6 +199,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { tree: docTree, createDoc, updateDoc, deleteDoc, reorderDoc } = useDocTree();
   const { justFinished, clearFinished } = useOrchestrationStatus();
   const { pendingCount: pendingRequestCount } = useRequests();
+  const { addToast } = useToast();
+  const [logModalTask, setLogModalTask] = useState<WaterfallTask | null>(null);
+
+  // Track previous task statuses for change detection
+  const prevTaskStatusRef = useRef<Map<string, string>>(new Map());
+
+  // Detect task status changes and show toasts
+  useEffect(() => {
+    if (isLoading) return;
+    const allTasks = groups.flatMap((g) => g.tasks);
+    const prevMap = prevTaskStatusRef.current;
+
+    // Skip first load (populate without toasts)
+    if (prevMap.size > 0) {
+      for (const task of allTasks) {
+        const prevStatus = prevMap.get(task.id);
+        if (prevStatus && prevStatus !== task.status) {
+          if (task.status === "done") {
+            addToast(`${task.id}: "${task.title}" 완료됨`, "success");
+          } else if (task.status === "in_progress" && prevStatus === "backlog") {
+            addToast(`${task.id}: "${task.title}" 시작됨`, "info");
+          } else if (task.status === "in_review") {
+            addToast(`${task.id}: "${task.title}" 리뷰 중`, "info");
+          }
+        }
+      }
+    }
+
+    // Update the map
+    const newMap = new Map<string, string>();
+    for (const task of allTasks) {
+      newMap.set(task.id, task.status);
+    }
+    prevTaskStatusRef.current = newMap;
+  }, [groups, isLoading, addToast]);
 
   // Auto-refresh all data when orchestration finishes
   useEffect(() => {
@@ -353,7 +417,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             /* 홈 대시보드 */
             <div className="flex-1 overflow-auto bg-background p-4">
               <div className="content-container">
-                <HomeDashboard groups={groups} />
+                <HomeDashboard groups={groups} onTaskClick={setLogModalTask} />
               </div>
             </div>
           ) : isTaskView ? (
@@ -435,6 +499,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onClose={() => setShowSprintCreate(false)}
         onCreated={refetch}
       />
+
+      {/* Task Log Modal */}
+      {logModalTask && (
+        <TaskLogModal
+          task={logModalTask}
+          onClose={() => setLogModalTask(null)}
+        />
+      )}
     </div>
   );
 }
