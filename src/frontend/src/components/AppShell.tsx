@@ -6,6 +6,7 @@ import { useTasks } from "@/hooks/useTasks";
 import { usePrds } from "@/hooks/usePrds";
 import { useDocTree } from "@/hooks/useDocTree";
 import { useOrchestrationStatus } from "@/hooks/useOrchestrationStatus";
+import { useRequests } from "@/hooks/useRequests";
 import { TaskSidebar, type SidebarFilter } from "@/components/sidebar";
 import { TaskRow } from "@/components/TaskRow";
 import { RightPanel } from "@/components/RightPanel";
@@ -168,6 +169,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { prds } = usePrds();
   const { tree: docTree, createDoc, updateDoc, deleteDoc, reorderDoc } = useDocTree();
   const { justFinished, clearFinished } = useOrchestrationStatus();
+  const { pendingCount: pendingRequestCount } = useRequests();
 
   // Auto-refresh all data when orchestration finishes
   useEffect(() => {
@@ -331,6 +333,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onDocRename={handleDocRename}
         onDocReorder={handleDocReorder}
         onNewSprint={() => setShowSprintCreate(true)}
+        pendingRequestCount={pendingRequestCount}
         currentPath={pathname}
       />
 

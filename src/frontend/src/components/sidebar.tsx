@@ -21,6 +21,7 @@ import {
   Trash2,
   X,
   Check,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WaterfallGroup } from "@/types/waterfall";
@@ -71,6 +72,7 @@ type TaskSidebarProps = {
   onDocRename?: (id: string, title: string) => Promise<void>;
   onDocReorder?: (nodeId: string, targetParentId: string | null, position: number) => Promise<void>;
   onNewSprint?: () => void;
+  pendingRequestCount?: number;
   currentPath?: string;
 };
 
@@ -402,6 +404,7 @@ export function TaskSidebar({
   onDocRename,
   onDocReorder,
   onNewSprint,
+  pendingRequestCount = 0,
   currentPath = "/",
 }: TaskSidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
@@ -623,6 +626,25 @@ export function TaskSidebar({
             );
           })}
 
+        </div>
+
+        {/* ── Requests ── */}
+        <div className="mb-2">
+          <div className="px-2 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Requests
+          </div>
+          <Link
+            href="/requests"
+            className={cn("tree-item no-underline text-sidebar-foreground", currentPath === "/requests" && "active")}
+          >
+            <Inbox className="h-3 w-3 text-muted-foreground shrink-0" />
+            <span className="flex-1">All Requests</span>
+            {pendingRequestCount > 0 && (
+              <span className="text-[10px] bg-primary text-primary-foreground rounded-full px-1.5 py-0 font-medium leading-relaxed">
+                {pendingRequestCount}
+              </span>
+            )}
+          </Link>
         </div>
       </div>
 

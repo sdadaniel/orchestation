@@ -56,22 +56,17 @@ export function ChatBot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // 초기 로드
+  // 초기 로드 — 빈 세션은 제거하고 로드
   useEffect(() => {
-    const loaded = loadSessions();
-    if (loaded.length > 0) {
-      setSessions(loaded);
-      setActiveSessionId(loaded[0].id);
-    } else {
-      const first = createSession();
-      setSessions([first]);
-      setActiveSessionId(first.id);
-    }
+    const loaded = loadSessions().filter((s) => s.messages.length > 0);
+    setSessions(loaded);
+    setActiveSessionId(loaded[0]?.id ?? null);
   }, []);
 
-  // 세션 저장
+  // 세션 저장 — 메시지가 있는 세션만 저장
   useEffect(() => {
-    if (sessions.length > 0) saveSessions(sessions);
+    const withMessages = sessions.filter((s) => s.messages.length > 0);
+    saveSessions(withMessages);
   }, [sessions]);
 
   // 자동 스크롤
@@ -82,21 +77,14 @@ export function ChatBot() {
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
 
   const newSession = useCallback(() => {
-    const s = createSession();
-    setSessions((prev) => [s, ...prev]);
-    setActiveSessionId(s.id);
-  }, []);
+    // 이미 빈 세션(activeSession)이 있으면 새로 만들지 않음
+    if (activeSession && activeSession.messages.length === 0) return;
+    // activeSessionId를 null로 설정하면 "새 채팅" 모드
+    setActiveSessionId(null);
+  }, [activeSession]);
 
   const deleteSession = useCallback((id: string) => {
-    setSessions((prev) => {
-      const next = prev.filter((s) => s.id !== id);
-      if (next.length === 0) {
-        const fresh = createSession();
-        setActiveSessionId(fresh.id);
-        return [fresh];
-      }
-      return next;
-    });
+    setSessions((prev) => prev.filter((s) => s.id !== id));
     setActiveSessionId((curr) => {
       if (curr === id) {
         const remaining = sessions.filter((s) => s.id !== id);
@@ -107,7 +95,7 @@ export function ChatBot() {
   }, [sessions]);
 
   const sendMessage = useCallback(async () => {
-    if (!input.trim() || !activeSessionId || isLoading) return;
+    if (!input.trim() || isLoading) return;
 
     const userMsg: Message = {
       id: generateId(),
@@ -116,18 +104,28 @@ export function ChatBot() {
       timestamp: Date.now(),
     };
 
-    // 세션 업데이트 (유저 메시지 추가)
-    setSessions((prev) =>
-      prev.map((s) => {
-        if (s.id !== activeSessionId) return s;
-        const updated = {
-          ...s,
-          messages: [...s.messages, userMsg],
-          title: s.messages.length === 0 ? userMsg.content.slice(0, 30) : s.title,
-        };
-        return updated;
-      }),
-    );
+    // activeSessionId가 null이면 새 세션 생성 (첫 메시지 시점)
+    let currentSessionId = activeSessionId;
+    if (!currentSessionId) {
+      const newSess = createSession();
+      newSess.title = userMsg.content.slice(0, 30);
+      newSess.messages = [userMsg];
+      currentSessionId = newSess.id;
+      setSessions((prev) => [newSess, ...prev]);
+      setActiveSessionId(currentSessionId);
+    } else {
+      // 기존 세션에 메시지 추가
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id !== currentSessionId) return s;
+          return {
+            ...s,
+            messages: [...s.messages, userMsg],
+            title: s.messages.length === 0 ? userMsg.content.slice(0, 30) : s.title,
+          };
+        }),
+      );
+    }
     setInput("");
     setIsLoading(true);
 
@@ -136,7 +134,7 @@ export function ChatBot() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionId: activeSessionId,
+          sessionId: currentSessionId,
           message: userMsg.content,
           history: activeSession?.messages.map((m) => ({
             role: m.role,
@@ -155,7 +153,7 @@ export function ChatBot() {
 
       setSessions((prev) =>
         prev.map((s) =>
-          s.id === activeSessionId
+          s.id === currentSessionId
             ? { ...s, messages: [...s.messages, assistantMsg] }
             : s,
         ),
@@ -169,7 +167,7 @@ export function ChatBot() {
       };
       setSessions((prev) =>
         prev.map((s) =>
-          s.id === activeSessionId
+          s.id === currentSessionId
             ? { ...s, messages: [...s.messages, errorMsg] }
             : s,
         ),
@@ -193,11 +191,9 @@ export function ChatBot() {
         <button
           type="button"
           onClick={() => {
-            // 열 때마다 새 세션 생성
-            const s = createSession();
-            setSessions((prev) => [s, ...prev]);
-            setActiveSessionId(s.id);
             setIsOpen(true);
+            // 항상 새 채팅 모드로 시작
+            setActiveSessionId(null);
             setTimeout(() => inputRef.current?.focus(), 100);
           }}
           className="fixed bottom-5 right-5 z-50 flex items-center justify-center w-11 h-11 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all"
@@ -265,7 +261,7 @@ export function ChatBot() {
 
             {/* 메시지 */}
             <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
-              {activeSession?.messages.length === 0 && (
+              {(!activeSession || activeSession.messages.length === 0) && (
                 <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
                   메시지를 입력하세요
                 </div>

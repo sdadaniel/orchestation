@@ -31,10 +31,11 @@ export async function POST(request: Request) {
 
     const prompt = `${contextMessages}User: ${message}`;
 
-    // claude CLI 호출 — cwd를 프로젝트 루트로 설정하여 docs/ 등 전체 접근 가능
+    // claude CLI 호출 — input 옵션으로 stdin 전달 (shell injection 방지)
     const result = execSync(
-      `echo ${JSON.stringify(prompt)} | claude --print --model claude-sonnet-4-6 --output-format json`,
+      `claude --print --model claude-sonnet-4-6 --output-format json`,
       {
+        input: prompt,
         timeout: 90000,
         encoding: "utf-8",
         cwd: PROJECT_ROOT,
