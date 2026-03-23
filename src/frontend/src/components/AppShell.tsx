@@ -10,6 +10,7 @@ import { RightPanel } from "@/components/RightPanel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Search, ArrowUpDown, SearchIcon } from "lucide-react";
+import { ChatBot } from "@/components/ChatBot";
 import { STATUS_STYLES, type TaskStatus } from "../../lib/constants";
 import type { WaterfallTask } from "@/types/waterfall";
 
@@ -237,6 +238,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
         </div>
       </div>
+
+      {/* 챗봇 — 모든 페이지 공통 */}
+      <ChatBot />
     </div>
   );
 }

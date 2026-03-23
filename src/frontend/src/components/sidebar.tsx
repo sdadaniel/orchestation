@@ -13,6 +13,7 @@ import {
   SquareTerminal,
   Layers,
   BookOpen,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WaterfallGroup } from "@/types/waterfall";
@@ -231,7 +232,7 @@ export function TaskSidebar({ groups, prds, filter, onFilterChange, currentPath 
         </div>
       </div>
 
-      {/* Bottom: Cost + Terminal */}
+      {/* Bottom: Cost + Terminal + Settings */}
       <div className="border-t border-sidebar-border px-2 py-2">
         <Link href="/cost" className={cn("tree-item text-sidebar-foreground no-underline", currentPath === "/cost" && "active")}>
           <DollarSign className="h-3.5 w-3.5" />
@@ -240,6 +241,10 @@ export function TaskSidebar({ groups, prds, filter, onFilterChange, currentPath 
         <Link href="/terminal" className={cn("tree-item text-sidebar-foreground no-underline", currentPath === "/terminal" && "active")}>
           <SquareTerminal className="h-3.5 w-3.5" />
           <span>Terminal</span>
+        </Link>
+        <Link href="/settings" className={cn("tree-item text-sidebar-foreground no-underline", currentPath === "/settings" && "active")}>
+          <Settings className="h-3.5 w-3.5" />
+          <span>Settings</span>
         </Link>
       </div>
     </div>
