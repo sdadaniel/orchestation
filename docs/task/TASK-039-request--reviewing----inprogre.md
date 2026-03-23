@@ -1,7 +1,7 @@
 ---
 id: TASK-039
 title: Request 메뉴에 reviewing 상태 추가 및 in_progress 스피너 표시
-status: in_progress
+status: done
 priority: medium
 sprint:
 depends_on: []
