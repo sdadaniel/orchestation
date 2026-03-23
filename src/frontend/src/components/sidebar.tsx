@@ -57,9 +57,10 @@ type TaskSidebarProps = {
   prds: PrdInfo[];
   filter: SidebarFilter;
   onFilterChange: (filter: SidebarFilter) => void;
+  currentPath?: string;
 };
 
-export function TaskSidebar({ groups, prds, filter, onFilterChange }: TaskSidebarProps) {
+export function TaskSidebar({ groups, prds, filter, onFilterChange, currentPath = "/" }: TaskSidebarProps) {
   const [expandedPrds, setExpandedPrds] = useState<Set<string>>(
     () => new Set(prds.map((p) => p.id)),
   );
@@ -157,19 +158,19 @@ export function TaskSidebar({ groups, prds, filter, onFilterChange }: TaskSideba
             Sprints
           </div>
           {groups.map((group) => {
-            const isActive = filter.type === "sprint" && filter.sprintId === group.sprint.id;
+            const isActive = currentPath === `/sprint/${group.sprint.id}`;
             return (
-              <div
+              <Link
                 key={group.sprint.id}
-                className={cn("tree-item", isActive && "active")}
-                onClick={() => onFilterChange({ type: "sprint", sprintId: group.sprint.id })}
+                href={`/sprint/${group.sprint.id}`}
+                className={cn("tree-item no-underline text-sidebar-foreground", isActive && "active")}
               >
                 <Calendar className="h-3 w-3 text-muted-foreground shrink-0" />
                 <span className="truncate flex-1">{group.sprint.title}</span>
                 <span className="text-[10px] text-muted-foreground shrink-0">
                   {group.progress.done}/{group.progress.total}
                 </span>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -230,11 +231,11 @@ export function TaskSidebar({ groups, prds, filter, onFilterChange }: TaskSideba
 
       {/* Bottom: Cost + Terminal */}
       <div className="border-t border-sidebar-border px-2 py-2">
-        <Link href="/cost" className="tree-item text-sidebar-foreground no-underline">
+        <Link href="/cost" className={cn("tree-item text-sidebar-foreground no-underline", currentPath === "/cost" && "active")}>
           <DollarSign className="h-3.5 w-3.5" />
           <span>Cost</span>
         </Link>
-        <Link href="/terminal" className="tree-item text-sidebar-foreground no-underline">
+        <Link href="/terminal" className={cn("tree-item text-sidebar-foreground no-underline", currentPath === "/terminal" && "active")}>
           <SquareTerminal className="h-3.5 w-3.5" />
           <span>Terminal</span>
         </Link>
