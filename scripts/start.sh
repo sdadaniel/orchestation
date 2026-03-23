@@ -45,36 +45,20 @@ for i in $TARGETS; do
   rm -f "$DONE_FLAG"
   CMD="bash '${SCRIPT_DIR}/run.sh' ${i} --prd ${PRD_NUM} && touch '${DONE_FLAG}'"
   if [ "$FIRST" = true ]; then
-    # 첫 번째: 수평 분할 후 아래 패널 ID 저장
-    BOTTOM_SESSION=$(osascript -e "tell application \"iTerm\"
-      tell current window
-        tell current session
-          set bottomPane to (split horizontally with default profile)
-          tell bottomPane
-            write text \"$CMD\"
-          end tell
-          return id of bottomPane
-        end tell
-      end tell
-    end tell")
+    osascript -e "tell application \"iTerm\"
+      activate
+      set w to (create window with default profile)
+      tell current session of w to write text \"$CMD\"
+    end tell"
     FIRST=false
+    sleep 1
   else
-    # 나머지: 아래 패널에서 세로 분할
-    BOTTOM_SESSION=$(osascript -e "tell application \"iTerm\"
-      tell current window
-        repeat with s in sessions
-          if id of s is \"${BOTTOM_SESSION}\" then
-            tell s
-              set newPane to (split vertically with default profile)
-              tell newPane
-                write text \"$CMD\"
-              end tell
-              return id of newPane
-            end tell
-          end if
-        end repeat
+    osascript -e "tell application \"iTerm\"
+      tell front window
+        set newTab to (create tab with default profile)
+        tell current session of newTab to write text \"$CMD\"
       end tell
-    end tell")
+    end tell"
   fi
   COUNT=$((COUNT + 1))
 done

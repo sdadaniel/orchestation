@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PRD Summary</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #111113;
+      color: #edeef0;
+      min-height: 100vh;
+    }
+    .container { max-width: 960px; margin: 0 auto; padding: 40px 24px 60px; }
+    a.back {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: #6e6e80; font-size: 0.78rem; text-decoration: none; margin-bottom: 12px;
+    }
+    a.back:hover { color: #fff; }
+    h1 { font-size: 1.4rem; font-weight: 600; color: #fff; margin-bottom: 4px; }
+    .subtitle { color: #6e6e80; font-size: 0.82rem; margin-bottom: 28px; }
+
+    .card {
+      background: #191a1f; border: 1px solid #2a2a30; border-radius: 10px;
+      padding: 20px; margin-bottom: 12px;
+    }
+    .card h2 {
+      font-size: 0.78rem; font-weight: 600; color: #6e6e80;
+      text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 14px;
+    }
+
+    /* 요약 */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+    .stat { background: #191a1f; border: 1px solid #2a2a30; border-radius: 10px; padding: 16px; }
+    .stat .label { font-size: 0.7rem; color: #6e6e80; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat .val { font-size: 1.3rem; font-weight: 700; color: #fff; }
+    .stat .sub { font-size: 0.7rem; color: #6e6e80; margin-top: 2px; }
+
+    /* Winner */
+    .winner {
+      background: linear-gradient(135deg, #1a2e1f 0%, #191a1f 100%);
+      border: 1px solid #234d2f; border-radius: 10px; padding: 16px 20px;
+      margin-bottom: 16px; display: flex; align-items: center; gap: 12px;
+    }
+    .winner-icon { font-size: 1.2rem; }
+    .winner .name { font-weight: 700; color: #30a46c; font-size: 0.9rem; }
+    .winner .desc { font-size: 0.75rem; color: #6e6e80; margin-top: 2px; }
+
+    /* 테이블 */
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    thead th {
+      text-align: left; padding: 8px 10px; border-bottom: 1px solid #2a2a30;
+      color: #6e6e80; font-weight: 500; font-size: 0.72rem;
+    }
+    tbody td {
+      padding: 8px 10px; border-bottom: 1px solid #1e1e24;
+      font-variant-numeric: tabular-nums;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #1e1e24; }
+    .best { color: #30a46c; font-weight: 600; }
+    .worst { color: #e5484d; opacity: 0.8; }
+    .ml { color: #8b8d98; font-size: 0.75rem; }
+    .runs { font-size: 0.65rem; color: #6e6e80; }
+
+    /* 차트 */
+    .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .ci { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .ci:last-child { margin-bottom: 0; }
+    .ci-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .ci-name { width: 52px; font-size: 0.7rem; color: #8b8d98; flex-shrink: 0; }
+    .ci-track { flex: 1; height: 6px; background: #1e1e24; border-radius: 3px; overflow: hidden; }
+    .ci-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+    .ci-val { width: 68px; text-align: right; font-size: 0.72rem; color: #b4b5bd; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+    .no-data { text-align: center; color: #6e6e80; padding: 80px 0; }
+    .loading { text-align: center; color: #6e6e80; padding: 40px 0; }
+
+    /* 필터 */
+    .filter-bar {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-bottom: 16px; padding: 12px 16px;
+      background: #191a1f; border: 1px solid #2a2a30; border-radius: 10px;
+    }
+    .filter-bar .label {
+      font-size: 0.72rem; color: #6e6e80; margin-right: 4px;
+      display: flex; align-items: center;
+    }
+    .filter-chip {
+      font-size: 0.72rem; padding: 4px 10px; border-radius: 6px;
+      border: 1px solid #2a2a30; background: #1e1e24; color: #8b8d98;
+      cursor: pointer; transition: all 0.15s; user-select: none;
+    }
+    .filter-chip:hover { border-color: #3a3a45; color: #edeef0; }
+    .filter-chip.active { background: #1a2e1f; border-color: #234d2f; color: #30a46c; }
+
+    @media (max-width: 700px) {
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a class="back" href="./">&#x2190; Reports</a>
+    <h1 id="title">Loading...</h1>
+    <p class="subtitle" id="subtitle"></p>
+    <div id="filter"></div>
+    <div id="app"><div class="loading">Loading...</div></div>
+  </div>
+
+  <script>
+    const COLORS = ['#e5484d', '#30a46c', '#f5a623', '#8b5cf6', '#12a594', '#f76b15', '#e93d82', '#3b82f6'];
+    const MIN_QUALITY = 45;
+
+    const params = new URLSearchParams(location.search);
+    const prdTitle = params.get('prd') || '';
+
+    async function init() {
+      const app = document.getElementById('app');
+      document.getElementById('title').textContent = prdTitle || 'PRD Summary';
+
+      try {
+        const res = await fetch('./reports.json');
+        const groups = await res.json();
+        const group = groups.find(g => g.title === prdTitle);
+
+        if (!group || !group.reports.length) {
+          app.innerHTML = '<div class="no-data">해당 PRD의 리포트가 없습니다.</div>';
+          return;
+        }
+
+        document.getElementById('subtitle').textContent =
+          `${group.reports.length}회 실행 종합 \u00b7 ${new Date().toLocaleString('ko-KR')}`;
+
+        // 모든 리포트의 data.json 로드
+        const allData = await Promise.all(
+          group.reports.map(async r => {
+            try {
+              const resp = await fetch(`./${r.dir}/data.json`);
+              return await resp.json();
+            } catch { return null; }
+          })
+        );
+
+        const validData = allData.filter(Boolean);
+        if (!validData.length) {
+          app.innerHTML = '<div class="no-data">데이터를 불러올 수 없습니다.</div>';
+          return;
+        }
+
+        // 프롬프트별 평균 계산
+        const promptMap = {};
+        validData.forEach((report, ri) => {
+          (report.prompts || []).forEach(p => {
+            if (!promptMap[p.name]) {
+              promptMap[p.name] = { name: p.name, title: p.title, runs: [] };
+            }
+            promptMap[p.name].runs.push({
+              cost_usd: p.cost_usd,
+              duration_sec: p.duration_sec,
+              num_turns: p.num_turns,
+              output_tokens: p.output_tokens,
+              cache_read_tokens: p.cache_read_tokens,
+              cache_creation_tokens: p.cache_creation_tokens,
+              file_count: p.file_count,
+              line_count: p.line_count,
+              code_score: p.code_score || null,
+              report: group.reports[ri].dir
+            });
+          });
+
+          // code_review에서 점수 파싱
+          const review = report.code_review || '';
+          Object.keys(promptMap).forEach(name => {
+            const num = name.replace('prompt', '');
+            const patterns = [
+              new RegExp('Prompt\\s*' + num + '[\\s\\S]*?총점[:\\s]*\\*{0,2}(\\d+)\\s*/\\s*60', 'i'),
+              new RegExp('\\|\\s*\\*{0,2}Prompt\\s*' + num + '\\*{0,2}\\s*\\|[^|]*\\|[^|]*\\|[^|]*\\|[^|]*\\|[^|]*\\|[^|]*\\|\\s*\\*{0,2}(\\d+)\\*{0,2}', 'i'),
+            ];
+            for (const re of patterns) {
+              const m = review.match(re);
+              if (m) {
+                const lastRun = promptMap[name].runs[promptMap[name].runs.length - 1];
+                if (lastRun.report === group.reports[validData.indexOf(report)]?.dir) {
+                  lastRun.code_score = parseInt(m[1]);
+                }
+                break;
+              }
+            }
+          });
+        });
+
+        // 평균 계산
+        const avgData = Object.values(promptMap).map(p => {
+          const runs = p.runs;
+          const avg = (key) => runs.reduce((s, r) => s + (r[key] || 0), 0) / runs.length;
+          const scoreRuns = runs.filter(r => r.code_score);
+          return {
+            name: p.name,
+            title: p.title,
+            run_count: runs.length,
+            cost_usd: avg('cost_usd'),
+            duration_sec: avg('duration_sec'),
+            num_turns: Math.round(avg('num_turns')),
+            output_tokens: Math.round(avg('output_tokens')),
+            cache_read_tokens: Math.round(avg('cache_read_tokens')),
+            file_count: Math.round(avg('file_count')),
+            line_count: Math.round(avg('line_count')),
+            code_score: scoreRuns.length ? Math.round(scoreRuns.reduce((s, r) => s + r.code_score, 0) / scoreRuns.length) : null,
+            cost_min: Math.min(...runs.map(r => r.cost_usd)),
+            cost_max: Math.max(...runs.map(r => r.cost_usd)),
+          };
+        }).sort((a, b) => {
+          const sa = a.code_score || 0, sb = b.code_score || 0;
+          if (sa >= MIN_QUALITY && sb >= MIN_QUALITY) return a.cost_usd - b.cost_usd;
+          if (sa >= MIN_QUALITY) return -1;
+          if (sb >= MIN_QUALITY) return 1;
+          return a.cost_usd - b.cost_usd;
+        });
+
+        // 전역 저장
+        window._allData = avgData;
+        window._totalRuns = validData.length;
+        window._activePrompts = new Set(avgData.map(d => d.name));
+
+        renderFilter(avgData);
+        renderDashboard();
+
+      } catch (e) {
+        app.innerHTML = '<div class="no-data">오류: ' + e.message + '</div>';
+      }
+    }
+
+    function renderFilter(allData) {
+      const el = document.getElementById('filter');
+      el.innerHTML = `
+        <div class="filter-bar">
+          <span class="label">Filter:</span>
+          ${allData.map(d => `
+            <span class="filter-chip active" data-name="${d.name}" onclick="toggleFilter('${d.name}')">
+              ${d.name.replace('prompt', 'p')}
+            </span>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    window.toggleFilter = function(name) {
+      if (window._activePrompts.has(name)) {
+        if (window._activePrompts.size <= 1) return;
+        window._activePrompts.delete(name);
+      } else {
+        window._activePrompts.add(name);
+      }
+      document.querySelectorAll('.filter-chip').forEach(c => {
+        c.classList.toggle('active', window._activePrompts.has(c.dataset.name));
+      });
+      renderDashboard();
+    };
+
+    function renderDashboard() {
+      const data = window._allData.filter(d => window._activePrompts.has(d.name));
+      render(data, window._totalRuns);
+    }
+
+    function render(data, totalRuns) {
+      const app = document.getElementById('app');
+      const qualified = data.filter(d => d.code_score && d.code_score >= MIN_QUALITY);
+      const best = qualified.length ? qualified[0] : data[0];
+
+      const totalCost = data.reduce((s, d) => s + d.cost_usd, 0);
+      const avgTime = data.reduce((s, d) => s + d.duration_sec, 0) / data.length;
+
+      const scoreText = best.code_score ? ` \u00b7 ${best.code_score}/60점` : '';
+      const criteria = qualified.length ? 'Code \u2265 45점 중 최저 비용' : '최저 비용';
+
+      app.innerHTML = `
+        <div class="winner">
+          <div class="winner-icon">&#x1f3c6;</div>
+          <div>
+            <div class="name">${best.name} \u2014 Best Value (${totalRuns}회 평균)</div>
+            <div class="desc">avg $${best.cost_usd.toFixed(4)} ($${best.cost_min.toFixed(4)}~$${best.cost_max.toFixed(4)}) \u00b7 ${fmtTime(best.duration_sec)} \u00b7 ${best.num_turns}턴${scoreText} \u00b7 ${criteria}</div>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="label">Total Runs</div>
+            <div class="val">${totalRuns}</div>
+            <div class="sub">${data.length} prompts</div>
+          </div>
+          <div class="stat">
+            <div class="label">Avg Cost</div>
+            <div class="val">$${(totalCost / data.length).toFixed(2)}</div>
+          </div>
+          <div class="stat">
+            <div class="label">Avg Time</div>
+            <div class="val">${fmtTime(avgTime)}</div>
+          </div>
+          <div class="stat">
+            <div class="label">Best Score</div>
+            <div class="val">${Math.max(...data.map(d => d.code_score || 0))}/60</div>
+          </div>
+        </div>
+
+        ${mkTable(data)}
+
+        <div class="chart-grid">
+          ${mkChart(data, 'cost_usd', 'Avg Cost (USD)', v => '$' + v.toFixed(4))}
+          ${mkChart(data, 'code_score', 'Avg Code Score (/60)', v => v || '-')}
+          ${mkChart(data, 'duration_sec', 'Avg Duration', fmtTime)}
+          ${mkChart(data, 'num_turns', 'Avg Turns', v => v)}
+        </div>
+      `;
+    }
+
+    function mkTable(data) {
+      const M = [
+        { k: 'run_count', l: 'Runs', f: v => v + '회', lo: false },
+        { k: 'cost_usd', l: 'Avg Cost', f: v => '$' + v.toFixed(4), lo: true },
+        { k: 'duration_sec', l: 'Avg Time', f: fmtTime, lo: true },
+        { k: 'num_turns', l: 'Avg Turns', f: v => v, lo: true },
+        { k: 'output_tokens', l: 'Avg Tokens', f: v => v.toLocaleString(), lo: false },
+        { k: 'file_count', l: 'Avg Files', f: v => v, lo: false },
+        { k: 'line_count', l: 'Avg LOC', f: v => v.toLocaleString(), lo: false },
+        { k: 'code_score', l: 'Avg Score', f: v => v ? v + '/60' : '-', lo: false },
+      ];
+      const hdr = data.map((d, i) =>
+        `<th><span style="color:${COLORS[i % COLORS.length]}">\u25CF</span> ${d.name}<br><span class="runs">${d.run_count}회</span></th>`
+      ).join('');
+      const rows = M.map(m => {
+        const vs = data.map(d => d[m.k] || 0);
+        const b = m.lo ? Math.min(...vs) : Math.max(...vs);
+        const w = m.lo ? Math.max(...vs) : Math.min(...vs);
+        return '<tr><td class="ml">' + m.l + '</td>' +
+          data.map(d => {
+            const v = d[m.k] || 0;
+            let c = '';
+            if (data.length > 1 && v > 0) { if (v === b) c = 'best'; else if (v === w) c = 'worst'; }
+            return `<td class="${c}">${m.f(d[m.k])}</td>`;
+          }).join('') + '</tr>';
+      }).join('');
+      return `<div class="card"><h2>Comparison (Average)</h2><table><thead><tr><th></th>${hdr}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+
+    function mkChart(data, key, title, fmt) {
+      const mx = Math.max(...data.map(d => d[key] || 0));
+      if (mx === 0) return '';
+      const items = data.map((d, i) => {
+        const v = d[key] || 0;
+        const p = (v / mx * 100).toFixed(1);
+        return `<div class="ci"><div class="ci-dot" style="background:${COLORS[i % COLORS.length]}"></div><div class="ci-name">p${d.name.replace('prompt','')}</div><div class="ci-track"><div class="ci-fill" style="width:${p}%;background:${COLORS[i % COLORS.length]}"></div></div><div class="ci-val">${fmt(v)}</div></div>`;
+      }).join('');
+      return `<div class="card"><h2>${title}</h2>${items}</div>`;
+    }
+
+    function fmtTime(s) {
+      if (!s) return '-';
+      if (s < 60) return s.toFixed(1) + 's';
+      return Math.floor(s / 60) + 'm ' + Math.round(s % 60) + 's';
+    }
+
+    init();
+  </script>
+</body>
+</html>

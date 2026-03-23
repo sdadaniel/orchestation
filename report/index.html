@@ -175,6 +175,7 @@
               </div>
               <div class="prd-body">
                 <div class="prd-body-inner">
+                  <a href="./summary.html?prd=${encodeURIComponent(g.title)}" style="display:inline-flex;align-items:center;gap:6px;font-size:0.75rem;color:#30a46c;text-decoration:none;padding:4px 16px 8px;font-weight:500;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&#x1f4ca; 종합 보고서 보기</a>
                   ${preview ? `<div class="prd-preview">${preview.slice(0, 120)}${preview.length > 120 ? '...' : ''}</div>` : ''}
                   <div class="list">${items}</div>
                 </div>

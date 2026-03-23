@@ -255,6 +255,7 @@
 
   <script>
     const COLORS = ['#e5484d', '#30a46c', '#f5a623', '#8b5cf6', '#12a594'];
+    const MIN_QUALITY = 45;
     const TAB_ITEMS = [
       { id: 'overview', label: 'Overview' },
       { id: 'charts', label: 'Charts' },
@@ -310,7 +311,6 @@
       data.forEach(d => { d.code_score = scores[d.name] || null; });
 
       // Best Value: 코드 점수 45점 이상 중 최저 비용. 없으면 전체 최저 비용.
-      const MIN_QUALITY = 45;
       const qualified = data.filter(d => d.code_score && d.code_score >= MIN_QUALITY);
       const best = qualified.length
         ? [...qualified].sort((a, b) => a.cost_usd - b.cost_usd)[0]
@@ -393,15 +393,14 @@
     }
 
     function winnerBanner(best, data) {
-      const fastest = [...data].sort((a, b) => a.duration_sec - b.duration_sec)[0];
-      const mostFiles = [...data].sort((a, b) => b.file_count - a.file_count)[0];
       const scoreText = best.code_score ? ` \u00b7 ${best.code_score}/60점` : '';
+      const hasQualified = data.some(d => d.code_score && d.code_score >= MIN_QUALITY);
       return `
         <div class="winner">
           <div class="winner-icon">&#x1f3c6;</div>
           <div class="winner-text">
             <div class="name">${best.name} \u2014 Best Value</div>
-            <div class="desc">$${best.cost_usd.toFixed(4)} \u00b7 ${fmtTime(best.duration_sec)} \u00b7 ${best.num_turns} turns${scoreText} \u00b7 ${qualified.length ? 'Code \u2265 45점 중 최저 비용' : '최저 비용'}</div>
+            <div class="desc">$${best.cost_usd.toFixed(4)} \u00b7 ${fmtTime(best.duration_sec)} \u00b7 ${best.num_turns} turns${scoreText} \u00b7 ${hasQualified ? 'Code \u2265 45점 중 최저 비용' : '최저 비용'}</div>
           </div>
         </div>
       `;
