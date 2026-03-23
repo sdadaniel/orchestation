@@ -1,7 +1,7 @@
 ---
 id: TASK-035
 title: 실행 결과 통합
-status: backlog
+status: in_progress
 priority: medium
 sprint: SPRINT-007
 depends_on:
