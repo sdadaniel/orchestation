@@ -1,7 +1,7 @@
 ---
 id: TASK-033
 title: Sprint/Task 생성 UI
-status: backlog
+status: in_progress
 priority: high
 sprint: SPRINT-007
 depends_on:

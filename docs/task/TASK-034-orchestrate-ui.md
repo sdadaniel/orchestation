@@ -1,7 +1,7 @@
 ---
 id: TASK-034
 title: 오케스트레이션 실행 UI
-status: backlog
+status: in_progress
 priority: high
 sprint: SPRINT-007
 depends_on:
