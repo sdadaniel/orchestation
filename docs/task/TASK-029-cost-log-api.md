@@ -1,7 +1,7 @@
 ---
 id: TASK-029
 title: 비용 로그 API
-status: in_progress
+status: done
 priority: high
 sprint: SPRINT-006
 depends_on: []
