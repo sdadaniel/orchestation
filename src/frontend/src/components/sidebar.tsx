@@ -9,7 +9,6 @@ import {
   ClipboardList,
   Calendar,
   DollarSign,
-  FileText,
   SquareTerminal,
   Layers,
   BookOpen,
@@ -39,7 +38,6 @@ type NavItem = {
 const pageNavItems: NavItem[] = [
   { label: "Task", icon: <ClipboardList className="h-3.5 w-3.5" />, href: "/" },
   { label: "Sprint", icon: <Calendar className="h-3.5 w-3.5" />, href: "/sprint" },
-  { label: "Plan", icon: <FileText className="h-3.5 w-3.5" />, href: "/plan" },
   { label: "Cost", icon: <DollarSign className="h-3.5 w-3.5" />, href: "/cost" },
   { label: "Terminal", icon: <SquareTerminal className="h-3.5 w-3.5" />, href: "/terminal" },
 ];
@@ -139,15 +137,6 @@ export function TaskSidebar({ groups, prds, filter, onFilterChange, currentPath 
                     <span className="truncate flex-1">{prd.title}</span>
                   </Link>
 
-                  {/* Plan은 PRD 하위 */}
-                  {isPrdExpanded && (
-                    <div className="ml-5 border-l border-sidebar-border">
-                      <Link href="/plan" className="flex items-center gap-1.5 px-2 py-0.5 text-[11px] text-muted-foreground no-underline hover:text-foreground">
-                        <FileText className="h-2.5 w-2.5 shrink-0" />
-                        Plan
-                      </Link>
-                    </div>
-                  )}
                 </div>
               );
             })}
