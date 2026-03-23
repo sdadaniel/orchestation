@@ -77,25 +77,19 @@ export default function DocsPage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Breadcrumb */}
-      {doc.parentPath.length > 0 && (
-        <div className="flex items-center gap-1 mb-2 text-[11px] text-muted-foreground">
-          <FolderOpen className="h-3 w-3" />
-          {doc.parentPath.map((segment, i) => (
-            <span key={i} className="flex items-center gap-1">
-              {i > 0 && <ChevronRight className="h-2.5 w-2.5" />}
-              <span>{segment}</span>
-            </span>
-          ))}
-          <ChevronRight className="h-2.5 w-2.5" />
-          <span className="text-foreground font-medium">{doc.title}</span>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-1">
-        <BookOpen className="h-4 w-4 text-primary" />
-        <span className="text-[11px] text-muted-foreground font-mono">{doc.id}</span>
+      {/* Breadcrumb — 항상 표시 */}
+      <div className="flex items-center gap-1 mb-3 text-[11px]">
+        <BookOpen className="h-3 w-3 text-primary shrink-0" />
+        <span className="text-muted-foreground">Docs</span>
+        {doc.parentPath.map((segment, i) => (
+          <span key={i} className="flex items-center gap-1 text-muted-foreground">
+            <ChevronRight className="h-2.5 w-2.5" />
+            <span>{segment}</span>
+          </span>
+        ))}
+        <ChevronRight className="h-2.5 w-2.5 text-muted-foreground" />
+        <span className="text-foreground font-medium">{doc.title}</span>
+        <span className="text-muted-foreground font-mono ml-1">({doc.id})</span>
 
         {/* Edit/View toggle */}
         <div className="ml-auto flex items-center gap-1">
