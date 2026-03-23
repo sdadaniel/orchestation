@@ -126,76 +126,167 @@ function TimelineView({
 }) {
   const batches = sprint.batches;
   const allTasks = batches.flatMap((b) => b.tasks);
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
 
-  // Map task id -> batch index
+  // Map task id -> batch index & row index
   const taskBatchIndex = new Map<string, number>();
+  const taskRowIndex = new Map<string, number>();
   batches.forEach((batch, idx) => {
     for (const task of batch.tasks) {
       taskBatchIndex.set(task.id, idx);
     }
   });
+  allTasks.forEach((task, idx) => {
+    taskRowIndex.set(task.id, idx);
+  });
+
+  const ROW_HEIGHT = 36;
+  const LABEL_WIDTH = 260;
+  const COL_WIDTH = 120;
+  const BAR_HEIGHT = 20;
+  const HEADER_HEIGHT = 32;
+  const totalHeight = HEADER_HEIGHT + allTasks.length * ROW_HEIGHT;
+  const totalWidth = LABEL_WIDTH + batches.length * COL_WIDTH;
+
+  // Build dependency links
+  const links: { from: string; to: string; fromRow: number; toRow: number; fromCol: number; toCol: number }[] = [];
+  allTasks.forEach((task) => {
+    const toRow = taskRowIndex.get(task.id) ?? 0;
+    const toCol = taskBatchIndex.get(task.id) ?? 0;
+    for (const depId of task.depends_on) {
+      if (taskBatchIndex.has(depId)) {
+        const fromRow = taskRowIndex.get(depId) ?? 0;
+        const fromCol = taskBatchIndex.get(depId) ?? 0;
+        links.push({ from: depId, to: task.id, fromRow, toRow, fromCol, toCol });
+      }
+    }
+  });
 
   return (
-    <div className="timeline-wrapper">
-      {/* Header row with batch labels */}
-      <div className="timeline-row timeline-header-row">
-        <div className="timeline-task-label timeline-corner">Task</div>
-        <div className="timeline-bars">
+    <div className="relative overflow-x-auto border border-border rounded-md">
+      <div style={{ width: totalWidth, minHeight: totalHeight, position: "relative" }}>
+
+        {/* SVG layer for dependency curves */}
+        <svg
+          style={{ position: "absolute", top: 0, left: 0, width: totalWidth, height: totalHeight, pointerEvents: "none" }}
+        >
+          {links.map((link) => {
+            const linkId = `${link.from}->${link.to}`;
+            const isHovered = hoveredLink === linkId;
+
+            // Source: right edge of source bar
+            const x1 = LABEL_WIDTH + link.fromCol * COL_WIDTH + COL_WIDTH - 10;
+            const y1 = HEADER_HEIGHT + link.fromRow * ROW_HEIGHT + ROW_HEIGHT / 2;
+            // Target: left edge of target bar
+            const x2 = LABEL_WIDTH + link.toCol * COL_WIDTH + 10;
+            const y2 = HEADER_HEIGHT + link.toRow * ROW_HEIGHT + ROW_HEIGHT / 2;
+
+            const dx = Math.abs(x2 - x1) * 0.5;
+            const path = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+
+            return (
+              <g key={linkId}>
+                {/* Hit area (wider, invisible) */}
+                <path
+                  d={path}
+                  fill="none"
+                  stroke="transparent"
+                  strokeWidth={12}
+                  style={{ pointerEvents: "stroke", cursor: "pointer" }}
+                  onMouseEnter={() => setHoveredLink(linkId)}
+                  onMouseLeave={() => setHoveredLink(null)}
+                />
+                {/* Visible curve */}
+                <path
+                  d={path}
+                  fill="none"
+                  stroke={isHovered ? "var(--primary)" : "var(--muted-foreground)"}
+                  strokeWidth={isHovered ? 2.5 : 1.5}
+                  strokeDasharray={isHovered ? "none" : "none"}
+                  opacity={isHovered ? 1 : 0.4}
+                  style={{ transition: "all 0.15s ease" }}
+                />
+                {/* Arrow at target end */}
+                <polygon
+                  points={`${x2},${y2} ${x2 - 6},${y2 - 4} ${x2 - 6},${y2 + 4}`}
+                  fill={isHovered ? "var(--primary)" : "var(--muted-foreground)"}
+                  opacity={isHovered ? 1 : 0.4}
+                  style={{ transition: "all 0.15s ease" }}
+                />
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Header row */}
+        <div className="flex" style={{ height: HEADER_HEIGHT, borderBottom: "1px solid var(--border)", background: "var(--muted)" }}>
+          <div style={{ width: LABEL_WIDTH, minWidth: LABEL_WIDTH }} className="flex items-center px-3 text-xs font-medium text-muted-foreground uppercase border-r border-border">
+            Task
+          </div>
           {batches.map((batch, idx) => (
-            <div key={idx} className="batch-column">
-              <span className="text-[10px] text-muted-foreground font-medium truncate px-1">
-                {batch.name}
-              </span>
+            <div key={idx} style={{ width: COL_WIDTH }} className="flex items-center justify-center text-xs text-muted-foreground font-medium border-r border-border last:border-r-0">
+              {batch.name}
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Task rows */}
-      {allTasks.map((task) => {
-        const batchIdx = taskBatchIndex.get(task.id) ?? 0;
-        const statusStyle = STATUS_STYLES[task.status as TaskStatus];
-        const barBg = statusStyle?.bg ?? "bg-gray-400";
+        {/* Task rows */}
+        {allTasks.map((task, rowIdx) => {
+          const batchIdx = taskBatchIndex.get(task.id) ?? 0;
+          const statusStyle = STATUS_STYLES[task.status as TaskStatus];
+          const barColor = statusStyle?.bg.replace("bg-", "") ?? "gray-400";
+          // Map tailwind color to CSS
+          const colorMap: Record<string, string> = {
+            "gray-500": "#6b7280", "blue-500": "#3b82f6", "orange-500": "#f97316",
+            "green-500": "#22c55e", "emerald-500": "#10b981", "gray-400": "#9ca3af",
+            "orange-400": "#fb923c",
+          };
+          const bgColor = colorMap[barColor] ?? "#6b7280";
 
-        // Find dependency arrows (only within this sprint)
-        const deps = task.depends_on.filter((depId) => taskBatchIndex.has(depId));
-
-        return (
-          <div key={task.id} className="timeline-row">
-            <button
-              type="button"
-              className="timeline-task-label"
-              onClick={() => onSelectTask(task)}
+          return (
+            <div
+              key={task.id}
+              className="flex hover:bg-muted/30 transition-colors"
+              style={{ height: ROW_HEIGHT, borderBottom: "1px solid var(--border)" }}
             >
-              <span className="font-mono text-[10px] text-muted-foreground shrink-0">{task.id}</span>
-              <span className="text-xs truncate">{task.title}</span>
-            </button>
-            <div className="timeline-bars">
+              {/* Task label */}
+              <button
+                type="button"
+                className="flex items-center gap-2 px-3 text-left border-r border-border hover:bg-muted/50 transition-colors"
+                style={{ width: LABEL_WIDTH, minWidth: LABEL_WIDTH }}
+                onClick={() => onSelectTask(task)}
+              >
+                <span className={cn("w-2 h-2 rounded-full shrink-0", statusStyle?.dot ?? "bg-gray-400")} />
+                <span className="font-mono text-xs text-muted-foreground shrink-0">{task.id}</span>
+                <span className="text-sm truncate">{task.title}</span>
+              </button>
+
+              {/* Bar columns */}
               {batches.map((_, colIdx) => (
-                <div key={colIdx} className="batch-column">
+                <div
+                  key={colIdx}
+                  className="flex items-center px-2 border-r border-border last:border-r-0"
+                  style={{ width: COL_WIDTH }}
+                >
                   {colIdx === batchIdx && (
-                    <div className={cn("timeline-bar", barBg)} title={task.title}>
-                      {deps.map((depId) => {
-                        const depBatchIdx = taskBatchIndex.get(depId) ?? 0;
-                        if (depBatchIdx < batchIdx) {
-                          return (
-                            <div
-                              key={depId}
-                              className="timeline-dep-arrow"
-                              title={`depends on ${depId}`}
-                            />
-                          );
-                        }
-                        return null;
-                      })}
-                    </div>
+                    <div
+                      style={{ width: "100%", height: BAR_HEIGHT, borderRadius: 4, background: bgColor, opacity: 0.85 }}
+                      title={task.title}
+                    />
                   )}
                 </div>
               ))}
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+
+      {/* Hover tooltip for links */}
+      {hoveredLink && (
+        <div className="fixed bottom-16 right-8 bg-card border border-border rounded px-2 py-1 text-xs shadow-lg z-50">
+          {hoveredLink.replace("->", " → ")}
+        </div>
+      )}
     </div>
   );
 }
