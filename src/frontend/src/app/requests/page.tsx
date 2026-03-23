@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRequests, type RequestItem } from "@/hooks/useRequests";
 import { cn } from "@/lib/utils";
 import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, X } from "lucide-react";
+import AutoImproveControl from "@/components/AutoImproveControl";
 
 const PRIORITY_COLORS: Record<string, string> = {
   high: "bg-red-500/15 text-red-500 border-red-500/30",
@@ -196,7 +197,10 @@ export default function RequestsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Requests</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-lg font-semibold">Requests</h1>
+          <AutoImproveControl />
+        </div>
         <button
           type="button"
           onClick={() => setShowForm(!showForm)}

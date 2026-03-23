@@ -11,9 +11,19 @@ REQUESTS_DIR="$PROJECT_ROOT/docs/requests"
 ORCHESTRATE="$PROJECT_ROOT/scripts/orchestrate.sh"
 
 SLEEP_INTERVAL=${SLEEP_INTERVAL:-30}
+STOP_FLAG="$PROJECT_ROOT/.auto-improve-stop"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+}
+
+# Check if graceful stop was requested
+check_stop_flag() {
+  if [[ -f "$STOP_FLAG" ]]; then
+    log "Stop flag detected ($STOP_FLAG). Shutting down gracefully..."
+    rm -f "$STOP_FLAG"
+    exit 0
+  fi
 }
 
 # Update request status in markdown frontmatter
@@ -47,6 +57,9 @@ log "Watching: $REQUESTS_DIR"
 log "Sleep interval: ${SLEEP_INTERVAL}s"
 
 while true; do
+  # Check stop flag at the start of each loop iteration
+  check_stop_flag
+
   # Find oldest pending request (sorted by filename = REQ-XXX order)
   PENDING_FILE=""
   if [[ -d "$REQUESTS_DIR" ]]; then
