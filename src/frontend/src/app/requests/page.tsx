@@ -15,13 +15,17 @@ const STATUS_DOT: Record<string, string> = {
   pending: "bg-yellow-500",
   in_progress: "bg-blue-500",
   done: "bg-emerald-500",
+  rejected: "bg-red-500",
 };
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pending",
   in_progress: "In Progress",
   done: "Done",
+  rejected: "Rejected",
 };
+
+const STATUS_ORDER = ["pending", "in_progress", "rejected", "done"];
 
 function RequestCard({
   req,
@@ -167,9 +171,10 @@ export default function RequestsPage() {
     setShowForm(false);
   };
 
-  const grouped = {
+  const grouped: Record<string, RequestItem[]> = {
     pending: requests.filter((r) => r.status === "pending"),
     in_progress: requests.filter((r) => r.status === "in_progress"),
+    rejected: requests.filter((r) => r.status === "rejected"),
     done: requests.filter((r) => r.status === "done"),
   };
 
@@ -235,7 +240,7 @@ export default function RequestsPage() {
         </div>
       )}
 
-      {(["pending", "in_progress", "done"] as const).map((status) => {
+      {STATUS_ORDER.map((status) => {
         const items = grouped[status];
         if (items.length === 0) return null;
         return (
