@@ -253,7 +253,7 @@ function DocTreeNode({
     : dragOver === "below"
     ? "border-b-2 border-primary"
     : dragOver === "inside"
-    ? "bg-primary/10 rounded"
+    ? "bg-primary/20 ring-1 ring-primary/40 rounded"
     : "";
 
   return (
