@@ -192,7 +192,14 @@ export function ChatBot() {
       {!isOpen && (
         <button
           type="button"
-          onClick={() => { setIsOpen(true); setTimeout(() => inputRef.current?.focus(), 100); }}
+          onClick={() => {
+            // 열 때마다 새 세션 생성
+            const s = createSession();
+            setSessions((prev) => [s, ...prev]);
+            setActiveSessionId(s.id);
+            setIsOpen(true);
+            setTimeout(() => inputRef.current?.focus(), 100);
+          }}
           className="fixed bottom-5 right-5 z-50 flex items-center justify-center w-11 h-11 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all"
         >
           <MessageSquare className="h-5 w-5" />
