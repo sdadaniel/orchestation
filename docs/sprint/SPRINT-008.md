@@ -51,3 +51,8 @@ status: ready
   - 진행 중 Task: 🔄 스피너
   - 대기 중 Task: ○ 빈 원
   - "Active Sprints"와 "Active Tasks" 섹션을 하나로 합침
+
+### 6. 레이아웃 개선
+- 콘텐츠 영역 max-width 제한 (현재 너무 넓게 퍼짐)
+- 좌우로 길게 늘어나지 않도록 중앙 정렬 + 적절한 max-width
+- 홈, Sprint, Cost 등 모든 페이지에 일관 적용
