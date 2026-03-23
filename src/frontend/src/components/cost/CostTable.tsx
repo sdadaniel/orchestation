@@ -47,7 +47,7 @@ export function CostTable({ entries }: CostTableProps) {
                   key={`${entry.taskId}-${entry.phase}-${entry.timestamp}-${idx}`}
                   className={`border-b last:border-b-0 transition-colors ${
                     isHighest
-                      ? "bg-amber-500/10 font-semibold"
+                      ? "bg-amber-500/10 text-amber-300 font-semibold"
                       : "hover:bg-muted/50"
                   }`}
                 >
@@ -60,8 +60,8 @@ export function CostTable({ entries }: CostTableProps) {
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                         entry.phase === "task"
-                          ? "bg-blue-500/15 text-blue-500"
-                          : "bg-purple-500/15 text-purple-500"
+                          ? "bg-blue-500/15 text-blue-400"
+                          : "bg-purple-500/15 text-purple-400"
                       }`}
                     >
                       {entry.phase}

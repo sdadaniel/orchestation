@@ -11,9 +11,9 @@ const buttonVariants = cva(
           "bg-primary text-primary-foreground shadow hover:bg-primary/90",
         ghost: "hover:bg-sidebar-accent",
         sidebar:
-          "w-full justify-start gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent",
+          "w-full justify-start gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
         sidebarActive:
-          "w-full justify-start gap-3 rounded-lg px-3 py-2 text-sm font-medium bg-sidebar-accent text-primary",
+          "w-full justify-start gap-3 rounded-lg px-3 py-2 text-sm font-medium bg-sidebar-accent text-primary font-semibold",
         sidebarDisabled:
           "w-full justify-start gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground cursor-not-allowed opacity-50",
       },

@@ -19,9 +19,10 @@ export function TerminalView() {
       fontSize: 14,
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace",
       theme: {
-        background: "#1a1a2e",
-        foreground: "#e0e0e0",
-        cursor: "#e0e0e0",
+        background: "#0a0a0a",
+        foreground: "#e4e4e7",
+        cursor: "#60a5fa",
+        selectionBackground: "#27272a",
       },
     });
     terminalRef.current = terminal;

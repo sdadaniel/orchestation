@@ -7,9 +7,9 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const SPRINT_STATUS_STYLES: Record<string, { bg: string; label: string }> = {
-  ready: { bg: "bg-gray-500", label: "Ready" },
+  ready: { bg: "bg-zinc-500", label: "Ready" },
   in_progress: { bg: "bg-blue-500", label: "In Progress" },
-  done: { bg: "bg-green-500", label: "Done" },
+  done: { bg: "bg-emerald-500", label: "Done" },
 };
 
 function StatusBadge({ status }: { status: string }) {

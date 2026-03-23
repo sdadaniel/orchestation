@@ -23,9 +23,9 @@ import {
 import type { SprintDetailTask } from "@/hooks/useSprintDetail";
 
 const SPRINT_STATUS_STYLES: Record<string, { bg: string; label: string }> = {
-  ready: { bg: "bg-gray-500", label: "Ready" },
+  ready: { bg: "bg-zinc-500", label: "Ready" },
   in_progress: { bg: "bg-blue-500", label: "In Progress" },
-  done: { bg: "bg-green-500", label: "Done" },
+  done: { bg: "bg-emerald-500", label: "Done" },
 };
 
 function SprintStatusBadge({ status }: { status: string }) {
@@ -270,7 +270,7 @@ export default function SprintDetailPage({
                     key={task.id}
                     type="button"
                     onClick={() => setSelectedTask(task)}
-                    className="flex w-full items-center justify-between rounded-lg border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/50"
+                    className="flex w-full items-center justify-between rounded-lg border bg-card px-4 py-3 text-left transition-colors hover:bg-muted hover:border-primary/20"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="shrink-0 font-mono text-xs text-muted-foreground">

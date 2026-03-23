@@ -15,8 +15,8 @@ export const PRIORITY_STYLES: Record<
   TaskPriority,
   { bg: string; text: string; label: string }
 > = {
-  critical: { bg: "bg-red-100", text: "text-red-700", label: "Critical" },
-  high: { bg: "bg-orange-100", text: "text-orange-700", label: "High" },
-  medium: { bg: "bg-blue-100", text: "text-blue-700", label: "Medium" },
-  low: { bg: "bg-gray-100", text: "text-gray-700", label: "Low" },
+  critical: { bg: "bg-red-500/15", text: "text-red-400", label: "Critical" },
+  high: { bg: "bg-orange-500/15", text: "text-orange-400", label: "High" },
+  medium: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Medium" },
+  low: { bg: "bg-zinc-500/15", text: "text-zinc-400", label: "Low" },
 } as const;
