@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useTasks } from "@/hooks/useTasks";
 import { usePrds } from "@/hooks/usePrds";
+import { useDocTree } from "@/hooks/useDocTree";
 import { TaskSidebar, type SidebarFilter } from "@/components/sidebar";
 import { TaskRow } from "@/components/TaskRow";
 import { RightPanel } from "@/components/RightPanel";
@@ -39,6 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { groups, isLoading, error } = useTasks();
   const { prds } = usePrds();
+  const { tree: docTree, createDoc, updateDoc, deleteDoc } = useDocTree();
 
   const [filter, setFilter] = useState<SidebarFilter>({ type: "all" });
   const [selectedTask, setSelectedTask] = useState<WaterfallTask | null>(null);
@@ -102,6 +104,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setSelectedTask(null);
   }, []);
 
+  // Doc tree handlers
+  const handleDocCreate = useCallback(async (title: string, type: "doc" | "folder", parentId?: string | null) => {
+    await createDoc(title, type, parentId);
+  }, [createDoc]);
+
+  const handleDocDelete = useCallback(async (id: string) => {
+    await deleteDoc(id);
+  }, [deleteDoc]);
+
+  const handleDocRename = useCallback(async (id: string, title: string) => {
+    await updateDoc(id, { title });
+  }, [updateDoc]);
+
   // Keyboard navigation
   useEffect(() => {
     if (!isTaskView) return;
@@ -147,18 +162,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-full">
-      {/* Sidebar — 모든 페이지에서 동일 */}
+      {/* Sidebar */}
       <TaskSidebar
         groups={groups}
         prds={prds}
+        docTree={docTree}
         filter={filter}
         onFilterChange={handleFilterChange}
+        onDocCreate={handleDocCreate}
+        onDocDelete={handleDocDelete}
+        onDocRename={handleDocRename}
         currentPath={pathname}
       />
 
-      {/* 콘텐츠 영역 (헤더 + 본문) */}
+      {/* Content area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Global header — 사이드바 오른쪽에만 */}
+        {/* Global header */}
         <div className="global-header">
           <div className="global-search">
             <SearchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -166,12 +185,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* 본문 */}
+        {/* Main content */}
         <div className="flex flex-1 overflow-hidden">
           {pathname === "/" && !isTaskView ? (
             <div className="flex-1" />
           ) : isTaskView ? (
-        /* Task 뷰: 중앙 리스트 + 오른쪽 패널 */
         <>
           <div className="ide-main flex flex-col">
             {/* Filter bar */}
@@ -229,7 +247,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
         </>
       ) : (
-        /* 다른 페이지: children만 렌더링 */
+        /* Other pages */
         <div className="flex-1 overflow-auto bg-background p-4">
           <div className="content-container">
             {children}
@@ -239,7 +257,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* 챗봇 — 모든 페이지 공통 */}
+      {/* ChatBot */}
       <ChatBot />
     </div>
   );

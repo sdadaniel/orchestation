@@ -1,0 +1,25 @@
+{
+  "tree": [
+    {
+      "id": "PRD-001",
+      "title": "공식문서",
+      "type": "doc",
+      "file": "PRD-001-orchestration-dashboard.md",
+      "children": []
+    },
+    {
+      "id": "doc-mn2s0ewj",
+      "title": "문서야",
+      "type": "doc",
+      "children": [],
+      "file": "doc-mn2s0ewj.md"
+    },
+    {
+      "id": "doc-mn2s0ewo",
+      "title": "문서야",
+      "type": "doc",
+      "children": [],
+      "file": "doc-mn2s0ewo.md"
+    }
+  ]
+}

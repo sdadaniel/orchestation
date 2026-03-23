@@ -1,55 +1,73 @@
 "use client";
 
 import { use, useState, useCallback } from "react";
-import { usePrds } from "@/hooks/usePrds";
-import { BookOpen, Pencil, Eye, Save, X } from "lucide-react";
+import { useDocDetail } from "@/hooks/useDocTree";
+import { BookOpen, Pencil, Eye, Save, X, ChevronRight, FolderOpen } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 export default function DocsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { prds, isLoading } = usePrds();
+  const { doc, isLoading, refetch } = useDocDetail(id);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState("");
+  const [editTitle, setEditTitle] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [savedContent, setSavedContent] = useState<string | null>(null);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
 
-  const prd = prds.find((p) => p.id === id);
-  const content = savedContent ?? prd?.content ?? "";
+  const content = doc?.content ?? "";
+  const title = doc?.title ?? "";
 
   const startEdit = useCallback(() => {
     setEditContent(content);
+    setEditTitle(title);
     setIsEditing(true);
-  }, [content]);
+  }, [content, title]);
 
   const cancelEdit = useCallback(() => {
     setIsEditing(false);
     setEditContent("");
+    setEditTitle("");
   }, []);
 
   const saveEdit = useCallback(async () => {
     setIsSaving(true);
     try {
-      const res = await fetch(`/api/prds/${id}`, {
+      const res = await fetch(`/api/docs/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: editContent }),
+        body: JSON.stringify({ content: editContent, title: editTitle }),
       });
       if (!res.ok) throw new Error("Failed to save");
-      setSavedContent(editContent);
       setIsEditing(false);
-    } catch (err) {
+      await refetch();
+    } catch {
       alert("저장 실패");
     } finally {
       setIsSaving(false);
     }
-  }, [id, editContent]);
+  }, [id, editContent, editTitle, refetch]);
+
+  const saveTitle = useCallback(async (newTitle: string) => {
+    try {
+      const res = await fetch(`/api/docs/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTitle }),
+      });
+      if (!res.ok) throw new Error("Failed to save title");
+      setIsEditingTitle(false);
+      await refetch();
+    } catch {
+      alert("제목 저장 실패");
+    }
+  }, [id, refetch]);
 
   if (isLoading) {
     return <div className="text-xs text-muted-foreground p-4">Loading...</div>;
   }
 
-  if (!prd) {
+  if (!doc) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
         <p className="text-sm">Document not found: {id}</p>
@@ -59,17 +77,25 @@ export default function DocsPage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <div className="max-w-3xl mx-auto">
+      {/* Breadcrumb */}
+      {doc.parentPath.length > 0 && (
+        <div className="flex items-center gap-1 mb-2 text-[11px] text-muted-foreground">
+          <FolderOpen className="h-3 w-3" />
+          {doc.parentPath.map((segment, i) => (
+            <span key={i} className="flex items-center gap-1">
+              {i > 0 && <ChevronRight className="h-2.5 w-2.5" />}
+              <span>{segment}</span>
+            </span>
+          ))}
+          <ChevronRight className="h-2.5 w-2.5" />
+          <span className="text-foreground font-medium">{doc.title}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-2 mb-1">
         <BookOpen className="h-4 w-4 text-primary" />
-        <span className="text-[11px] text-muted-foreground font-mono">{prd.id}</span>
-        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-          prd.status === "done" ? "bg-emerald-500/15 text-emerald-400" :
-          prd.status === "in_progress" ? "bg-blue-500/15 text-blue-400" :
-          "bg-zinc-500/15 text-zinc-400"
-        }`}>
-          {prd.status}
-        </span>
+        <span className="text-[11px] text-muted-foreground font-mono">{doc.id}</span>
 
         {/* Edit/View toggle */}
         <div className="ml-auto flex items-center gap-1">
@@ -105,22 +131,45 @@ export default function DocsPage({ params }: { params: Promise<{ id: string }> }
           )}
         </div>
       </div>
-      <h1 className="text-lg font-semibold mb-4">{prd.title}</h1>
 
-      {/* Sprints */}
-      {prd.sprints.length > 0 && (
-        <div className="mb-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-            Sprints
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {prd.sprints.map((s) => (
-              <span key={s} className="rounded bg-muted px-2 py-0.5 font-mono text-[11px]">
-                {s}
-              </span>
-            ))}
-          </div>
-        </div>
+      {/* Title - inline editable */}
+      {isEditing ? (
+        <input
+          type="text"
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          className="text-lg font-semibold mb-4 w-full bg-muted border border-border rounded px-2 py-1 outline-none focus:border-primary"
+        />
+      ) : (
+        <h1
+          className="text-lg font-semibold mb-4 cursor-pointer hover:text-primary transition-colors"
+          onClick={() => {
+            setEditTitle(title);
+            setIsEditingTitle(true);
+          }}
+          title="Click to rename"
+        >
+          {title || "Untitled"}
+          {isEditingTitle && (
+            <span className="block mt-1">
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && editTitle.trim()) saveTitle(editTitle.trim());
+                  if (e.key === "Escape") setIsEditingTitle(false);
+                }}
+                onBlur={() => {
+                  if (editTitle.trim() && editTitle.trim() !== title) saveTitle(editTitle.trim());
+                  else setIsEditingTitle(false);
+                }}
+                autoFocus
+                className="text-lg font-semibold w-full bg-muted border border-primary rounded px-2 py-1 outline-none"
+              />
+            </span>
+          )}
+        </h1>
       )}
 
       {/* Document content */}
