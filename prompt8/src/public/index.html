@@ -3,66 +3,88 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>URL 단축 서비스</title>
+  <title>실시간 채팅</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>🔗 URL 단축 서비스</h1>
-      <p class="subtitle">긴 URL을 짧고 간결하게 만들어 보세요</p>
-    </header>
+  <!-- Nickname Modal -->
+  <div id="nickname-modal" class="modal-overlay">
+    <div class="modal">
+      <h2>💬 채팅 입장</h2>
+      <p>사용할 닉네임을 입력하세요</p>
+      <input type="text" id="nickname-input" placeholder="닉네임 (최대 20자)" maxlength="20" autocomplete="off" />
+      <button id="nickname-btn">입장하기</button>
+    </div>
+  </div>
 
-    <!-- 생성 폼 -->
-    <section class="card create-card">
-      <h2>단축 URL 만들기</h2>
-      <form id="createForm">
-        <div class="form-group">
-          <label for="originalUrl">원본 URL <span class="required">*</span></label>
-          <input type="text" id="originalUrl" placeholder="https://example.com/very/long/url" required />
+  <!-- Main App -->
+  <div id="app" class="hidden">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>💬 채팅</h1>
+        <span id="my-nickname" class="my-nickname"></span>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-title">
+          채팅방
+          <button id="create-room-btn" class="icon-btn" title="새 채팅방 만들기">+</button>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="customCode">커스텀 코드 (선택)</label>
-            <input type="text" id="customCode" placeholder="my-link (영문/숫자만)" maxlength="20" />
+        <div id="room-list" class="room-list"></div>
+      </div>
+
+      <!-- Create Room Form -->
+      <div id="create-room-form" class="create-room-form hidden">
+        <input type="text" id="room-name-input" placeholder="채팅방 이름" maxlength="30" />
+        <div class="form-actions">
+          <button id="create-room-submit">만들기</button>
+          <button id="create-room-cancel" class="btn-secondary">취소</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Chat Area -->
+    <main class="chat-area">
+      <!-- No Room Selected -->
+      <div id="no-room" class="no-room">
+        <div class="no-room-icon">💬</div>
+        <p>채팅방을 선택하거나 새로 만드세요</p>
+      </div>
+
+      <!-- Room View -->
+      <div id="room-view" class="hidden">
+        <div class="chat-header">
+          <div class="chat-header-left">
+            <span id="current-room-name" class="room-title"></span>
           </div>
-          <div class="form-group">
-            <label for="expiresIn">만료 기간 (선택)</label>
-            <select id="expiresIn">
-              <option value="">만료 없음</option>
-              <option value="1">1일</option>
-              <option value="7">7일</option>
-              <option value="30">30일</option>
-              <option value="90">90일</option>
-              <option value="365">1년</option>
-            </select>
+          <div class="chat-header-right">
+            <span id="online-count" class="online-count"></span>
+            <button id="leave-room-btn" class="leave-btn">나가기</button>
           </div>
         </div>
-        <button type="submit" class="btn btn-primary">단축하기</button>
-      </form>
 
-      <div id="resultBox" class="result-box hidden">
-        <p class="result-label">단축 URL이 생성되었습니다!</p>
-        <div class="result-url-row">
-          <a id="resultLink" href="#" target="_blank"></a>
-          <button class="btn btn-copy" onclick="copyResult()">복사</button>
+        <div class="chat-body">
+          <!-- Messages -->
+          <div id="messages" class="messages"></div>
+
+          <!-- Typing Indicator -->
+          <div id="typing-indicator" class="typing-indicator hidden"></div>
         </div>
-        <span id="copyMsg" class="copy-msg hidden">복사됨!</span>
-      </div>
 
-      <div id="errorBox" class="error-box hidden"></div>
-    </section>
+        <!-- Online Users Panel -->
+        <div class="online-panel">
+          <div class="online-panel-title">온라인</div>
+          <div id="online-users" class="online-users"></div>
+        </div>
 
-    <!-- URL 목록 -->
-    <section class="card list-card">
-      <div class="list-header">
-        <h2>단축 URL 목록</h2>
-        <button class="btn btn-secondary" onclick="loadUrls()">새로고침</button>
+        <!-- Input Area -->
+        <div class="input-area">
+          <input type="text" id="message-input" placeholder="메시지를 입력하세요..." maxlength="1000" autocomplete="off" />
+          <button id="send-btn">전송</button>
+        </div>
       </div>
-      <div id="urlList" class="url-list">
-        <p class="loading">불러오는 중...</p>
-      </div>
-    </section>
+    </main>
   </div>
 
   <script src="app.js"></script>

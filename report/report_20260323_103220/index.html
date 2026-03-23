@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt Performance Report</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #111113;
+      color: #edeef0;
+      min-height: 100vh;
+    }
+    .container { max-width: 960px; margin: 0 auto; padding: 40px 24px 60px; }
+    h1 { font-size: 1.5rem; font-weight: 600; color: #fff; margin-bottom: 4px; }
+    .subtitle { color: #6e6e80; font-size: 0.82rem; margin-bottom: 24px; }
+
+    /* 탭 */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      background: #191a1f;
+      border-radius: 8px;
+      padding: 3px;
+      margin-bottom: 24px;
+      border: 1px solid #2a2a30;
+    }
+    .tab {
+      flex: 1;
+      padding: 8px 0;
+      text-align: center;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: #6e6e80;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: none;
+      background: none;
+    }
+    .tab:hover { color: #b4b5bd; }
+    .tab.active { background: #2a2a30; color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* 카드 공통 */
+    .card {
+      background: #191a1f;
+      border: 1px solid #2a2a30;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+    .card h2 {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #6e6e80;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 14px;
+    }
+
+    /* 요약 */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .stat { background: #191a1f; border: 1px solid #2a2a30; border-radius: 10px; padding: 16px; }
+    .stat .label {
+      font-size: 0.7rem; color: #6e6e80; margin-bottom: 4px;
+      text-transform: uppercase; letter-spacing: 0.04em; font-weight: 500;
+    }
+    .stat .val { font-size: 1.35rem; font-weight: 700; color: #fff; }
+    .stat .sub { font-size: 0.7rem; color: #6e6e80; margin-top: 2px; }
+
+    /* Winner 배너 */
+    .winner {
+      background: linear-gradient(135deg, #1a2e1f 0%, #191a1f 100%);
+      border: 1px solid #234d2f;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .winner-icon { font-size: 1.2rem; }
+    .winner-text { flex: 1; }
+    .winner-text .name { font-weight: 700; color: #30a46c; font-size: 0.9rem; }
+    .winner-text .desc { font-size: 0.75rem; color: #6e6e80; margin-top: 2px; }
+
+    /* 테이블 */
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    thead th {
+      text-align: left; padding: 8px 10px; border-bottom: 1px solid #2a2a30;
+      color: #6e6e80; font-weight: 500; font-size: 0.72rem;
+    }
+    tbody td {
+      padding: 8px 10px; border-bottom: 1px solid #1e1e24;
+      font-variant-numeric: tabular-nums;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #1e1e24; }
+    .best { color: #30a46c; font-weight: 600; }
+    .worst { color: #e5484d; opacity: 0.8; }
+    .ml { color: #8b8d98; font-size: 0.75rem; }
+
+    /* 차트 */
+    .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .ci { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .ci:last-child { margin-bottom: 0; }
+    .ci-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .ci-name { width: 50px; font-size: 0.7rem; color: #8b8d98; flex-shrink: 0; }
+    .ci-track { flex: 1; height: 6px; background: #1e1e24; border-radius: 3px; overflow: hidden; }
+    .ci-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+    .ci-val {
+      width: 68px; text-align: right; font-size: 0.72rem; color: #b4b5bd;
+      font-variant-numeric: tabular-nums; flex-shrink: 0;
+    }
+
+    /* 프롬프트 카드 */
+    .p-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .p-card {
+      background: #191a1f; border: 1px solid #2a2a30; border-radius: 10px; padding: 16px;
+    }
+    .p-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .p-head h3 { font-size: 0.82rem; font-weight: 600; }
+    .p-tag {
+      font-size: 0.62rem; padding: 2px 6px; border-radius: 4px;
+      background: #1e1e24; color: #8b8d98; font-weight: 500;
+    }
+    .p-pre {
+      font-size: 0.7rem; line-height: 1.55; color: #a1a2aa;
+      white-space: pre-wrap; word-break: break-word;
+      max-height: 200px; overflow-y: auto;
+      background: #111113; padding: 10px; border-radius: 6px; border: 1px solid #1e1e24;
+    }
+    .p-pre::-webkit-scrollbar { width: 4px; }
+    .p-pre::-webkit-scrollbar-thumb { background: #2a2a30; border-radius: 2px; }
+
+    /* PRD */
+    .prd-pre {
+      font-size: 0.75rem; line-height: 1.6; color: #a1a2aa;
+      white-space: pre-wrap; word-break: break-word;
+      max-height: 240px; overflow-y: auto;
+      background: #111113; padding: 14px; border-radius: 6px; border: 1px solid #1e1e24;
+    }
+    .prd-pre::-webkit-scrollbar { width: 4px; }
+    .prd-pre::-webkit-scrollbar-thumb { background: #2a2a30; border-radius: 2px; }
+
+    /* 결과 카드 */
+    .r-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .r-card {
+      background: #191a1f; border: 1px solid #2a2a30; border-radius: 10px; padding: 16px;
+      display: grid; grid-template-columns: 200px 1fr; gap: 16px;
+    }
+    .r-side { }
+    .r-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .r-head h3 { font-size: 0.85rem; font-weight: 600; }
+    .r-badge {
+      font-size: 0.65rem; font-weight: 600; padding: 2px 6px;
+      border-radius: 4px; background: #1e1e24; color: #8b8d98;
+    }
+    .r-badge.r1 { background: #1a2e1f; color: #30a46c; }
+    .r-badge.r2 { background: #2a2418; color: #f5a623; }
+    .r-meta { font-size: 0.7rem; color: #6e6e80; line-height: 1.6; }
+    .r-meta strong { color: #b4b5bd; font-weight: 600; }
+    .r-content pre {
+      font-size: 0.7rem; line-height: 1.55; color: #a1a2aa;
+      white-space: pre-wrap; word-break: break-word;
+      max-height: 200px; overflow-y: auto; height: 100%;
+      background: #111113; padding: 10px; border-radius: 6px; border: 1px solid #1e1e24;
+    }
+    .r-content pre::-webkit-scrollbar { width: 4px; }
+    .r-content pre::-webkit-scrollbar-thumb { background: #2a2a30; border-radius: 2px; }
+
+    .no-data { text-align: center; color: #6e6e80; padding: 80px 0; }
+
+    /* AI Report */
+    .ai-report {
+      background: #191a1f;
+      border: 1px solid #2a2a30;
+      border-radius: 10px;
+      padding: 24px 28px;
+      font-size: 0.85rem;
+      line-height: 1.75;
+      color: #c8c9d0;
+    }
+    .ai-report h1, .ai-report h2, .ai-report h3 {
+      color: #fff;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+    .ai-report h1 { font-size: 1.2rem; }
+    .ai-report h2 { font-size: 1rem; border-bottom: 1px solid #2a2a30; padding-bottom: 6px; }
+    .ai-report h3 { font-size: 0.9rem; color: #b4b5bd; }
+    .ai-report p { margin-bottom: 10px; }
+    .ai-report ul, .ai-report ol { padding-left: 20px; margin-bottom: 10px; }
+    .ai-report li { margin-bottom: 4px; }
+    .ai-report strong { color: #fff; }
+    .ai-report code {
+      background: #111113;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      color: #12a594;
+    }
+    .ai-report table { margin: 12px 0; }
+    .ai-report table th {
+      text-align: left;
+      padding: 6px 10px;
+      border-bottom: 1px solid #2a2a30;
+      color: #6e6e80;
+      font-size: 0.75rem;
+    }
+    .ai-report table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #1e1e24;
+    }
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.7rem;
+      color: #6e6e80;
+      margin-bottom: 16px;
+    }
+    .ai-badge span {
+      background: #1a2e1f;
+      color: #30a46c;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 700px) {
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-grid, .p-grid { grid-template-columns: 1fr; }
+      .r-card { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../" style="display:inline-flex;align-items:center;gap:6px;color:#6e6e80;font-size:0.78rem;text-decoration:none;margin-bottom:12px;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#6e6e80'">&#x2190; Reports</a>
+    <h1>Prompt Performance Report</h1>
+    <p class="subtitle" id="subtitle"></p>
+
+    <div class="tabs" id="tabs"></div>
+    <div id="app"></div>
+  </div>
+
+  <script>
+    const COLORS = ['#e5484d', '#30a46c', '#f5a623', '#8b5cf6', '#12a594'];
+    const MIN_QUALITY = 45;
+    const TAB_ITEMS = [
+      { id: 'overview', label: 'Overview' },
+      { id: 'charts', label: 'Charts' },
+      { id: 'prompts', label: 'Prompts' },
+      { id: 'results', label: 'Results' },
+      { id: 'ai', label: 'AI Report' },
+      { id: 'code', label: 'Code Review' },
+    ];
+    let currentTab = 'overview';
+
+    fetch('data.json')
+      .then(r => r.json())
+      .then(raw => {
+        const prd = raw.prd || '';
+        const data = raw.prompts || raw;
+        const aiReport = raw.ai_report || '';
+        const codeReview = raw.code_review || '';
+        initTabs();
+        render(prd, Array.isArray(data) ? data : [], aiReport, codeReview);
+      })
+      .catch(() => {
+        document.getElementById('app').innerHTML =
+          '<div class="no-data">data.json\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.<br><code>bash scripts/report.sh</code></div>';
+      });
+
+    function initTabs() {
+      const tabsEl = document.getElementById('tabs');
+      tabsEl.innerHTML = TAB_ITEMS.map(t =>
+        `<button class="tab ${t.id === currentTab ? 'active' : ''}" data-tab="${t.id}">${t.label}</button>`
+      ).join('');
+      tabsEl.addEventListener('click', e => {
+        const btn = e.target.closest('.tab');
+        if (!btn) return;
+        currentTab = btn.dataset.tab;
+        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === currentTab));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + currentTab));
+      });
+    }
+
+    function render(prd, data, aiReport, codeReview) {
+      if (!data.length) {
+        document.getElementById('app').innerHTML = '<div class="no-data">결과 없음</div>';
+        return;
+      }
+
+      document.getElementById('subtitle').textContent =
+        `${data.length}개 프롬프트 비교 \u00b7 ${new Date().toLocaleString('ko-KR')}`;
+
+      const app = document.getElementById('app');
+
+      // 코드 리뷰에서 점수 파싱
+      const scores = parseCodeReviewScores(codeReview, data);
+      data.forEach(d => { d.code_score = scores[d.name] || null; });
+
+      // Best Value: 코드 점수 45점 이상 중 최저 비용. 없으면 전체 최저 비용.
+      const qualified = data.filter(d => d.code_score && d.code_score >= MIN_QUALITY);
+      const best = qualified.length
+        ? [...qualified].sort((a, b) => a.cost_usd - b.cost_usd)[0]
+        : [...data].sort((a, b) => a.cost_usd - b.cost_usd)[0];
+      const totalCost = data.reduce((s, d) => s + d.cost_usd, 0);
+      const avgTime = data.reduce((s, d) => s + d.duration_sec, 0) / data.length;
+      const totalTokens = data.reduce((s, d) => s + d.output_tokens, 0);
+      const totalFiles = data.reduce((s, d) => s + d.file_count, 0);
+
+      app.innerHTML = `
+        <div id="panel-overview" class="tab-panel active">
+          ${winnerBanner(best, data)}
+
+          <div class="stat-grid">
+            <div class="stat">
+              <div class="label">Total Cost</div>
+              <div class="val">$${totalCost.toFixed(2)}</div>
+              <div class="sub">avg $${(totalCost / data.length).toFixed(2)}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Avg Time</div>
+              <div class="val">${fmtTime(avgTime)}</div>
+              <div class="sub">fastest ${fmtTime(Math.min(...data.map(d => d.duration_sec)))}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Output Tokens</div>
+              <div class="val">${totalTokens.toLocaleString()}</div>
+              <div class="sub">avg ${Math.round(totalTokens / data.length).toLocaleString()}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Files</div>
+              <div class="val">${totalFiles}</div>
+              <div class="sub">avg ${Math.round(totalFiles / data.length)}</div>
+            </div>
+          </div>
+
+          ${mkTable(data)}
+
+          <div class="chart-grid">
+            ${mkChart(data, 'cost_usd', 'Cost', v => '$' + v.toFixed(4))}
+            ${mkChart(data, 'code_score', 'Code Score (/60)', v => v || '-')}
+            ${mkChart(data, 'duration_sec', 'Duration', fmtTime)}
+            ${mkChart(data, 'file_count', 'Files', v => v)}
+          </div>
+        </div>
+
+        <div id="panel-charts" class="tab-panel">
+          <div class="chart-grid">
+            ${mkChart(data, 'cost_usd', 'Cost (USD)', v => '$' + v.toFixed(4))}
+            ${mkChart(data, 'duration_sec', 'Duration', fmtTime)}
+            ${mkChart(data, 'output_tokens', 'Output Tokens', v => v.toLocaleString())}
+            ${mkChart(data, 'num_turns', 'Turns', v => v)}
+            ${mkChart(data, 'cache_read_tokens', 'Cache Hit', v => v.toLocaleString())}
+            ${mkChart(data, 'cache_creation_tokens', 'Cache Created', v => v.toLocaleString())}
+            ${mkChart(data, 'file_count', 'Files', v => v)}
+            ${mkChart(data, 'line_count', 'Lines of Code', v => v.toLocaleString())}
+          </div>
+        </div>
+
+        <div id="panel-prompts" class="tab-panel">
+          <div class="card">
+            <h2>PRD (Input)</h2>
+            <div class="prd-pre">${esc(prd) || 'PRD 데이터 없음'}</div>
+          </div>
+          <div class="p-grid">${mkPrompts(data)}</div>
+        </div>
+
+        <div id="panel-results" class="tab-panel">
+          <div class="r-grid">${mkResults(data)}</div>
+        </div>
+
+        <div id="panel-ai" class="tab-panel">
+          ${mkAiReport(aiReport)}
+        </div>
+
+        <div id="panel-code" class="tab-panel">
+          ${mkCodeReview(codeReview)}
+        </div>
+      `;
+    }
+
+    function winnerBanner(best, data) {
+      const scoreText = best.code_score ? ` \u00b7 ${best.code_score}/60점` : '';
+      const hasQualified = data.some(d => d.code_score && d.code_score >= MIN_QUALITY);
+      return `
+        <div class="winner">
+          <div class="winner-icon">&#x1f3c6;</div>
+          <div class="winner-text">
+            <div class="name">${best.name} \u2014 Best Value</div>
+            <div class="desc">$${best.cost_usd.toFixed(4)} \u00b7 ${fmtTime(best.duration_sec)} \u00b7 ${best.num_turns} turns${scoreText} \u00b7 ${hasQualified ? 'Code \u2265 45점 중 최저 비용' : '최저 비용'}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function mkTable(data) {
+      const M = [
+        { k: 'duration_sec', l: 'Duration', f: fmtTime, lo: true },
+        { k: 'cost_usd', l: 'Cost', f: v => '$' + v.toFixed(4), lo: true },
+        { k: 'num_turns', l: 'Turns', f: v => v, lo: true },
+        { k: 'output_tokens', l: 'Out Tokens', f: v => v.toLocaleString(), lo: false },
+        { k: 'cache_read_tokens', l: 'Cache Hit', f: v => v.toLocaleString(), lo: true },
+        { k: 'file_count', l: 'Files', f: v => v, lo: false },
+        { k: 'line_count', l: 'LOC', f: v => v.toLocaleString(), lo: false },
+        { k: 'code_score', l: 'Code Score', f: v => v ? v + '/60' : '-', lo: false },
+      ];
+      const hdr = data.map((d, i) =>
+        `<th><span style="color:${COLORS[i % COLORS.length]}">\u25CF</span> ${d.name}</th>`
+      ).join('');
+      const rows = M.map(m => {
+        const vs = data.map(d => d[m.k]);
+        const b = m.lo ? Math.min(...vs) : Math.max(...vs);
+        const w = m.lo ? Math.max(...vs) : Math.min(...vs);
+        return '<tr><td class="ml">' + m.l + '</td>' +
+          data.map(d => {
+            const v = d[m.k]; let c = '';
+            if (data.length > 1) { if (v === b) c = 'best'; else if (v === w) c = 'worst'; }
+            return `<td class="${c}">${m.f(v)}</td>`;
+          }).join('') + '</tr>';
+      }).join('');
+      return `<div class="card"><h2>Comparison</h2><table><thead><tr><th></th>${hdr}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+
+    function mkChart(data, key, title, fmt) {
+      const mx = Math.max(...data.map(d => d[key]));
+      if (mx === 0) return '';
+      const items = data.map((d, i) => {
+        const p = (d[key] / mx * 100).toFixed(1);
+        return `<div class="ci"><div class="ci-dot" style="background:${COLORS[i % COLORS.length]}"></div><div class="ci-name">p${d.name.replace('prompt','')}</div><div class="ci-track"><div class="ci-fill" style="width:${p}%;background:${COLORS[i % COLORS.length]}"></div></div><div class="ci-val">${fmt(d[key])}</div></div>`;
+      }).join('');
+      return `<div class="card"><h2>${title}</h2>${items}</div>`;
+    }
+
+    function mkPrompts(data) {
+      return data.map((d, i) => {
+        const c = d.prompt_content || '';
+        if (!c) return '';
+        const n = c.split('\n').length;
+        return `<div class="p-card"><div class="p-head"><div class="ci-dot" style="background:${COLORS[i % COLORS.length]}"></div><h3>${d.name}</h3><span class="p-tag">${n} lines</span></div><pre class="p-pre">${esc(c)}</pre></div>`;
+      }).filter(Boolean).join('');
+    }
+
+    function mkResults(data) {
+      const rk = [...data].sort((a, b) => a.cost_usd - b.cost_usd);
+      const rm = {}; rk.forEach((d, i) => rm[d.name] = i + 1);
+      return data.map((d, i) => {
+        const r = rm[d.name];
+        const rc = r <= 2 ? `r${r}` : '';
+        const rl = r === 1 ? 'Best Value' : r === 2 ? '2nd' : `#${r}`;
+        return `
+          <div class="r-card">
+            <div class="r-side">
+              <div class="r-head">
+                <div class="ci-dot" style="background:${COLORS[i % COLORS.length]}"></div>
+                <h3>${d.name}</h3>
+                <span class="r-badge ${rc}">${rl}</span>
+              </div>
+              <div class="r-meta">
+                <strong>${d.title || ''}</strong><br>
+                Cost: $${d.cost_usd.toFixed(4)}<br>
+                Time: ${fmtTime(d.duration_sec)}<br>
+                Turns: ${d.num_turns}<br>
+                Files: ${d.file_count}<br>
+                LOC: ${d.line_count.toLocaleString()}
+              </div>
+            </div>
+            <div class="r-content"><pre>${esc(d.result)}</pre></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function mkCodeReview(text) {
+      if (!text) return '<div class="no-data">코드 리뷰가 없습니다.<br>report.sh 실행 시 자동 생성됩니다.</div>';
+      return `
+        <div class="ai-report">
+          <div class="ai-badge">Reviewed by <span>Claude Sonnet</span></div>
+          ${mdToHtml(text)}
+        </div>
+      `;
+    }
+
+    function mkAiReport(text) {
+      if (!text) return '<div class="no-data">AI 분석이 없습니다.<br>report.sh 실행 시 자동 생성됩니다.</div>';
+      return `
+        <div class="ai-report">
+          <div class="ai-badge">Analyzed by <span>Claude Sonnet</span></div>
+          ${mdToHtml(text)}
+        </div>
+      `;
+    }
+
+    function mdToHtml(md) {
+      return md
+        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+        .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/^\|(.+)\|$/gm, (match) => {
+          const cells = match.split('|').filter(c => c.trim());
+          if (cells.every(c => /^[\s-:]+$/.test(c))) return '';
+          const tag = match.includes('---') ? '' : cells.map(c => {
+            const isHeader = false;
+            return `<td>${c.trim()}</td>`;
+          }).join('');
+          return tag ? `<tr>${tag}</tr>` : '';
+        })
+        .replace(/(<tr>.*<\/tr>\n?)+/g, (match) => `<table>${match}</table>`)
+        .replace(/^- (.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`)
+        .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+        .replace(/^(?!<[hultp]|$)(.+)$/gm, '<p>$1</p>')
+        .replace(/\n{2,}/g, '');
+    }
+
+    function parseCodeReviewScores(review, data) {
+      const scores = {};
+      if (!review) return scores;
+      data.forEach(d => {
+        const num = d.name.replace('prompt', '');
+        // "총점: 47/60" 또는 "**총점: 47/60**" 또는 "| **Prompt N** | ... | **47** |" 패턴 매칭
+        const patterns = [
+          new RegExp('Prompt\\s*' + num + '[\\s\\S]*?총점[:\\s]*\\*{0,2}(\\d+)\\s*/\\s*60', 'i'),
+          new RegExp('Prompt\\s*' + num + '[\\s\\S]*?\\*{2}(\\d+)\\*{2}\\s*\\|\\s*$', 'im'),
+          new RegExp('\\|\\s*\\*{0,2}Prompt\\s*' + num + '\\*{0,2}\\s*\\|[^|]*\\|[^|]*\\|[^|]*\\|[^|]*\\|[^|]*\\|[^|]*\\|\\s*\\*{0,2}(\\d+)\\*{0,2}', 'i'),
+        ];
+        for (const re of patterns) {
+          const m = review.match(re);
+          if (m) { scores[d.name] = parseInt(m[1]); break; }
+        }
+      });
+      return scores;
+    }
+
+    function fmtTime(s) {
+      if (s < 60) return s.toFixed(1) + 's';
+      return Math.floor(s / 60) + 'm ' + Math.round(s % 60) + 's';
+    }
+    function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  </script>
+</body>
+</html>

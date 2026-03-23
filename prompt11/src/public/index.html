@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>실시간 채팅</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<!-- NICKNAME OVERLAY -->
+<div id="nickname-overlay">
+  <div class="nick-card">
+    <h2>💬 실시간 채팅</h2>
+    <p>사용할 닉네임을 입력하세요</p>
+    <input id="nick-input" type="text" placeholder="닉네임 (1~20자)" maxlength="20" autocomplete="off" />
+    <div class="error-msg" id="nick-error"></div>
+    <button id="nick-btn">시작하기</button>
+  </div>
+</div>
+
+<!-- CREATE ROOM MODAL -->
+<div id="modal-overlay" class="hidden">
+  <div class="modal-card">
+    <h3>새 채팅방 만들기</h3>
+    <input id="room-name-input" type="text" placeholder="채팅방 이름 (1~30자)" maxlength="30" autocomplete="off" />
+    <div class="modal-error" id="modal-error"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="modal-cancel">취소</button>
+      <button class="btn-confirm" id="modal-confirm">만들기</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <div>
+        <div class="sidebar-header h1" style="font-size:1.05rem;font-weight:700;">채팅</div>
+        <div class="my-nick" id="my-nick-display"></div>
+      </div>
+      <button id="create-room-btn" title="새 채팅방">+</button>
+    </div>
+
+    <div class="section-label">채팅방</div>
+    <div id="room-list"></div>
+
+    <div class="section-label">온라인 멤버</div>
+    <div id="online-panel"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <!-- EMPTY STATE -->
+    <div id="empty-state">
+      <div class="empty-icon">💬</div>
+      <p>채팅방을 선택하거나 새로 만들어 대화를 시작하세요</p>
+    </div>
+
+    <!-- CHAT HEADER -->
+    <div id="chat-header" class="hidden">
+      <div>
+        <div class="room-title" id="header-room-name"></div>
+        <div class="room-meta" id="header-room-meta"></div>
+      </div>
+      <button id="leave-btn">나가기</button>
+    </div>
+
+    <!-- MESSAGES -->
+    <div id="chat-area" class="hidden"></div>
+
+    <!-- TYPING -->
+    <div id="typing-indicator" class="hidden"></div>
+
+    <!-- INPUT -->
+    <div id="input-area" class="hidden">
+      <textarea id="msg-input" placeholder="메시지 입력... (Enter 전송, Shift+Enter 줄바꿈)" rows="1"></textarea>
+      <button id="send-btn" title="전송">➤</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
