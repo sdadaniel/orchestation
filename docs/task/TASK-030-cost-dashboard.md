@@ -1,7 +1,7 @@
 ---
 id: TASK-030
 title: 비용 모니터링 페이지
-status: in_progress
+status: done
 priority: high
 sprint: SPRINT-006
 depends_on:
