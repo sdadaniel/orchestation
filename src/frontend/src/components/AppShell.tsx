@@ -9,7 +9,7 @@ import { TaskRow } from "@/components/TaskRow";
 import { RightPanel } from "@/components/RightPanel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { Search, ArrowUpDown } from "lucide-react";
+import { Search, ArrowUpDown, SearchIcon } from "lucide-react";
 import { STATUS_STYLES, type TaskStatus } from "../../lib/constants";
 import type { WaterfallTask } from "@/types/waterfall";
 
@@ -145,22 +145,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar — 모든 페이지에서 동일 */}
-      <TaskSidebar
-        groups={groups}
-        prds={prds}
-        filter={filter}
-        onFilterChange={handleFilterChange}
-        currentPath={pathname}
-      />
-
-      {pathname === "/" && !isTaskView ? (
-        /* 홈: 빈 화면 (나중에 종합 대시보드) */
-        <div className="flex-1 flex items-center justify-center text-muted-foreground">
-          <p className="text-xs">Select a menu from the sidebar</p>
+    <div className="flex flex-col h-full">
+      {/* Global header */}
+      <div className="global-header">
+        <div className="global-search">
+          <SearchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <input type="text" placeholder="검색" />
         </div>
-      ) : isTaskView ? (
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar — 모든 페이지에서 동일 */}
+        <TaskSidebar
+          groups={groups}
+          prds={prds}
+          filter={filter}
+          onFilterChange={handleFilterChange}
+          currentPath={pathname}
+        />
+
+        {pathname === "/" && !isTaskView ? (
+          /* 홈: 빈 화면 */
+          <div className="flex-1" />
+        ) : isTaskView ? (
         /* Task 뷰: 중앙 리스트 + 오른쪽 패널 */
         <>
           <div className="ide-main flex flex-col">
@@ -226,6 +233,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

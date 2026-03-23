@@ -1,18 +1,53 @@
 "use client";
 
-import { use } from "react";
+import { use, useState, useCallback } from "react";
 import { usePrds } from "@/hooks/usePrds";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Pencil, Eye, Save, X } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export default function DocsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { prds, isLoading } = usePrds();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedContent, setSavedContent] = useState<string | null>(null);
+
+  const prd = prds.find((p) => p.id === id);
+  const content = savedContent ?? prd?.content ?? "";
+
+  const startEdit = useCallback(() => {
+    setEditContent(content);
+    setIsEditing(true);
+  }, [content]);
+
+  const cancelEdit = useCallback(() => {
+    setIsEditing(false);
+    setEditContent("");
+  }, []);
+
+  const saveEdit = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/prds/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editContent }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setSavedContent(editContent);
+      setIsEditing(false);
+    } catch (err) {
+      alert("저장 실패");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [id, editContent]);
 
   if (isLoading) {
     return <div className="text-xs text-muted-foreground p-4">Loading...</div>;
   }
-
-  const prd = prds.find((p) => p.id === id);
 
   if (!prd) {
     return (
@@ -35,6 +70,40 @@ export default function DocsPage({ params }: { params: Promise<{ id: string }> }
         }`}>
           {prd.status}
         </span>
+
+        {/* Edit/View toggle */}
+        <div className="ml-auto flex items-center gap-1">
+          {isEditing ? (
+            <>
+              <button
+                type="button"
+                onClick={saveEdit}
+                disabled={isSaving}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                <Save className="h-3 w-3" />
+                {isSaving ? "Saving..." : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                <X className="h-3 w-3" />
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={startEdit}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted"
+            >
+              <Pencil className="h-3 w-3" />
+              Edit
+            </button>
+          )}
+        </div>
       </div>
       <h1 className="text-lg font-semibold mb-4">{prd.title}</h1>
 
@@ -56,9 +125,20 @@ export default function DocsPage({ params }: { params: Promise<{ id: string }> }
 
       {/* Document content */}
       <div className="border-t border-border pt-4">
-        <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/85">
-          {prd.content || "내용 없음"}
-        </div>
+        {isEditing ? (
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            className="w-full h-[60vh] bg-muted border border-border rounded-md p-3 text-sm font-mono leading-relaxed resize-none outline-none focus:border-primary"
+            autoFocus
+          />
+        ) : (
+          <div className="prose-custom">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {content || "내용 없음"}
+            </ReactMarkdown>
+          </div>
+        )}
       </div>
     </div>
   );
