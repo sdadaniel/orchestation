@@ -103,7 +103,9 @@ export function TaskSidebar({ groups, prds, filter, onFilterChange, currentPath 
     <div className="ide-sidebar flex flex-col h-full">
       {/* Header */}
       <div className="px-3 py-3 border-b border-sidebar-border">
-        <h1 className="text-sm font-semibold text-sidebar-foreground">Dashboard</h1>
+        <Link href="/" className="text-sm font-semibold text-sidebar-foreground no-underline hover:text-primary transition-colors">
+          Dashboard
+        </Link>
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 py-2">
