@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   ClipboardList,
   Calendar,
+  DollarSign,
   FileText,
   SquareTerminal,
 } from "lucide-react";
@@ -41,6 +42,12 @@ const navItems: NavItem[] = [
     label: "Plan",
     icon: <FileText className="h-4 w-4" />,
     href: "/plan",
+    disabled: false,
+  },
+  {
+    label: "Cost",
+    icon: <DollarSign className="h-4 w-4" />,
+    href: "/cost",
     disabled: false,
   },
 ];
