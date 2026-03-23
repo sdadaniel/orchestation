@@ -1,7 +1,7 @@
 ---
 id: TASK-040
 title: 웹 UI에서 auto-improve 실행 및 진행 상태 표시
-status: in_progress
+status: done
 priority: high
 sprint:
 depends_on: []
