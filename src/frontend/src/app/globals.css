@@ -319,3 +319,169 @@ body {
 .global-search input::placeholder {
   color: var(--muted-foreground);
 }
+
+/* ── Board View (Kanban) ──────────────────────────────── */
+
+.board-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  min-height: 200px;
+}
+
+.board-column {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.board-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.board-col-gray { background: #6b7280; }
+.board-col-blue { background: #3b82f6; }
+.board-col-orange { background: #f97316; }
+.board-col-green { background: #22c55e; }
+
+.board-column-count {
+  font-size: 10px;
+  font-weight: 500;
+  background: rgba(255,255,255,0.25);
+  border-radius: 9999px;
+  padding: 0 6px;
+  line-height: 1.6;
+}
+
+.board-column-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.board-card {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--background);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.1s ease, box-shadow 0.1s ease;
+}
+
+.board-card:hover {
+  background-color: var(--muted);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* ── Timeline View ────────────────────────────────────── */
+
+.timeline-wrapper {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.timeline-row {
+  display: flex;
+  align-items: stretch;
+  min-height: 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.timeline-row:last-child {
+  border-bottom: none;
+}
+
+.timeline-header-row {
+  background: var(--muted);
+  font-weight: 600;
+}
+
+.timeline-corner {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted-foreground);
+  display: flex;
+  align-items: center;
+}
+
+.timeline-task-label {
+  width: 260px;
+  min-width: 260px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-right: 1px solid var(--border);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  overflow: hidden;
+}
+
+button.timeline-task-label:hover {
+  background-color: var(--muted);
+}
+
+.timeline-bars {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.batch-column {
+  flex: 1;
+  min-width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 4px;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+
+.batch-column:last-child {
+  border-right: none;
+}
+
+.timeline-bar {
+  width: 100%;
+  height: 18px;
+  border-radius: 3px;
+  opacity: 0.85;
+  position: relative;
+}
+
+.timeline-dep-arrow {
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid var(--foreground);
+  opacity: 0.4;
+}

@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { execSync } from "child_process";
+import path from "path";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
+
+// 프로젝트 루트 디렉토리 (src/frontend 기준 ../../)
+const PROJECT_ROOT = path.resolve(process.cwd(), "../..");
 
 export async function POST(request: Request) {
   try {
@@ -27,12 +31,13 @@ export async function POST(request: Request) {
 
     const prompt = `${contextMessages}User: ${message}`;
 
-    // claude CLI 호출
+    // claude CLI 호출 — cwd를 프로젝트 루트로 설정하여 docs/ 등 전체 접근 가능
     const result = execSync(
       `echo ${JSON.stringify(prompt)} | claude --print --model claude-sonnet-4-6 --output-format json`,
       {
         timeout: 90000,
         encoding: "utf-8",
+        cwd: PROJECT_ROOT,
         env: { ...process.env, PATH: `${process.env.HOME}/.local/bin:${process.env.PATH}` },
       },
     );
