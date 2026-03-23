@@ -57,7 +57,7 @@ function SprintInlineDetail({ sprintId }: { sprintId: string }) {
         >
           보드
         </button>
-        <span className="ml-auto text-[10px] text-muted-foreground">
+        <span className="ml-auto text-xs text-muted-foreground">
           {allTasks.length} tasks
         </span>
       </div>
@@ -67,7 +67,7 @@ function SprintInlineDetail({ sprintId }: { sprintId: string }) {
         <div>
           {sprint.batches.map((batch) => (
             <div key={batch.name}>
-              <div className="px-3 py-1 text-[10px] font-medium text-muted-foreground bg-muted/20 border-b border-border">
+              <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/20 border-b border-border">
                 {batch.name}
               </div>
               {batch.tasks.map((task) => {
@@ -79,12 +79,12 @@ function SprintInlineDetail({ sprintId }: { sprintId: string }) {
                     className="flex items-center gap-2 px-3 py-1.5 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
                   >
                     <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", statusStyle?.dot ?? "bg-gray-400")} />
-                    <span className="font-mono text-[11px] text-muted-foreground w-20 shrink-0">{task.id}</span>
-                    <span className="text-xs flex-1 truncate">{task.title}</span>
-                    <span className={cn("text-[10px] rounded px-1.5 py-0.5 shrink-0", priorityStyle.bg, priorityStyle.text)}>
+                    <span className="font-mono text-xs text-muted-foreground w-24 shrink-0">{task.id}</span>
+                    <span className="text-sm flex-1 truncate">{task.title}</span>
+                    <span className={cn("text-xs rounded px-1.5 py-0.5 shrink-0", priorityStyle.bg, priorityStyle.text)}>
                       {priorityStyle.label}
                     </span>
-                    <span className="text-[10px] text-muted-foreground w-16 text-right shrink-0">
+                    <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
                       {statusStyle?.label ?? task.status}
                     </span>
                   </div>
@@ -188,11 +188,11 @@ export default function SprintListPage() {
               )}
               <span className={cn("w-2 h-2 rounded-full shrink-0", dotColor)} />
               <span className="text-sm font-medium flex-1 truncate">{sprint.title}</span>
-              <span className="text-[11px] text-muted-foreground shrink-0">
+              <span className="text-xs text-muted-foreground shrink-0">
                 {sprint.progress.done}/{sprint.progress.total}
               </span>
-              <Progress value={percentage} className="h-1 w-16 shrink-0" />
-              <span className="text-[10px] text-muted-foreground w-16 text-right capitalize shrink-0">
+              <Progress value={percentage} className="h-1.5 w-20 shrink-0" />
+              <span className="text-xs text-muted-foreground w-16 text-right capitalize shrink-0">
                 {sprint.status.replace("_", " ")}
               </span>
             </button>
