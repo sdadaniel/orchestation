@@ -14,6 +14,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 const STATUS_DOT: Record<string, string> = {
   pending: "bg-yellow-500",
   in_progress: "bg-blue-500",
+  reviewing: "bg-orange-500",
   done: "bg-emerald-500",
   rejected: "bg-red-500",
 };
@@ -21,11 +22,12 @@ const STATUS_DOT: Record<string, string> = {
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pending",
   in_progress: "In Progress",
+  reviewing: "Reviewing",
   done: "Done",
   rejected: "Rejected",
 };
 
-const STATUS_ORDER = ["pending", "in_progress", "rejected", "done"];
+const STATUS_ORDER = ["pending", "reviewing", "in_progress", "rejected", "done"];
 
 function RequestCard({
   req,
@@ -65,7 +67,11 @@ function RequestCard({
         ) : (
           <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
         )}
-        <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[req.status])} />
+        {req.status === "in_progress" ? (
+          <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[req.status])} />
+        )}
         <span className="font-mono text-[11px] text-muted-foreground shrink-0">{req.id}</span>
         <span className="text-sm flex-1 truncate">{req.title}</span>
         <span className={cn(
@@ -173,6 +179,7 @@ export default function RequestsPage() {
 
   const grouped: Record<string, RequestItem[]> = {
     pending: requests.filter((r) => r.status === "pending"),
+    reviewing: requests.filter((r) => r.status === "reviewing"),
     in_progress: requests.filter((r) => r.status === "in_progress"),
     rejected: requests.filter((r) => r.status === "rejected"),
     done: requests.filter((r) => r.status === "done"),
@@ -246,7 +253,11 @@ export default function RequestsPage() {
         return (
           <div key={status}>
             <div className="flex items-center gap-2 mb-2">
-              <span className={cn("w-2 h-2 rounded-full", STATUS_DOT[status])} />
+              {status === "in_progress" ? (
+                <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <span className={cn("w-2 h-2 rounded-full", STATUS_DOT[status])} />
+              )}
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {STATUS_LABEL[status]}
               </span>

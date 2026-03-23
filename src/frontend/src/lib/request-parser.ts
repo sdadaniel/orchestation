@@ -4,7 +4,7 @@ import path from "path";
 export interface RequestData {
   id: string;
   title: string;
-  status: "pending" | "in_progress" | "done";
+  status: "pending" | "in_progress" | "reviewing" | "done" | "rejected";
   priority: "high" | "medium" | "low";
   created: string;
   content: string;
@@ -46,7 +46,7 @@ export function parseAllRequests(): RequestData[] {
   }
 
   // Sort: pending first, then in_progress, then done
-  const statusOrder: Record<string, number> = { pending: 0, in_progress: 1, done: 2 };
+  const statusOrder: Record<string, number> = { pending: 0, reviewing: 1, in_progress: 2, rejected: 3, done: 4 };
   return requests.sort((a, b) => {
     const so = (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99);
     if (so !== 0) return so;
