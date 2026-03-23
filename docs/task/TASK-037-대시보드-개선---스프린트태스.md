@@ -1,7 +1,7 @@
 ---
 id: TASK-037
 title: 대시보드 개선 - 스프린트/태스크 현황 표시 및 태스크 로그 뷰 추가
-status: in_progress
+status: done
 priority: medium
 sprint:
 depends_on: []
