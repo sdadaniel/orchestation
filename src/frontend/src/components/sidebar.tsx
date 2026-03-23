@@ -69,6 +69,7 @@ type TaskSidebarProps = {
   onDocCreate?: (title: string, type: "doc" | "folder", parentId?: string | null) => Promise<void>;
   onDocDelete?: (id: string) => Promise<void>;
   onDocRename?: (id: string, title: string) => Promise<void>;
+  onDocReorder?: (nodeId: string, targetParentId: string | null, position: number) => Promise<void>;
   currentPath?: string;
 };
 
@@ -153,7 +154,7 @@ function NewItemInput({
   );
 }
 
-/* ── Single tree node ── */
+/* ── Single tree node (with drag & drop) ── */
 function DocTreeNode({
   node,
   depth,
@@ -163,6 +164,7 @@ function DocTreeNode({
   onDelete,
   onRename,
   onCreate,
+  onReorder,
 }: {
   node: DocNode;
   depth: number;
@@ -172,10 +174,12 @@ function DocTreeNode({
   onDelete?: (id: string) => Promise<void>;
   onRename?: (id: string, title: string) => Promise<void>;
   onCreate?: (title: string, type: "doc" | "folder", parentId?: string | null) => Promise<void>;
+  onReorder?: (nodeId: string, targetParentId: string | null, position: number) => Promise<void>;
 }) {
   const [isRenaming, setIsRenaming] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [newItemType, setNewItemType] = useState<"doc" | "folder" | null>(null);
+  const [dragOver, setDragOver] = useState<"above" | "inside" | "below" | null>(null);
   const isFolder = node.type === "folder";
   const isExpanded = expandedFolders.has(node.id);
   const isActive = currentPath === `/docs/${node.id}`;
@@ -192,20 +196,77 @@ function DocTreeNode({
   const handleCreateChild = async (title: string) => {
     if (onCreate && newItemType) {
       await onCreate(title, newItemType, node.id);
-      // Auto-expand the folder
       if (!isExpanded) toggleFolder(node.id);
     }
     setNewItemType(null);
   };
 
+  // Drag handlers
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData("text/plain", node.id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const h = rect.height;
+
+    if (isFolder && y > h * 0.25 && y < h * 0.75) {
+      setDragOver("inside");
+    } else if (y < h * 0.5) {
+      setDragOver("above");
+    } else {
+      setDragOver("below");
+    }
+  };
+
+  const handleDragLeave = () => setDragOver(null);
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const draggedId = e.dataTransfer.getData("text/plain");
+    if (!draggedId || draggedId === node.id || !onReorder) {
+      setDragOver(null);
+      return;
+    }
+
+    if (dragOver === "inside" && isFolder) {
+      await onReorder(draggedId, node.id, 0);
+      if (!isExpanded) toggleFolder(node.id);
+    } else if (dragOver === "above") {
+      // 같은 부모, 현재 노드 위로
+      await onReorder(draggedId, null, -1); // API에서 처리
+    } else if (dragOver === "below") {
+      await onReorder(draggedId, null, -1);
+    }
+    setDragOver(null);
+  };
+
   const paddingLeft = 8 + depth * 12;
+
+  const dropIndicator = dragOver === "above"
+    ? "border-t-2 border-primary"
+    : dragOver === "below"
+    ? "border-b-2 border-primary"
+    : dragOver === "inside"
+    ? "bg-primary/10 rounded"
+    : "";
 
   return (
     <div>
       <div
-        className="relative group"
+        className={cn("relative group", dropIndicator)}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
+        draggable={!isRenaming}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         {isFolder ? (
           <div
@@ -239,6 +300,7 @@ function DocTreeNode({
             href={`/docs/${node.id}`}
             className={cn("tree-item no-underline text-sidebar-foreground", isActive && "active")}
             style={{ paddingLeft }}
+            draggable={false}
           >
             <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
             {isRenaming ? (
@@ -319,6 +381,7 @@ function DocTreeNode({
               onDelete={onDelete}
               onRename={onRename}
               onCreate={onCreate}
+              onReorder={onReorder}
             />
           ))}
         </div>
@@ -336,6 +399,7 @@ export function TaskSidebar({
   onDocCreate,
   onDocDelete,
   onDocRename,
+  onDocReorder,
   currentPath = "/",
 }: TaskSidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
@@ -465,6 +529,7 @@ export function TaskSidebar({
               onDelete={onDocDelete}
               onRename={onDocRename}
               onCreate={onDocCreate}
+              onReorder={onDocReorder}
             />
           ))}
 

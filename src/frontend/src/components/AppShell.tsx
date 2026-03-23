@@ -40,7 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { groups, isLoading, error } = useTasks();
   const { prds } = usePrds();
-  const { tree: docTree, createDoc, updateDoc, deleteDoc } = useDocTree();
+  const { tree: docTree, createDoc, updateDoc, deleteDoc, reorderDoc } = useDocTree();
 
   const [filter, setFilter] = useState<SidebarFilter>({ type: "all" });
   const [selectedTask, setSelectedTask] = useState<WaterfallTask | null>(null);
@@ -118,6 +118,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     await updateDoc(id, { title });
   }, [updateDoc]);
 
+  const handleDocReorder = useCallback(async (nodeId: string, targetParentId: string | null, position: number) => {
+    await reorderDoc(nodeId, targetParentId, position);
+  }, [reorderDoc]);
+
   // Keyboard navigation
   useEffect(() => {
     if (!isTaskView) return;
@@ -173,6 +177,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onDocCreate={handleDocCreate}
         onDocDelete={handleDocDelete}
         onDocRename={handleDocRename}
+        onDocReorder={handleDocReorder}
         currentPath={pathname}
       />
 
