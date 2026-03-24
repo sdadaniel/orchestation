@@ -30,14 +30,24 @@ function getClaudeProcesses(): ClaudeProcess[] {
     return lines
       .map((line) => {
         const parts = line.trim().split(/\s+/);
+        // 방어: parts 배열 길이가 최소 11 이상이어야 유효한 ps aux 출력
+        if (parts.length < 11) return null;
+
         const pid = parseInt(parts[1], 10);
-        const cpu = parseFloat(parts[2]) || 0;
-        const mem = parseFloat(parts[3]) || 0;
+        // 방어: PID가 NaN이면 스킵
+        if (isNaN(pid)) return null;
+
+        const cpu = parseFloat(parts[2]);
+        const mem = parseFloat(parts[3]);
+        // 방어: CPU/MEM 파싱 실패 시 스킵
+        if (isNaN(cpu) || isNaN(mem)) return null;
+
         const command = parts.slice(10).join(" ");
         const memMB = +((mem / 100) * totalMem / 1024 / 1024).toFixed(1);
 
         return { pid, cpu, mem, memMB, command, label: "" };
       })
+      .filter((p): p is NonNullable<typeof p> => p !== null)
       .filter((p) => p.mem > 0.05) // 의미있는 프로세스만
       .sort((a, b) => b.mem - a.mem)
       .map((p) => {
