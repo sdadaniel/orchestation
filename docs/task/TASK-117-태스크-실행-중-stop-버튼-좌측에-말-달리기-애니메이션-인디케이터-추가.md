@@ -1,7 +1,7 @@
 ---
 id: TASK-117
 title: 태스크 실행 중 Stop 버튼 좌측에 말 달리기 애니메이션 인디케이터 추가
-status: in_progress
+status: done
 branch: task/task-117
 worktree: ../repo-wt-task-117
 priority: low
