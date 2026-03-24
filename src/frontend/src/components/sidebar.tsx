@@ -433,6 +433,7 @@ export function TaskSidebar({
     walk(docTree);
     return ids;
   });
+  const [docsExpanded, setDocsExpanded] = useState(false);
   const [newRootItemType, setNewRootItemType] = useState<"doc" | "folder" | null>(null);
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -483,72 +484,87 @@ export function TaskSidebar({
         {/* ── Docs (문서 트리) ── */}
         <div className="mb-2">
           <div className="px-2 mb-1 flex items-center justify-between">
-            <Link href="/docs" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors no-underline cursor-pointer">
+            <button
+              type="button"
+              className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors cursor-pointer bg-transparent border-none p-0"
+              onClick={() => setDocsExpanded((v) => !v)}
+            >
+              {docsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
               Docs
-            </Link>
-            <div className="relative">
-              <button
-                type="button"
-                title="New document or folder"
-                className="p-0.5 rounded hover:bg-sidebar-accent text-muted-foreground hover:text-foreground"
-                onClick={() => setShowNewMenu(!showNewMenu)}
-              >
-                <Plus className="h-3 w-3" />
-              </button>
-              {showNewMenu && (
-                <div className="absolute right-0 top-full mt-1 bg-sidebar border border-sidebar-border rounded shadow-lg z-50 py-1 min-w-[120px]">
+            </button>
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-muted-foreground">{docTree.length}</span>
+              {docsExpanded && (
+                <div className="relative">
                   <button
                     type="button"
-                    className="w-full text-left px-3 py-1 text-xs hover:bg-sidebar-accent flex items-center gap-2"
-                    onClick={() => { setNewRootItemType("doc"); setShowNewMenu(false); }}
+                    title="New document or folder"
+                    className="p-0.5 rounded hover:bg-sidebar-accent text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowNewMenu(!showNewMenu)}
                   >
-                    <FileText className="h-3 w-3" />
-                    New Document
+                    <Plus className="h-3 w-3" />
                   </button>
-                  <button
-                    type="button"
-                    className="w-full text-left px-3 py-1 text-xs hover:bg-sidebar-accent flex items-center gap-2"
-                    onClick={() => { setNewRootItemType("folder"); setShowNewMenu(false); }}
-                  >
-                    <Folder className="h-3 w-3" />
-                    New Folder
-                  </button>
+                  {showNewMenu && (
+                    <div className="absolute right-0 top-full mt-1 bg-sidebar border border-sidebar-border rounded shadow-lg z-50 py-1 min-w-[120px]">
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-1 text-xs hover:bg-sidebar-accent flex items-center gap-2"
+                        onClick={() => { setNewRootItemType("doc"); setShowNewMenu(false); }}
+                      >
+                        <FileText className="h-3 w-3" />
+                        New Document
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-1 text-xs hover:bg-sidebar-accent flex items-center gap-2"
+                        onClick={() => { setNewRootItemType("folder"); setShowNewMenu(false); }}
+                      >
+                        <Folder className="h-3 w-3" />
+                        New Folder
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
 
-          {/* New root item input */}
-          {newRootItemType && (
-            <NewItemInput
-              type={newRootItemType}
-              onConfirm={handleCreateRootItem}
-              onCancel={() => setNewRootItemType(null)}
-            />
-          )}
+          {/* Collapsible doc tree content */}
+          <div className={cn("sidebar-collapsible", docsExpanded && "sidebar-collapsible-open")}>
+            <div className="sidebar-collapsible-inner">
+              {/* New root item input */}
+              {newRootItemType && (
+                <NewItemInput
+                  type={newRootItemType}
+                  onConfirm={handleCreateRootItem}
+                  onCancel={() => setNewRootItemType(null)}
+                />
+              )}
 
-          {/* Doc tree */}
-          {docTree.map((node) => (
-            <DocTreeNode
-              key={node.id}
-              node={node}
-              depth={0}
-              currentPath={currentPath}
-              expandedFolders={expandedFolders}
-              toggleFolder={toggleFolder}
-              onDelete={onDocDelete}
-              onRename={onDocRename}
-              onCreate={onDocCreate}
-              onReorder={onDocReorder}
-              onReorderError={onDocReorderError}
-            />
-          ))}
+              {/* Doc tree */}
+              {docTree.map((node) => (
+                <DocTreeNode
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  currentPath={currentPath}
+                  expandedFolders={expandedFolders}
+                  toggleFolder={toggleFolder}
+                  onDelete={onDocDelete}
+                  onRename={onDocRename}
+                  onCreate={onDocCreate}
+                  onReorder={onDocReorder}
+                  onReorderError={onDocReorderError}
+                />
+              ))}
 
-          {docTree.length === 0 && !newRootItemType && (
-            <div className="px-2 py-2 text-[11px] text-muted-foreground">
-              No documents yet
+              {docTree.length === 0 && !newRootItemType && (
+                <div className="px-2 py-2 text-[11px] text-muted-foreground">
+                  No documents yet
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* ── Tasks (merged from Requests) ── */}
