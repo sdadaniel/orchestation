@@ -183,12 +183,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     await reorderDoc(nodeId, targetParentId, position);
   }, [reorderDoc]);
 
-  const handleDocReorderError = useCallback(async (error: unknown) => {
-    console.error("Reorder failed:", error);
-    addToast("문서 순서 변경에 실패했습니다.", "error");
-    // Refetch to restore server state
+  const handleDocReorderError = useCallback(async (_error: unknown) => {
+    // Toast is shown by sidebar component; here we only refetch to restore server state
     await fetchTree();
-  }, [addToast, fetchTree]);
+  }, [fetchTree]);
 
   if (isLoading) {
     return (
