@@ -8,6 +8,7 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$PROJECT_ROOT/scripts/lib/sed-inplace.sh"
 TEST_DIR=$(mktemp -d)
 PASS=0
 FAIL=0
@@ -196,11 +197,7 @@ log_test "7. update_status function"
 TEST_REQ="$TEST_DIR/test-update.md"
 cp "$REQUESTS_DIR/REQ-001-test-a.md" "$TEST_REQ"
 
-if [[ "$(uname)" == "Darwin" ]]; then
-  sed -i '' "s/^status: .*/status: in_progress/" "$TEST_REQ"
-else
-  sed -i "s/^status: .*/status: in_progress/" "$TEST_REQ"
-fi
+sed_inplace "s/^status: .*/status: in_progress/" "$TEST_REQ"
 
 NEW_STATUS=$(get_field "$TEST_REQ" "status")
 assert_eq "status updated to in_progress" "in_progress" "$NEW_STATUS"

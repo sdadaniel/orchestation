@@ -6,6 +6,7 @@ set -euo pipefail
 # 병렬 태스크는 각각 별도 iTerm 패널에서 실행
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
 TASK_DIR="$REPO_ROOT/docs/task"
 REQ_DIR="$REPO_ROOT/docs/requests"
 MAX_REVIEW_RETRY=10
@@ -158,7 +159,7 @@ start_task() {
   local tf
   tf=$(find_file "$task_id")
   if [ -n "$tf" ]; then
-    sed -i '' -E "s/^status: (pending|stopped)/status: in_progress/" "$tf"
+    sed_inplace_E "s/^status: (pending|stopped)/status: in_progress/" "$tf"
     git -C "$REPO_ROOT" add "$tf"
     git -C "$REPO_ROOT" commit --only "$tf" -m "chore(${task_id}): status → in_progress"
   fi
@@ -190,7 +191,7 @@ process_done_task() {
     local local_task_file
     local_task_file=$(find_file "$task_id")
     if [ -n "$local_task_file" ]; then
-      sed -i '' "s/^status: .*/status: done/" "$local_task_file"
+      sed_inplace "s/^status: .*/status: done/" "$local_task_file"
     fi
 
     local wt_path
