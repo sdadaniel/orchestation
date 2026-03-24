@@ -87,7 +87,7 @@ export function RightPanel({ task, prd }: RightPanelProps) {
     );
   }
 
-  const statusStyle = STATUS_STYLES[task.status as TaskStatus];
+  const statusStyle = STATUS_STYLES[task.status as TaskStatus] ?? STATUS_STYLES.pending;
   const priorityStyle =
     PRIORITY_STYLES[task.priority as TaskPriority] ?? PRIORITY_STYLES.medium;
 

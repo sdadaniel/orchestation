@@ -90,15 +90,17 @@ export function ChatBot() {
   }, [activeSession]);
 
   const deleteSession = useCallback((id: string) => {
-    setSessions((prev) => prev.filter((s) => s.id !== id));
-    setActiveSessionId((curr) => {
-      if (curr === id) {
-        const remaining = sessions.filter((s) => s.id !== id);
-        return remaining[0]?.id ?? null;
-      }
-      return curr;
+    setSessions((prev) => {
+      const remaining = prev.filter((s) => s.id !== id);
+      setActiveSessionId((curr) => {
+        if (curr === id) {
+          return remaining[0]?.id ?? null;
+        }
+        return curr;
+      });
+      return remaining;
     });
-  }, [sessions]);
+  }, []);
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isStreaming) return;

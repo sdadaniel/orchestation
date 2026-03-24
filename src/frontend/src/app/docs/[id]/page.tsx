@@ -2,7 +2,7 @@
 
 import { use, useState, useCallback } from "react";
 import { useDocDetail } from "@/hooks/useDocTree";
-import { BookOpen, Pencil, Eye, Save, X, ChevronRight, FolderOpen } from "lucide-react";
+import { BookOpen, Pencil, Save, X, ChevronRight } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 

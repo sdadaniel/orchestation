@@ -152,7 +152,7 @@ export default function DAGCanvas({ requests, tasks, onClickItem }: { requests: 
   const tf = useRef({ x: 0, y: 0, scale: 1 });
   const pan = useRef<{ active: boolean; sx: number; sy: number; tx: number; ty: number; moved: boolean } | null>(null);
   const [maxParallel, setMaxParallel] = useState(3);
-  useEffect(() => { fetch("/api/settings").then((r) => r.json()).then((d) => { if (d.maxParallel) setMaxParallel(d.maxParallel); }).catch(() => {}); }, []);
+  useEffect(() => { fetch("/api/settings").then((r) => { if (!r.ok) throw new Error("fetch failed"); return r.json(); }).then((d) => { if (d.maxParallel) setMaxParallel(d.maxParallel); }).catch(() => {}); }, []);
   const [, kick] = useState(0);
   const [hovEdge, setHovEdge] = useState<string | null>(null);
   const layout = useMemo(() => computeDAGLayout(requests, tasks, maxParallel), [requests, tasks, maxParallel]);
