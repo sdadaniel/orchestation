@@ -9,7 +9,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
 TASK_DIR="$REPO_ROOT/docs/task"
 REQ_DIR="$REPO_ROOT/docs/requests"
-MAX_REVIEW_RETRY=10
+MAX_REVIEW_RETRY="${MAX_REVIEW_RETRY:-3}"
 MAX_PARALLEL="${MAX_PARALLEL:-3}"
 SIGNAL_DIR="/tmp/orchestrate-$$"
 mkdir -p "$SIGNAL_DIR"
@@ -218,7 +218,24 @@ process_done_task() {
     rm -f "${SIGNAL_DIR}/${task_id}-done"
     return 0
   elif [ -f "${SIGNAL_DIR}/${task_id}-failed" ]; then
-    echo "  ❌ ${task_id} 실패"
+    echo "  ❌ ${task_id} 실패 (review retry 상한 초과)"
+
+    # 태스크를 failed 상태로 마킹
+    local failed_task_file
+    failed_task_file=$(find_file "$task_id")
+    if [ -n "$failed_task_file" ]; then
+      sed_inplace "s/^status: .*/status: failed/" "$failed_task_file"
+      git -C "$REPO_ROOT" add "$failed_task_file"
+      git -C "$REPO_ROOT" commit --only "$failed_task_file" -m "chore(${task_id}): status → failed (review retry 상한 초과)" || true
+    fi
+
+    # worktree 정리
+    local failed_wt_path
+    failed_wt_path=$(get_worktree "$task_id")
+    if [ -d "$failed_wt_path" ]; then
+      git -C "$REPO_ROOT" worktree remove "$failed_wt_path" --force 2>/dev/null || true
+    fi
+
     rm -f "${SIGNAL_DIR}/${task_id}-failed"
     return 1
   fi

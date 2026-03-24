@@ -8,10 +8,16 @@ set -euo pipefail
 
 TASK_ID="${1:?Usage: ./scripts/run-worker.sh TASK-XXX [SIGNAL_DIR] [MAX_RETRY]}"
 SIGNAL_DIR="${2:-}"
-MAX_RETRY="${3:-2}"
+MAX_RETRY="${3:-${MAX_REVIEW_RETRY:-2}}"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PATH="$HOME/.local/bin:$PATH"
+
+# ─── 입력 검증 ────────────────────────────────────────────
+if ! [[ "$MAX_RETRY" =~ ^[0-9]+$ ]]; then
+  echo "❌ MAX_RETRY는 0 이상의 정수여야 합니다: $MAX_RETRY" >&2
+  exit 1
+fi
 
 # Load signal helper for atomic signal file operations
 source "$REPO_ROOT/scripts/lib/signal.sh"
@@ -285,8 +291,21 @@ run_review() {
 # ─── 메인: Task → Review → Retry 루프 ────────────────────
 
 FEEDBACK_FILE="$OUTPUT_DIR/${TASK_ID}-review-feedback.txt"
+RETRY_LOG="$OUTPUT_DIR/logs/${TASK_ID}-retry.log"
+mkdir -p "$OUTPUT_DIR/logs"
+
+log_retry() {
+  local msg="$1"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] ${TASK_ID} | $msg" | tee -a "$RETRY_LOG"
+}
+
+log_retry "MAX_RETRY=${MAX_RETRY} 로 작업 시작"
 
 for i in $(seq 0 "$MAX_RETRY"); do
+  local_attempt=$((i + 1))
+  local_total=$((MAX_RETRY + 1))
+  log_retry "attempt=${local_attempt}/${local_total} 시작"
+
   # 작업 실행 (재시도 시 리뷰 피드백 전달)
   FEEDBACK_ARG=""
   if [ "$i" -gt 0 ] && [ -f "$FEEDBACK_FILE" ]; then
@@ -297,22 +316,27 @@ for i in $(seq 0 "$MAX_RETRY"); do
     # 리뷰 실행
     if run_review; then
       rm -f "$FEEDBACK_FILE"
+      log_retry "attempt=${local_attempt}/${local_total} 리뷰 승인됨 ✅"
       if [ -n "$SIGNAL_DIR" ]; then
         signal_create "$SIGNAL_DIR" "$TASK_ID" "done"
       fi
       exit 0
+    else
+      log_retry "attempt=${local_attempt}/${local_total} 리뷰 실패 (수정 요청)"
     fi
+  else
+    log_retry "attempt=${local_attempt}/${local_total} 작업 실행 실패"
   fi
 
   # 마지막 시도였으면 실패
   if [ "$i" -eq "$MAX_RETRY" ]; then
+    log_retry "retry 상한(${MAX_RETRY}) 초과 → failed 처리"
     if [ -n "$SIGNAL_DIR" ]; then
       signal_create "$SIGNAL_DIR" "$TASK_ID" "failed"
     fi
     exit 1
   fi
 
-  echo ""
-  echo "[retry] 리뷰 실패, 피드백 반영하여 재작업 시도... ($((i + 1))/${MAX_RETRY})"
+  log_retry "리뷰 실패, 피드백 반영하여 재작업 시도... ($((i + 1))/${MAX_RETRY})"
   echo ""
 done
