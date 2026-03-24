@@ -37,6 +37,7 @@ interface TaskDetail {
 }
 
 const STATUS_DOT: Record<string, string> = {
+  stopped: "bg-violet-500",
   pending: "bg-yellow-500",
   in_progress: "bg-blue-500",
   reviewing: "bg-orange-500",
@@ -45,6 +46,7 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
+  stopped: "Stopped",
   pending: "Pending",
   in_progress: "In Progress",
   reviewing: "Reviewing",

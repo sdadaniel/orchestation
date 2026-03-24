@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Play, Square, Loader2 } from "lucide-react";
 
@@ -11,11 +11,17 @@ export default function AutoImproveControl() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const prevStatusRef = useRef<RunStatus>("idle");
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/orchestrate/status");
       if (res.ok) {
         const data = await res.json();
+        // running → failed 전환 감지 시 에러 표시
+        if (prevStatusRef.current === "running" && data.status === "failed") {
+          setError(`실행 실패 (exit code: ${data.exitCode ?? "unknown"})`);
+        }
+        prevStatusRef.current = data.status;
         setStatus(data.status);
       }
     } catch {

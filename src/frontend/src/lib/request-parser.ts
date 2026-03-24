@@ -4,7 +4,7 @@ import path from "path";
 export interface RequestData {
   id: string;
   title: string;
-  status: "pending" | "in_progress" | "reviewing" | "done" | "rejected";
+  status: "pending" | "stopped" | "in_progress" | "reviewing" | "done" | "rejected";
   priority: "high" | "medium" | "low";
   created: string;
   updated: string;

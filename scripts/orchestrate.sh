@@ -66,19 +66,25 @@ get_task_ids() {
     find "$TASK_DIR" -name "TASK-*.md" 2>/dev/null
     find "$REQ_DIR" -name "REQ-*.md" 2>/dev/null
   } | while read -r f; do
-    local id pri weight sort_ord
+    local id pri st weight sort_ord status_weight
     id=$(get_field "$f" "id")
     pri=$(get_field "$f" "priority")
+    st=$(get_field "$f" "status")
     sort_ord=$(get_field "$f" "sort_order")
     sort_ord="${sort_ord:-0}"
+    # stopped(0)가 pending(1)보다 우선
+    case "$st" in
+      stopped) status_weight=0 ;;
+      *)       status_weight=1 ;;
+    esac
     case "$pri" in
       high)   weight=1 ;;
       medium) weight=2 ;;
       low)    weight=3 ;;
       *)      weight=4 ;;
     esac
-    printf "%s %04d %s\n" "${weight}" "${sort_ord}" "${id}"
-  done | sort -k1,1n -k2,2n -k3,3 | awk '{print $3}'
+    printf "%s %s %04d %s\n" "${status_weight}" "${weight}" "${sort_ord}" "${id}"
+  done | sort -k1,1n -k2,2n -k3,3n -k4,4 | awk '{print $4}'
 }
 
 # docs/task/ 또는 docs/requests/ 에서 파일 찾기
@@ -142,88 +148,27 @@ deps_satisfied() {
   return 0
 }
 
-# ── 메인 파이프라인 루프 ──────────────────────────────
+# ── 태스크 시작 헬퍼 ──────────────────────────────────
 
-echo "🚀 Pipeline 시작"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+start_task() {
+  local task_id="$1"
+  echo "  🔧 ${task_id}: 시작..."
 
-while true; do
-  BATCH=()
-
-  # 실행 가능한 TASK 수집 (pending + 의존 충족)
-  while IFS= read -r task_id; do
-    [ -z "$task_id" ] && continue
-    status=$(get_status "$task_id")
-    [ "$status" != "pending" ] && continue
-    if deps_satisfied "$task_id"; then
-      BATCH+=("$task_id")
-    fi
-  done <<< "$(get_task_ids)"
-
-  # 더 이상 실행할 TASK가 없으면 종료
-  if [ ${#BATCH[@]} -eq 0 ]; then
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "✅ Pipeline 완료!"
-
-    REMAINING=0
-    while IFS= read -r task_id; do
-      [ -z "$task_id" ] && continue
-      status=$(get_status "$task_id")
-      if [ "$status" == "pending" ]; then
-        REMAINING=$((REMAINING + 1))
-      fi
-    done <<< "$(get_task_ids)"
-
-    if [ "$REMAINING" -gt 0 ]; then
-      echo "⚠️  의존 관계가 충족되지 않아 실행되지 못한 TASK: ${REMAINING}개"
-    fi
-    break
+  # status → in_progress
+  local tf
+  tf=$(find_file "$task_id")
+  if [ -n "$tf" ]; then
+    sed -i '' -E "s/^status: (pending|stopped)/status: in_progress/" "$tf"
+    git -C "$REPO_ROOT" add "$tf"
+    git -C "$REPO_ROOT" commit --only "$tf" -m "chore(${task_id}): status → in_progress"
   fi
 
-  echo ""
-  echo "▶ 병렬 실행: ${BATCH[*]} (MAX_PARALLEL=${MAX_PARALLEL})"
-  echo ""
+  # iTerm 패널에서 실행
+  mkdir -p "$REPO_ROOT/output/logs"
+  local log_file="$REPO_ROOT/output/logs/${task_id}.log"
+  local cmd="bash ${REPO_ROOT}/scripts/run-worker.sh ${task_id} ${SIGNAL_DIR} ${MAX_REVIEW_RETRY} 2>&1 | tee ${log_file}"
 
-  # ── 배치를 MAX_PARALLEL 크기 청크로 분할 실행 ──
-
-  total=${#BATCH[@]}
-  offset=0
-
-  while [ "$offset" -lt "$total" ]; do
-    CHUNK=("${BATCH[@]:$offset:$MAX_PARALLEL}")
-    offset=$((offset + MAX_PARALLEL))
-
-    if [ "$total" -gt "$MAX_PARALLEL" ]; then
-      echo "  📦 청크 실행: ${CHUNK[*]} (${#CHUNK[@]}/${total})"
-    fi
-
-    # ── status → in_progress ──
-    IN_PROGRESS_FILES=()
-    for task_id in "${CHUNK[@]}"; do
-      tf=$(find_file "$task_id")
-      if [ -n "$tf" ]; then
-        sed -i '' "s/^status: pending/status: in_progress/" "$tf"
-        IN_PROGRESS_FILES+=("$tf")
-      fi
-    done
-    if [ ${#IN_PROGRESS_FILES[@]} -gt 0 ]; then
-      git -C "$REPO_ROOT" add "${IN_PROGRESS_FILES[@]}"
-      CHUNK_LABEL=$(IFS=,; echo "${CHUNK[*]}")
-      git -C "$REPO_ROOT" commit -m "chore(${CHUNK_LABEL}): status → in_progress"
-    fi
-
-    # ── 각 태스크를 별도 iTerm 패널에서 실행 ──
-
-    for task_id in "${CHUNK[@]}"; do
-      echo "  🔧 ${task_id}: iTerm 패널 열기..."
-
-      # run-worker.sh: run-task.sh → run-review.sh (리뷰 실패 시 최대 MAX_REVIEW_RETRY회 재시도)
-      mkdir -p "$REPO_ROOT/output/logs"
-      log_file="$REPO_ROOT/output/logs/${task_id}.log"
-      cmd="bash ${REPO_ROOT}/scripts/run-worker.sh ${task_id} ${SIGNAL_DIR} ${MAX_REVIEW_RETRY} 2>&1 | tee ${log_file}"
-
-      osascript <<EOF
+  osascript <<EOF
 tell application "iTerm"
     if (count of windows) = 0 then
         create window with default profile
@@ -233,77 +178,135 @@ tell application "iTerm"
     end tell
 end tell
 EOF
-    done
+}
 
-    # ── 청크 내 모든 태스크 완료 대기 ──
+# 완료된 태스크 처리 (머지 + 상태 업데이트)
+process_done_task() {
+  local task_id="$1"
 
-    echo ""
-    echo "  ⏳ ${#CHUNK[@]}개 태스크 완료 대기 중..."
+  if [ -f "${SIGNAL_DIR}/${task_id}-done" ]; then
+    echo "  ✅ ${task_id} 완료"
 
-    FAILED=0
-    while true; do
-      all_done=true
-      for task_id in "${CHUNK[@]}"; do
-        if [ ! -f "${SIGNAL_DIR}/${task_id}-done" ] && [ ! -f "${SIGNAL_DIR}/${task_id}-failed" ]; then
-          all_done=false
-          break
-        fi
-      done
-      if [ "$all_done" = true ]; then
-        break
-      fi
-      sleep 2
-    done
-
-    # ── 결과 처리: 머지 + 상태 업데이트 ──
-
-    for task_id in "${CHUNK[@]}"; do
-      if [ -f "${SIGNAL_DIR}/${task_id}-done" ]; then
-        echo "  ✅ ${task_id} 완료"
-
-        # status → done
-        local_task_file=$(find_file "$task_id")
-        if [ -n "$local_task_file" ]; then
-          sed -i '' "s/^status: .*/status: done/" "$local_task_file"
-        fi
-
-        # worktree 제거
-        wt_path=$(get_worktree "$task_id")
-        if [ -d "$wt_path" ]; then
-          git -C "$REPO_ROOT" worktree remove "$wt_path" --force 2>/dev/null || true
-        fi
-
-        # main에 머지
-        branch=$(get_branch "$task_id")
-        if [ -n "$branch" ]; then
-          if git -C "$REPO_ROOT" log --oneline "main..$branch" 2>/dev/null | grep -q .; then
-            echo "  🔀 ${task_id}: $branch → main 머지"
-            git -C "$REPO_ROOT" merge "$branch" --no-ff --no-edit
-          fi
-          git -C "$REPO_ROOT" branch -d "$branch" 2>/dev/null || true
-        fi
-
-        # 태스크 상태 변경 커밋
-        if [ -n "$local_task_file" ]; then
-          git -C "$REPO_ROOT" add "$local_task_file"
-          git -C "$REPO_ROOT" commit -m "chore(${task_id}): status → done"
-        fi
-      else
-        echo "  ❌ ${task_id} 실패"
-        FAILED=1
-      fi
-
-      # 시그널 파일 정리
-      rm -f "${SIGNAL_DIR}/${task_id}-done" "${SIGNAL_DIR}/${task_id}-failed"
-    done
-
-    if [ "$FAILED" -eq 1 ]; then
-      echo ""
-      echo "❌ 실패한 TASK가 있어 Pipeline을 중단합니다."
-      exit 1
+    local local_task_file
+    local_task_file=$(find_file "$task_id")
+    if [ -n "$local_task_file" ]; then
+      sed -i '' "s/^status: .*/status: done/" "$local_task_file"
     fi
 
-  done  # end CHUNK loop
+    local wt_path
+    wt_path=$(get_worktree "$task_id")
+    if [ -d "$wt_path" ]; then
+      git -C "$REPO_ROOT" worktree remove "$wt_path" --force 2>/dev/null || true
+    fi
+
+    local branch
+    branch=$(get_branch "$task_id")
+    if [ -n "$branch" ]; then
+      if git -C "$REPO_ROOT" log --oneline "main..$branch" 2>/dev/null | grep -q .; then
+        echo "  🔀 ${task_id}: $branch → main 머지"
+        git -C "$REPO_ROOT" merge "$branch" --no-ff --no-edit
+      fi
+      git -C "$REPO_ROOT" branch -d "$branch" 2>/dev/null || true
+    fi
+
+    if [ -n "$local_task_file" ]; then
+      git -C "$REPO_ROOT" add "$local_task_file"
+      git -C "$REPO_ROOT" commit --only "$local_task_file" -m "chore(${task_id}): status → done"
+    fi
+
+    rm -f "${SIGNAL_DIR}/${task_id}-done"
+    return 0
+  elif [ -f "${SIGNAL_DIR}/${task_id}-failed" ]; then
+    echo "  ❌ ${task_id} 실패"
+    rm -f "${SIGNAL_DIR}/${task_id}-failed"
+    return 1
+  fi
+  return 2  # 아직 진행 중
+}
+
+# ── 메인 파이프라인 (슬롯 기반) ──────────────────────
+
+echo "🚀 Pipeline 시작"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+RUNNING=()   # 현재 실행 중인 태스크 ID 목록
+FAILED_COUNT=0
+
+while true; do
+  # ── 실행 가능한 태스크 큐 갱신 ──
+  QUEUE=()
+  while IFS= read -r task_id; do
+    [ -z "$task_id" ] && continue
+    local_status=$(get_status "$task_id")
+    [ "$local_status" != "pending" ] && [ "$local_status" != "stopped" ] && continue
+    if deps_satisfied "$task_id"; then
+      QUEUE+=("$task_id")
+    fi
+  done <<< "$(get_task_ids)"
+
+  # 실행 중인 것도 없고 대기 큐도 비었으면 종료
+  if [ "${#RUNNING[@]}" -eq 0 ] && [ "${#QUEUE[@]}" -eq 0 ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "✅ Pipeline 완료!"
+
+    if [ "$FAILED_COUNT" -gt 0 ]; then
+      echo "⚠️  실패한 태스크: ${FAILED_COUNT}개"
+    fi
+
+    REMAINING=0
+    while IFS= read -r task_id; do
+      [ -z "$task_id" ] && continue
+      local_status=$(get_status "$task_id")
+      if [ "$local_status" == "pending" ] || [ "$local_status" == "stopped" ]; then
+        REMAINING=$((REMAINING + 1))
+      fi
+    done <<< "$(get_task_ids)"
+
+    if [ "$REMAINING" -gt 0 ]; then
+      echo "⚠️  의존 관계 미충족으로 대기 중: ${REMAINING}개"
+    fi
+    break
+  fi
+
+  # ── 빈 슬롯에 새 태스크 투입 ──
+  qi=0
+  while [ "${#RUNNING[@]}" -lt "$MAX_PARALLEL" ] && [ "$qi" -lt "${#QUEUE[@]}" ]; do
+    next_task="${QUEUE[$qi]}"
+    qi=$((qi + 1))
+
+    # 이미 실행 중인지 확인
+    already_running=false
+    for rt in "${RUNNING[@]+"${RUNNING[@]}"}"; do
+      if [ "$rt" == "$next_task" ]; then
+        already_running=true
+        break
+      fi
+    done
+    if $already_running; then continue; fi
+
+    start_task "$next_task"
+    RUNNING+=("$next_task")
+    echo "  📊 슬롯: ${#RUNNING[@]}/${MAX_PARALLEL} (대기: $((${#QUEUE[@]} - qi)))"
+  done
+
+  # ── 실행 중인 태스크 완료 여부 체크 ──
+  sleep 2
+
+  NEW_RUNNING=()
+  for task_id in "${RUNNING[@]+"${RUNNING[@]}"}"; do
+    rc=0
+    process_done_task "$task_id" || rc=$?
+    if [ "$rc" -eq 2 ]; then
+      # 아직 진행 중
+      NEW_RUNNING+=("$task_id")
+    elif [ "$rc" -eq 1 ]; then
+      # 실패
+      FAILED_COUNT=$((FAILED_COUNT + 1))
+    fi
+    # rc=0 (성공)이면 RUNNING에서 제거됨
+  done
+  RUNNING=("${NEW_RUNNING[@]+"${NEW_RUNNING[@]}"}")
 done
 
 echo ""
