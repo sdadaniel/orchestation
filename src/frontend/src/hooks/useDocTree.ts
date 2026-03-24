@@ -107,25 +107,46 @@ export function useDocDetail(id: string) {
   const [doc, setDoc] = useState<DocDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchDoc = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api/docs/${id}`);
-      if (!res.ok) throw new Error("Document not found");
-      const data: DocDetail = await res.json();
-      setDoc(data);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [id]);
+  const [fetchKey, setFetchKey] = useState(0);
 
   useEffect(() => {
-    fetchDoc();
-  }, [fetchDoc]);
+    const abortController = new AbortController();
+    let cancelled = false;
 
-  return { doc, isLoading, error, refetch: fetchDoc };
+    const fetchDoc = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/docs/${id}`, {
+          signal: abortController.signal,
+        });
+        if (cancelled) return;
+        if (!res.ok) throw new Error("Document not found");
+        const data: DocDetail = await res.json();
+        if (cancelled) return;
+        setDoc(data);
+        setError(null);
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setError(err instanceof Error ? err.message : "Error");
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchDoc();
+
+    return () => {
+      cancelled = true;
+      abortController.abort();
+    };
+  }, [id, fetchKey]);
+
+  const refetch = useCallback(() => {
+    setFetchKey((k) => k + 1);
+  }, []);
+
+  return { doc, isLoading, error, refetch };
 }
