@@ -24,36 +24,49 @@ export interface Toast {
   variant: ToastVariant;
 }
 
-interface ToastContextValue {
-  toasts: Toast[];
+interface ToastActions {
   addToast: (message: string, variant?: ToastVariant) => void;
   removeToast: (id: string) => void;
 }
 
-/* ── Context ── */
-const ToastContext = createContext<ToastContextValue | null>(null);
+interface ToastStateValue {
+  toasts: Toast[];
+}
+
+/**
+ * Split into two contexts to prevent re-render cascades:
+ * - ToastActionsContext: stable references (addToast, removeToast) — consumers
+ *   that only call actions (e.g. AppShell) subscribe here and never re-render
+ *   when toasts change.
+ * - ToastStateContext: the toasts array — only the ToastViewport subscribes here.
+ */
+const ToastActionsContext = createContext<ToastActions | null>(null);
+const ToastStateContext = createContext<ToastStateValue | null>(null);
 
 export function useToast() {
-  const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error("useToast must be used within ToastProvider");
-  return ctx;
+  const actions = useContext(ToastActionsContext);
+  if (!actions) throw new Error("useToast must be used within ToastProvider");
+  return actions;
+}
+
+/** Use this hook only when you need to read the toasts list (e.g. viewport). */
+export function useToastState() {
+  const state = useContext(ToastStateContext);
+  if (!state) throw new Error("useToastState must be used within ToastProvider");
+  return state;
 }
 
 /* ── Toast Viewport (portalled, isolated from main tree) ── */
-const ToastViewport = memo(function ToastViewport({
-  toasts,
-  onDismiss,
-}: {
-  toasts: Toast[];
-  onDismiss: (id: string) => void;
-}) {
+const ToastViewport = memo(function ToastViewport() {
   const [mounted, setMounted] = useState(false);
+  const { toasts } = useToastState();
+  const { removeToast } = useToast();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
+  if (!mounted || toasts.length === 0) return null;
 
   return createPortal(
     <div
@@ -62,7 +75,7 @@ const ToastViewport = memo(function ToastViewport({
       aria-label="Notifications"
     >
       {toasts.map((toast) => (
-        <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />
+        <ToastItem key={toast.id} toast={toast} onDismiss={removeToast} />
       ))}
     </div>,
     document.body,
@@ -89,17 +102,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [removeToast],
   );
 
-  // Memoize context value to avoid unnecessary re-renders of consumers
-  const contextValue = useMemo(
-    () => ({ toasts, addToast, removeToast }),
-    [toasts, addToast, removeToast],
+  // Actions ref is stable — never changes identity
+  const actions = useMemo<ToastActions>(
+    () => ({ addToast, removeToast }),
+    [addToast, removeToast],
+  );
+
+  // State value changes only when toasts change — only viewport re-renders
+  const stateValue = useMemo<ToastStateValue>(
+    () => ({ toasts }),
+    [toasts],
   );
 
   return (
-    <ToastContext.Provider value={contextValue}>
-      {children}
-      <ToastViewport toasts={toasts} onDismiss={removeToast} />
-    </ToastContext.Provider>
+    <ToastActionsContext.Provider value={actions}>
+      <ToastStateContext.Provider value={stateValue}>
+        {children}
+        <ToastViewport />
+      </ToastStateContext.Provider>
+    </ToastActionsContext.Provider>
   );
 }
 
