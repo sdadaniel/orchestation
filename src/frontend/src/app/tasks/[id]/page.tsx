@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ArrowLeft, Loader2, FileText, Terminal, ClipboardCheck, Play, Square } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { HorseRunningIndicator } from "@/components/HorseRunningIndicator";
 
 interface CostEntry {
   phase: string;
@@ -307,7 +308,10 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         </span>
 
         {/* Run / Stop button */}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          {(runStatus === "running" || task.status === "in_progress") && (
+            <HorseRunningIndicator />
+          )}
           {runStatus === "running" || task.status === "in_progress" ? (
             <button
               type="button"

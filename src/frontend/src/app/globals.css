@@ -708,3 +708,14 @@ button.timeline-task-label:hover {
 .toast-slide-in {
   animation: toast-slide-in 0.3s ease-out;
 }
+
+/* ── Horse Running Indicator ── */
+@keyframes horse-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.horse-bounce {
+  display: inline-block;
+  animation: horse-bounce 0.4s ease-in-out infinite;
+}
