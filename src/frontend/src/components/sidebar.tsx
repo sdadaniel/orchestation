@@ -22,6 +22,7 @@ import {
   X,
   Check,
   Inbox,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WaterfallGroup } from "@/types/waterfall";
@@ -30,6 +31,7 @@ import {
   type TaskStatus,
 } from "../../lib/constants";
 import type { DocNode } from "@/hooks/useDocTree";
+import type { RequestItem } from "@/hooks/useRequests";
 
 /* ── Types ── */
 
@@ -47,8 +49,8 @@ type NavItem = {
 
 const pageNavItems: NavItem[] = [
   { label: "Task", icon: <ClipboardList className="h-3.5 w-3.5" />, href: "/" },
-  { label: "Sprint", icon: <Calendar className="h-3.5 w-3.5" />, href: "/sprint" },
   { label: "Cost", icon: <DollarSign className="h-3.5 w-3.5" />, href: "/cost" },
+  { label: "Monitor", icon: <Activity className="h-3.5 w-3.5" />, href: "/monitor" },
   { label: "Terminal", icon: <SquareTerminal className="h-3.5 w-3.5" />, href: "/terminal" },
 ];
 
@@ -71,8 +73,8 @@ type TaskSidebarProps = {
   onDocDelete?: (id: string) => Promise<void>;
   onDocRename?: (id: string, title: string) => Promise<void>;
   onDocReorder?: (nodeId: string, targetParentId: string | null, position: number) => Promise<void>;
-  onNewSprint?: () => void;
-  pendingRequestCount?: number;
+  requestItems?: RequestItem[];
+  onNewTask?: (title: string, content: string) => Promise<void>;
   currentPath?: string;
 };
 
@@ -403,8 +405,8 @@ export function TaskSidebar({
   onDocDelete,
   onDocRename,
   onDocReorder,
-  onNewSprint,
-  pendingRequestCount = 0,
+  requestItems = [],
+  onNewTask,
   currentPath = "/",
 }: TaskSidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
@@ -421,11 +423,13 @@ export function TaskSidebar({
     walk(docTree);
     return ids;
   });
-  const [expandedSprints, setExpandedSprints] = useState<Set<string>>(
-    () => new Set(groups.map((g) => g.sprint.id)),
-  );
   const [newRootItemType, setNewRootItemType] = useState<"doc" | "folder" | null>(null);
   const [showNewMenu, setShowNewMenu] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [showNewTaskForm, setShowNewTaskForm] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskContent, setNewTaskContent] = useState("");
+  const newTaskInputRef = useRef<HTMLInputElement>(null);
 
   const toggleFolder = useCallback((id: string) => {
     setExpandedFolders((prev) => {
@@ -436,33 +440,35 @@ export function TaskSidebar({
     });
   }, []);
 
-  const toggleSprint = (id: string) => {
-    setExpandedSprints((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const totalTasks = groups.reduce((sum, g) => sum + g.tasks.length, 0);
-
-  const statuses: TaskStatus[] = ["backlog", "in_progress", "in_review", "done"];
-
-  const statusCounts: Record<string, number> = {};
-  for (const s of statuses) statusCounts[s] = 0;
-  for (const g of groups) {
-    for (const t of g.tasks) {
-      if (statusCounts[t.status] !== undefined) statusCounts[t.status]++;
-    }
-  }
-
   const handleCreateRootItem = async (title: string) => {
     if (onDocCreate && newRootItemType) {
       await onDocCreate(title, newRootItemType, null);
     }
     setNewRootItemType(null);
   };
+
+  const handleNewTaskSubmit = async () => {
+    if (!newTaskTitle.trim() || !onNewTask) return;
+    await onNewTask(newTaskTitle.trim(), newTaskContent.trim());
+    setNewTaskTitle("");
+    setNewTaskContent("");
+    setShowNewTaskForm(false);
+  };
+
+  // Group request items by status for sidebar display
+  const inProgressTasks = requestItems.filter((r) => r.status === "in_progress");
+  const pendingTasks = requestItems.filter((r) => r.status === "pending" || r.status === "reviewing");
+  const doneTasks = requestItems.filter((r) => r.status === "done");
+  const rejectedTasks = requestItems.filter((r) => r.status === "rejected");
+
+  // Display task ID as TASK-XXX in UI
+  const displayTaskId = (id: string) => id.replace(/^REQ-/, "TASK-");
+
+  useEffect(() => {
+    if (showNewTaskForm && newTaskInputRef.current) {
+      newTaskInputRef.current.focus();
+    }
+  }, [showNewTaskForm]);
 
   return (
     <div className="ide-sidebar flex flex-col h-full">
@@ -545,106 +551,139 @@ export function TaskSidebar({
           )}
         </div>
 
-        {/* ── Sprints (일정) ── */}
+        {/* ── Tasks (merged from Requests) ── */}
         <div className="mb-2">
           <div className="px-2 mb-1 flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Sprints
+              Tasks
             </span>
-            {onNewSprint && (
+            <span className="text-[10px] text-muted-foreground">{requestItems.length}</span>
+          </div>
+
+          {/* In Progress tasks */}
+          {inProgressTasks.map((task) => (
+            <Link
+              key={task.id}
+              href="/tasks"
+              className={cn("tree-item no-underline text-sidebar-foreground", currentPath === "/tasks" && "active")}
+            >
+              <span className="w-3 h-3 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <span className="truncate flex-1 text-xs">{displayTaskId(task.id)} {task.title}</span>
+            </Link>
+          ))}
+
+          {/* Pending / Reviewing tasks */}
+          {pendingTasks.map((task) => (
+            <Link
+              key={task.id}
+              href="/tasks"
+              className="tree-item no-underline text-sidebar-foreground"
+            >
+              <span className="w-2 h-2 rounded-full shrink-0 bg-yellow-500" />
+              <span className="truncate flex-1 text-xs">{displayTaskId(task.id)} {task.title}</span>
+            </Link>
+          ))}
+
+          {/* Rejected tasks */}
+          {rejectedTasks.map((task) => (
+            <Link
+              key={task.id}
+              href="/tasks"
+              className="tree-item no-underline text-sidebar-foreground"
+            >
+              <span className="w-2 h-2 rounded-full shrink-0 bg-red-500" />
+              <span className="truncate flex-1 text-xs">{displayTaskId(task.id)} {task.title}</span>
+            </Link>
+          ))}
+
+          {/* Done tasks - collapsed by default */}
+          {doneTasks.length > 0 && (
+            <div>
               <button
                 type="button"
-                title="New Sprint"
-                className="p-0.5 rounded hover:bg-sidebar-accent text-muted-foreground hover:text-foreground"
-                onClick={onNewSprint}
+                onClick={() => setShowCompleted(!showCompleted)}
+                className="tree-item w-full text-left"
               >
-                <Plus className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-          <Link
-            href="/sprint"
-            className={cn("tree-item no-underline text-sidebar-foreground", currentPath === "/sprint" && "active")}
-          >
-            <Calendar className="h-3 w-3 text-muted-foreground shrink-0" />
-            <span className="flex-1">All Sprints</span>
-            <span className="text-[10px] text-muted-foreground">{groups.length}</span>
-          </Link>
-          {groups.map((group) => {
-            const isActive = currentPath === `/sprint/${group.sprint.id}`;
-            return (
-              <Link
-                key={group.sprint.id}
-                href={`/sprint/${group.sprint.id}`}
-                className={cn("tree-item no-underline text-sidebar-foreground ml-3", isActive && "active")}
-              >
-                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0",
-                  group.progress.done === group.progress.total ? "bg-emerald-500" :
-                  group.progress.done > 0 ? "bg-blue-500" : "bg-zinc-400"
-                )} />
-                <span className="truncate flex-1">S{group.sprint.id.replace("SPRINT-00", "")}</span>
-                <span className="text-[10px] text-muted-foreground shrink-0">
-                  {group.progress.done}/{group.progress.total}
+                {showCompleted ? (
+                  <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                ) : (
+                  <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                )}
+                <span className="text-[11px] text-muted-foreground flex-1">
+                  Show completed ({doneTasks.length})
                 </span>
-              </Link>
-            );
-          })}
-        </div>
+              </button>
+              {showCompleted && doneTasks.map((task) => (
+                <Link
+                  key={task.id}
+                  href="/tasks"
+                  className="tree-item no-underline text-sidebar-foreground ml-3"
+                >
+                  <span className="text-emerald-500 text-xs shrink-0">&#10003;</span>
+                  <span className="truncate flex-1 text-xs text-muted-foreground line-through">
+                    {displayTaskId(task.id)} {task.title}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
 
-        {/* ── Tasks (작업) ── */}
-        <div className="mb-2">
-          <div className="px-2 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Tasks
-          </div>
-
-          <Link
-            href="/tasks"
-            className={cn("tree-item no-underline text-sidebar-foreground", (currentPath === "/tasks" || (currentPath === "/" && filter.type === "all")) && "active")}
-            onClick={() => onFilterChange({ type: "all" })}
-          >
-            <Layers className="h-3 w-3 text-muted-foreground shrink-0" />
-            <span className="flex-1">All Tasks</span>
-            <span className="text-[10px] text-muted-foreground">{totalTasks}</span>
-          </Link>
-
-          <div className="px-2 mt-1.5 mb-0.5 text-[10px] text-muted-foreground">
-            By Status
-          </div>
-          {statuses.map((status) => {
-            const style = STATUS_STYLES[status];
-            const isActive = filter.type === "status" && filter.status === status;
-            return (
-              <div
-                key={status}
-                className={cn("tree-item", isActive && "active")}
-                onClick={() => onFilterChange({ type: "status", status })}
-              >
-                <span className={cn("w-2 h-2 rounded-full shrink-0", style.dot)} />
-                <span className="flex-1">{style.label}</span>
-                <span className="text-[10px] text-muted-foreground">{statusCounts[status]}</span>
+          {/* + New Task button / inline form */}
+          {showNewTaskForm ? (
+            <div className="px-1 py-1 space-y-1">
+              <input
+                ref={newTaskInputRef}
+                type="text"
+                placeholder="Task title..."
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newTaskTitle.trim()) handleNewTaskSubmit();
+                  if (e.key === "Escape") { setShowNewTaskForm(false); setNewTaskTitle(""); setNewTaskContent(""); }
+                }}
+                className="w-full bg-muted border border-border rounded px-2 py-1 text-xs outline-none focus:border-primary"
+              />
+              <textarea
+                placeholder="Description (optional)..."
+                value={newTaskContent}
+                onChange={(e) => setNewTaskContent(e.target.value)}
+                rows={2}
+                className="w-full bg-muted border border-border rounded px-2 py-1 text-xs outline-none focus:border-primary resize-y"
+              />
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleNewTaskSubmit}
+                  disabled={!newTaskTitle.trim()}
+                  className={cn("text-[10px] px-2 py-0.5 rounded", newTaskTitle.trim() ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                >
+                  Create
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowNewTaskForm(false); setNewTaskTitle(""); setNewTaskContent(""); }}
+                  className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:text-foreground"
+                >
+                  Cancel
+                </button>
               </div>
-            );
-          })}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowNewTaskForm(true)}
+              className="tree-item w-full text-left text-muted-foreground hover:text-foreground"
+            >
+              <Plus className="h-3 w-3 shrink-0" />
+              <span className="text-xs">New Task</span>
+            </button>
+          )}
 
-        </div>
-
-        {/* ── Requests ── */}
-        <div className="mb-2">
-          <div className="px-2 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Requests
-          </div>
-          <Link
-            href="/requests"
-            className={cn("tree-item no-underline text-sidebar-foreground", currentPath === "/requests" && "active")}
-          >
-            <Inbox className="h-3 w-3 text-muted-foreground shrink-0" />
-            <span className="flex-1">All Requests</span>
-            {pendingRequestCount > 0 && (
-              <span className="text-[10px] bg-primary text-primary-foreground rounded-full px-1.5 py-0 font-medium leading-relaxed">
-                {pendingRequestCount}
-              </span>
-            )}
-          </Link>
+          {requestItems.length === 0 && !showNewTaskForm && (
+            <div className="px-2 py-2 text-[11px] text-muted-foreground">
+              No tasks yet
+            </div>
+          )}
         </div>
       </div>
 
@@ -653,6 +692,10 @@ export function TaskSidebar({
         <Link href="/cost" className={cn("tree-item text-sidebar-foreground no-underline", currentPath === "/cost" && "active")}>
           <DollarSign className="h-3.5 w-3.5" />
           <span>Cost</span>
+        </Link>
+        <Link href="/monitor" className={cn("tree-item text-sidebar-foreground no-underline", currentPath === "/monitor" && "active")}>
+          <Activity className="h-3.5 w-3.5" />
+          <span>Monitor</span>
         </Link>
         <Link href="/terminal" className={cn("tree-item text-sidebar-foreground no-underline", currentPath === "/terminal" && "active")}>
           <SquareTerminal className="h-3.5 w-3.5" />

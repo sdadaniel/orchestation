@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useTasks } from "@/hooks/useTasks";
 import { usePrds } from "@/hooks/usePrds";
@@ -8,109 +8,27 @@ import { useDocTree } from "@/hooks/useDocTree";
 import { useOrchestrationStatus } from "@/hooks/useOrchestrationStatus";
 import { useRequests } from "@/hooks/useRequests";
 import { TaskSidebar, type SidebarFilter } from "@/components/sidebar";
-import { TaskRow } from "@/components/TaskRow";
-import { RightPanel } from "@/components/RightPanel";
+import type { RequestItem } from "@/hooks/useRequests";
 import { TaskLogModal } from "@/components/TaskLogModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
-import { Search, ArrowUpDown, SearchIcon, ChevronDown, ChevronRight } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { ChatBot } from "@/components/ChatBot";
-import { SprintCreateDialog } from "@/components/SprintCreateDialog";
-import { STATUS_STYLES, type TaskStatus } from "../../lib/constants";
-import type { WaterfallTask, WaterfallGroup } from "@/types/waterfall";
-import Link from "next/link";
-import { Progress } from "@/components/ui/progress";
+import type { WaterfallTask } from "@/types/waterfall";
 
 /* ── Home Dashboard ── */
 
-function SprintTaskList({
-  group,
-  onTaskClick,
-}: {
-  group: WaterfallGroup;
-  onTaskClick: (task: WaterfallTask) => void;
-}) {
-  const [expanded, setExpanded] = useState(true);
-  const pct = group.progress.total > 0 ? Math.round((group.progress.done / group.progress.total) * 100) : 0;
-  const isActive = group.progress.done < group.progress.total;
-
-  return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
-      {/* Sprint header */}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left"
-      >
-        {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        )}
-        {isActive ? (
-          <span className="w-3 h-3 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        ) : (
-          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-        )}
-        <span className="text-sm font-medium flex-1 truncate">{group.sprint.title}</span>
-        <span className="text-xs text-muted-foreground">{group.progress.done}/{group.progress.total}</span>
-        <Progress value={pct} className="h-1.5 w-20 shrink-0" />
-        <span className="text-xs text-muted-foreground w-8 text-right">{pct}%</span>
-      </button>
-
-      {/* Task list */}
-      {expanded && group.tasks.length > 0 && (
-        <div className="border-t border-border">
-          {group.tasks.map((task) => {
-            const style = STATUS_STYLES[task.status as TaskStatus];
-            return (
-              <button
-                type="button"
-                key={task.id}
-                onClick={() => onTaskClick(task)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-muted/40 transition-colors text-left border-b border-border/50 last:border-b-0"
-              >
-                {task.status === "in_progress" ? (
-                  <span className="w-3 h-3 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin ml-3" />
-                ) : (
-                  <span className={cn("w-2 h-2 rounded-full shrink-0 ml-3.5", style?.dot ?? "bg-gray-400")} />
-                )}
-                <span className="font-mono text-[11px] text-muted-foreground w-20 shrink-0">{task.id}</span>
-                <span className={cn("text-sm flex-1 truncate", task.status === "done" && "text-muted-foreground line-through")}>{task.title}</span>
-                <span className={cn(
-                  "text-[11px] px-1.5 py-0.5 rounded",
-                  task.status === "done" && "text-emerald-500 bg-emerald-500/10",
-                  task.status === "in_progress" && "text-blue-500 bg-blue-500/10",
-                  task.status === "in_review" && "text-orange-400 bg-orange-500/10",
-                  task.status === "backlog" && "text-zinc-400 bg-zinc-500/10",
-                )}>
-                  {style?.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function HomeDashboard({
-  groups,
-  onTaskClick,
+  requestItems,
 }: {
-  groups: WaterfallGroup[];
-  onTaskClick: (task: WaterfallTask) => void;
+  requestItems: RequestItem[];
 }) {
-  const allTasks = groups.flatMap((g) => g.tasks);
-  const inProgress = allTasks.filter((t) => t.status === "in_progress");
-  const inReview = allTasks.filter((t) => t.status === "in_review");
-  const backlog = allTasks.filter((t) => t.status === "backlog");
-  const done = allTasks.filter((t) => t.status === "done");
+  const inProgress = requestItems.filter((t) => t.status === "in_progress");
+  const pending = requestItems.filter((t) => t.status === "pending" || t.status === "reviewing");
+  const done = requestItems.filter((t) => t.status === "done");
+  const rejected = requestItems.filter((t) => t.status === "rejected");
 
-  const activeSprints = groups.filter((g) => g.progress.done < g.progress.total);
-  const completedSprints = groups.filter((g) => g.progress.done === g.progress.total && g.progress.total > 0);
+  const displayTaskId = (id: string) => id.replace(/^REQ-/, "TASK-");
 
   return (
     <div className="space-y-6">
@@ -123,74 +41,71 @@ function HomeDashboard({
             <div className="text-2xl font-bold text-blue-500">{inProgress.length}</div>
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
-            <div className="text-xs text-muted-foreground mb-1">In Review</div>
-            <div className="text-2xl font-bold text-orange-400">{inReview.length}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="text-xs text-muted-foreground mb-1">Backlog</div>
-            <div className="text-2xl font-bold text-zinc-400">{backlog.length}</div>
+            <div className="text-xs text-muted-foreground mb-1">Pending</div>
+            <div className="text-2xl font-bold text-yellow-500">{pending.length}</div>
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-xs text-muted-foreground mb-1">Done</div>
             <div className="text-2xl font-bold text-emerald-500">{done.length}</div>
           </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-xs text-muted-foreground mb-1">Rejected</div>
+            <div className="text-2xl font-bold text-red-500">{rejected.length}</div>
+          </div>
         </div>
       </div>
 
-      {/* 진행 중인 Sprint + 태스크 목록 */}
-      {activeSprints.length > 0 && (
+      {/* Active Tasks */}
+      {inProgress.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold mb-3">Active Sprints</h2>
-          <div className="space-y-3">
-            {activeSprints.map((g) => (
-              <SprintTaskList key={g.sprint.id} group={g} onTaskClick={onTaskClick} />
+          <h2 className="text-sm font-semibold mb-3">Active Tasks</h2>
+          <div className="space-y-1">
+            {inProgress.map((task) => (
+              <div key={task.id} className="rounded-lg border border-border bg-card px-3 py-2 flex items-center gap-2">
+                <span className="w-3 h-3 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <span className="font-mono text-[11px] text-muted-foreground shrink-0">{displayTaskId(task.id)}</span>
+                <span className="text-sm flex-1 truncate">{task.title}</span>
+                <span className="text-[11px] px-1.5 py-0.5 rounded text-blue-500 bg-blue-500/10">In Progress</span>
+              </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* 완료된 Sprint + 태스크 목록 */}
-      {completedSprints.length > 0 && (
+      {/* Pending Tasks */}
+      {pending.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold mb-3">Completed Sprints</h2>
-          <div className="space-y-3">
-            {completedSprints.map((g) => (
-              <SprintTaskList key={g.sprint.id} group={g} onTaskClick={onTaskClick} />
+          <h2 className="text-sm font-semibold mb-3">Pending Tasks</h2>
+          <div className="space-y-1">
+            {pending.map((task) => (
+              <div key={task.id} className="rounded-lg border border-border bg-card px-3 py-2 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full shrink-0 bg-yellow-500" />
+                <span className="font-mono text-[11px] text-muted-foreground shrink-0">{displayTaskId(task.id)}</span>
+                <span className="text-sm flex-1 truncate">{task.title}</span>
+                <span className="text-[11px] px-1.5 py-0.5 rounded text-yellow-500 bg-yellow-500/10">
+                  {task.status === "reviewing" ? "Reviewing" : "Pending"}
+                </span>
+              </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* 모든 Task 완료 시 */}
-      {inProgress.length === 0 && inReview.length === 0 && backlog.length === 0 && (
+      {/* All done */}
+      {inProgress.length === 0 && pending.length === 0 && requestItems.length > 0 && (
         <div className="text-center py-8 text-muted-foreground">
-          <p className="text-sm">모든 태스크가 완료되었습니다 ✓</p>
+          <p className="text-sm">All tasks completed.</p>
+        </div>
+      )}
+
+      {requestItems.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <p className="text-sm">No tasks yet. Create a new task from the sidebar.</p>
         </div>
       )}
     </div>
   );
 }
-
-/* ── Sort ── */
-type SortKey = "id" | "title" | "priority" | "status" | "role";
-type SortDir = "asc" | "desc";
-
-const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-const STATUS_ORDER: Record<string, number> = { in_progress: 0, in_review: 1, backlog: 2, done: 3 };
-
-function compareTasks(a: WaterfallTask, b: WaterfallTask, key: SortKey, dir: SortDir): number {
-  let cmp = 0;
-  switch (key) {
-    case "id": cmp = a.id.localeCompare(b.id); break;
-    case "title": cmp = a.title.localeCompare(b.title); break;
-    case "priority": cmp = (PRIORITY_ORDER[a.priority] ?? 99) - (PRIORITY_ORDER[b.priority] ?? 99); break;
-    case "status": cmp = (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99); break;
-    case "role": cmp = a.role.localeCompare(b.role); break;
-  }
-  return dir === "asc" ? cmp : -cmp;
-}
-
-const ALL_STATUSES: TaskStatus[] = ["backlog", "in_progress", "in_review", "done"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -198,7 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { prds } = usePrds();
   const { tree: docTree, createDoc, updateDoc, deleteDoc, reorderDoc } = useDocTree();
   const { justFinished, clearFinished } = useOrchestrationStatus();
-  const { pendingCount: pendingRequestCount } = useRequests();
+  const { requests: requestItems, createRequest, refetch: refetchRequests } = useRequests();
   const { addToast } = useToast();
   const [logModalTask, setLogModalTask] = useState<WaterfallTask | null>(null);
 
@@ -239,79 +154,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (justFinished) {
       refetch();
+      refetchRequests();
       clearFinished();
     }
-  }, [justFinished, refetch, clearFinished]);
+  }, [justFinished, refetch, refetchRequests, clearFinished]);
 
   const [filter, setFilter] = useState<SidebarFilter>({ type: "all" });
-  const [selectedTask, setSelectedTask] = useState<WaterfallTask | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<TaskStatus | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("id");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const listRef = useRef<HTMLDivElement>(null);
-
-  const [showTaskView, setShowTaskView] = useState(true);
-  const [showSprintCreate, setShowSprintCreate] = useState(false);
-  const isTaskView = pathname === "/tasks" && showTaskView;
   const isHome = pathname === "/";
-
-  // Flatten all tasks
-  const allTasks = useMemo(() => groups.flatMap((g) => g.tasks), [groups]);
-
-  // Apply sidebar filter
-  const sidebarFiltered = useMemo(() => {
-    switch (filter.type) {
-      case "all": return allTasks;
-      case "prd": {
-        const prd = prds.find((p) => p.id === filter.prdId);
-        if (!prd) return allTasks;
-        const prdSprintIds = new Set(prd.sprints);
-        return allTasks.filter((t) => groups.some((g) => prdSprintIds.has(g.sprint.id) && g.tasks.some((gt) => gt.id === t.id)));
-      }
-      case "sprint":
-        return allTasks.filter((t) => {
-          const group = groups.find((g) => g.sprint.id === filter.sprintId);
-          return group?.tasks.some((gt) => gt.id === t.id);
-        });
-      case "status": return allTasks.filter((t) => t.status === filter.status);
-      default: return allTasks;
-    }
-  }, [allTasks, filter, groups, prds]);
-
-  // Apply search + status + sort
-  const filteredTasks = useMemo(() => {
-    let result = sidebarFiltered;
-    if (statusFilter) result = result.filter((t) => t.status === statusFilter);
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((t) => t.id.toLowerCase().includes(q) || t.title.toLowerCase().includes(q) || t.role.toLowerCase().includes(q));
-    }
-    return [...result].sort((a, b) => compareTasks(a, b, sortKey, sortDir));
-  }, [sidebarFiltered, statusFilter, searchQuery, sortKey, sortDir]);
-
-  const handleSort = useCallback((key: SortKey) => {
-    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(key); setSortDir("asc"); }
-  }, [sortKey]);
-
-  const handleTaskClick = useCallback((task: WaterfallTask) => {
-    setSelectedTask((prev) => (prev?.id === task.id ? null : task));
-  }, []);
-
-  const handleBackgroundClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) setSelectedTask(null);
-  }, []);
 
   const handleFilterChange = useCallback((f: SidebarFilter) => {
     setFilter(f);
-    setSelectedTask(null);
-    // Tasks 필터 선택 시 Task 뷰 표시
-    if (f.type === "all" || f.type === "status" || f.type === "sprint") {
-      setShowTaskView(true);
-    } else {
-      setShowTaskView(false);
-    }
   }, []);
 
   // Doc tree handlers
@@ -331,36 +183,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     await reorderDoc(nodeId, targetParentId, position);
   }, [reorderDoc]);
 
-  // Keyboard navigation
-  useEffect(() => {
-    if (!isTaskView) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return;
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        e.preventDefault();
-        const idx = selectedTask ? filteredTasks.findIndex((t) => t.id === selectedTask.id) : -1;
-        const next = e.key === "ArrowDown" ? (idx < filteredTasks.length - 1 ? idx + 1 : 0) : (idx > 0 ? idx - 1 : filteredTasks.length - 1);
-        if (filteredTasks[next]) setSelectedTask(filteredTasks[next]);
-      }
-      if (e.key === "Escape") setSelectedTask(null);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [filteredTasks, selectedTask, isTaskView]);
-
-  useEffect(() => {
-    if (filter.type === "status") setStatusFilter(null);
-  }, [filter]);
-
-  // 다른 페이지로 이동하면 Task 뷰 닫기
-  useEffect(() => {
-    if (pathname === "/tasks") {
-      setShowTaskView(true);
-    } else {
-      setShowTaskView(false);
-    }
-  }, [pathname]);
-
   if (isLoading) {
     return (
       <div className="flex h-full">
@@ -373,15 +195,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-
-  const showRightPanel = isTaskView && selectedTask !== null;
-
-  const SortHeader = ({ label, sortKeyName }: { label: string; sortKeyName: SortKey }) => (
-    <button type="button" className="col-header" onClick={() => handleSort(sortKeyName)}>
-      {label}
-      {sortKey === sortKeyName && <ArrowUpDown className="h-2.5 w-2.5" />}
-    </button>
-  );
 
   return (
     <div className="flex h-full">
@@ -396,8 +209,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onDocDelete={handleDocDelete}
         onDocRename={handleDocRename}
         onDocReorder={handleDocReorder}
-        onNewSprint={() => setShowSprintCreate(true)}
-        pendingRequestCount={pendingRequestCount}
+        requestItems={requestItems}
+        onNewTask={async (title, content) => {
+          await createRequest(title, content, "medium");
+        }}
         currentPath={pathname}
       />
 
@@ -417,88 +232,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             /* 홈 대시보드 */
             <div className="flex-1 overflow-auto bg-background p-4">
               <div className="content-container">
-                <HomeDashboard groups={groups} onTaskClick={setLogModalTask} />
+                <HomeDashboard requestItems={requestItems} />
               </div>
             </div>
-          ) : isTaskView ? (
-        <>
-          <div className="ide-main flex flex-col flex-1">
-            <div className="content-container flex flex-col flex-1 overflow-hidden">
-            {/* Filter bar */}
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
-              <div className="flex items-center gap-1.5 bg-muted rounded px-2 py-1 flex-1 max-w-xs">
-                <Search className="h-3 w-3 text-muted-foreground shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search tasks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent border-none outline-none text-xs w-full placeholder:text-muted-foreground"
-                />
+          ) : (
+            /* Tasks and other pages */
+            <div className="flex-1 overflow-auto bg-background p-4">
+              <div className="content-container">
+                {children}
               </div>
-              <div className="flex items-center gap-1">
-                <button type="button" className={cn("filter-pill", !statusFilter && "active")} onClick={() => setStatusFilter(null)}>All</button>
-                {ALL_STATUSES.map((status) => {
-                  const style = STATUS_STYLES[status];
-                  return (
-                    <button key={status} type="button" className={cn("filter-pill", statusFilter === status && "active")} onClick={() => setStatusFilter(statusFilter === status ? null : status)}>
-                      <span className={cn("w-1.5 h-1.5 rounded-full mr-1.5", style.dot)} />
-                      {style.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <span className="text-[11px] text-muted-foreground ml-auto shrink-0">{filteredTasks.length} tasks</span>
             </div>
-
-            {/* Column headers */}
-            <div className="flex items-center gap-2 px-3 h-6 border-b border-border shrink-0 bg-muted/30">
-              <span className="w-2" />
-              <span className="w-[72px] shrink-0"><SortHeader label="ID" sortKeyName="id" /></span>
-              <span className="flex-1"><SortHeader label="Title" sortKeyName="title" /></span>
-              <span className="w-16 shrink-0"><SortHeader label="Priority" sortKeyName="priority" /></span>
-              <span className="w-16 shrink-0 text-right"><SortHeader label="Role" sortKeyName="role" /></span>
-              <span className="w-10 shrink-0" />
-            </div>
-
-            {/* Task rows */}
-            <div ref={listRef} className="flex-1 overflow-y-auto" onClick={handleBackgroundClick}>
-              {filteredTasks.length === 0 ? (
-                <div className="flex items-center justify-center h-32 text-xs text-muted-foreground">No matching tasks</div>
-              ) : (
-                filteredTasks.map((task) => (
-                  <TaskRow key={task.id} task={task} isSelected={selectedTask?.id === task.id} onClick={handleTaskClick} />
-                ))
-              )}
-            </div>
-            </div>
-          </div>
-
-          {/* Right panel */}
-          {showRightPanel && (
-            <RightPanel task={selectedTask} prd={null} />
           )}
-        </>
-      ) : (
-        /* Other pages */
-        <div className="flex-1 overflow-auto bg-background p-4">
-          <div className="content-container">
-            {children}
-          </div>
-        </div>
-        )}
         </div>
       </div>
 
       {/* ChatBot */}
       <ChatBot />
-
-      {/* Sprint Create Dialog */}
-      <SprintCreateDialog
-        open={showSprintCreate}
-        onClose={() => setShowSprintCreate(false)}
-        onCreated={refetch}
-      />
 
       {/* Task Log Modal */}
       {logModalTask && (

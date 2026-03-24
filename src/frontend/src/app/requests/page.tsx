@@ -30,6 +30,8 @@ const STATUS_LABEL: Record<string, string> = {
 
 const STATUS_ORDER = ["pending", "reviewing", "in_progress", "rejected", "done"];
 
+const displayTaskId = (id: string) => id.replace(/^REQ-/, "TASK-");
+
 function RequestCard({
   req,
   onUpdate,
@@ -52,7 +54,7 @@ function RequestCard({
   };
 
   const handleDelete = async () => {
-    if (confirm(`${req.id} 를 삭제하시겠습니까?`)) {
+    if (confirm(`${displayTaskId(req.id)} 를 삭제하시겠습니까?`)) {
       await onDelete(req.id);
     }
   };
@@ -73,7 +75,7 @@ function RequestCard({
         ) : (
           <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[req.status])} />
         )}
-        <span className="font-mono text-[11px] text-muted-foreground shrink-0">{req.id}</span>
+        <span className="font-mono text-[11px] text-muted-foreground shrink-0">{displayTaskId(req.id)}</span>
         <span className="text-sm flex-1 truncate">{req.title}</span>
         <span className={cn(
           "text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0",
@@ -187,7 +189,7 @@ export default function RequestsPage() {
   };
 
   if (isLoading) {
-    return <div className="p-4 text-sm text-muted-foreground">Loading requests...</div>;
+    return <div className="p-4 text-sm text-muted-foreground">Loading tasks...</div>;
   }
 
   if (error) {
@@ -198,7 +200,7 @@ export default function RequestsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold">Requests</h1>
+          <h1 className="text-lg font-semibold">Tasks</h1>
           <AutoImproveControl />
         </div>
         <button
@@ -207,7 +209,7 @@ export default function RequestsPage() {
           className="filter-pill active flex items-center gap-1"
         >
           {showForm ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-          {showForm ? "Cancel" : "New Request"}
+          {showForm ? "Cancel" : "New Task"}
         </button>
       </div>
 
@@ -215,7 +217,7 @@ export default function RequestsPage() {
         <div className="rounded-lg border border-border bg-card p-4 space-y-3">
           <input
             type="text"
-            placeholder="Request title..."
+            placeholder="Task title..."
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             className="w-full bg-muted border border-border rounded px-3 py-2 text-sm outline-none focus:border-primary"
@@ -223,7 +225,7 @@ export default function RequestsPage() {
             autoFocus
           />
           <textarea
-            placeholder="Describe the improvement..."
+            placeholder="Describe the task..."
             value={newContent}
             onChange={(e) => setNewContent(e.target.value)}
             rows={4}
@@ -283,7 +285,7 @@ export default function RequestsPage() {
 
       {requests.length === 0 && !showForm && (
         <div className="text-center py-12 text-muted-foreground">
-          <p className="text-sm">No requests yet. Click "New Request" to submit an improvement request.</p>
+          <p className="text-sm">No tasks yet. Click "New Task" to create a task.</p>
         </div>
       )}
     </div>
