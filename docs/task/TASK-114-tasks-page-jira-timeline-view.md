@@ -1,7 +1,7 @@
 ---
 id: TASK-114
 title: Tasks 페이지에 Jira 타임라인 뷰 추가
-status: in_progress
+status: done
 priority: high
 sprint:
 depends_on: []
