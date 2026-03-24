@@ -78,7 +78,6 @@ function RequestCard({ req, onUpdate, onDelete, onClick, onReorder, isFirst, isL
             <button type="button" disabled={isLast} onClick={() => onReorder(req.id, "down")} className={cn("p-0.5 rounded transition-colors", isLast ? "text-muted-foreground/30 cursor-default" : "text-muted-foreground hover:text-foreground hover:bg-muted")}><ChevronDown className="h-3 w-3" /></button>
           </div>
         )}
-        <button type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} className="shrink-0 px-2 py-0.5 text-[10px] rounded border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/50 transition-colors">상세</button>
       </div>
       {expanded && (
         <div className="mt-2 pt-2 border-t border-border">
