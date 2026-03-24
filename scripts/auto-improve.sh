@@ -8,6 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$PROJECT_ROOT/scripts/lib/sed-inplace.sh"
 REQUESTS_DIR="$PROJECT_ROOT/docs/requests"
 ORCHESTRATE="$PROJECT_ROOT/scripts/orchestrate.sh"
 COLLECT_REQUESTS="$PROJECT_ROOT/scripts/collect-requests.sh"
@@ -34,11 +35,7 @@ update_status() {
   local file="$1"
   local new_status="$2"
 
-  if [[ "$(uname)" == "Darwin" ]]; then
-    sed -i '' "s/^status: .*/status: ${new_status}/" "$file"
-  else
-    sed -i "s/^status: .*/status: ${new_status}/" "$file"
-  fi
+  sed_inplace "s/^status: .*/status: ${new_status}/" "$file"
   log "Updated $(basename "$file") -> status: $new_status"
 }
 

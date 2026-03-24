@@ -5,6 +5,7 @@ set -euo pipefail
 # docs/task/ 의 모든 TASK를 의존 관계에 따라 순차/병렬 자동 실행
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
 TASK_DIR="$REPO_ROOT/docs/task"
 RUN_WORKER="$REPO_ROOT/scripts/run-worker.sh"
 MAX_PARALLEL="${MAX_PARALLEL:-3}"
@@ -117,7 +118,7 @@ run_batch() {
         local task_file
         task_file=$(find "$TASK_DIR" -name "${chunk[$i]}-*.md" | head -1)
         if [ -n "$task_file" ]; then
-          sed -i '' "s/^status: .*/status: done/" "$task_file"
+          sed_inplace "s/^status: .*/status: done/" "$task_file"
         fi
 
         local branch
