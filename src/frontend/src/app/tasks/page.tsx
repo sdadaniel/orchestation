@@ -4,7 +4,9 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRequests, type RequestItem } from "@/hooks/useRequests";
 import { cn } from "@/lib/utils";
-import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, Square, Bot, Layers, ArrowDown, Clock, Loader2 } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, Square, Bot, Layers, ArrowDown, Clock, Loader2, GitBranch } from "lucide-react";
+import { useTasks } from "@/hooks/useTasks";
+import type { WaterfallTask } from "@/types/waterfall";
 import AutoImproveControl from "@/components/AutoImproveControl";
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -265,13 +267,132 @@ const TAB_LABEL: Record<string, string> = {
 
 /* ── Stack View (Queue Pipeline) ─────────────────────────── */
 
+/* ── Dependency Diagram ── */
+
+function DependencyDiagram({ tasks }: { tasks: WaterfallTask[] }) {
+  // 활성 태스크만 (backlog + in_progress + in_review)
+  const activeTasks = tasks.filter((t) => t.status !== "done");
+  if (activeTasks.length === 0) return null;
+
+  // 의존 관계 맵
+  const depMap = new Map<string, string[]>();
+  const allIds = new Set(activeTasks.map((t) => t.id));
+  for (const t of activeTasks) {
+    const deps = t.depends_on.filter((d) => allIds.has(d));
+    depMap.set(t.id, deps);
+  }
+
+  // 배치 분류: 의존성 없는 것 = 독립(병렬 가능), 있는 것 = 의존
+  const independent = activeTasks.filter((t) => (depMap.get(t.id) || []).length === 0);
+  const dependent = activeTasks.filter((t) => (depMap.get(t.id) || []).length > 0);
+
+  const statusColor = (s: string) =>
+    s === "in_progress" ? "border-blue-500 bg-blue-500/10" :
+    s === "in_review" ? "border-orange-500 bg-orange-500/10" :
+    "border-zinc-500 bg-zinc-500/10";
+
+  const statusDot = (s: string) =>
+    s === "in_progress" ? "bg-blue-500" :
+    s === "in_review" ? "bg-orange-500" :
+    "bg-zinc-400";
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4 mb-4">
+      <div className="flex items-center gap-2 mb-3">
+        <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Dependency Graph
+        </span>
+      </div>
+
+      {/* 독립 태스크 (병렬 가능) */}
+      {independent.length > 0 && (
+        <div className="mb-3">
+          <div className="text-[10px] text-muted-foreground mb-1.5">
+            ⚡ 병렬 실행 가능 ({independent.length})
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {independent.map((t) => (
+              <div
+                key={t.id}
+                className={cn("flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs", statusColor(t.status))}
+              >
+                {t.status === "in_progress" ? (
+                  <span className="w-2 h-2 border border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                ) : (
+                  <span className={cn("w-2 h-2 rounded-full shrink-0", statusDot(t.status))} />
+                )}
+                <span className="font-mono text-[10px] text-muted-foreground">{t.id}</span>
+                <span className="truncate max-w-[120px]">{t.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 의존 태스크 (순차) */}
+      {dependent.length > 0 && (
+        <div>
+          <div className="text-[10px] text-muted-foreground mb-1.5">
+            🔗 의존 관계 ({dependent.length})
+          </div>
+          <div className="space-y-2">
+            {dependent.map((t) => {
+              const deps = depMap.get(t.id) || [];
+              return (
+                <div key={t.id} className="flex items-center gap-2">
+                  {/* 의존 대상 */}
+                  <div className="flex items-center gap-1">
+                    {deps.map((depId) => {
+                      const depTask = tasks.find((x) => x.id === depId);
+                      return (
+                        <span
+                          key={depId}
+                          className={cn(
+                            "rounded-md border px-1.5 py-0.5 text-[10px] font-mono",
+                            depTask?.status === "done" ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : "border-zinc-500 bg-zinc-500/10 text-muted-foreground",
+                          )}
+                        >
+                          {depTask?.status === "done" ? "✓" : "○"} {depId}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  {/* 화살표 */}
+                  <span className="text-muted-foreground/40">→</span>
+
+                  {/* 현재 태스크 */}
+                  <div
+                    className={cn("flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs", statusColor(t.status))}
+                  >
+                    {t.status === "in_progress" ? (
+                      <span className="w-2 h-2 border border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                    ) : (
+                      <span className={cn("w-2 h-2 rounded-full shrink-0", statusDot(t.status))} />
+                    )}
+                    <span className="font-mono text-[10px] text-muted-foreground">{t.id}</span>
+                    <span className="truncate max-w-[120px]">{t.title}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StackView({
   requests,
+  tasks,
   onUpdate,
   onDelete,
   onClickItem,
 }: {
   requests: RequestItem[];
+  tasks: WaterfallTask[];
   onUpdate: (id: string, updates: Partial<Pick<RequestItem, "status" | "title" | "content" | "priority">>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onClickItem: (req: RequestItem) => void;
@@ -299,6 +420,9 @@ function StackView({
 
   return (
     <div className="space-y-6">
+      {/* ── Dependency Diagram ── */}
+      <DependencyDiagram tasks={tasks} />
+
       {/* ── Processing Now ── */}
       {active.length > 0 && (
         <div>
@@ -402,6 +526,8 @@ function StackView({
 
 function TasksPageInner() {
   const { requests, isLoading, error, updateRequest, deleteRequest } = useRequests();
+  const { groups } = useTasks();
+  const allWaterfallTasks = groups.flatMap((g) => g.tasks);
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") || TAB_STACK;
@@ -488,6 +614,7 @@ function TasksPageInner() {
       {activeTab === TAB_STACK && (
         <StackView
           requests={requests}
+          tasks={allWaterfallTasks}
           onUpdate={updateRequest}
           onDelete={deleteRequest}
           onClickItem={(req) => router.push(`/tasks/${displayTaskId(req.id)}`)}
