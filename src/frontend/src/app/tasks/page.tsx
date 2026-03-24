@@ -149,48 +149,59 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
     depsOf.set(req.id, wt ? wt.depends_on.filter((d) => reqMap.has(d)) : []);
   }
 
-  // Group by status into sections
-  const allStopped = requests.filter((r) => r.status === "stopped");
+  // Group by status
+  const priWeight = (p: string) => p === "high" ? 0 : p === "medium" ? 1 : p === "low" ? 2 : 3;
   const allPending = requests.filter((r) => r.status === "pending");
+  const allStopped = requests.filter((r) => r.status === "stopped");
   const current = requests.filter((r) => r.status === "in_progress" || r.status === "reviewing");
   const allDone = requests.filter((r) => r.status === "done" || r.status === "rejected");
 
-  // Pending+Stopped: stopped first, then next-up, then by priority (high→medium→low), limit 5
-  const priWeight = (p: string) => p === "high" ? 0 : p === "medium" ? 1 : p === "low" ? 2 : 3;
+  // next-up: 의존성 충족된 pending + stopped → QUEUE에 들어갈 후보
   const allReady = [...allStopped, ...allPending];
   const nextUpSet = new Set(allReady.filter((r) => {
     const deps = depsOf.get(r.id) || [];
     return deps.length === 0 || deps.every((d) => statusMap.get(d) === "done");
   }).map((r) => r.id));
-  const sortedPending = [...allReady].sort((a, b) => {
-    // stopped always first
-    const sa = a.status === "stopped" ? 0 : 1, sb = b.status === "stopped" ? 0 : 1;
-    if (sa !== sb) return sa - sb;
-    const na = nextUpSet.has(a.id) ? 0 : 1, nb = nextUpSet.has(b.id) ? 0 : 1;
-    if (na !== nb) return na - nb;
-    return priWeight(a.priority) - priWeight(b.priority) || a.id.localeCompare(b.id);
-  });
-  const pending = sortedPending.slice(0, maxParallel);
-  const queue = sortedPending.slice(maxParallel, maxParallel + maxParallel); // next batch
 
-  // Done: most recent N (matching maxParallel)
+  // QUEUE: 다음 실행 대상 (stopped 우선, 그 다음 next-up pending)
+  const queueItems = allReady
+    .filter((r) => nextUpSet.has(r.id))
+    .sort((a, b) => {
+      const sa = a.status === "stopped" ? 0 : 1, sb = b.status === "stopped" ? 0 : 1;
+      if (sa !== sb) return sa - sb;
+      return priWeight(a.priority) - priWeight(b.priority) || a.id.localeCompare(b.id);
+    })
+    .slice(0, maxParallel);
+  const queueIds = new Set(queueItems.map((r) => r.id));
+
+  // STOPPED: queue에 안 들어간 stopped
+  const stoppedItems = allStopped.filter((r) => !queueIds.has(r.id)).slice(0, maxParallel);
+
+  // PENDING (backlog): queue에 안 들어간 pending
+  const pendingNotQueue = allPending.filter((r) => !queueIds.has(r.id));
+  const backlog = pendingNotQueue.sort((a, b) => priWeight(a.priority) - priWeight(b.priority) || a.id.localeCompare(b.id)).slice(0, maxParallel);
+  const backlogRest = pendingNotQueue.slice(maxParallel, maxParallel * 2);
+
+  // Done
   const done = allDone.slice(-maxParallel).reverse();
 
-  const queueExtra = allPending.length - pending.length - queue.length;
+  const pendingExtra = pendingNotQueue.length - backlog.length - backlogRest.length;
   const doneExtra = allDone.length - done.length;
 
   const sections: { key: string; label: string; items: RequestItem[]; color: string; extra: number }[] = [
-    ...(queue.length > 0 ? [{ key: "queue", label: "BACKLOG", items: queue, color: "#a1a1aa", extra: 0 }] : []),
-    { key: "pending", label: "QUEUE", items: pending, color: "#eab308", extra: 0 },
+    ...(backlogRest.length > 0 ? [{ key: "backlog2", label: "BACKLOG", items: backlogRest, color: "#a1a1aa", extra: 0 }] : []),
+    ...(backlog.length > 0 ? [{ key: "backlog", label: "BACKLOG", items: backlog, color: "#a1a1aa", extra: 0 }] : []),
+    ...(stoppedItems.length > 0 ? [{ key: "stopped", label: "STOPPED", items: stoppedItems, color: "#f59e0b", extra: 0 }] : []),
+    { key: "queue", label: "QUEUE", items: queueItems, color: "#eab308", extra: 0 },
     { key: "current", label: "IN PROGRESS", items: current, color: "#3b82f6", extra: 0 },
     { key: "done", label: "DONE", items: done, color: "#22c55e", extra: doneExtra },
   ];
 
   const nodes: NodeLayout[] = [];
   const sectionLayouts: SectionLayout[] = [];
-  // ghostCount: remaining tasks shown as dashed placeholders left of queue
-  const ghostCount = queueExtra > 0 ? Math.min(queueExtra, maxParallel) : 0;
-  const totalGhostExtra = queueExtra - ghostCount;
+  // ghostCount: remaining tasks shown as dashed placeholders left of everything
+  const ghostCount = pendingExtra > 0 ? 1 : 0;
+  const totalGhostExtra = pendingExtra;
   let sectionX = CANVAS_PAD;
 
   // Ghost section (single dashed placeholder for remaining backlog) - same height as other sections
@@ -263,7 +274,9 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
   };
 
   const topGroups = [
-    { label: "PENDING", color: "#eab308", box: computeGroup(new Set(["queue", "pending"]), true) },
+    { label: "PENDING", color: "#eab308", box: computeGroup(new Set(["backlog", "backlog2"]), true) },
+    { label: "STOPPED", color: "#f59e0b", box: computeGroup(new Set(["stopped"]), false) },
+    { label: "QUEUE", color: "#eab308", box: computeGroup(new Set(["queue"]), false) },
     { label: "IN PROGRESS", color: "#3b82f6", box: computeGroup(new Set(["current"]), false) },
     { label: "DONE", color: "#22c55e", box: computeGroup(new Set(["done"]), false) },
   ].filter((g) => g.box !== null);
@@ -271,9 +284,16 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
   // 상위 그룹이 1개 섹션만 감싸면 안쪽 라벨 숨김 (중복 방지)
   const hideLabelKeys = new Set<string>();
   for (const g of topGroups) {
-    const keys = g.label === "PENDING" ? ["queue", "pending"] : g.label === "IN PROGRESS" ? ["current"] : ["done"];
+    const keyMap: Record<string, string[]> = {
+      "PENDING": ["backlog", "backlog2"],
+      "STOPPED": ["stopped"],
+      "QUEUE": ["queue"],
+      "IN PROGRESS": ["current"],
+      "DONE": ["done"],
+    };
+    const keys = keyMap[g.label] || [];
     const matched = sections.filter((s) => keys.includes(s.key));
-    if (matched.length === 1) hideLabelKeys.add(matched[0].key);
+    if (matched.length <= 1) matched.forEach((m) => hideLabelKeys.add(m.key));
   }
 
   return { nodes, edges, bounds, sections: sectionLayouts, ghostBox, topGroups, hideLabelKeys };
