@@ -1,7 +1,7 @@
 ---
 id: TASK-113
 title: 사이드바 Docs 섹션 IDE 스타일 접기/펼치기 구현
-status: failed
+status: in_progress
 branch: task/task-113
 worktree: ../repo-wt-task-113
 priority: medium
