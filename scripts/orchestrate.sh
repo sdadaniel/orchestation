@@ -245,7 +245,7 @@ while true; do
   done <<< "$(get_task_ids)"
 
   # 실행 중인 것도 없고 대기 큐도 비었으면 종료
-  if [ ${#RUNNING[@]} -eq 0 ] && [ ${#QUEUE[@]} -eq 0 ]; then
+  if [ "${#RUNNING[@]}" -eq 0 ] && [ "${#QUEUE[@]}" -eq 0 ]; then
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "✅ Pipeline 완료!"
@@ -271,13 +271,13 @@ while true; do
 
   # ── 빈 슬롯에 새 태스크 투입 ──
   qi=0
-  while [ ${#RUNNING[@]} -lt "$MAX_PARALLEL" ] && [ "$qi" -lt "${#QUEUE[@]}" ]; do
+  while [ "${#RUNNING[@]}" -lt "$MAX_PARALLEL" ] && [ "$qi" -lt "${#QUEUE[@]}" ]; do
     next_task="${QUEUE[$qi]}"
     qi=$((qi + 1))
 
     # 이미 실행 중인지 확인
     already_running=false
-    for rt in "${RUNNING[@]}"; do
+    for rt in "${RUNNING[@]+"${RUNNING[@]}"}"; do
       if [ "$rt" == "$next_task" ]; then
         already_running=true
         break
@@ -294,7 +294,7 @@ while true; do
   sleep 2
 
   NEW_RUNNING=()
-  for task_id in "${RUNNING[@]}"; do
+  for task_id in "${RUNNING[@]+"${RUNNING[@]}"}"; do
     process_done_task "$task_id"
     rc=$?
     if [ "$rc" -eq 2 ]; then
@@ -306,7 +306,7 @@ while true; do
     fi
     # rc=0 (성공)이면 RUNNING에서 제거됨
   done
-  RUNNING=("${NEW_RUNNING[@]}")
+  RUNNING=("${NEW_RUNNING[@]+"${NEW_RUNNING[@]}"}")
 done
 
 echo ""
