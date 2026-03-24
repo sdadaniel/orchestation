@@ -4,7 +4,7 @@
 # Tests collect-requests, analyze-dependencies, and task creation flow
 # Usage: bash scripts/test-parallel-logic.sh
 
-set -uo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -153,7 +153,7 @@ assert_eq "should return []" "[]" "$RESULT"
 # ── Test 4: collect-requests output format ──
 log_test "4. collect-requests.sh - output format validation"
 
-FIRST_LINE=$(bash "$SCRIPT_DIR/collect-requests.sh" "$REQUESTS_DIR" | head -1)
+FIRST_LINE=$(bash "$SCRIPT_DIR/collect-requests.sh" "$REQUESTS_DIR" | head -1 || true)
 IFS='|' read -r file id title priority <<< "$FIRST_LINE"
 assert_not_empty "file path" "$file"
 assert_eq "first request ID" "REQ-001" "$id"
