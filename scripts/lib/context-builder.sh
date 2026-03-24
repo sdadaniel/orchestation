@@ -20,8 +20,8 @@ get_done_task_ids() {
 
   for dir in "$task_dir" "$req_dir"; do
     [ ! -d "$dir" ] && continue
-    find "$dir" -maxdepth 1 -name "TASK-*.md" -o -name "REQ-*.md" 2>/dev/null | while read -r f; do
-      local st
+    find "$dir" -maxdepth 1 \( -name "TASK-*.md" -o -name "REQ-*.md" \) 2>/dev/null | while read -r f; do
+      local st 2>/dev/null || true
       st=$(_cb_get_field "$f" "status")
       if [ "$st" = "done" ]; then
         basename "$f"

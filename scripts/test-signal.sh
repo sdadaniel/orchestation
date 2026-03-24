@@ -8,7 +8,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$REPO_ROOT/scripts/lib/signal.sh"
 
 TEST_DIR=$(mktemp -d /tmp/test-signal-XXXXXX)
-trap "rm -rf $TEST_DIR" EXIT
+trap 'rm -rf "$TEST_DIR"' EXIT
 
 PASS=0
 FAIL=0

@@ -18,7 +18,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 # TASK 파일에서 ID 추출
 get_task_ids() {
   find "$TASK_DIR" -name "TASK-*.md" | sort | while read -r f; do
-    grep '^id:' "$f" | sed 's/id: *//'
+    grep '^id:' "$f" | sed 's/id: *//' || true
   done
 }
 
