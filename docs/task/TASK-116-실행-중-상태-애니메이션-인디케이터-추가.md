@@ -1,10 +1,13 @@
 ---
 id: TASK-116
 title: 실행 중 상태 애니메이션 인디케이터 추가
-status: done
-branch: task/task-116
-worktree: ../repo-wt-task-116
+status: pending
 priority: medium
+scope:
+  - src/frontend/src/components/AppShell.tsx
+  - src/frontend/src/app/globals.css
+  - src/frontend/src/components/RunningIndicator.tsx
+  - src/frontend/src/hooks/useRequests.ts
 created: 2026-03-24
 updated: 2026-03-24
 ---
