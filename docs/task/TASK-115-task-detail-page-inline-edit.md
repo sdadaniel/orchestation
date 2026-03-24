@@ -1,7 +1,7 @@
 ---
 id: TASK-115
 title: Task 상세 페이지에 인라인 편집 기능 추가
-status: in_progress
+status: failed
 priority: low
 sprint:
 depends_on: []
@@ -30,5 +30,9 @@ scope:
 - [ ] done 상태인 태스크는 편집 불가 (읽기 전용)
 
 ## 실패 사유 (2026-03-24 17:57)
+
+Not logged in · Please run /login
+
+## 실패 사유 (2026-03-24 18:34)
 
 Not logged in · Please run /login
