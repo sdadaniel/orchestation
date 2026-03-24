@@ -1,7 +1,7 @@
 ---
 id: TASK-111
 title: 상태 변경 시 의존성 검증 추가
-status: in_progress
+status: done
 priority: high
 sort_order: 0
 sprint:
