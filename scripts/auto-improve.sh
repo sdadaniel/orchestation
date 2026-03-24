@@ -172,11 +172,13 @@ while true; do
   PENDING_TASK_COUNT=$(find "$PROJECT_ROOT/docs/task" -name "TASK-*.md" -exec grep -l "^status: pending" {} \; 2>/dev/null | wc -l | tr -d ' ')
   if [[ "$PENDING_TASK_COUNT" -gt 0 ]] && [[ -x "$ORCHESTRATE" ]]; then
     log "Found $PENDING_TASK_COUNT pending task(s) in docs/task/ — running orchestrate..."
-    bash "$ORCHESTRATE" 2>&1 | while IFS= read -r line; do
+    ORCHESTRATE_OUTPUT=$(bash "$ORCHESTRATE" 2>&1) || ORCHESTRATE_EXIT=$?
+    while IFS= read -r line; do
       log "[orchestrate] $line"
-    done || {
-      log "Warning: Orchestration had errors"
-    }
+    done <<< "$ORCHESTRATE_OUTPUT"
+    if [[ ${ORCHESTRATE_EXIT:-0} -ne 0 ]]; then
+      log "Warning: Orchestration had errors (exit code: ${ORCHESTRATE_EXIT})"
+    fi
     log "✅ Orchestration for existing tasks completed"
     check_stop_flag
   fi
@@ -285,9 +287,9 @@ while true; do
       fi
     else
       log "Dependency analysis result:"
-      echo "$ANALYSIS_OUTPUT" | while IFS= read -r line; do
+      while IFS= read -r line; do
         log "  $line"
-      done
+      done < <(echo "$ANALYSIS_OUTPUT")
 
       # Parse INDEPENDENT line
       INDEP_LINE=$(echo "$ANALYSIS_OUTPUT" | grep "^INDEPENDENT:" | head -1 | sed 's/^INDEPENDENT: *//' || true)
@@ -377,11 +379,13 @@ while true; do
     # Run orchestrate.sh — it now reads docs/requests/ too
     if [[ -x "$ORCHESTRATE" ]]; then
       log "Running orchestration for: ${ENRICHED_REQ_IDS[*]}"
-      bash "$ORCHESTRATE" 2>&1 | while IFS= read -r line; do
+      ORCHESTRATE_OUTPUT=$(bash "$ORCHESTRATE" 2>&1) || ORCHESTRATE_EXIT=$?
+      while IFS= read -r line; do
         log "[orchestrate] $line"
-      done || {
-        log "Warning: Orchestration had errors"
-      }
+      done <<< "$ORCHESTRATE_OUTPUT"
+      if [[ ${ORCHESTRATE_EXIT:-0} -ne 0 ]]; then
+        log "Warning: Orchestration had errors (exit code: ${ORCHESTRATE_EXIT})"
+      fi
     fi
 
     log "✅ Parallel batch completed: ${ENRICHED_REQ_IDS[*]}"
@@ -460,11 +464,13 @@ while true; do
 
       if [[ -x "$ORCHESTRATE" ]]; then
         log "Running orchestration for sequential: $dep_req_id..."
-        bash "$ORCHESTRATE" 2>&1 | while IFS= read -r line; do
+        ORCHESTRATE_OUTPUT=$(bash "$ORCHESTRATE" 2>&1) || ORCHESTRATE_EXIT=$?
+        while IFS= read -r line; do
           log "[orchestrate] $line"
-        done || {
-          log "Warning: Orchestration had errors for $dep_req_id"
-        }
+        done <<< "$ORCHESTRATE_OUTPUT"
+        if [[ ${ORCHESTRATE_EXIT:-0} -ne 0 ]]; then
+          log "Warning: Orchestration had errors for $dep_req_id (exit code: ${ORCHESTRATE_EXIT})"
+        fi
       fi
 
       log "✅ Sequential completed: $dep_req_id"
