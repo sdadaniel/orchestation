@@ -1,7 +1,7 @@
 ---
 id: TASK-048
 title: /tasks/new 페이지 콘텐츠 중앙 정렬
-status: in_progress
+status: done
 priority: low
 sprint:
 depends_on: []

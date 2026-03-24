@@ -1,7 +1,7 @@
 ---
 id: TASK-046
 title: 태스크 로그 조회 API 엔드포인트 구현 (GET /api/tasks/[id]/logs)
-status: in_progress
+status: done
 priority: high
 sprint:
 depends_on: []

@@ -1,7 +1,7 @@
 ---
 id: TASK-047
 title: Task 상세 페이지에 로그 탭 추가
-status: in_progress
+status: done
 priority: high
 sprint:
 depends_on: [TASK-046]

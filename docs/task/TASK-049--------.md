@@ -1,7 +1,7 @@
 ---
 id: TASK-049
 title: 운영 서비스 전환을 위한 개선 요청 목록 작성
-status: in_progress
+status: done
 priority: medium
 sprint:
 depends_on: []
