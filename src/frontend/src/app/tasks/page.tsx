@@ -239,6 +239,8 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
   const ghostBox = ghostCount > 0 ? {
     x: sectionLayouts[0].x + CANVAS_PAD / 2,
     y: sectionLayouts[0].y + SECTION_HEADER_H + ROW_GAP,
+    w: NODE_W,
+    h: maxParallel * (NODE_H + ROW_GAP) - ROW_GAP,
     count: ghostCount + totalGhostExtra,
   } : null;
 
@@ -321,8 +323,8 @@ function DAGCanvas({ requests, tasks, onClickItem }: { requests: RequestItem[]; 
           {/* Ghost dashed placeholder for remaining backlog */}
           {layout.ghostBox && (
             <g>
-              <rect x={layout.ghostBox.x} y={layout.ghostBox.y} width={NODE_W} height={NODE_H} rx={8} fill="var(--muted)" fillOpacity={0.3} stroke="#71717a" strokeWidth={1.5} strokeDasharray="8 4" opacity={0.6} />
-              <text x={layout.ghostBox.x + NODE_W / 2} y={layout.ghostBox.y + NODE_H / 2 + 5} textAnchor="middle" fill="#a1a1aa" fontSize={13} fontWeight={500}>{layout.ghostBox.count} more</text>
+              <rect x={layout.ghostBox.x} y={layout.ghostBox.y} width={layout.ghostBox.w} height={layout.ghostBox.h} rx={8} fill="var(--muted)" fillOpacity={0.3} stroke="#71717a" strokeWidth={1.5} strokeDasharray="8 4" opacity={0.6} />
+              <text x={layout.ghostBox.x + layout.ghostBox.w / 2} y={layout.ghostBox.y + layout.ghostBox.h / 2 + 5} textAnchor="middle" fill="#a1a1aa" fontSize={13} fontWeight={500}>{layout.ghostBox.count} more</text>
             </g>
           )}
         </g>
