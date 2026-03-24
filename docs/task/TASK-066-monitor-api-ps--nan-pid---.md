@@ -1,7 +1,7 @@
 ---
 id: TASK-066
 title: Monitor API ps 파싱 NaN PID 방어 코드 추가
-status: in_progress
+status: done
 priority: medium
 sprint:
 depends_on: []
