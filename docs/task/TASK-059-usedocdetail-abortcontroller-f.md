@@ -1,7 +1,7 @@
 ---
 id: TASK-059
 title: useDocDetail AbortController로 fetch 경쟁 조건 수정
-status: in_progress
+status: done
 priority: high
 sprint:
 depends_on: []
