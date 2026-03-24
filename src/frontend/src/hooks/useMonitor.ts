@@ -2,6 +2,15 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 
+export interface ClaudeProcess {
+  pid: number;
+  cpu: number;
+  mem: number;
+  memMB: number;
+  command: string;
+  label: string;
+}
+
 export interface MonitorSnapshot {
   cpu: { user: number; system: number; idle: number };
   loadAvg: { "1m": number; "5m": number; "15m": number };
@@ -9,6 +18,7 @@ export interface MonitorSnapshot {
   processCount: number;
   threadCount: number;
   cpuCores: number;
+  claudeProcesses: ClaudeProcess[];
   timestamp: number;
 }
 

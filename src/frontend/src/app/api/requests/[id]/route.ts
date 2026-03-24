@@ -1,8 +1,74 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
+import path from "path";
 import { findRequestFile, parseRequestFile, getRequestsDir } from "@/lib/request-parser";
 
 export const dynamic = "force-dynamic";
+
+const OUTPUT_DIR = path.join(process.cwd(), "../../output");
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const filePath = findRequestFile(id);
+
+  if (!filePath) {
+    return NextResponse.json({ error: "Request not found" }, { status: 404 });
+  }
+
+  const data = parseRequestFile(filePath);
+  if (!data) {
+    return NextResponse.json({ error: "Failed to parse request" }, { status: 500 });
+  }
+
+  // Map REQ-XXX to TASK-XXX for output file lookup
+  const taskId = id.replace(/^REQ-/, "TASK-");
+
+  // Check for execution log
+  let executionLog: Record<string, unknown> | null = null;
+  const taskJsonPath = path.join(OUTPUT_DIR, `${taskId}-task.json`);
+  if (fs.existsSync(taskJsonPath)) {
+    try {
+      executionLog = JSON.parse(fs.readFileSync(taskJsonPath, "utf-8"));
+    } catch { /* ignore */ }
+  }
+
+  // Check for review result
+  let reviewResult: Record<string, unknown> | null = null;
+  const reviewJsonPath = path.join(OUTPUT_DIR, `${taskId}-review.json`);
+  if (fs.existsSync(reviewJsonPath)) {
+    try {
+      reviewResult = JSON.parse(fs.readFileSync(reviewJsonPath, "utf-8"));
+    } catch { /* ignore */ }
+  }
+
+  // Get cost info from token-usage.log
+  let costEntries: { phase: string; cost: string; duration: string; tokens: string }[] = [];
+  const tokenLogPath = path.join(OUTPUT_DIR, "token-usage.log");
+  if (fs.existsSync(tokenLogPath)) {
+    try {
+      const logContent = fs.readFileSync(tokenLogPath, "utf-8");
+      const lines = logContent.split("\n").filter((l) => l.includes(taskId));
+      costEntries = lines.map((line) => {
+        const phase = line.match(/phase=(\w+)/)?.[1] || "unknown";
+        const cost = line.match(/cost=\$([0-9.]+)/)?.[1] || "0";
+        const duration = line.match(/duration=(\d+)ms/)?.[1] || "0";
+        const output = line.match(/output=(\d+)/)?.[1] || "0";
+        const input = line.match(/input=(\d+)/)?.[1] || "0";
+        return { phase, cost: `$${parseFloat(cost).toFixed(4)}`, duration: `${(parseInt(duration) / 1000).toFixed(1)}s`, tokens: `in:${input} out:${output}` };
+      });
+    } catch { /* ignore */ }
+  }
+
+  return NextResponse.json({
+    ...data,
+    executionLog,
+    reviewResult,
+    costEntries,
+  });
+}
 
 export async function PUT(
   request: Request,

@@ -7,11 +7,8 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardList,
-  Calendar,
   DollarSign,
   SquareTerminal,
-  Layers,
-  BookOpen,
   Settings,
   FolderOpen,
   Folder,
@@ -19,9 +16,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  X,
-  Check,
-  Inbox,
   Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -406,7 +400,6 @@ export function TaskSidebar({
   onDocRename,
   onDocReorder,
   requestItems = [],
-  onNewTask,
   currentPath = "/",
 }: TaskSidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
@@ -426,10 +419,7 @@ export function TaskSidebar({
   const [newRootItemType, setNewRootItemType] = useState<"doc" | "folder" | null>(null);
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [showNewTaskForm, setShowNewTaskForm] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskContent, setNewTaskContent] = useState("");
-  const newTaskInputRef = useRef<HTMLInputElement>(null);
+  // showNewTaskForm, newTaskTitle, newTaskContent removed - now using /tasks/new page
 
   const toggleFolder = useCallback((id: string) => {
     setExpandedFolders((prev) => {
@@ -447,14 +437,6 @@ export function TaskSidebar({
     setNewRootItemType(null);
   };
 
-  const handleNewTaskSubmit = async () => {
-    if (!newTaskTitle.trim() || !onNewTask) return;
-    await onNewTask(newTaskTitle.trim(), newTaskContent.trim());
-    setNewTaskTitle("");
-    setNewTaskContent("");
-    setShowNewTaskForm(false);
-  };
-
   // Group request items by status for sidebar display
   const inProgressTasks = requestItems.filter((r) => r.status === "in_progress");
   const pendingTasks = requestItems.filter((r) => r.status === "pending" || r.status === "reviewing");
@@ -463,12 +445,6 @@ export function TaskSidebar({
 
   // Display task ID as TASK-XXX in UI
   const displayTaskId = (id: string) => id.replace(/^REQ-/, "TASK-");
-
-  useEffect(() => {
-    if (showNewTaskForm && newTaskInputRef.current) {
-      newTaskInputRef.current.focus();
-    }
-  }, [showNewTaskForm]);
 
   return (
     <div className="ide-sidebar flex flex-col h-full">
@@ -564,8 +540,8 @@ export function TaskSidebar({
           {inProgressTasks.map((task) => (
             <Link
               key={task.id}
-              href="/tasks"
-              className={cn("tree-item no-underline text-sidebar-foreground", currentPath === "/tasks" && "active")}
+              href={`/tasks/${displayTaskId(task.id)}`}
+              className={cn("tree-item no-underline text-sidebar-foreground", currentPath === `/tasks/${displayTaskId(task.id)}` && "active")}
             >
               <span className="w-3 h-3 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
               <span className="truncate flex-1 text-xs">{displayTaskId(task.id)} {task.title}</span>
@@ -576,8 +552,8 @@ export function TaskSidebar({
           {pendingTasks.map((task) => (
             <Link
               key={task.id}
-              href="/tasks"
-              className="tree-item no-underline text-sidebar-foreground"
+              href={`/tasks/${displayTaskId(task.id)}`}
+              className={cn("tree-item no-underline text-sidebar-foreground", currentPath === `/tasks/${displayTaskId(task.id)}` && "active")}
             >
               <span className="w-2 h-2 rounded-full shrink-0 bg-yellow-500" />
               <span className="truncate flex-1 text-xs">{displayTaskId(task.id)} {task.title}</span>
@@ -588,8 +564,8 @@ export function TaskSidebar({
           {rejectedTasks.map((task) => (
             <Link
               key={task.id}
-              href="/tasks"
-              className="tree-item no-underline text-sidebar-foreground"
+              href={`/tasks/${displayTaskId(task.id)}`}
+              className={cn("tree-item no-underline text-sidebar-foreground", currentPath === `/tasks/${displayTaskId(task.id)}` && "active")}
             >
               <span className="w-2 h-2 rounded-full shrink-0 bg-red-500" />
               <span className="truncate flex-1 text-xs">{displayTaskId(task.id)} {task.title}</span>
@@ -616,8 +592,8 @@ export function TaskSidebar({
               {showCompleted && doneTasks.map((task) => (
                 <Link
                   key={task.id}
-                  href="/tasks"
-                  className="tree-item no-underline text-sidebar-foreground ml-3"
+                  href={`/tasks/${displayTaskId(task.id)}`}
+                  className={cn("tree-item no-underline text-sidebar-foreground ml-3", currentPath === `/tasks/${displayTaskId(task.id)}` && "active")}
                 >
                   <span className="text-emerald-500 text-xs shrink-0">&#10003;</span>
                   <span className="truncate flex-1 text-xs text-muted-foreground line-through">
@@ -628,58 +604,16 @@ export function TaskSidebar({
             </div>
           )}
 
-          {/* + New Task button / inline form */}
-          {showNewTaskForm ? (
-            <div className="px-1 py-1 space-y-1">
-              <input
-                ref={newTaskInputRef}
-                type="text"
-                placeholder="Task title..."
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newTaskTitle.trim()) handleNewTaskSubmit();
-                  if (e.key === "Escape") { setShowNewTaskForm(false); setNewTaskTitle(""); setNewTaskContent(""); }
-                }}
-                className="w-full bg-muted border border-border rounded px-2 py-1 text-xs outline-none focus:border-primary"
-              />
-              <textarea
-                placeholder="Description (optional)..."
-                value={newTaskContent}
-                onChange={(e) => setNewTaskContent(e.target.value)}
-                rows={2}
-                className="w-full bg-muted border border-border rounded px-2 py-1 text-xs outline-none focus:border-primary resize-y"
-              />
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={handleNewTaskSubmit}
-                  disabled={!newTaskTitle.trim()}
-                  className={cn("text-[10px] px-2 py-0.5 rounded", newTaskTitle.trim() ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
-                >
-                  Create
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowNewTaskForm(false); setNewTaskTitle(""); setNewTaskContent(""); }}
-                  className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:text-foreground"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowNewTaskForm(true)}
-              className="tree-item w-full text-left text-muted-foreground hover:text-foreground"
-            >
-              <Plus className="h-3 w-3 shrink-0" />
-              <span className="text-xs">New Task</span>
-            </button>
-          )}
+          {/* + New Task button */}
+          <Link
+            href="/tasks/new"
+            className={cn("tree-item w-full text-left text-muted-foreground hover:text-foreground no-underline", currentPath === "/tasks/new" && "active")}
+          >
+            <Plus className="h-3 w-3 shrink-0" />
+            <span className="text-xs">New Task</span>
+          </Link>
 
-          {requestItems.length === 0 && !showNewTaskForm && (
+          {requestItems.length === 0 && (
             <div className="px-2 py-2 text-[11px] text-muted-foreground">
               No tasks yet
             </div>
