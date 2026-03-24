@@ -3,6 +3,7 @@ id: TASK-112
 title: 토스트 메시지 표시 시 화면 깜박임 버그 수정
 status: pending
 priority: medium
+sort_order: 7
 sprint:
 depends_on: []
 role: general

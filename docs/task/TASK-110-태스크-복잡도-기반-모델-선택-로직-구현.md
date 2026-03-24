@@ -3,6 +3,7 @@ id: TASK-110
 title: 태스크 복잡도 기반 모델 선택 로직 구현
 status: pending
 priority: medium
+sort_order: 6
 created: 2026-03-24
 updated: 2026-03-24
 ---

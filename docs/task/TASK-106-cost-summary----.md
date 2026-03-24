@@ -3,6 +3,7 @@ id: TASK-106
 title: Cost Summary에 모델별 비용 집계 추가
 status: pending
 priority: medium
+sort_order: 3
 sprint:
 depends_on: [TASK-105]
 branch: task/TASK-106-cost-summary----

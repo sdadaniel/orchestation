@@ -3,6 +3,7 @@ id: TASK-107
 title: Cost Summary에 phase별(task/review) 비용 비율 표시
 status: pending
 priority: medium
+sort_order: 5
 sprint:
 depends_on: [TASK-106]
 branch: task/TASK-107-cost-summary-phasetaskreview--

@@ -3,6 +3,7 @@ id: TASK-113
 title: 사이드바 Docs 섹션 IDE 스타일 접기/펼치기 구현
 status: pending
 priority: medium
+sort_order: 8
 sprint:
 depends_on: []
 role: general

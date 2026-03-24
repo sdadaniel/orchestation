@@ -3,6 +3,7 @@ id: TASK-101
 title: test-parallel-logic.sh set -euo pipefail 수정
 status: pending
 priority: medium
+sort_order: 1
 sprint:
 depends_on: [TASK-100]
 branch: task/TASK-101-test-parallel-logicsh-set--euo
