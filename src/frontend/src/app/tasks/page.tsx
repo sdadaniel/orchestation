@@ -227,16 +227,8 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
     sectionX += NODE_W + CANVAS_PAD + SECTION_GAP;
   }
 
-  // Build edges (skip edges within the same section — both nodes share the same x)
-  const nodePos = new Map(nodes.map((n) => [n.id, n]));
+  // Edges disabled — section flow already shows execution order
   const edges: EdgeLayout[] = [];
-  for (const req of requests) {
-    for (const dep of depsOf.get(req.id) || []) {
-      const f = nodePos.get(dep), t = nodePos.get(req.id);
-      const depStatus = statusMap.get(dep);
-      if (f && t && f.x !== t.x && depStatus !== "done" && depStatus !== "rejected") edges.push({ fromId: dep, toId: req.id, x1: f.x + NODE_W, y1: f.y + NODE_H / 2, x2: t.x, y2: t.y + NODE_H / 2 });
-    }
-  }
 
   const allX = nodes.map((n) => n.x).concat(sectionLayouts.map((s) => s.x));
   const allXR = nodes.map((n) => n.x + NODE_W).concat(sectionLayouts.map((s) => s.x + s.w));
