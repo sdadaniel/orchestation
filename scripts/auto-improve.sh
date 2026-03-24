@@ -279,12 +279,14 @@ while true; do
 
         for dep_id in "$from_id" "$to_id"; do
           found=false
-          for existing in "${INDEPENDENT_INDICES[@]+"${INDEPENDENT_INDICES[@]}"}"; do
-            if [[ "${REQ_IDS[$existing]}" == "$dep_id" ]]; then
-              found=true
-              break
-            fi
-          done
+          if [[ ${#INDEPENDENT_INDICES[@]} -gt 0 ]]; then
+            for existing in "${INDEPENDENT_INDICES[@]}"; do
+              if [[ "${REQ_IDS[$existing]}" == "$dep_id" ]]; then
+                found=true
+                break
+              fi
+            done
+          fi
           # Dependent IDs are handled separately, not added to independent
         done
       done <<< "$(echo "$ANALYSIS_OUTPUT" | grep "^DEPENDENT:" || true)"
@@ -354,16 +356,20 @@ while true; do
 
       # Add from_id if not already in order
       found=false
-      for existing in "${DEP_ORDER[@]+"${DEP_ORDER[@]}"}"; do
-        [[ "$existing" == "$from_id" ]] && found=true && break
-      done
+      if [[ ${#DEP_ORDER[@]} -gt 0 ]]; then
+        for existing in "${DEP_ORDER[@]}"; do
+          [[ "$existing" == "$from_id" ]] && found=true && break
+        done
+      fi
       [[ "$found" == false ]] && DEP_ORDER+=("$from_id")
 
       # Add to_id if not already in order
       found=false
-      for existing in "${DEP_ORDER[@]+"${DEP_ORDER[@]}"}"; do
-        [[ "$existing" == "$to_id" ]] && found=true && break
-      done
+      if [[ ${#DEP_ORDER[@]} -gt 0 ]]; then
+        for existing in "${DEP_ORDER[@]}"; do
+          [[ "$existing" == "$to_id" ]] && found=true && break
+        done
+      fi
       [[ "$found" == false ]] && DEP_ORDER+=("$to_id")
     done
 
@@ -383,12 +389,14 @@ while true; do
 
       # Skip if already processed as independent
       already_done=false
-      for ind_idx in "${INDEPENDENT_INDICES[@]+"${INDEPENDENT_INDICES[@]}"}"; do
-        if [[ "$ind_idx" == "$dep_idx" ]]; then
-          already_done=true
-          break
-        fi
-      done
+      if [[ ${#INDEPENDENT_INDICES[@]} -gt 0 ]]; then
+        for ind_idx in "${INDEPENDENT_INDICES[@]}"; do
+          if [[ "$ind_idx" == "$dep_idx" ]]; then
+            already_done=true
+            break
+          fi
+        done
+      fi
       [[ "$already_done" == true ]] && continue
 
       if [[ -z "$dep_idx" ]]; then
