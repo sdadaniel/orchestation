@@ -1,7 +1,7 @@
 ---
 id: TASK-118
 title: pending 상태가 아닌 태스크의 우선순위 변경 화살표 숨기기
-status: in_progress
+status: done
 branch: task/task-118
 worktree: ../repo-wt-task-118
 priority: medium
