@@ -202,7 +202,8 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
 
   for (const sec of sections) {
     const count = Math.max(sec.items.length, 1);
-    const sectionH = SECTION_HEADER_H + count * (NODE_H + ROW_GAP) + ROW_GAP;
+    const minCount = Math.max(count, maxParallel);
+    const sectionH = SECTION_HEADER_H + minCount * (NODE_H + ROW_GAP) + ROW_GAP;
     sectionLayouts.push({ label: sec.label, x: sectionX, y: CANVAS_PAD, w: NODE_W + CANVAS_PAD, h: sectionH, color: sec.color, extra: sec.extra });
 
     let nodeY = CANVAS_PAD + SECTION_HEADER_H + ROW_GAP;
