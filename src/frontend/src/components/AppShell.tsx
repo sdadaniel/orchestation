@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { ChatBot } from "@/components/ChatBot";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { RunningIndicator } from "@/components/RunningIndicator";
 import type { WaterfallTask } from "@/types/waterfall";
 
 /* ── Home Dashboard ── */
@@ -230,6 +231,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Global header */}
         <div className="global-header">
+          <RunningIndicator requestItems={requestItems} />
           <GlobalSearch requestItems={requestItems} docTree={docTree} />
         </div>
 
