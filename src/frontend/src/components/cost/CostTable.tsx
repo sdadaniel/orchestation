@@ -6,6 +6,12 @@ interface CostTableProps {
   entries: CostEntry[];
 }
 
+function formatTimestamp(raw: string): string {
+  // raw format: "YYYY-MM-DD HH:MM:SS"
+  if (!raw || raw.length < 10) return raw ?? "-";
+  return raw; // Already in YYYY-MM-DD HH:mm:ss format
+}
+
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   const seconds = ms / 1000;
@@ -24,6 +30,7 @@ export function CostTable({ entries }: CostTableProps) {
       <table className="w-full text-xs compact-table">
         <thead>
           <tr className="border-b border-border text-left text-[10px] text-muted-foreground uppercase tracking-wider">
+            <th className="font-medium">시각</th>
             <th className="font-medium">Task ID</th>
             <th className="font-medium">Phase</th>
             <th className="font-medium">Model</th>
@@ -51,6 +58,11 @@ export function CostTable({ entries }: CostTableProps) {
                     : "hover:bg-muted/50"
                 }`}
               >
+                <td>
+                  <span className="font-mono text-[10px] text-muted-foreground whitespace-nowrap">
+                    {formatTimestamp(entry.timestamp)}
+                  </span>
+                </td>
                 <td>
                   <span className={isHighest ? "text-amber-500" : "font-mono"}>
                     {entry.taskId}
