@@ -1,7 +1,7 @@
 ---
 id: TASK-112
 title: 토스트 메시지 표시 시 화면 깜박임 버그 수정
-status: failed
+status: in_progress
 branch: task/task-112
 worktree: ../repo-wt-task-112
 priority: medium
