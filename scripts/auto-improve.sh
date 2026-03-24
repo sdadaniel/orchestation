@@ -226,7 +226,9 @@ while true; do
 
   if [[ $ACCEPTED_COUNT -le 1 ]]; then
     # Single request: trivially independent
-    INDEPENDENT_INDICES=("${ACCEPTED_INDICES[@]}")
+    if [[ ${#ACCEPTED_INDICES[@]} -gt 0 ]]; then
+      INDEPENDENT_INDICES=("${ACCEPTED_INDICES[@]}")
+    fi
     log "Single accepted request — no dependency analysis needed"
   else
     # Build request summary for dependency analysis
@@ -243,7 +245,9 @@ while true; do
 
     if [[ "$ANALYSIS_OUTPUT" == "ERROR" ]]; then
       log "Dependency analysis failed — treating all as independent"
-      INDEPENDENT_INDICES=("${ACCEPTED_INDICES[@]}")
+      if [[ ${#ACCEPTED_INDICES[@]} -gt 0 ]]; then
+        INDEPENDENT_INDICES=("${ACCEPTED_INDICES[@]}")
+      fi
     else
       log "Dependency analysis result:"
       echo "$ANALYSIS_OUTPUT" | while IFS= read -r line; do
@@ -256,6 +260,7 @@ while true; do
       if [[ -n "$INDEP_LINE" ]]; then
         # Map request IDs back to indices
         IFS=',' read -ra INDEP_IDS <<< "$INDEP_LINE"
+        if [[ ${#INDEP_IDS[@]} -gt 0 ]]; then
         for indep_id_raw in "${INDEP_IDS[@]}"; do
           indep_id=$(echo "$indep_id_raw" | tr -d ' ')
           for idx in "${ACCEPTED_INDICES[@]}"; do
@@ -265,6 +270,7 @@ while true; do
             fi
           done
         done
+        fi
       fi
 
       # Parse DEPENDENT lines
@@ -294,7 +300,9 @@ while true; do
       # If no independent requests found, fall back to all independent
       if [[ ${#INDEPENDENT_INDICES[@]} -eq 0 && ${#DEPENDENT_PAIRS[@]} -eq 0 ]]; then
         log "No clear dependency info — treating all as independent"
-        INDEPENDENT_INDICES=("${ACCEPTED_INDICES[@]}")
+        if [[ ${#ACCEPTED_INDICES[@]} -gt 0 ]]; then
+          INDEPENDENT_INDICES=("${ACCEPTED_INDICES[@]}")
+        fi
       fi
     fi
   fi
@@ -436,8 +444,10 @@ while true; do
   log "  Total requests processed: $TOTAL_COUNT"
   log "  Accepted: $ACCEPTED_COUNT"
   log "  Rejected: $((TOTAL_COUNT - ACCEPTED_COUNT))"
-  if [[ $INDEP_COUNT -gt 0 ]]; then
+  if [[ $INDEP_COUNT -gt 0 && ${#ENRICHED_REQ_IDS[@]} -gt 0 ]]; then
     log "  Parallel (independent): $INDEP_COUNT → ${ENRICHED_REQ_IDS[*]}"
+  elif [[ $INDEP_COUNT -gt 0 ]]; then
+    log "  Parallel (independent): $INDEP_COUNT request(s)"
   fi
   if [[ ${#DEPENDENT_PAIRS[@]} -gt 0 ]]; then
     log "  Sequential (dependent): ${#DEPENDENT_PAIRS[@]} pair(s)"
