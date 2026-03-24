@@ -1,7 +1,7 @@
 ---
 id: TASK-119
 title: 프론트엔드 숨은 버그 탐색 및 수정
-status: in_progress
+status: done
 branch: task/task-119
 worktree: ../repo-wt-task-119
 priority: high
