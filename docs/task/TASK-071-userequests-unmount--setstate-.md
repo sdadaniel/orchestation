@@ -1,7 +1,7 @@
 ---
 id: TASK-071
 title: useRequests unmount 후 setState 방지
-status: in_progress
+status: pending
 priority: medium
 sprint:
 depends_on: []

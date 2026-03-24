@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { findRequestFile, parseRequestFile, getRequestsDir } from "@/lib/request-parser";
+import { findRequestFile, parseRequestFile, parseAllRequests, getRequestsDir } from "@/lib/request-parser";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +23,7 @@ export async function GET(
     return NextResponse.json({ error: "Failed to parse request" }, { status: 500 });
   }
 
-  // Map REQ-XXX to TASK-XXX for output file lookup
-  const taskId = id.replace(/^REQ-/, "TASK-");
+  const taskId = id;
 
   // Check for execution log
   let executionLog: Record<string, unknown> | null = null;
@@ -62,8 +61,23 @@ export async function GET(
     } catch { /* ignore */ }
   }
 
+  // Find tasks that depend on this task (blocked_by this task)
+  const allTasks = parseAllRequests();
+  const dependedBy = allTasks
+    .filter((t) => t.depends_on.includes(data.id))
+    .map((t) => ({ id: t.id, title: t.title, status: t.status }));
+
+  // Resolve depends_on with title and status
+  const dependsOnResolved = data.depends_on.map((depId) => {
+    const dep = allTasks.find((t) => t.id === depId);
+    return dep ? { id: dep.id, title: dep.title, status: dep.status } : { id: depId, title: "", status: "unknown" };
+  });
+
   return NextResponse.json({
     ...data,
+    depends_on: data.depends_on,
+    depends_on_detail: dependsOnResolved,
+    depended_by: dependedBy,
     executionLog,
     reviewResult,
     costEntries,
@@ -94,7 +108,7 @@ export async function PUT(
     const oldContent = existing.replace(/^---\n[\s\S]*?\n---\n?/, "").trim();
 
     // Update frontmatter fields if provided
-    if (body.status && ["pending", "in_progress", "done"].includes(body.status)) {
+    if (body.status && ["pending", "in_progress", "reviewing", "done", "rejected"].includes(body.status)) {
       fm = fm.replace(/^status:\s*.+$/m, `status: ${body.status}`);
     }
     if (body.title && typeof body.title === "string") {
@@ -102,6 +116,14 @@ export async function PUT(
     }
     if (body.priority && ["high", "medium", "low"].includes(body.priority)) {
       fm = fm.replace(/^priority:\s*.+$/m, `priority: ${body.priority}`);
+    }
+
+    // Update the updated timestamp
+    const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+    if (fm.match(/^updated:\s*.+$/m)) {
+      fm = fm.replace(/^updated:\s*.+$/m, `updated: ${now}`);
+    } else {
+      fm += `\nupdated: ${now}`;
     }
 
     const newContent = body.content !== undefined ? body.content.trim() : oldContent;

@@ -1,7 +1,7 @@
 ---
 id: TASK-103
 title: CostTable/RunHistory formatDuration 공통 유틸로 추출
-status: in_progress
+status: pending
 priority: low
 sprint:
 depends_on: []

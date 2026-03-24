@@ -1,7 +1,7 @@
 ---
 id: TASK-062
 title: Requests API unlinkSync race condition 방어 처리
-status: in_progress
+status: done
 priority: medium
 sprint:
 depends_on: []

@@ -43,6 +43,32 @@ parse_frontmatter() {
   ROLE=$(grep '^role:' "$TASK_FILE" | sed 's/role: *//' || true)
   REVIEWER_ROLE=$(grep '^reviewer_role:' "$TASK_FILE" | sed 's/reviewer_role: *//' || true)
 
+  # scope 필드 파싱 (frontmatter 내 YAML 리스트: "  - path" 형태)
+  SCOPE=""
+  local in_frontmatter=false in_scope=false
+  while IFS= read -r line; do
+    if [[ "$line" == "---" ]]; then
+      if $in_frontmatter; then break; fi
+      in_frontmatter=true
+      continue
+    fi
+    if ! $in_frontmatter; then continue; fi
+    if [[ "$line" == "scope:" ]]; then
+      in_scope=true
+      continue
+    fi
+    if $in_scope; then
+      if echo "$line" | grep -qE '^[[:space:]]*-[[:space:]]'; then
+        local item
+        item=$(echo "$line" | sed 's/^[[:space:]]*-[[:space:]]*//')
+        SCOPE="${SCOPE}${item}"$'\n'
+      else
+        break
+      fi
+    fi
+  done < "$TASK_FILE"
+  SCOPE=$(echo "$SCOPE" | sed '/^$/d')
+
   if [ -z "$BRANCH" ] || [ -z "$WORKTREE_REL" ]; then
     echo "❌ Task 파일에 branch 또는 worktree가 정의되지 않았습니다"
     exit 1
@@ -50,6 +76,9 @@ parse_frontmatter() {
 
   echo "🌿 Branch: $BRANCH"
   echo "📂 Worktree: $WORKTREE_PATH"
+  if [ -n "$SCOPE" ]; then
+    echo "🔍 Scope: $(echo "$SCOPE" | wc -l | tr -d ' ')개 파일 제한"
+  fi
 }
 
 ensure_worktree() {
@@ -130,12 +159,28 @@ run_task() {
   ensure_worktree
   load_role_prompt "$ROLE" "general"
 
+  local scope_section=""
+  if [ -n "$SCOPE" ]; then
+    local scope_list=""
+    while IFS= read -r f; do
+      [ -n "$f" ] && scope_list="${scope_list}
+- ${f}"
+    done <<< "$SCOPE"
+    scope_section="
+## 작업 범위 가이드
+아래 파일들을 우선적으로 확인하고 이 범위 안에서 작업을 완료해라:${scope_list}
+
+이 범위만으로 완료 조건을 충족할 수 없다고 판단되면, 범위 밖 파일도 자유롭게 수정해도 된다.
+단, 범위 밖 작업은 최소한으로 하고 완료 조건 충족에 필요한 경우에만 해라.
+"
+  fi
+
   local prompt="## 작업 규칙
 - 이 Worktree 안에서만 코드를 수정한다
 - main 브랜치를 직접 수정하지 않는다
 - Task 상태를 완료 처리하지 않는다
 - 작업이 끝나면 변경사항을 커밋해라
-
+${scope_section}
 지금 수행할 Task는 docs/task/${TASK_FILENAME} 에 정의되어 있다.
 해당 파일을 읽고, 완료 조건을 모두 충족하도록 작업해라."
 

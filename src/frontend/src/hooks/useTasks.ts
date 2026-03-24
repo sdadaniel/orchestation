@@ -67,20 +67,29 @@ export function useTasks(): UseTasksResult {
     };
   }, [fetchKey]);
 
-  // Auto-poll when orchestration might be running (every 5s)
+  // SSE: task 파일 변경 시 즉시 갱신
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetch("/api/orchestrate/status")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.status === "running") {
-            refetch();
-          }
-        })
-        .catch(() => {});
-    }, 5000);
+    let es: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    return () => clearInterval(interval);
+    const connect = () => {
+      es = new EventSource("/api/tasks/watch");
+      es.onmessage = (e) => {
+        if (e.data === "changed") refetch();
+      };
+      es.onerror = () => {
+        es?.close();
+        // 2초 후 재연결
+        reconnectTimer = setTimeout(connect, 2000);
+      };
+    };
+
+    connect();
+
+    return () => {
+      es?.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
   }, [refetch]);
 
   return { groups, isLoading, error, refetch };

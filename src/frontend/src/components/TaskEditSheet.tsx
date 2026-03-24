@@ -173,7 +173,7 @@ export function TaskEditSheet({
                   }}
                   className="w-full bg-muted border border-border rounded px-2 py-1 text-xs outline-none focus:border-primary"
                 >
-                  <option value="backlog">Backlog</option>
+                  <option value="pending">Pending</option>
                   <option value="in_progress">In Progress</option>
                   <option value="in_review">In Review</option>
                   <option value="done">Done</option>

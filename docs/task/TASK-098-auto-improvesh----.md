@@ -1,7 +1,7 @@
 ---
 id: TASK-098
 title: auto-improve.sh 배열 확장 문법 표준화
-status: in_progress
+status: pending
 priority: high
 sprint:
 depends_on: [TASK-097]

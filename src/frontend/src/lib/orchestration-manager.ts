@@ -2,6 +2,7 @@ import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import { appendRunHistory, type RunHistoryEntry } from "./run-history";
 import { parseCostLog } from "./cost-parser";
+import { loadSettings } from "./settings";
 
 export type OrchestrationStatus = "idle" | "running" | "completed" | "failed";
 
@@ -46,10 +47,13 @@ class OrchestrationManager {
     return this.state.status === "running";
   }
 
+  private launching = false;
+
   run(): { success: boolean; error?: string } {
-    if (this.isRunning()) {
+    if (this.isRunning() || this.launching) {
       return { success: false, error: "Orchestration is already running" };
     }
+    this.launching = true;
 
     // Resolve orchestrate.sh path relative to project root
     // The frontend is at src/frontend, so project root is ../../
@@ -70,10 +74,12 @@ class OrchestrationManager {
     this.appendLog(`[orchestrate] Script: ${scriptPath}`);
     this.appendLog(`[orchestrate] CWD: ${projectRoot}`);
 
+    const settings = loadSettings();
+
     try {
       this.process = spawn("bash", [scriptPath], {
         cwd: projectRoot,
-        env: { ...process.env },
+        env: { ...process.env, MAX_PARALLEL: String(settings.maxParallel) },
         stdio: ["ignore", "pipe", "pipe"],
       });
     } catch (err) {
@@ -83,9 +89,11 @@ class OrchestrationManager {
       this.state.finishedAt = new Date().toISOString();
       this.state.exitCode = 1;
       this.process = null;
+      this.launching = false;
       return { success: false, error: msg };
     }
 
+    this.launching = false;
     const proc = this.process;
 
     proc.stdout?.on("data", (data: Buffer) => {
@@ -252,6 +260,13 @@ class OrchestrationManager {
   }
 }
 
-// Singleton — keeps state across API calls within the same server process
-const orchestrationManager = new OrchestrationManager();
+// Singleton — survives Next.js HMR by storing on globalThis
+const globalKey = "__orchestrationManager__" as keyof typeof globalThis;
+const orchestrationManager: OrchestrationManager =
+  (globalThis as Record<string, unknown>)[globalKey] as OrchestrationManager ??
+  (() => {
+    const m = new OrchestrationManager();
+    (globalThis as Record<string, unknown>)[globalKey] = m;
+    return m;
+  })();
 export default orchestrationManager;

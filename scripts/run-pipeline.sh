@@ -7,6 +7,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TASK_DIR="$REPO_ROOT/docs/task"
 RUN_WORKER="$REPO_ROOT/scripts/run-worker.sh"
+MAX_PARALLEL="${MAX_PARALLEL:-3}"
 PIDS=()
 FAILED=0
 
@@ -83,80 +84,86 @@ deps_satisfied() {
   return 0
 }
 
-# 배치 단위로 실행 (같은 레벨의 TASK를 병렬 실행)
+# 배치 단위로 실행 (같은 레벨의 TASK를 MAX_PARALLEL 제한으로 병렬 실행)
 run_batch() {
   local batch=("$@")
-  PIDS=()
+  local total=${#batch[@]}
 
   echo ""
-  echo "▶ 병렬 실행: ${batch[*]}"
+  echo "▶ 병렬 실행: ${batch[*]} (MAX_PARALLEL=${MAX_PARALLEL})"
   echo ""
 
-  for task_id in "${batch[@]}"; do
-    echo "  🔧 ${task_id} 시작..."
-    "$RUN_WORKER" "$task_id" &
-    PIDS+=($!)
-  done
+  local offset=0
+  while [ "$offset" -lt "$total" ]; do
+    # 현재 청크 추출
+    local chunk=("${batch[@]:$offset:$MAX_PARALLEL}")
+    offset=$((offset + MAX_PARALLEL))
+    PIDS=()
 
-  # 모든 병렬 작업 대기
-  for i in "${!PIDS[@]}"; do
-    if wait "${PIDS[$i]}"; then
-      echo "  ✅ ${batch[$i]} 완료"
-      # status를 done으로 업데이트
-      local task_file
-      task_file=$(find "$TASK_DIR" -name "${batch[$i]}-*.md" | head -1)
-      if [ -n "$task_file" ]; then
-        sed -i '' "s/^status: .*/status: done/" "$task_file"
-      fi
-
-      # 브랜치를 main에 머지
-      local branch
-      branch=$(get_branch "${batch[$i]}")
-      if [ -n "$branch" ]; then
-        local wt_path
-        wt_path=$(get_worktree "${batch[$i]}")
-
-        # worktree 제거 (머지 전에 해야 브랜치 삭제 가능)
-        if [ -d "$wt_path" ]; then
-          git -C "$REPO_ROOT" worktree remove "$wt_path" --force 2>/dev/null || true
-        fi
-
-        # main에 머지 (새 커밋이 있는 경우만)
-        if git -C "$REPO_ROOT" log --oneline "main..$branch" 2>/dev/null | grep -q .; then
-          echo "  🔀 ${batch[$i]}: $branch → main 머지"
-          git -C "$REPO_ROOT" merge "$branch" --no-ff --no-edit
-        fi
-
-        # 머지 완료 후 브랜치 삭제
-        git -C "$REPO_ROOT" branch -d "$branch" 2>/dev/null || true
-      fi
-
-      # 태스크 상태 변경을 커밋
-      if [ -n "$task_file" ]; then
-        git -C "$REPO_ROOT" add "$task_file"
-        git -C "$REPO_ROOT" commit -m "chore(${batch[$i]}): status → done"
-      fi
-    else
-      echo "  ❌ ${batch[$i]} 실패"
-      FAILED=1
+    if [ "$total" -gt "$MAX_PARALLEL" ]; then
+      echo "  📦 청크 실행: ${chunk[*]} (${#chunk[@]}/${total})"
     fi
-  done
 
-  if [ "$FAILED" -eq 1 ]; then
-    echo ""
-    echo "❌ 실패한 TASK가 있어 Pipeline을 중단합니다."
-    exit 1
-  fi
+    for task_id in "${chunk[@]}"; do
+      echo "  🔧 ${task_id} 시작..."
+      "$RUN_WORKER" "$task_id" &
+      PIDS+=($!)
+    done
+
+    # 청크 내 모든 병렬 작업 대기
+    for i in "${!PIDS[@]}"; do
+      if wait "${PIDS[$i]}"; then
+        echo "  ✅ ${chunk[$i]} 완료"
+        local task_file
+        task_file=$(find "$TASK_DIR" -name "${chunk[$i]}-*.md" | head -1)
+        if [ -n "$task_file" ]; then
+          sed -i '' "s/^status: .*/status: done/" "$task_file"
+        fi
+
+        local branch
+        branch=$(get_branch "${chunk[$i]}")
+        if [ -n "$branch" ]; then
+          local wt_path
+          wt_path=$(get_worktree "${chunk[$i]}")
+
+          if [ -d "$wt_path" ]; then
+            git -C "$REPO_ROOT" worktree remove "$wt_path" --force 2>/dev/null || true
+          fi
+
+          if git -C "$REPO_ROOT" log --oneline "main..$branch" 2>/dev/null | grep -q .; then
+            echo "  🔀 ${chunk[$i]}: $branch → main 머지"
+            git -C "$REPO_ROOT" merge "$branch" --no-ff --no-edit
+          fi
+
+          git -C "$REPO_ROOT" branch -d "$branch" 2>/dev/null || true
+        fi
+
+        if [ -n "$task_file" ]; then
+          git -C "$REPO_ROOT" add "$task_file"
+          git -C "$REPO_ROOT" commit -m "chore(${chunk[$i]}): status → done"
+        fi
+      else
+        echo "  ❌ ${chunk[$i]} 실패"
+        FAILED=1
+      fi
+    done
+
+    if [ "$FAILED" -eq 1 ]; then
+      echo ""
+      echo "❌ 실패한 TASK가 있어 Pipeline을 중단합니다."
+      exit 1
+    fi
+  done  # end chunk loop
 }
 
 # 메인 루프: 실행 가능한 TASK를 배치로 모아서 실행
 while true; do
   BATCH=()
 
-  # 실행 가능한 TASK 수집 (backlog + 의존 충족)
+  # 실행 가능한 TASK 수집 (pending + 의존 충족)
   while IFS= read -r task_id; do
     status=$(get_status "$task_id")
-    if [ "$status" != "backlog" ]; then
+    if [ "$status" != "pending" ]; then
       continue
     fi
     if deps_satisfied "$task_id"; then
@@ -170,11 +177,11 @@ while true; do
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "✅ Pipeline 완료!"
 
-    # 남은 backlog 확인
+    # 남은 pending 확인
     REMAINING=0
     while IFS= read -r task_id; do
       status=$(get_status "$task_id")
-      if [ "$status" == "backlog" ]; then
+      if [ "$status" == "pending" ]; then
         REMAINING=$((REMAINING + 1))
       fi
     done <<< "$(get_task_ids)"

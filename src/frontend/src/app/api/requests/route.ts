@@ -19,21 +19,21 @@ export async function POST(request: Request) {
     }
 
     const validPriorities = ["high", "medium", "low"];
-    const reqPriority = validPriorities.includes(priority) ? priority : "medium";
+    const taskPriority = validPriorities.includes(priority) ? priority : "medium";
 
     const dir = getRequestsDir();
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    // Determine next REQ-XXX id
+    // Determine next TASK-XXX id
     const existingFiles = fs
       .readdirSync(dir)
-      .filter((f) => f.startsWith("REQ-") && f.endsWith(".md"));
+      .filter((f) => f.startsWith("TASK-") && f.endsWith(".md"));
 
     let maxNum = 0;
     for (const f of existingFiles) {
-      const m = f.match(/REQ-(\d+)/);
+      const m = f.match(/TASK-(\d+)/);
       if (m) {
         const num = parseInt(m[1], 10);
         if (num > maxNum) maxNum = num;
@@ -41,18 +41,19 @@ export async function POST(request: Request) {
     }
 
     const nextNum = maxNum + 1;
-    const reqId = `REQ-${String(nextNum).padStart(3, "0")}`;
+    const taskId = `TASK-${String(nextNum).padStart(3, "0")}`;
     const sanitizedTitle = title.trim();
     const bodyContent = (content && typeof content === "string") ? content.trim() : "";
 
     const today = new Date().toISOString().split("T")[0];
 
     const fileContent = `---
-id: ${reqId}
+id: ${taskId}
 title: ${sanitizedTitle}
 status: pending
-priority: ${reqPriority}
+priority: ${taskPriority}
 created: ${today}
+updated: ${today}
 ---
 ${bodyContent}
 `;
@@ -61,16 +62,16 @@ ${bodyContent}
       .toLowerCase()
       .replace(/[^a-z0-9가-힣]+/g, "-")
       .replace(/-+$/, "");
-    const filePath = `${dir}/${reqId}-${slug}.md`;
+    const filePath = `${dir}/${taskId}-${slug}.md`;
     fs.writeFileSync(filePath, fileContent, "utf-8");
 
     return NextResponse.json(
-      { id: reqId, title: sanitizedTitle, status: "pending", priority: reqPriority, created: today, content: bodyContent },
+      { id: taskId, title: sanitizedTitle, status: "pending", priority: taskPriority, created: today, updated: today, content: bodyContent },
       { status: 201 },
     );
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to create request" },
+      { error: err instanceof Error ? err.message : "Failed to create task" },
       { status: 500 },
     );
   }

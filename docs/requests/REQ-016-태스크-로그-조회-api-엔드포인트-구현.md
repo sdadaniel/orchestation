@@ -1,7 +1,7 @@
 ---
 id: REQ-016
 title: 태스크 로그 조회 API 엔드포인트 구현
-status: pending
+status: done
 priority: high
 created: 2026-03-24
 ---

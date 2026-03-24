@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRequests, type RequestItem } from "@/hooks/useRequests";
 import { cn } from "@/lib/utils";
-import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, Square, Bot, Layers, ArrowDown, Clock, Loader2, GitBranch } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, Square, Bot, Layers, Maximize2, Search } from "lucide-react";
 import { useTasks } from "@/hooks/useTasks";
 import type { WaterfallTask } from "@/types/waterfall";
 import AutoImproveControl from "@/components/AutoImproveControl";
@@ -33,14 +33,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 const STATUS_ORDER = ["in_progress", "reviewing", "pending", "done", "rejected"];
 
-const displayTaskId = (id: string) => id.replace(/^REQ-/, "TASK-");
-
-function RequestCard({
-  req,
-  onUpdate,
-  onDelete,
-  onClick,
-}: {
+function RequestCard({ req, onUpdate, onDelete, onClick }: {
   req: RequestItem;
   onUpdate: (id: string, updates: Partial<Pick<RequestItem, "status" | "title" | "content" | "priority">>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -55,155 +48,41 @@ function RequestCard({
   const [aiResultLoading, setAiResultLoading] = useState(false);
   const [cardTab, setCardTab] = useState<"content" | "ai-result">("content");
   const isReadOnly = req.status === "done";
+
   useEffect(() => {
     if (expanded && aiResult === null && !aiResultLoading) {
       setAiResultLoading(true);
-      fetch(`/api/tasks/${req.id}/result`)
-        .then((r) => r.json())
-        .then((data) => setAiResult(data.result ?? ""))
-        .catch(() => setAiResult(""))
-        .finally(() => setAiResultLoading(false));
+      fetch(`/api/tasks/${req.id}/result`).then((r) => r.json()).then((data) => setAiResult(data.result ?? "")).catch(() => setAiResult("")).finally(() => setAiResultLoading(false));
     }
   }, [expanded, aiResult, aiResultLoading, req.id]);
 
-  const handleSave = async () => {
-    await onUpdate(req.id, { title: editTitle, content: editContent, priority: editPriority });
-    setEditing(false);
-  };
-
-  const handleDelete = async () => {
-    if (confirm(`${displayTaskId(req.id)} delete?`)) {
-      await onDelete(req.id);
-    }
-  };
-
   return (
     <div className="board-card">
-      <div
-        className="flex items-center gap-2 cursor-pointer"
-        onClick={() => setExpanded(!expanded)}
-      >
-        {expanded ? (
-          <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-        )}
-        {req.status === "in_progress" ? (
-          <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" />
-        ) : (
-          <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[req.status])} />
-        )}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onClick(); }}
-          className="font-mono text-[11px] text-muted-foreground shrink-0 hover:text-primary hover:underline bg-transparent border-none cursor-pointer p-0"
-        >
-          {displayTaskId(req.id)}
-        </button>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onClick(); }}
-          className="text-sm flex-1 truncate text-left hover:text-primary bg-transparent border-none cursor-pointer p-0"
-        >
-          {req.title}
-        </button>
-        <span className={cn(
-          "text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0",
-          PRIORITY_COLORS[req.priority],
-        )}>
-          {req.priority}
-        </span>
-        {req.status === "in_progress" && (
-          <button
-            type="button"
-            title="중지 → Pending"
-            onClick={(e) => {
-              e.stopPropagation();
-              onUpdate(req.id, { status: "pending" });
-            }}
-            className="shrink-0 p-1 rounded hover:bg-red-500/15 text-muted-foreground hover:text-red-400 transition-colors"
-          >
-            <Square className="h-3 w-3" />
-          </button>
-        )}
+      <div className="flex items-center gap-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+        {expanded ? <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
+        {req.status === "in_progress" ? <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" /> : <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[req.status])} />}
+        <button type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} className="font-mono text-[11px] text-muted-foreground shrink-0 hover:text-primary hover:underline bg-transparent border-none cursor-pointer p-0">{req.id}</button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} className="text-sm flex-1 truncate text-left hover:text-primary bg-transparent border-none cursor-pointer p-0">{req.title}</button>
+        <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0", PRIORITY_COLORS[req.priority])}>{req.priority}</span>
+        {req.status === "in_progress" && <button type="button" title="Stop" onClick={(e) => { e.stopPropagation(); onUpdate(req.id, { status: "pending" }); }} className="shrink-0 p-1 rounded hover:bg-red-500/15 text-muted-foreground hover:text-red-400 transition-colors"><Square className="h-3 w-3" /></button>}
         <span className="text-[10px] text-muted-foreground shrink-0">{req.created}</span>
       </div>
-
       {expanded && (
         <div className="mt-2 pt-2 border-t border-border">
           <div className="flex items-center gap-1 mb-2 border-b border-border">
-              <button
-                type="button"
-                onClick={() => setCardTab("content")}
-                className={cn(
-                  "px-2.5 py-1 text-[11px] font-medium border-b-2 -mb-px transition-colors",
-                  cardTab === "content"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-              >
-                Content
-              </button>
-              <button
-                type="button"
-                onClick={() => setCardTab("ai-result")}
-                className={cn(
-                  "flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border-b-2 -mb-px transition-colors",
-                  cardTab === "ai-result"
-                    ? "border-blue-400 text-blue-400"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Bot className="h-3 w-3" />
-                AI Result
-              </button>
+            <button type="button" onClick={() => setCardTab("content")} className={cn("px-2.5 py-1 text-[11px] font-medium border-b-2 -mb-px transition-colors", cardTab === "content" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}>Content</button>
+            <button type="button" onClick={() => setCardTab("ai-result")} className={cn("flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border-b-2 -mb-px transition-colors", cardTab === "ai-result" ? "border-blue-400 text-blue-400" : "border-transparent text-muted-foreground hover:text-foreground")}><Bot className="h-3 w-3" />AI Result</button>
           </div>
-
           {cardTab === "content" && (
             <div style={{ minHeight: 150 }}>
               {editing ? (
                 <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full bg-muted border border-border rounded px-2 py-1 text-sm outline-none focus:border-primary"
-                  />
-                  <textarea
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    rows={4}
-                    className="w-full bg-muted border border-border rounded px-2 py-1 text-sm outline-none focus:border-primary resize-y"
-                  />
+                  <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full bg-muted border border-border rounded px-2 py-1 text-sm outline-none focus:border-primary" />
+                  <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={4} className="w-full bg-muted border border-border rounded px-2 py-1 text-sm outline-none focus:border-primary resize-y" />
                   <div className="flex items-center gap-2">
-                    <select
-                      value={editPriority}
-                      onChange={(e) => setEditPriority(e.target.value as RequestItem["priority"])}
-                      className="bg-muted border border-border rounded px-2 py-1 text-xs outline-none"
-                    >
-                      <option value="high">High</option>
-                      <option value="medium">Medium</option>
-                      <option value="low">Low</option>
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleSave}
-                      className="filter-pill active text-xs"
-                    >
-                      Save
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditing(false);
-                        setEditTitle(req.title);
-                        setEditContent(req.content);
-                        setEditPriority(req.priority);
-                      }}
-                      className="filter-pill text-xs"
-                    >
-                      Cancel
-                    </button>
+                    <select value={editPriority} onChange={(e) => setEditPriority(e.target.value as RequestItem["priority"])} className="bg-muted border border-border rounded px-2 py-1 text-xs outline-none"><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+                    <button type="button" onClick={async () => { await onUpdate(req.id, { title: editTitle, content: editContent, priority: editPriority }); setEditing(false); }} className="filter-pill active text-xs">Save</button>
+                    <button type="button" onClick={() => { setEditing(false); setEditTitle(req.title); setEditContent(req.content); setEditPriority(req.priority); }} className="filter-pill text-xs">Cancel</button>
                   </div>
                 </div>
               ) : (
@@ -211,38 +90,17 @@ function RequestCard({
                   <p className="text-sm text-foreground whitespace-pre-wrap">{req.content || "(No description)"}</p>
                   {!isReadOnly && (
                     <div className="flex items-center gap-2 mt-2">
-                      <button
-                        type="button"
-                        onClick={() => setEditing(true)}
-                        className="filter-pill text-xs flex items-center gap-1"
-                      >
-                        <Pencil className="h-3 w-3" />
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleDelete}
-                        className="filter-pill text-xs flex items-center gap-1 hover:text-red-400"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        Delete
-                      </button>
+                      <button type="button" onClick={() => setEditing(true)} className="filter-pill text-xs flex items-center gap-1"><Pencil className="h-3 w-3" />Edit</button>
+                      <button type="button" onClick={() => { if (confirm(`${req.id} delete?`)) onDelete(req.id); }} className="filter-pill text-xs flex items-center gap-1 hover:text-red-400"><Trash2 className="h-3 w-3" />Delete</button>
                     </div>
                   )}
                 </div>
               )}
             </div>
           )}
-
           {cardTab === "ai-result" && (
             <div style={{ minHeight: 150 }}>
-              {aiResultLoading ? (
-                <p className="text-xs text-muted-foreground">Loading...</p>
-              ) : aiResult ? (
-                <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">{aiResult}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">No result available.</p>
-              )}
+              {aiResultLoading ? <p className="text-xs text-muted-foreground">Loading...</p> : aiResult ? <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">{aiResult}</p> : <p className="text-xs text-muted-foreground">No result available.</p>}
             </div>
           )}
         </div>
@@ -254,317 +112,208 @@ function RequestCard({
 const TAB_STACK = "stack";
 const TAB_ALL = "all";
 const TABS = [TAB_STACK, TAB_ALL, ...STATUS_ORDER] as const;
+const TAB_LABEL: Record<string, string> = { stack: "Graph", all: "All", ...STATUS_LABEL };
 
-const TAB_LABEL: Record<string, string> = {
-  stack: "Stack",
-  all: "All",
-  ...STATUS_LABEL,
-};
+/* ── DAG Canvas ───────────────────────────────────────── */
 
-/* ── Kanban Board (Stack View) ─────────────────────────── */
+const NODE_W = 220;
+const NODE_H = 72;
+const ROW_GAP = 24;
+const CANVAS_PAD = 60;
+const SECTION_GAP = 80; // gap between the 3 sections
+const SECTION_HEADER_H = 32;
 
-type ArrowDef = {
-  fromId: string;
-  toId: string;
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-};
+type NodeLayout = { id: string; x: number; y: number; req: RequestItem; isNextUp: boolean };
+type EdgeLayout = { fromId: string; toId: string; x1: number; y1: number; x2: number; y2: number };
+type SectionLayout = { label: string; x: number; y: number; w: number; h: number; color: string; extra: number };
 
-function KanbanCard({
-  req,
-  isDone,
-  isRejected,
-  onClick,
-  cardRef,
-}: {
-  req: RequestItem;
-  isDone?: boolean;
-  isRejected?: boolean;
-  onClick: () => void;
-  cardRef?: (el: HTMLDivElement | null) => void;
-}) {
-  return (
-    <div
-      ref={cardRef}
-      data-card-id={req.id}
-      onClick={onClick}
-      className={cn(
-        "flex flex-col gap-1.5 p-3 rounded-lg border cursor-pointer transition-all min-h-[64px]",
-        "hover:shadow-md hover:border-primary/40",
-        isDone && !isRejected && "opacity-55 border-border bg-background",
-        isRejected && "opacity-55 border-red-500/30 bg-red-500/5",
-        !isDone && !isRejected && "border-border bg-background hover:bg-muted",
-      )}
-    >
-      <div className="flex items-center gap-2">
-        {req.status === "in_progress" ? (
-          <span className="w-2.5 h-2.5 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" />
-        ) : isRejected ? (
-          <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-red-500" />
-        ) : (
-          <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", STATUS_DOT[req.status])} />
-        )}
-        <span className="font-mono text-[11px] text-muted-foreground shrink-0">
-          {displayTaskId(req.id)}
-        </span>
-        <span className={cn(
-          "text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0 ml-auto",
-          PRIORITY_COLORS[req.priority],
-        )}>
-          {req.priority}
-        </span>
-      </div>
-      <span className="text-sm leading-snug line-clamp-2">{req.title}</span>
-    </div>
-  );
-}
+function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxParallel = 3) {
+  const reqMap = new Map(requests.map((r) => [r.id, r]));
+  const taskMap = new Map(tasks.map((t) => [t.id, t]));
+  const statusMap = new Map(requests.map((r) => [r.id, r.status]));
 
-function KanbanBoard({
-  requests,
-  tasks,
-  onClickItem,
-}: {
-  requests: RequestItem[];
-  tasks: WaterfallTask[];
-  onClickItem: (req: RequestItem) => void;
-}) {
-  const boardRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const [arrows, setArrows] = useState<ArrowDef[]>([]);
-  const [hoveredArrow, setHoveredArrow] = useState<string | null>(null);
-
-  // Column data
-  const doneItems = requests.filter((r) => r.status === "done" || r.status === "rejected");
-  const currentItems = requests.filter((r) => r.status === "in_progress" || r.status === "reviewing");
-  const pendingItems = requests.filter((r) => r.status === "pending");
-
-  // Build dependency map: REQ-XXX depends on REQ-YYY
-  // WaterfallTask uses TASK-XXX ids, requests use REQ-XXX ids
-  const taskToReq = (taskId: string) => taskId.replace(/^TASK-/, "REQ-");
-  const reqToTask = (reqId: string) => reqId.replace(/^REQ-/, "TASK-");
-
-  // Build deps: for each request, find its WaterfallTask and get depends_on
-  const depEdges: { from: string; to: string }[] = [];
-  const reqIds = new Set(requests.map((r) => r.id));
+  const depsOf = new Map<string, string[]>();
   for (const req of requests) {
-    const wt = tasks.find((t) => t.id === reqToTask(req.id));
-    if (wt) {
-      for (const dep of wt.depends_on) {
-        const depReqId = taskToReq(dep);
-        if (reqIds.has(depReqId)) {
-          // dep (source) -> req (target that depends on source)
-          depEdges.push({ from: depReqId, to: req.id });
-        }
-      }
-    }
+    const wt = taskMap.get(req.id);
+    depsOf.set(req.id, wt ? wt.depends_on.filter((d) => reqMap.has(d)) : []);
   }
 
-  const setCardRef = useCallback((id: string) => (el: HTMLDivElement | null) => {
-    if (el) {
-      cardRefs.current.set(id, el);
-    } else {
-      cardRefs.current.delete(id);
-    }
-  }, []);
+  // Group by status into 3 sections
+  const allPending = requests.filter((r) => r.status === "pending");
+  const current = requests.filter((r) => r.status === "in_progress" || r.status === "reviewing");
+  const allDone = requests.filter((r) => r.status === "done" || r.status === "rejected");
 
-  // Calculate arrow positions
-  const recalcArrows = useCallback(() => {
-    if (!boardRef.current || depEdges.length === 0) {
-      setArrows([]);
-      return;
-    }
-    const boardRect = boardRef.current.getBoundingClientRect();
-    const newArrows: ArrowDef[] = [];
+  // Pending: next-up first (deps all done or no deps), then by priority (high→medium→low), limit 5
+  const priWeight = (p: string) => p === "high" ? 0 : p === "medium" ? 1 : p === "low" ? 2 : 3;
+  const nextUpSet = new Set(allPending.filter((r) => {
+    const deps = depsOf.get(r.id) || [];
+    return deps.length === 0 || deps.every((d) => statusMap.get(d) === "done");
+  }).map((r) => r.id));
+  const sortedPending = [...allPending].sort((a, b) => {
+    const na = nextUpSet.has(a.id) ? 0 : 1, nb = nextUpSet.has(b.id) ? 0 : 1;
+    if (na !== nb) return na - nb;
+    return priWeight(a.priority) - priWeight(b.priority) || a.id.localeCompare(b.id);
+  });
+  const pending = sortedPending.slice(0, maxParallel);
+  const queue = sortedPending.slice(maxParallel, maxParallel + maxParallel); // next batch
 
-    for (const edge of depEdges) {
-      const fromEl = cardRefs.current.get(edge.from);
-      const toEl = cardRefs.current.get(edge.to);
-      if (!fromEl || !toEl) continue;
+  // Done: most recent N (matching maxParallel)
+  const done = allDone.slice(-maxParallel).reverse();
 
-      const fromRect = fromEl.getBoundingClientRect();
-      const toRect = toEl.getBoundingClientRect();
+  const queueExtra = allPending.length - pending.length - queue.length;
+  const doneExtra = allDone.length - done.length;
 
-      newArrows.push({
-        fromId: edge.from,
-        toId: edge.to,
-        x1: fromRect.right - boardRect.left,
-        y1: fromRect.top + fromRect.height / 2 - boardRect.top,
-        x2: toRect.left - boardRect.left,
-        y2: toRect.top + toRect.height / 2 - boardRect.top,
-      });
-    }
-    setArrows(newArrows);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requests, tasks]);
-
-  useEffect(() => {
-    // Recalculate after render
-    const timer = setTimeout(recalcArrows, 100);
-    return () => clearTimeout(timer);
-  }, [recalcArrows]);
-
-  useEffect(() => {
-    if (!boardRef.current) return;
-    const observer = new ResizeObserver(() => recalcArrows());
-    observer.observe(boardRef.current);
-    return () => observer.disconnect();
-  }, [recalcArrows]);
-
-  const totalCount = doneItems.length + currentItems.length + pendingItems.length;
-
-  if (totalCount === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        <Layers className="h-8 w-8 mx-auto mb-3 opacity-40" />
-        <p className="text-sm">No tasks yet.</p>
-        <p className="text-xs mt-1">Create a new task to see the kanban board.</p>
-      </div>
-    );
-  }
-
-  const columns = [
-    {
-      key: "done",
-      label: "DONE",
-      count: doneItems.length,
-      items: doneItems,
-      dotClass: "bg-emerald-500",
-      headerBg: "bg-emerald-600/80",
-      spinner: false,
-    },
-    {
-      key: "current",
-      label: "CURRENT",
-      count: currentItems.length,
-      items: currentItems,
-      dotClass: "bg-blue-500",
-      headerBg: "bg-blue-600/80",
-      spinner: true,
-    },
-    {
-      key: "pending",
-      label: "PENDING",
-      count: pendingItems.length,
-      items: pendingItems,
-      dotClass: "bg-yellow-500",
-      headerBg: "bg-yellow-600/80",
-      spinner: false,
-    },
+  const sections: { key: string; label: string; items: RequestItem[]; color: string; extra: number }[] = [
+    ...(queue.length > 0 ? [{ key: "queue", label: "QUEUE", items: queue, color: "#a1a1aa", extra: queueExtra }] : []),
+    { key: "pending", label: "NEXT", items: pending, color: "#eab308", extra: 0 },
+    { key: "current", label: "IN PROGRESS", items: current, color: "#3b82f6", extra: 0 },
+    { key: "done", label: "DONE", items: done, color: "#22c55e", extra: doneExtra },
   ];
 
+  const nodes: NodeLayout[] = [];
+  const sectionLayouts: SectionLayout[] = [];
+  // ghostCount: remaining tasks shown as dashed placeholders left of queue
+  const ghostCount = queueExtra > 0 ? Math.min(queueExtra, maxParallel) : 0;
+  const totalGhostExtra = queueExtra - ghostCount;
+  let sectionX = CANVAS_PAD;
+
+  // Ghost section (single dashed placeholder for remaining backlog) - same height as other sections
+  if (ghostCount > 0) {
+    const ghostH = SECTION_HEADER_H + maxParallel * (NODE_H + ROW_GAP) + ROW_GAP;
+    sectionLayouts.push({ label: `BACKLOG`, x: sectionX, y: CANVAS_PAD, w: NODE_W + CANVAS_PAD, h: ghostH, color: "#71717a", extra: 0 });
+    sectionX += NODE_W + CANVAS_PAD + SECTION_GAP;
+  }
+
+  for (const sec of sections) {
+    const count = Math.max(sec.items.length, 1);
+    const sectionH = SECTION_HEADER_H + count * (NODE_H + ROW_GAP) + ROW_GAP;
+    sectionLayouts.push({ label: sec.label, x: sectionX, y: CANVAS_PAD, w: NODE_W + CANVAS_PAD, h: sectionH, color: sec.color, extra: sec.extra });
+
+    let nodeY = CANVAS_PAD + SECTION_HEADER_H + ROW_GAP;
+    for (const req of sec.items) {
+      const deps = depsOf.get(req.id) || [];
+      const isNextUp = req.status === "pending" && (deps.length === 0 || deps.every((dep) => statusMap.get(dep) === "done"));
+      nodes.push({ id: req.id, x: sectionX + CANVAS_PAD / 2, y: nodeY, req, isNextUp });
+      nodeY += NODE_H + ROW_GAP;
+    }
+    sectionX += NODE_W + CANVAS_PAD + SECTION_GAP;
+  }
+
+  // Build edges (skip edges within the same section — both nodes share the same x)
+  const nodePos = new Map(nodes.map((n) => [n.id, n]));
+  const edges: EdgeLayout[] = [];
+  for (const req of requests) {
+    for (const dep of depsOf.get(req.id) || []) {
+      const f = nodePos.get(dep), t = nodePos.get(req.id);
+      if (f && t && f.x !== t.x) edges.push({ fromId: dep, toId: req.id, x1: f.x + NODE_W, y1: f.y + NODE_H / 2, x2: t.x, y2: t.y + NODE_H / 2 });
+    }
+  }
+
+  const allX = nodes.map((n) => n.x).concat(sectionLayouts.map((s) => s.x));
+  const allXR = nodes.map((n) => n.x + NODE_W).concat(sectionLayouts.map((s) => s.x + s.w));
+  const allY = nodes.map((n) => n.y).concat(sectionLayouts.map((s) => s.y));
+  const allYB = nodes.map((n) => n.y + NODE_H).concat(sectionLayouts.map((s) => s.y + s.h));
+  const bounds = nodes.length === 0
+    ? { minX: 0, minY: 0, maxX: sectionX, maxY: 400 }
+    : { minX: Math.min(...allX) - CANVAS_PAD, minY: Math.min(...allY) - CANVAS_PAD, maxX: Math.max(...allXR) + CANVAS_PAD, maxY: Math.max(...allYB) + CANVAS_PAD };
+
+  // Ghost: single dashed box for remaining backlog
+  const ghostBox = ghostCount > 0 ? {
+    x: sectionLayouts[0].x + CANVAS_PAD / 2,
+    y: sectionLayouts[0].y + SECTION_HEADER_H + ROW_GAP,
+    count: ghostCount + totalGhostExtra,
+  } : null;
+
+  return { nodes, edges, bounds, sections: sectionLayouts, ghostBox };
+}
+
+function DAGCanvas({ requests, tasks, onClickItem }: { requests: RequestItem[]; tasks: WaterfallTask[]; onClickItem: (req: RequestItem) => void }) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const gRef = useRef<SVGGElement>(null);
+  const tf = useRef({ x: 0, y: 0, scale: 1 });
+  const pan = useRef<{ active: boolean; sx: number; sy: number; tx: number; ty: number; moved: boolean } | null>(null);
+  const [maxParallel, setMaxParallel] = useState(3);
+  useEffect(() => { fetch("/api/settings").then((r) => r.json()).then((d) => { if (d.maxParallel) setMaxParallel(d.maxParallel); }).catch(() => {}); }, []);
+  const [, kick] = useState(0);
+  const [hovEdge, setHovEdge] = useState<string | null>(null);
+  const layout = useMemo(() => computeDAGLayout(requests, tasks, maxParallel), [requests, tasks, maxParallel]);
+
+  const apply = useCallback(() => { if (gRef.current) gRef.current.setAttribute("transform", `translate(${tf.current.x},${tf.current.y}) scale(${tf.current.scale})`); }, []);
+
+  const fit = useCallback(() => {
+    if (!svgRef.current) return;
+    const r = svgRef.current.getBoundingClientRect(), b = layout.bounds;
+    const bw = b.maxX - b.minX, bh = b.maxY - b.minY;
+    if (!bw || !bh) return;
+    const s = Math.min(r.width / bw, r.height / bh, 1.5) * 0.85;
+    tf.current = { x: r.width / 2 - (b.minX + b.maxX) / 2 * s, y: r.height / 2 - (b.minY + b.maxY) / 2 * s, scale: s };
+    apply(); kick((n) => n + 1);
+  }, [layout, apply]);
+
+  useEffect(() => { fit(); }, [fit]);
+
+  const onMD = useCallback((e: React.MouseEvent) => { if (e.button !== 0) return; pan.current = { active: true, sx: e.clientX, sy: e.clientY, tx: tf.current.x, ty: tf.current.y, moved: false }; svgRef.current?.classList.add("panning"); }, []);
+  const onMM = useCallback((e: React.MouseEvent) => { const p = pan.current; if (!p?.active) return; const dx = e.clientX - p.sx, dy = e.clientY - p.sy; if (Math.abs(dx) > 3 || Math.abs(dy) > 3) p.moved = true; tf.current.x = p.tx + dx; tf.current.y = p.ty + dy; apply(); }, [apply]);
+  const onMU = useCallback(() => { pan.current = null; svgRef.current?.classList.remove("panning"); }, []);
+  const onWh = useCallback((e: React.WheelEvent) => { e.preventDefault(); const r = svgRef.current?.getBoundingClientRect(); if (!r) return; const t = tf.current, cx = e.clientX - r.left, cy = e.clientY - r.top, ns = Math.min(Math.max(t.scale * (e.deltaY < 0 ? 1.1 : 0.9), 0.1), 3), ra = ns / t.scale; tf.current = { x: cx - (cx - t.x) * ra, y: cy - (cy - t.y) * ra, scale: ns }; apply(); kick((n) => n + 1); }, [apply]);
+
+  if (requests.length === 0) return <div className="text-center py-12 text-muted-foreground"><Layers className="h-8 w-8 mx-auto mb-3 opacity-40" /><p className="text-sm">No tasks yet.</p></div>;
+
+  const bc = (s: string, nu: boolean) => nu ? "#facc15" : s === "in_progress" || s === "reviewing" ? "#3b82f6" : s === "done" ? "#22c55e" : s === "rejected" ? "#ef4444" : "var(--border)";
+
   return (
-    <div ref={boardRef} className="relative w-full">
-      {/* SVG arrow overlay */}
-      {arrows.length > 0 && (
-        <svg
-          className="absolute inset-0 w-full h-full pointer-events-none"
-          style={{ zIndex: 10 }}
-        >
-          <defs>
-            <marker
-              id="kanban-arrowhead"
-              markerWidth="8"
-              markerHeight="6"
-              refX="7"
-              refY="3"
-              orient="auto"
-            >
-              <polygon points="0 0, 8 3, 0 6" fill="currentColor" className="text-muted-foreground" />
-            </marker>
-            <marker
-              id="kanban-arrowhead-hover"
-              markerWidth="8"
-              markerHeight="6"
-              refX="7"
-              refY="3"
-              orient="auto"
-            >
-              <polygon points="0 0, 8 3, 0 6" fill="currentColor" className="text-primary" />
-            </marker>
-          </defs>
-          {arrows.map((a) => {
-            const key = `${a.fromId}-${a.toId}`;
-            const isHovered = hoveredArrow === key;
-            const dx = a.x2 - a.x1;
-            const cpOffset = Math.max(Math.abs(dx) * 0.4, 30);
-            const path = `M ${a.x1} ${a.y1} C ${a.x1 + cpOffset} ${a.y1}, ${a.x2 - cpOffset} ${a.y2}, ${a.x2} ${a.y2}`;
-            return (
-              <g key={key}>
-                {/* Invisible wide hit area for hover */}
-                <path
-                  d={path}
-                  fill="none"
-                  stroke="transparent"
-                  strokeWidth={16}
-                  style={{ pointerEvents: "stroke", cursor: "pointer" }}
-                  onMouseEnter={() => setHoveredArrow(key)}
-                  onMouseLeave={() => setHoveredArrow(null)}
-                />
-                <path
-                  d={path}
-                  fill="none"
-                  stroke={isHovered ? "var(--primary)" : "var(--muted-foreground)"}
-                  strokeWidth={isHovered ? 2 : 1}
-                  strokeDasharray={isHovered ? "none" : "4 3"}
-                  opacity={isHovered ? 0.9 : 0.35}
-                  markerEnd={isHovered ? "url(#kanban-arrowhead-hover)" : "url(#kanban-arrowhead)"}
-                  style={{ transition: "all 0.15s ease" }}
-                />
-              </g>
-            );
-          })}
-        </svg>
-      )}
-
-      {/* 3-column grid */}
-      <div className="grid grid-cols-3 gap-4" style={{ minHeight: 200 }}>
-        {columns.map((col) => (
-          <div
-            key={col.key}
-            className="flex flex-col rounded-lg border border-border bg-card overflow-hidden"
-            style={{ minHeight: 200 }}
-          >
-            {/* Column header */}
-            <div className={cn("flex items-center gap-2 px-3 py-2", col.headerBg)}>
-              {col.spinner && col.count > 0 ? (
-                <Loader2 className="h-3 w-3 text-white animate-spin shrink-0" />
-              ) : (
-                <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", col.key === "done" ? "bg-white/70" : col.key === "pending" ? "bg-white/70" : "bg-white/70")} />
-              )}
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-white">
-                {col.label}
-              </span>
-              <span className="ml-auto text-[10px] font-medium text-white/70 bg-white/20 rounded-full px-2 py-0.5">
-                {col.count}
-              </span>
-            </div>
-
-            {/* Column body */}
-            <div className="flex flex-col gap-2 p-2 flex-1 overflow-y-auto">
-              {col.items.length === 0 && (
-                <div className="flex-1 flex items-center justify-center text-[11px] text-muted-foreground/50 py-6">
-                  No tasks
-                </div>
-              )}
-              {col.items.map((req) => (
-                <KanbanCard
-                  key={req.id}
-                  req={req}
-                  isDone={req.status === "done" || req.status === "rejected"}
-                  isRejected={req.status === "rejected"}
-                  onClick={() => onClickItem(req)}
-                  cardRef={setCardRef(req.id)}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+    <div className="relative w-full" style={{ height: "calc(100vh - 180px)", minHeight: 400 }}>
+      <div className="absolute top-2 right-2 z-20 flex items-center gap-1 bg-card/80 backdrop-blur border border-border rounded-md px-2 py-1">
+        <button type="button" onClick={fit} className="text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-muted transition-colors flex items-center gap-1"><Maximize2 className="h-3 w-3" />Fit</button>
+        <span className="text-[10px] text-muted-foreground w-8 text-center">{Math.round(tf.current.scale * 100)}%</span>
       </div>
+      <div className="absolute bottom-2 left-2 z-20 flex items-center gap-3 bg-card/80 backdrop-blur border border-border rounded-md px-3 py-1.5">
+        <span className="flex items-center gap-1 text-[10px] text-muted-foreground"><span className="w-2 h-2 rounded-full bg-yellow-500" />Pending</span>
+        <span className="flex items-center gap-1 text-[10px] text-muted-foreground"><span className="w-2 h-2 rounded-full bg-blue-500" />In Progress</span>
+        <span className="flex items-center gap-1 text-[10px] text-muted-foreground"><span className="w-2 h-2 rounded-full bg-emerald-500" />Done</span>
+        <span className="flex items-center gap-1 text-[10px] text-yellow-400"><span className="w-2 h-2 rounded-full border border-yellow-400 bg-yellow-400/30" />Next Up</span>
+      </div>
+      <svg ref={svgRef} className="dag-canvas w-full h-full rounded-lg border border-border bg-background" onMouseDown={onMD} onMouseMove={onMM} onMouseUp={onMU} onMouseLeave={onMU} onWheel={onWh}>
+        <defs>
+          <marker id="dag-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--muted-foreground)" opacity="0.5" /></marker>
+          <marker id="dag-arrow-hover" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--primary)" /></marker>
+        </defs>
+        <g ref={gRef}>
+          {/* Section backgrounds */}
+          {layout.sections.map((sec) => (
+            <g key={sec.label}>
+              <rect x={sec.x} y={sec.y} width={sec.w} height={sec.h} rx={8} fill="var(--muted)" opacity={0.3} stroke={sec.color} strokeWidth={1} strokeOpacity={0.3} />
+              <text x={sec.x + sec.w / 2} y={sec.y + 22} textAnchor="middle" fill={sec.color} fontSize={11} fontWeight={600} letterSpacing="0.05em" opacity={0.7}>{sec.label}</text>
+              {sec.extra > 0 && <text x={sec.x + sec.w / 2} y={sec.h + sec.y - 8} textAnchor="middle" fill="var(--muted-foreground)" fontSize={10} opacity={0.6}>+{sec.extra} more</text>}
+            </g>
+          ))}
+          {layout.edges.map((e) => { const k = `${e.fromId}-${e.toId}`, h = hovEdge === k, cp = Math.max(Math.abs(e.x2 - e.x1) * 0.4, 40), d = `M ${e.x1} ${e.y1} C ${e.x1 + cp} ${e.y1}, ${e.x2 - cp} ${e.y2}, ${e.x2} ${e.y2}`; return (<g key={k}><path d={d} fill="none" stroke="transparent" strokeWidth={14} style={{ pointerEvents: "stroke", cursor: "pointer" }} onMouseEnter={() => setHovEdge(k)} onMouseLeave={() => setHovEdge(null)} /><path d={d} fill="none" stroke={h ? "var(--primary)" : "var(--muted-foreground)"} strokeWidth={h ? 2 : 1} strokeDasharray={h ? "none" : "5 3"} opacity={h ? 0.9 : 0.3} markerEnd={h ? "url(#dag-arrow-hover)" : "url(#dag-arrow)"} style={{ transition: "all 0.15s ease" }} /></g>); })}
+          {layout.nodes.map((n) => (
+            <foreignObject key={n.id} x={n.x} y={n.y} width={NODE_W} height={NODE_H} style={{ overflow: "visible" }}>
+              <div onClick={(e) => { e.stopPropagation(); if (!pan.current?.moved) onClickItem(n.req); }} className={cn("flex flex-col gap-1 p-2.5 rounded-lg border cursor-pointer transition-all h-full hover:shadow-md", n.req.status === "done" && "opacity-50", n.req.status === "rejected" && "opacity-50", n.isNextUp && "dag-node-next-up", (n.req.status === "in_progress" || n.req.status === "reviewing") && "dag-node-active")} style={{ borderColor: bc(n.req.status, n.isNextUp), background: "var(--card)" }}>
+                <div className="flex items-center gap-1.5">
+                  {n.req.status === "in_progress" ? <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" /> : <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[n.req.status])} />}
+                  <span className="font-mono text-[10px] text-muted-foreground">{n.id}</span>
+                  <span className={cn("text-[9px] px-1 py-0.5 rounded border font-medium ml-auto shrink-0", PRIORITY_COLORS[n.req.priority])}>{n.req.priority}</span>
+                </div>
+                <span className="text-[11px] leading-snug line-clamp-2">{n.req.title}</span>
+              </div>
+            </foreignObject>
+          ))}
+          {/* Ghost dashed placeholder for remaining backlog */}
+          {layout.ghostBox && (
+            <g>
+              <rect x={layout.ghostBox.x} y={layout.ghostBox.y} width={NODE_W} height={NODE_H} rx={8} fill="var(--muted)" fillOpacity={0.3} stroke="#71717a" strokeWidth={1.5} strokeDasharray="8 4" opacity={0.6} />
+              <text x={layout.ghostBox.x + NODE_W / 2} y={layout.ghostBox.y + NODE_H / 2 + 5} textAnchor="middle" fill="#a1a1aa" fontSize={13} fontWeight={500}>{layout.ghostBox.count} more</text>
+            </g>
+          )}
+        </g>
+      </svg>
     </div>
   );
 }
+
+/* ── Main Page ────────────────────────────────────────── */
 
 function TasksPageInner() {
   const { requests, isLoading, error, updateRequest, deleteRequest } = useRequests();
@@ -573,146 +322,61 @@ function TasksPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") || TAB_STACK;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const setActiveTab = (tab: string) => { router.push(`/tasks?tab=${tab}`, { scroll: false }); };
 
-  const setActiveTab = (tab: string) => {
-    router.push(`/tasks?tab=${tab}`, { scroll: false });
-  };
+  const filtered = useMemo(() => {
+    let result = requests;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((r) => r.id.toLowerCase().includes(q) || r.title.toLowerCase().includes(q) || r.content.toLowerCase().includes(q));
+    }
+    if (priorityFilter !== "all" && activeTab !== TAB_STACK) {
+      result = result.filter((r) => r.priority === priorityFilter);
+    }
+    return result;
+  }, [requests, searchQuery, priorityFilter, activeTab]);
 
-  const grouped: Record<string, RequestItem[]> = {
-    pending: requests.filter((r) => r.status === "pending"),
-    reviewing: requests.filter((r) => r.status === "reviewing"),
-    in_progress: requests.filter((r) => r.status === "in_progress"),
-    rejected: requests.filter((r) => r.status === "rejected"),
-    done: requests.filter((r) => r.status === "done"),
-  };
+  const grouped: Record<string, RequestItem[]> = { pending: filtered.filter((r) => r.status === "pending"), reviewing: filtered.filter((r) => r.status === "reviewing"), in_progress: filtered.filter((r) => r.status === "in_progress"), rejected: filtered.filter((r) => r.status === "rejected"), done: filtered.filter((r) => r.status === "done") };
+  const filteredStatuses = activeTab === TAB_ALL ? STATUS_ORDER.filter((s) => grouped[s].length > 0) : [activeTab];
 
-  const filteredStatuses = activeTab === TAB_ALL
-    ? STATUS_ORDER.filter((s) => grouped[s].length > 0)
-    : [activeTab];
-
-  if (isLoading) {
-    return <div className="p-4 text-sm text-muted-foreground">Loading tasks...</div>;
-  }
-
-  if (error) {
-    return <div className="p-4 text-sm text-red-500">{error}</div>;
-  }
+  if (isLoading) return <div className="p-4 text-sm text-muted-foreground">Loading tasks...</div>;
+  if (error) return <div className="p-4 text-sm text-red-500">{error}</div>;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold">Tasks</h1>
-          <AutoImproveControl />
-        </div>
-        <button
-          type="button"
-          onClick={() => router.push("/tasks/new")}
-          className="filter-pill active flex items-center gap-1"
-        >
-          <Plus className="h-3 w-3" />
-          New Task
-        </button>
+        <div className="flex items-center gap-4"><h1 className="text-lg font-semibold">Tasks</h1><AutoImproveControl /></div>
+        <button type="button" onClick={() => router.push("/tasks/new")} className="filter-pill active flex items-center gap-1"><Plus className="h-3 w-3" />New Task</button>
       </div>
-
       <div className="flex items-center gap-1 border-b border-border">
-        {TABS.map((tab) => {
-          const count = tab === TAB_ALL
-            ? requests.length
-            : tab === TAB_STACK
-              ? (grouped.in_progress?.length ?? 0) + (grouped.reviewing?.length ?? 0) + (grouped.pending?.length ?? 0)
-              : grouped[tab]?.length ?? 0;
-          return (
-            <span key={tab} className="flex items-center">
-              <button
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 transition-colors -mb-px",
-                  activeTab === tab
-                    ? tab === TAB_STACK
-                      ? "border-violet-400 text-violet-400"
-                      : "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {tab === TAB_STACK && (
-                  <Layers className="h-3 w-3 shrink-0" />
-                )}
-                {tab !== TAB_ALL && tab !== TAB_STACK && (
-                  <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[tab])} />
-                )}
-                {TAB_LABEL[tab]}
-                <span className="text-[10px] text-muted-foreground">({count})</span>
-              </button>
-              {tab === TAB_STACK && (
-                <span className="h-4 w-px bg-border mx-1" />
-              )}
-            </span>
-          );
-        })}
+        {TABS.map((tab) => { const count = tab === TAB_ALL || tab === TAB_STACK ? requests.length : grouped[tab]?.length ?? 0; return (<span key={tab} className="flex items-center"><button type="button" onClick={() => setActiveTab(tab)} className={cn("flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 transition-colors -mb-px", activeTab === tab ? (tab === TAB_STACK ? "border-violet-400 text-violet-400" : "border-primary text-primary") : "border-transparent text-muted-foreground hover:text-foreground")}>{tab === TAB_STACK && <Layers className="h-3 w-3 shrink-0" />}{tab !== TAB_ALL && tab !== TAB_STACK && <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[tab])} />}{TAB_LABEL[tab]}<span className="text-[10px] text-muted-foreground">({count})</span></button>{tab === TAB_STACK && <span className="h-4 w-px bg-border mx-1" />}</span>); })}
       </div>
-
-      {activeTab === TAB_STACK && (
-        <KanbanBoard
-          requests={requests}
-          tasks={allWaterfallTasks}
-          onClickItem={(req) => router.push(`/tasks/${displayTaskId(req.id)}`)}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="ID, 제목, 내용으로 검색..."
+          className="w-full bg-muted/50 border border-border rounded-lg pl-9 pr-3 py-2 text-xs outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
         />
-      )}
-
-      {activeTab !== TAB_STACK && filteredStatuses.map((status) => {
-        const items = grouped[status];
-        if (!items || items.length === 0) return null;
-        return (
-          <div key={status}>
-            {activeTab === TAB_ALL && (
-              <div className="flex items-center gap-2 mb-2">
-                {status === "in_progress" ? (
-                  <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <span className={cn("w-2 h-2 rounded-full", STATUS_DOT[status])} />
-                )}
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {STATUS_LABEL[status]}
-                </span>
-                <span className="text-[10px] text-muted-foreground">({items.length})</span>
-              </div>
-            )}
-            <div className="space-y-1">
-              {items.map((req) => (
-                <RequestCard
-                  key={req.id}
-                  req={req}
-                  onUpdate={updateRequest}
-                  onDelete={deleteRequest}
-                  onClick={() => router.push(`/tasks/${displayTaskId(req.id)}`)}
-                />
-              ))}
-            </div>
-          </div>
-        );
-      })}
-
-      {activeTab !== TAB_STACK && requests.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <p className="text-sm">No tasks yet. Click &quot;New Task&quot; to create a task.</p>
+      </div>
+      {activeTab !== TAB_STACK && (
+        <div className="flex items-center gap-1">
+          {(["all", "high", "medium", "low"] as const).map((p) => (
+            <button key={p} type="button" onClick={() => setPriorityFilter(p)} className={cn("filter-pill text-[11px]", priorityFilter === p && (p === "all" ? "active" : PRIORITY_COLORS[p]))}>{p === "all" ? "All" : p.charAt(0).toUpperCase() + p.slice(1)}</button>
+          ))}
         </div>
       )}
-
-      {activeTab !== TAB_ALL && activeTab !== TAB_STACK && (grouped[activeTab]?.length ?? 0) === 0 && requests.length > 0 && (
-        <div className="text-center py-8 text-muted-foreground">
-          <p className="text-sm">No {TAB_LABEL[activeTab]} tasks.</p>
-        </div>
-      )}
+      {activeTab === TAB_STACK && <DAGCanvas requests={filtered} tasks={allWaterfallTasks} onClickItem={(req) => router.push(`/tasks/${req.id}`)} />}
+      {activeTab !== TAB_STACK && filteredStatuses.map((status) => { const items = grouped[status]; if (!items || items.length === 0) return null; return (<div key={status}>{activeTab === TAB_ALL && (<div className="flex items-center gap-2 mb-2">{status === "in_progress" ? <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" /> : <span className={cn("w-2 h-2 rounded-full", STATUS_DOT[status])} />}<span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{STATUS_LABEL[status]}</span><span className="text-[10px] text-muted-foreground">({items.length})</span></div>)}<div className="space-y-1">{items.map((req) => <RequestCard key={req.id} req={req} onUpdate={updateRequest} onDelete={deleteRequest} onClick={() => router.push(`/tasks/${req.id}`)} />)}</div></div>); })}
+      {activeTab !== TAB_STACK && requests.length === 0 && <div className="text-center py-12 text-muted-foreground"><p className="text-sm">No tasks yet.</p></div>}
     </div>
   );
 }
 
 export default function TasksPage() {
-  return (
-    <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading...</div>}>
-      <TasksPageInner />
-    </Suspense>
-  );
+  return <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading...</div>}><TasksPageInner /></Suspense>;
 }

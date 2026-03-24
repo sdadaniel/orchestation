@@ -15,7 +15,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, priority, role, depends_on, sprint } = body;
+    const { title, priority, role, depends_on, sprint, scope } = body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0) {
       return NextResponse.json(
@@ -66,14 +66,24 @@ export async function POST(request: Request) {
         ? `\n${depsArray.map((d: string) => `    - ${d}`).join("\n")}`
         : " []";
 
+    const scopeArray = Array.isArray(scope)
+      ? scope.filter(
+          (s: unknown) => typeof s === "string" && s.trim().length > 0,
+        )
+      : [];
+    const scopeYaml =
+      scopeArray.length > 0
+        ? `\nscope:\n${scopeArray.map((s: string) => `  - ${s}`).join("\n")}`
+        : "";
+
     const content = `---
 id: ${taskId}
 title: ${sanitizedTitle}
-status: backlog
+status: pending
 priority: ${taskPriority}
 sprint: ${taskSprint}
 depends_on:${depsYaml}
-role: ${taskRole}
+role: ${taskRole}${scopeYaml}
 ---
 
 # ${taskId}: ${sanitizedTitle}
@@ -118,7 +128,7 @@ TBD
       {
         id: taskId,
         title: sanitizedTitle,
-        status: "backlog",
+        status: "pending",
         priority: taskPriority,
       },
       { status: 201 },

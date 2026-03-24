@@ -38,7 +38,7 @@ export async function PUT(
     const content = fs.readFileSync(filePath, "utf-8");
     const { data, content: markdownBody } = matter(content);
 
-    const validStatuses = ["backlog", "in_progress", "in_review", "done"];
+    const validStatuses = ["pending", "in_progress", "in_review", "done"];
     const validPriorities = ["critical", "high", "medium", "low"];
 
     if (body.status !== undefined) {

@@ -441,14 +441,19 @@ export function TaskSidebar({
     setNewRootItemType(null);
   };
 
-  // Group request items by status for sidebar display
-  const inProgressTasks = requestItems.filter((r) => r.status === "in_progress");
-  const pendingTasks = requestItems.filter((r) => r.status === "pending" || r.status === "reviewing");
-  const doneTasks = requestItems.filter((r) => r.status === "done");
-  const rejectedTasks = requestItems.filter((r) => r.status === "rejected");
+  // Show only the 10 most recently updated tasks in the sidebar
+  const recentItems = [...requestItems]
+    .sort((a, b) => (b.updated ?? b.created).localeCompare(a.updated ?? a.created))
+    .slice(0, 10);
+
+  // Group recent items by status for sidebar display
+  const inProgressTasks = recentItems.filter((r) => r.status === "in_progress");
+  const pendingTasks = recentItems.filter((r) => r.status === "pending" || r.status === "reviewing");
+  const doneTasks = recentItems.filter((r) => r.status === "done");
+  const rejectedTasks = recentItems.filter((r) => r.status === "rejected");
 
   // Display task ID as TASK-XXX in UI
-  const displayTaskId = (id: string) => id.replace(/^REQ-/, "TASK-");
+  const displayTaskId = (id: string) => id;
 
   return (
     <div className="ide-sidebar flex flex-col h-full">
@@ -459,14 +464,14 @@ export function TaskSidebar({
         </Link>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 py-2">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-2">
 
         {/* ── Docs (문서 트리) ── */}
         <div className="mb-2">
           <div className="px-2 mb-1 flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <Link href="/docs" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors no-underline cursor-pointer">
               Docs
-            </span>
+            </Link>
             <div className="relative">
               <button
                 type="button"

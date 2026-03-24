@@ -1,7 +1,7 @@
 ---
 id: TASK-108
 title: orchestrate.sh 컨텍스트 최소화로 cache_read 절감
-status: in_progress
+status: pending
 priority: high
 created: 2026-03-24
 updated: 2026-03-24

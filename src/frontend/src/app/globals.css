@@ -300,6 +300,13 @@ body {
   padding: 0 12px;
   flex-shrink: 0;
 }
+/* ── Global Search ── */
+.global-search-wrapper {
+  position: relative;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+}
 .global-search {
   display: flex;
   align-items: center;
@@ -308,10 +315,12 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 4px 12px;
-  max-width: 480px;
   width: 100%;
-  margin: 0 auto;
   transition: border-color 0.15s;
+}
+.global-search.search-open {
+  border-radius: 6px 6px 0 0;
+  border-color: var(--primary);
 }
 .global-search:focus-within {
   border-color: var(--primary);
@@ -326,6 +335,95 @@ body {
 }
 .global-search input::placeholder {
   color: var(--muted-foreground);
+}
+.search-clear {
+  background: none;
+  border: none;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.search-clear:hover {
+  color: var(--foreground);
+}
+.search-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--sidebar);
+  border: 1px solid var(--primary);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 6px 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.search-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--foreground);
+  transition: background 0.1s;
+}
+.search-item:hover,
+.search-item-active {
+  background: var(--muted);
+}
+.search-item-icon {
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+.search-item-id {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+  min-width: 64px;
+}
+.search-item-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-item-status {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.search-item-type {
+  font-size: 10px;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+.search-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.search-more {
+  padding: 6px 12px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  border-top: 1px solid var(--border);
 }
 
 /* ── Board View (Kanban) ──────────────────────────────── */
@@ -492,6 +590,35 @@ button.timeline-task-label:hover {
   border-bottom: 5px solid transparent;
   border-left: 7px solid var(--foreground);
   opacity: 0.4;
+}
+
+/* ── DAG Canvas ───────────────────────────────────────── */
+
+.dag-canvas {
+  cursor: grab;
+  user-select: none;
+  outline: none;
+}
+.dag-canvas.panning {
+  cursor: grabbing;
+}
+
+@keyframes dag-next-up-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.4); }
+  50% { box-shadow: 0 0 8px 2px rgba(250, 204, 21, 0.25); }
+}
+
+.dag-node-next-up {
+  animation: dag-next-up-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dag-active-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  50% { box-shadow: 0 0 8px 2px rgba(59, 130, 246, 0.2); }
+}
+
+.dag-node-active {
+  animation: dag-active-pulse 2s ease-in-out infinite;
 }
 
 /* Toast slide-in animation */

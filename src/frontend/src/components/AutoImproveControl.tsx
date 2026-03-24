@@ -4,16 +4,16 @@ import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Play, Square, Loader2 } from "lucide-react";
 
-type AutoImproveStatus = "idle" | "running" | "stopping" | "completed" | "failed";
+type RunStatus = "idle" | "running" | "completed" | "failed";
 
 export default function AutoImproveControl() {
-  const [status, setStatus] = useState<AutoImproveStatus>("idle");
+  const [status, setStatus] = useState<RunStatus>("idle");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch("/api/auto-improve/status");
+      const res = await fetch("/api/orchestrate/status");
       if (res.ok) {
         const data = await res.json();
         setStatus(data.status);
@@ -33,7 +33,7 @@ export default function AutoImproveControl() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/auto-improve/run", { method: "POST" });
+      const res = await fetch("/api/orchestrate/run", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Failed to start");
@@ -51,12 +51,12 @@ export default function AutoImproveControl() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/auto-improve/stop", { method: "POST" });
+      const res = await fetch("/api/orchestrate/stop", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Failed to stop");
       } else {
-        setStatus("stopping");
+        setStatus("idle");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Network error");
@@ -78,7 +78,7 @@ export default function AutoImproveControl() {
           )}
         >
           <Play className="h-3 w-3" />
-          Run Auto-Improve
+          Run
         </button>
       ) : status === "running" ? (
         <button
@@ -90,15 +90,9 @@ export default function AutoImproveControl() {
             loading && "opacity-50 cursor-not-allowed"
           )}
         >
-          <Loader2 className="h-3 w-3 animate-spin" />
           <Square className="h-3 w-3" />
           Stop
         </button>
-      ) : status === "stopping" ? (
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Stopping...
-        </span>
       ) : null}
 
       {error && (

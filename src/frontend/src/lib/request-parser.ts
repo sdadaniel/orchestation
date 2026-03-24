@@ -7,10 +7,12 @@ export interface RequestData {
   status: "pending" | "in_progress" | "reviewing" | "done" | "rejected";
   priority: "high" | "medium" | "low";
   created: string;
+  updated: string;
   content: string;
+  depends_on: string[];
 }
 
-const REQUESTS_DIR = path.join(process.cwd(), "../../docs/requests");
+const TASKS_DIR = path.join(process.cwd(), "../../docs/task");
 
 export function parseRequestFile(filePath: string): RequestData | null {
   try {
@@ -25,23 +27,36 @@ export function parseRequestFile(filePath: string): RequestData | null {
     const status = (fm.match(/^status:\s*(.+)$/m)?.[1]?.trim() || "pending") as RequestData["status"];
     const priority = (fm.match(/^priority:\s*(.+)$/m)?.[1]?.trim() || "medium") as RequestData["priority"];
     const created = fm.match(/^created:\s*(.+)$/m)?.[1]?.trim() || "";
+    const updated = fm.match(/^updated:\s*(.+)$/m)?.[1]?.trim() || created;
 
     const content = raw.replace(/^---\n[\s\S]*?\n---\n?/, "").trim();
 
-    return { id, title, status, priority, created, content };
+    // Parse depends_on: supports both inline [A, B] and multi-line YAML list
+    let depends_on: string[] = [];
+    const inlineMatch = fm.match(/^depends_on:\s*\[([^\]]*)\]/m);
+    if (inlineMatch) {
+      depends_on = inlineMatch[1].split(",").map((s) => s.trim()).filter(Boolean);
+    } else {
+      const mlMatch = fm.match(/^depends_on:\s*\n((?:\s+-\s+.+\n?)*)/m);
+      if (mlMatch) {
+        depends_on = mlMatch[1].match(/-\s*(.+)/g)?.map((s) => s.replace(/^- \s*/, "").trim()) || [];
+      }
+    }
+
+    return { id, title, status, priority, created, updated, content, depends_on };
   } catch {
     return null;
   }
 }
 
 export function parseAllRequests(): RequestData[] {
-  if (!fs.existsSync(REQUESTS_DIR)) return [];
+  if (!fs.existsSync(TASKS_DIR)) return [];
 
-  const files = fs.readdirSync(REQUESTS_DIR).filter((f) => f.startsWith("REQ-") && f.endsWith(".md"));
+  const files = fs.readdirSync(TASKS_DIR).filter((f) => f.startsWith("TASK-") && f.endsWith(".md"));
   const requests: RequestData[] = [];
 
   for (const file of files) {
-    const req = parseRequestFile(path.join(REQUESTS_DIR, file));
+    const req = parseRequestFile(path.join(TASKS_DIR, file));
     if (req) requests.push(req);
   }
 
@@ -55,12 +70,12 @@ export function parseAllRequests(): RequestData[] {
 }
 
 export function findRequestFile(id: string): string | null {
-  if (!fs.existsSync(REQUESTS_DIR)) return null;
-  const files = fs.readdirSync(REQUESTS_DIR);
+  if (!fs.existsSync(TASKS_DIR)) return null;
+  const files = fs.readdirSync(TASKS_DIR);
   const file = files.find((f) => f.startsWith(id) && f.endsWith(".md"));
-  return file ? path.join(REQUESTS_DIR, file) : null;
+  return file ? path.join(TASKS_DIR, file) : null;
 }
 
 export function getRequestsDir(): string {
-  return REQUESTS_DIR;
+  return TASKS_DIR;
 }

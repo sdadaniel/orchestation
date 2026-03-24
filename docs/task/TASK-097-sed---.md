@@ -1,7 +1,7 @@
 ---
 id: TASK-097
 title: sed 크로스플랫폼 호환성 수정
-status: in_progress
+status: pending
 priority: medium
 sprint:
 depends_on: [TASK-096]

@@ -12,8 +12,8 @@ import type { RequestItem } from "@/hooks/useRequests";
 import { TaskLogModal } from "@/components/TaskLogModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
-import { SearchIcon } from "lucide-react";
 import { ChatBot } from "@/components/ChatBot";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import type { WaterfallTask } from "@/types/waterfall";
 
 /* ── Home Dashboard ── */
@@ -28,7 +28,7 @@ function HomeDashboard({
   const done = requestItems.filter((t) => t.status === "done");
   const rejected = requestItems.filter((t) => t.status === "rejected");
 
-  const displayTaskId = (id: string) => id.replace(/^REQ-/, "TASK-");
+  const displayTaskId = (id: string) => id;
 
   return (
     <div className="space-y-6">
@@ -133,7 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         if (prevStatus && prevStatus !== task.status) {
           if (task.status === "done") {
             addToast(`${task.id}: "${task.title}" 완료됨`, "success");
-          } else if (task.status === "in_progress" && prevStatus === "backlog") {
+          } else if (task.status === "in_progress" && prevStatus === "pending") {
             addToast(`${task.id}: "${task.title}" 시작됨`, "info");
           } else if (task.status === "in_review") {
             addToast(`${task.id}: "${task.title}" 리뷰 중`, "info");
@@ -224,10 +224,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Global header */}
         <div className="global-header">
-          <div className="global-search">
-            <SearchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <input type="text" placeholder="검색" />
-          </div>
+          <GlobalSearch requestItems={requestItems} docTree={docTree} />
         </div>
 
         {/* Main content */}

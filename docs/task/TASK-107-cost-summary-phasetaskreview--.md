@@ -1,7 +1,7 @@
 ---
 id: TASK-107
 title: Cost Summary에 phase별(task/review) 비용 비율 표시
-status: in_progress
+status: pending
 priority: medium
 sprint:
 depends_on: [TASK-106]

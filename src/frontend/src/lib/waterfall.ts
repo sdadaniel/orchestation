@@ -12,7 +12,7 @@ export type SprintResponse = {
 };
 
 const VALID_STATUSES: Set<string> = new Set([
-  "backlog",
+  "pending",
   "in_progress",
   "in_review",
   "done",
@@ -29,7 +29,7 @@ function toWaterfallTask(
     title: task.title,
     status: VALID_STATUSES.has(task.status)
       ? (task.status as WaterfallTaskStatus)
-      : "backlog",
+      : "pending",
     priority: task.priority,
     role: task.role,
     depends_on: task.depends_on,

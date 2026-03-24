@@ -8,6 +8,7 @@ export interface RequestItem {
   status: "pending" | "in_progress" | "reviewing" | "done" | "rejected";
   priority: "high" | "medium" | "low";
   created: string;
+  updated: string;
   content: string;
 }
 

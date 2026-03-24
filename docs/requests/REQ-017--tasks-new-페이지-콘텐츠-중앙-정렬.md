@@ -1,7 +1,7 @@
 ---
 id: REQ-017
 title: /tasks/new 페이지 콘텐츠 중앙 정렬
-status: pending
+status: done
 priority: low
 created: 2026-03-24
 ---

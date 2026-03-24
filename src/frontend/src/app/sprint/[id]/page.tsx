@@ -30,7 +30,7 @@ const TABS: { key: TabKey; label: string }[] = [
 /* ── Board View ─────────────────────────────────────────── */
 
 const BOARD_COLUMNS: { status: TaskStatus; label: string; headerColor: string }[] = [
-  { status: "backlog", label: "Backlog", headerColor: "board-col-gray" },
+  { status: "pending", label: "Pending", headerColor: "board-col-gray" },
   { status: "in_progress", label: "In Progress", headerColor: "board-col-blue" },
   { status: "in_review", label: "In Review", headerColor: "board-col-orange" },
   { status: "done", label: "Done", headerColor: "board-col-green" },
@@ -46,7 +46,7 @@ function BoardView({
   const allTasks = sprint.batches.flatMap((b) => b.tasks);
 
   const grouped: Record<string, SprintDetailTask[]> = {
-    backlog: [],
+    pending: [],
     in_progress: [],
     in_review: [],
     done: [],
@@ -57,7 +57,7 @@ function BoardView({
     if (bucket) {
       bucket.push(task);
     } else {
-      grouped.backlog.push(task);
+      grouped.pending.push(task);
     }
   }
 

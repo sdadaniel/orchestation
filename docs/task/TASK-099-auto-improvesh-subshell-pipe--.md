@@ -1,7 +1,7 @@
 ---
 id: TASK-099
 title: auto-improve.sh subshell pipe 패턴을 process substitution으로 교체
-status: in_progress
+status: pending
 priority: medium
 sprint:
 depends_on: [TASK-098]

@@ -34,6 +34,8 @@ const MANIFEST_PATH = path.join(PRD_DIR, "_manifest.json");
 /* ── Full docs tree (filesystem scan + prd manifest merge) ── */
 
 const IGNORED = new Set(["_manifest.json", ".DS_Store", "README.md"]);
+// docs tree에서 제외할 디렉토리 (전용 탭이 있는 것들)
+const EXCLUDED_DIRS = new Set(["task", "requests"]);
 
 function titleFromFile(filePath: string): string {
   try {
@@ -95,6 +97,7 @@ export function readFullTree(): Manifest {
 
   const topEntries = fs.readdirSync(DOCS_DIR, { withFileTypes: true })
     .filter((e) => !IGNORED.has(e.name) && !e.name.startsWith("."))
+    .filter((e) => !e.isDirectory() || !EXCLUDED_DIRS.has(e.name))
     .sort((a, b) => {
       if (a.isDirectory() && !b.isDirectory()) return -1;
       if (!a.isDirectory() && b.isDirectory()) return 1;

@@ -92,14 +92,14 @@ export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
   );
 
   const statusLabel: Record<string, string> = {
-    backlog: "Backlog",
+    pending: "Pending",
     in_progress: "In Progress",
     in_review: "In Review",
     done: "Done",
   };
 
   const statusColor: Record<string, string> = {
-    backlog: "text-zinc-400",
+    pending: "text-zinc-400",
     in_progress: "text-blue-500",
     in_review: "text-orange-400",
     done: "text-emerald-500",

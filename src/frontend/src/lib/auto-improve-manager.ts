@@ -166,6 +166,13 @@ class AutoImproveManager {
   }
 }
 
-// Singleton — keeps state across API calls within the same server process
-const autoImproveManager = new AutoImproveManager();
+// Singleton — survives Next.js HMR by storing on globalThis
+const globalKey = "__autoImproveManager__" as keyof typeof globalThis;
+const autoImproveManager: AutoImproveManager =
+  (globalThis as Record<string, unknown>)[globalKey] as AutoImproveManager ??
+  (() => {
+    const m = new AutoImproveManager();
+    (globalThis as Record<string, unknown>)[globalKey] = m;
+    return m;
+  })();
 export default autoImproveManager;

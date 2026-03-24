@@ -169,8 +169,8 @@ function parseResultLogs(taskId: string): TaskLogEntry[] {
  * Parse orchestration signal logs (if they exist)
  */
 function parseSignalLogs(taskId: string): TaskLogEntry[] {
-  // Signal logs might be stored in output/ after orchestration
-  const logFile = path.join(OUTPUT_DIR, `${taskId}.log`);
+  // Worker logs stored in output/logs/ by orchestrate.sh
+  const logFile = path.join(OUTPUT_DIR, "logs", `${taskId}.log`);
   if (!fs.existsSync(logFile)) return [];
 
   const content = fs.readFileSync(logFile, "utf-8");
@@ -236,11 +236,12 @@ export function hasLogSources(taskId: string): boolean {
     "-review-conversation.jsonl",
     "-task.json",
     "-review.json",
-    ".log",
   ];
   for (const suffix of suffixes) {
     if (fs.existsSync(path.join(OUTPUT_DIR, `${taskId}${suffix}`))) return true;
   }
+  // Check worker log in output/logs/
+  if (fs.existsSync(path.join(OUTPUT_DIR, "logs", `${taskId}.log`))) return true;
 
   return false;
 }

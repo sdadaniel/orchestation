@@ -1,5 +1,5 @@
 export type WaterfallTaskStatus =
-  | "backlog"
+  | "pending"
   | "in_progress"
   | "in_review"
   | "done";

@@ -139,7 +139,7 @@ export function BatchEditor({ batches, onSave, onClose }: BatchEditorProps) {
             className="bg-muted border border-border rounded px-2 py-0.5 text-xs outline-none"
           >
             <option value="">상태 선택</option>
-            <option value="backlog">Backlog</option>
+            <option value="pending">Pending</option>
             <option value="in_progress">In Progress</option>
             <option value="in_review">In Review</option>
             <option value="done">Done</option>

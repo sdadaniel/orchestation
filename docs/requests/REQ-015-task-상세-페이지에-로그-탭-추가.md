@@ -1,7 +1,7 @@
 ---
 id: REQ-015
 title: Task 상세 페이지에 로그 탭 추가
-status: pending
+status: done
 priority: high
 created: 2026-03-24
 ---
