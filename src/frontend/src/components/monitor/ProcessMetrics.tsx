@@ -25,14 +25,17 @@ const COLORS = [
   "#8c564b", "#e377c2", "#17becf", "#bcbd22", "#ff7f0e",
 ];
 
-const tooltipStyle = {
-  backgroundColor: "hsl(var(--popover))",
-  border: "1px solid hsl(var(--border))",
+const tooltipContentStyle = {
+  backgroundColor: "#111",
+  border: "1px solid #333",
   borderRadius: "4px",
   fontSize: "11px",
-  padding: "6px 10px",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+  padding: "8px 12px",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.7)",
+  color: "#fff",
 };
+const tooltipItemStyle = { color: "#fff", padding: "2px 0" };
+const tooltipLabelStyle = { color: "#aaa", marginBottom: "4px" };
 
 const axisTickStyle = { fontSize: 9, fill: "hsl(var(--muted-foreground))" };
 
@@ -124,9 +127,10 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                   width={30}
                 />
                 <Tooltip
-                  contentStyle={tooltipStyle}
-                  itemStyle={{ padding: "1px 0" }}
-                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
+                  contentStyle={tooltipContentStyle}
+                  itemStyle={tooltipItemStyle}
+                  labelStyle={tooltipLabelStyle}
+                  cursor={{ fill: "rgba(255,255,255,0.05)" }}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   formatter={(v: any, _: any, props: any) => [
                     `${v}%`,
@@ -167,9 +171,10 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                   width={35}
                 />
                 <Tooltip
-                  contentStyle={tooltipStyle}
-                  itemStyle={{ padding: "1px 0" }}
-                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
+                  contentStyle={tooltipContentStyle}
+                  itemStyle={tooltipItemStyle}
+                  labelStyle={tooltipLabelStyle}
+                  cursor={{ fill: "rgba(255,255,255,0.05)" }}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   formatter={(v: any, _: any, props: any) => [
                     `${v} MB`,
@@ -215,8 +220,9 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                   width={30}
                 />
                 <Tooltip
-                  contentStyle={tooltipStyle}
-                  itemStyle={{ padding: "1px 0" }}
+                  contentStyle={tooltipContentStyle}
+                  itemStyle={tooltipItemStyle}
+                  labelStyle={tooltipLabelStyle}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   formatter={(v: any, name: any) => {
                     const pid = String(name).replace("cpu_", "");
@@ -278,8 +284,9 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                   width={35}
                 />
                 <Tooltip
-                  contentStyle={tooltipStyle}
-                  itemStyle={{ padding: "1px 0" }}
+                  contentStyle={tooltipContentStyle}
+                  itemStyle={tooltipItemStyle}
+                  labelStyle={tooltipLabelStyle}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   formatter={(v: any, name: any) => {
                     const pid = String(name).replace("mem_", "");

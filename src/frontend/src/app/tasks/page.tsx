@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRequests, type RequestItem } from "@/hooks/useRequests";
 import { cn } from "@/lib/utils";
-import { Plus, ChevronDown, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, Square } from "lucide-react";
 import AutoImproveControl from "@/components/AutoImproveControl";
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -98,6 +98,19 @@ function RequestCard({
         )}>
           {req.priority}
         </span>
+        {req.status === "in_progress" && (
+          <button
+            type="button"
+            title="중지 → Pending"
+            onClick={(e) => {
+              e.stopPropagation();
+              onUpdate(req.id, { status: "pending" });
+            }}
+            className="shrink-0 p-1 rounded hover:bg-red-500/15 text-muted-foreground hover:text-red-400 transition-colors"
+          >
+            <Square className="h-3 w-3" />
+          </button>
+        )}
         <span className="text-[10px] text-muted-foreground shrink-0">{req.created}</span>
       </div>
 
@@ -179,9 +192,18 @@ function RequestCard({
   );
 }
 
+const TAB_ALL = "all";
+const TABS = [TAB_ALL, ...STATUS_ORDER] as const;
+
+const TAB_LABEL: Record<string, string> = {
+  all: "All",
+  ...STATUS_LABEL,
+};
+
 export default function TasksPage() {
   const { requests, isLoading, error, updateRequest, deleteRequest } = useRequests();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<string>(TAB_ALL);
 
   const grouped: Record<string, RequestItem[]> = {
     pending: requests.filter((r) => r.status === "pending"),
@@ -190,6 +212,10 @@ export default function TasksPage() {
     rejected: requests.filter((r) => r.status === "rejected"),
     done: requests.filter((r) => r.status === "done"),
   };
+
+  const filteredStatuses = activeTab === TAB_ALL
+    ? STATUS_ORDER.filter((s) => grouped[s].length > 0)
+    : [activeTab];
 
   if (isLoading) {
     return <div className="p-4 text-sm text-muted-foreground">Loading tasks...</div>;
@@ -216,22 +242,51 @@ export default function TasksPage() {
         </button>
       </div>
 
-      {STATUS_ORDER.map((status) => {
+      <div className="flex items-center gap-1 border-b border-border">
+        {TABS.map((tab) => {
+          const count = tab === TAB_ALL
+            ? requests.length
+            : grouped[tab]?.length ?? 0;
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 transition-colors -mb-px",
+                activeTab === tab
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {tab !== TAB_ALL && (
+                <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[tab])} />
+              )}
+              {TAB_LABEL[tab]}
+              <span className="text-[10px] text-muted-foreground">({count})</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {filteredStatuses.map((status) => {
         const items = grouped[status];
-        if (items.length === 0) return null;
+        if (!items || items.length === 0) return null;
         return (
           <div key={status}>
-            <div className="flex items-center gap-2 mb-2">
-              {status === "in_progress" ? (
-                <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <span className={cn("w-2 h-2 rounded-full", STATUS_DOT[status])} />
-              )}
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {STATUS_LABEL[status]}
-              </span>
-              <span className="text-[10px] text-muted-foreground">({items.length})</span>
-            </div>
+            {activeTab === TAB_ALL && (
+              <div className="flex items-center gap-2 mb-2">
+                {status === "in_progress" ? (
+                  <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span className={cn("w-2 h-2 rounded-full", STATUS_DOT[status])} />
+                )}
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {STATUS_LABEL[status]}
+                </span>
+                <span className="text-[10px] text-muted-foreground">({items.length})</span>
+              </div>
+            )}
             <div className="space-y-1">
               {items.map((req) => (
                 <RequestCard
@@ -250,6 +305,12 @@ export default function TasksPage() {
       {requests.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <p className="text-sm">No tasks yet. Click &quot;New Task&quot; to create a task.</p>
+        </div>
+      )}
+
+      {activeTab !== TAB_ALL && (grouped[activeTab]?.length ?? 0) === 0 && requests.length > 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <p className="text-sm">No {TAB_LABEL[activeTab]} tasks.</p>
         </div>
       )}
     </div>

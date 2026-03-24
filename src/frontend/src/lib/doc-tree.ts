@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { parsePrdFile } from "./prd-parser";
+import matter from "gray-matter";
 
 /* ── Types ── */
 
@@ -8,8 +8,9 @@ export interface DocNode {
   id: string;
   title: string;
   type: "doc" | "folder";
-  file?: string; // only for docs
+  file?: string; // relative path from DOCS_DIR (e.g. "prd/doc-xxx.md")
   children: DocNode[];
+  readonly?: boolean; // true for auto-scanned dirs (not prd)
 }
 
 export interface Manifest {
@@ -23,14 +24,127 @@ export interface DocDetail {
   file?: string;
   content: string;
   parentPath: string[]; // breadcrumb titles
+  readonly?: boolean;
 }
 
-const PRD_DIR = path.join(process.cwd(), "../../docs/prd");
+const DOCS_DIR = path.join(process.cwd(), "../../docs");
+const PRD_DIR = path.join(DOCS_DIR, "prd");
 const MANIFEST_PATH = path.join(PRD_DIR, "_manifest.json");
 
-/* ── Manifest I/O ── */
+/* ── Full docs tree (filesystem scan + prd manifest merge) ── */
 
-export function readManifest(): Manifest {
+const IGNORED = new Set(["_manifest.json", ".DS_Store", "README.md"]);
+
+function titleFromFile(filePath: string): string {
+  try {
+    const raw = fs.readFileSync(filePath, "utf-8");
+    const { data } = matter(raw);
+    if (data.title) return data.title;
+    if (data.id) return data.id;
+  } catch { /* ignore */ }
+  return path.basename(filePath, ".md");
+}
+
+function scanDirectory(dirPath: string, relDir: string, isReadonly: boolean): DocNode[] {
+  if (!fs.existsSync(dirPath)) return [];
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true })
+    .filter((e) => !IGNORED.has(e.name) && !e.name.startsWith("."))
+    .sort((a, b) => {
+      // folders first, then files
+      if (a.isDirectory() && !b.isDirectory()) return -1;
+      if (!a.isDirectory() && b.isDirectory()) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+  const nodes: DocNode[] = [];
+
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    const relPath = relDir ? `${relDir}/${entry.name}` : entry.name;
+
+    if (entry.isDirectory()) {
+      const children = scanDirectory(fullPath, relPath, isReadonly);
+      nodes.push({
+        id: `dir-${relPath.replace(/\//g, "-")}`,
+        title: entry.name,
+        type: "folder",
+        children,
+        readonly: isReadonly,
+      });
+    } else if (entry.name.endsWith(".md")) {
+      const title = titleFromFile(fullPath);
+      nodes.push({
+        id: `file-${relPath.replace(/\//g, "-").replace(".md", "")}`,
+        title,
+        type: "doc",
+        file: relPath,
+        children: [],
+        readonly: isReadonly,
+      });
+    }
+  }
+
+  return nodes;
+}
+
+/** Build full docs tree: prd uses manifest, others are filesystem-scanned */
+export function readFullTree(): Manifest {
+  const tree: DocNode[] = [];
+
+  if (!fs.existsSync(DOCS_DIR)) return { tree };
+
+  const topEntries = fs.readdirSync(DOCS_DIR, { withFileTypes: true })
+    .filter((e) => !IGNORED.has(e.name) && !e.name.startsWith("."))
+    .sort((a, b) => {
+      if (a.isDirectory() && !b.isDirectory()) return -1;
+      if (!a.isDirectory() && b.isDirectory()) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+  for (const entry of topEntries) {
+    const fullPath = path.join(DOCS_DIR, entry.name);
+
+    if (entry.isDirectory()) {
+      if (entry.name === "prd") {
+        // PRD uses manifest-based management
+        const prdManifest = readPrdManifest();
+        tree.push({
+          id: "dir-prd",
+          title: "prd",
+          type: "folder",
+          children: prdManifest.tree,
+          readonly: false,
+        });
+      } else {
+        // Other dirs: filesystem scan, read-only
+        const children = scanDirectory(fullPath, entry.name, true);
+        tree.push({
+          id: `dir-${entry.name}`,
+          title: entry.name,
+          type: "folder",
+          children,
+          readonly: true,
+        });
+      }
+    } else if (entry.name.endsWith(".md")) {
+      const title = titleFromFile(fullPath);
+      tree.push({
+        id: `file-${entry.name.replace(".md", "")}`,
+        title,
+        type: "doc",
+        file: entry.name,
+        children: [],
+        readonly: true,
+      });
+    }
+  }
+
+  return { tree };
+}
+
+/* ── PRD Manifest I/O (for CRUD operations) ── */
+
+export function readPrdManifest(): Manifest {
   if (!fs.existsSync(PRD_DIR)) {
     fs.mkdirSync(PRD_DIR, { recursive: true });
   }
@@ -39,15 +153,17 @@ export function readManifest(): Manifest {
     try {
       const raw = fs.readFileSync(MANIFEST_PATH, "utf-8");
       return JSON.parse(raw) as Manifest;
-    } catch {
-      // corrupt manifest, regenerate
-    }
+    } catch { /* corrupt manifest, regenerate */ }
   }
 
-  // Auto-generate from existing .md files
   const manifest = generateManifestFromFiles();
   writeManifest(manifest);
   return manifest;
+}
+
+/** Legacy alias — used by API routes for CRUD */
+export function readManifest(): Manifest {
+  return readPrdManifest();
 }
 
 export function writeManifest(manifest: Manifest): void {
@@ -61,26 +177,9 @@ function generateManifestFromFiles(): Manifest {
   const tree: DocNode[] = [];
 
   for (const file of files) {
-    const prd = parsePrdFile(path.join(PRD_DIR, file));
-    if (prd) {
-      tree.push({
-        id: prd.id,
-        title: prd.title || file.replace(".md", ""),
-        type: "doc",
-        file,
-        children: [],
-      });
-    } else {
-      // Non-frontmatter .md file
-      const id = file.replace(".md", "");
-      tree.push({
-        id,
-        title: id,
-        type: "doc",
-        file,
-        children: [],
-      });
-    }
+    const title = titleFromFile(path.join(PRD_DIR, file));
+    const id = file.replace(".md", "");
+    tree.push({ id, title, type: "doc", file, children: [] });
   }
 
   return { tree };
@@ -97,10 +196,10 @@ export function findNodeById(tree: DocNode[], id: string): DocNode | null {
   return null;
 }
 
-export function findParentPath(tree: DocNode[], targetId: string, path: string[] = []): string[] | null {
+export function findParentPath(tree: DocNode[], targetId: string, breadcrumb: string[] = []): string[] | null {
   for (const node of tree) {
-    if (node.id === targetId) return path;
-    const found = findParentPath(node.children, targetId, [...path, node.title]);
+    if (node.id === targetId) return breadcrumb;
+    const found = findParentPath(node.children, targetId, [...breadcrumb, node.title]);
     if (found) return found;
   }
   return null;
@@ -140,27 +239,30 @@ export function insertNode(tree: DocNode[], parentId: string | null, node: DocNo
 
 /* ── Doc content I/O ── */
 
-export function readDocContent(fileOrId: string): string {
-  // Try direct file path first
-  const filePath = path.join(PRD_DIR, fileOrId);
+/** Read doc content — file path is relative to DOCS_DIR */
+export function readDocContent(fileRelPath: string): string {
+  // Try as relative to DOCS_DIR first
+  let filePath = path.join(DOCS_DIR, fileRelPath);
+  if (!fs.existsSync(filePath)) {
+    // Fallback: try as relative to PRD_DIR (legacy)
+    filePath = path.join(PRD_DIR, fileRelPath);
+  }
   if (fs.existsSync(filePath)) {
     const raw = fs.readFileSync(filePath, "utf-8");
-    // Strip frontmatter
     return raw.replace(/^---\n[\s\S]*?\n---\n?/, "").trim();
   }
   return "";
 }
 
+/** Write doc content — only for PRD docs */
 export function writeDocContent(fileName: string, content: string, title?: string): void {
   const filePath = path.join(PRD_DIR, fileName);
 
   if (fs.existsSync(filePath)) {
-    // Preserve existing frontmatter
     const existing = fs.readFileSync(filePath, "utf-8");
     const fmMatch = existing.match(/^(---\n[\s\S]*?\n---)\n?/);
     if (fmMatch) {
       let frontmatter = fmMatch[1];
-      // Update title in frontmatter if provided
       if (title !== undefined) {
         frontmatter = frontmatter.replace(/^title:\s*.+$/m, `title: ${title}`);
       }
@@ -169,7 +271,6 @@ export function writeDocContent(fileName: string, content: string, title?: strin
     }
   }
 
-  // New file or no frontmatter
   const fm = `---\nid: ${path.basename(fileName, ".md")}\ntitle: ${title || "Untitled"}\nstatus: draft\n---`;
   fs.writeFileSync(filePath, `${fm}\n\n${content}`, "utf-8");
 }
@@ -181,7 +282,6 @@ export function deleteDocFile(fileName: string): void {
   }
 }
 
-/** Collect all doc files under a node (recursively) */
 export function collectFiles(node: DocNode): string[] {
   const files: string[] = [];
   if (node.file) files.push(node.file);
@@ -191,7 +291,6 @@ export function collectFiles(node: DocNode): string[] {
   return files;
 }
 
-/** Generate a unique ID */
 export function generateId(prefix: string = "doc"): string {
   return `${prefix}-${Date.now().toString(36)}`;
 }

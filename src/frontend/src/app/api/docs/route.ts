@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  readFullTree,
   readManifest,
   writeManifest,
   findNodeById,
@@ -11,10 +12,10 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/docs — return the full tree */
+/** GET /api/docs — return the full docs tree (all directories) */
 export async function GET() {
-  const manifest = readManifest();
-  return NextResponse.json(manifest);
+  const fullTree = readFullTree();
+  return NextResponse.json(fullTree);
 }
 
 /** POST /api/docs — create a new doc or folder */

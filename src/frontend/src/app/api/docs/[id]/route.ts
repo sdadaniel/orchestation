@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  readFullTree,
   readManifest,
   writeManifest,
   findNodeById,
@@ -19,14 +20,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const manifest = readManifest();
-  const node = findNodeById(manifest.tree, id);
+  // Search in the full tree (all docs directories)
+  const fullTree = readFullTree();
+  const node = findNodeById(fullTree.tree, id);
 
   if (!node) {
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
 
-  const parentPath = findParentPath(manifest.tree, id) || [];
+  const parentPath = findParentPath(fullTree.tree, id) || [];
   const content = node.file ? readDocContent(node.file) : "";
 
   return NextResponse.json({
@@ -36,6 +38,7 @@ export async function GET(
     file: node.file,
     content,
     parentPath,
+    readonly: node.readonly ?? false,
   });
 }
 

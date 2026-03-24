@@ -10,6 +10,7 @@ export interface DocNode {
   type: "doc" | "folder";
   file?: string;
   children: DocNode[];
+  readonly?: boolean;
 }
 
 export interface DocDetail {
@@ -19,6 +20,7 @@ export interface DocDetail {
   file?: string;
   content: string;
   parentPath: string[];
+  readonly?: boolean;
 }
 
 interface Manifest {

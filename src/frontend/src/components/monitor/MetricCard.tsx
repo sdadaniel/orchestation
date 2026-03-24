@@ -104,14 +104,16 @@ export function MetricCard({
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "hsl(var(--popover))",
-                  border: "1px solid hsl(var(--border))",
+                  backgroundColor: "#111",
+                  border: "1px solid #333",
                   borderRadius: "4px",
                   fontSize: "11px",
-                  padding: "6px 10px",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                  padding: "8px 12px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.7)",
+                  color: "#fff",
                 }}
-                itemStyle={{ padding: "1px 0" }}
+                itemStyle={{ color: "#fff", padding: "2px 0" }}
+                labelStyle={{ color: "#aaa", marginBottom: "4px" }}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 formatter={(v: any, name: any) => {
                   const label = legend

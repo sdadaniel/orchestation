@@ -113,7 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { prds } = usePrds();
   const { tree: docTree, createDoc, updateDoc, deleteDoc, reorderDoc } = useDocTree();
   const { justFinished, clearFinished } = useOrchestrationStatus();
-  const { requests: requestItems, createRequest, refetch: refetchRequests } = useRequests();
+  const { requests: requestItems, createRequest, updateRequest, refetch: refetchRequests } = useRequests();
   const { addToast } = useToast();
   const [logModalTask, setLogModalTask] = useState<WaterfallTask | null>(null);
 
@@ -212,6 +212,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         requestItems={requestItems}
         onNewTask={async (title, content) => {
           await createRequest(title, content, "medium");
+        }}
+        onStopTask={async (id) => {
+          await updateRequest(id, { status: "pending" });
+          await refetchRequests();
         }}
         currentPath={pathname}
       />
