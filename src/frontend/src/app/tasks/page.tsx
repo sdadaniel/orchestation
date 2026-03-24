@@ -67,18 +67,18 @@ function RequestCard({ req, onUpdate, onDelete, onClick, onReorder, isFirst, isL
       <div className="flex items-center gap-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
         {expanded ? <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
         {req.status === "in_progress" ? <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" /> : <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[req.status])} />}
-        <button type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} className="shrink-0 px-2 py-0.5 text-[10px] rounded border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/50 transition-colors">상세</button>
         <span className="font-mono text-[11px] text-muted-foreground shrink-0">{req.id}</span>
         <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0", PRIORITY_COLORS[req.priority])}>{req.priority}</span>
         <span className="text-sm flex-1 truncate text-left">{req.title}</span>
         {req.status === "in_progress" && <button type="button" title="Stop" onClick={(e) => { e.stopPropagation(); onUpdate(req.id, { status: "pending" }); }} className="shrink-0 p-1 rounded hover:bg-red-500/15 text-muted-foreground hover:text-red-400 transition-colors"><Square className="h-3 w-3" /></button>}
+        <span className="text-[10px] text-muted-foreground shrink-0">{req.created}</span>
         {onReorder && (
           <div className="flex flex-col shrink-0" onClick={(e) => e.stopPropagation()}>
             <button type="button" disabled={isFirst} onClick={() => onReorder(req.id, "up")} className={cn("p-0.5 rounded transition-colors", isFirst ? "text-muted-foreground/30 cursor-default" : "text-muted-foreground hover:text-foreground hover:bg-muted")}><ChevronUp className="h-3 w-3" /></button>
             <button type="button" disabled={isLast} onClick={() => onReorder(req.id, "down")} className={cn("p-0.5 rounded transition-colors", isLast ? "text-muted-foreground/30 cursor-default" : "text-muted-foreground hover:text-foreground hover:bg-muted")}><ChevronDown className="h-3 w-3" /></button>
           </div>
         )}
-        <span className="text-[10px] text-muted-foreground shrink-0">{req.created}</span>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} className="shrink-0 px-2 py-0.5 text-[10px] rounded border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/50 transition-colors">상세</button>
       </div>
       {expanded && (
         <div className="mt-2 pt-2 border-t border-border">
