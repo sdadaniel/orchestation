@@ -1,7 +1,7 @@
 ---
 id: TASK-102
 title: cost 페이지에 시간별 누적 비용 추이 차트 추가
-status: in_progress
+status: done
 priority: medium
 sort_order: 2
 sprint:
