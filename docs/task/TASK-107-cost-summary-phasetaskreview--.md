@@ -1,7 +1,7 @@
 ---
 id: TASK-107
 title: Cost Summary에 phase별(task/review) 비용 비율 표시
-status: in_progress
+status: failed
 priority: medium
 sort_order: 5
 sprint:
@@ -37,5 +37,9 @@ Not logged in · Please run /login
 Not logged in · Please run /login
 
 ## 실패 사유 (2026-03-24 18:34)
+
+Not logged in · Please run /login
+
+## 실패 사유 (2026-03-24 18:36)
 
 Not logged in · Please run /login
