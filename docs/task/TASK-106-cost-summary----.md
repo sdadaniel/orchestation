@@ -1,7 +1,7 @@
 ---
 id: TASK-106
 title: Cost Summary에 모델별 비용 집계 추가
-status: in_progress
+status: done
 priority: medium
 sort_order: 3
 sprint:
