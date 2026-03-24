@@ -1,7 +1,7 @@
 ---
 id: TASK-110
 title: 태스크 복잡도 기반 모델 선택 로직 구현
-status: failed
+status: in_progress
 branch: task/task-110
 worktree: ../repo-wt-task-110
 priority: medium
