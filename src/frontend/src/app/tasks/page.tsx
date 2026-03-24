@@ -255,10 +255,10 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
     }
     if (matched.length === 0) return null;
     return {
-      x: Math.min(...matched.map((s) => s.x)) - 8,
-      y: Math.min(...matched.map((s) => s.y)) - 36,
-      w: Math.max(...matched.map((s) => s.x + s.w)) - Math.min(...matched.map((s) => s.x)) + 16,
-      h: Math.max(...matched.map((s) => s.y + s.h)) - Math.min(...matched.map((s) => s.y)) + 44,
+      x: Math.min(...matched.map((s) => s.x)) - 12,
+      y: Math.min(...matched.map((s) => s.y)) - 52,
+      w: Math.max(...matched.map((s) => s.x + s.w)) - Math.min(...matched.map((s) => s.x)) + 24,
+      h: Math.max(...matched.map((s) => s.y + s.h)) - Math.min(...matched.map((s) => s.y)) + 60,
     };
   };
 
