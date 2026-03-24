@@ -1,7 +1,7 @@
 ---
 id: TASK-096
 title: Signal 파일 race condition 수정 (flock/atomic rename 적용)
-status: pending
+status: in_progress
 priority: high
 sprint:
 depends_on: [TASK-095]
