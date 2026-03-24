@@ -16,7 +16,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 const STATUS_DOT: Record<string, string> = {
-  stopped: "bg-amber-500",
+  stopped: "bg-violet-500",
   pending: "bg-yellow-500",
   in_progress: "bg-blue-500",
   reviewing: "bg-orange-500",
@@ -191,7 +191,7 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
   const sections: { key: string; label: string; items: RequestItem[]; color: string; extra: number }[] = [
     ...(backlogRest.length > 0 ? [{ key: "backlog2", label: "BACKLOG", items: backlogRest, color: "#a1a1aa", extra: 0 }] : []),
     ...(backlog.length > 0 ? [{ key: "backlog", label: "BACKLOG", items: backlog, color: "#a1a1aa", extra: 0 }] : []),
-    ...(stoppedItems.length > 0 ? [{ key: "stopped", label: "STOPPED", items: stoppedItems, color: "#f59e0b", extra: 0 }] : []),
+    ...(stoppedItems.length > 0 ? [{ key: "stopped", label: "STOPPED", items: stoppedItems, color: "#8b5cf6", extra: 0 }] : []),
     { key: "queue", label: "QUEUE", items: queueItems, color: "#eab308", extra: 0 },
     { key: "current", label: "IN PROGRESS", items: current, color: "#3b82f6", extra: 0 },
     { key: "done", label: "DONE", items: done, color: "#22c55e", extra: doneExtra },
@@ -275,7 +275,7 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
 
   const topGroups = [
     { label: "PENDING", color: "#eab308", box: computeGroup(new Set(["backlog", "backlog2"]), true) },
-    { label: "STOPPED", color: "#f59e0b", box: computeGroup(new Set(["stopped"]), false) },
+    { label: "STOPPED", color: "#8b5cf6", box: computeGroup(new Set(["stopped"]), false) },
     { label: "QUEUE", color: "#eab308", box: computeGroup(new Set(["queue"]), false) },
     { label: "IN PROGRESS", color: "#3b82f6", box: computeGroup(new Set(["current"]), false) },
     { label: "DONE", color: "#22c55e", box: computeGroup(new Set(["done"]), false) },
