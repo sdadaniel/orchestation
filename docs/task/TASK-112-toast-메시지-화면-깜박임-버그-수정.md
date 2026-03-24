@@ -1,7 +1,7 @@
 ---
 id: TASK-112
 title: 토스트 메시지 표시 시 화면 깜박임 버그 수정
-status: failed
+status: in_progress
 branch: task/task-112
 worktree: ../repo-wt-task-112
 priority: medium
@@ -14,8 +14,8 @@ scope:
   - src/frontend/src/components/AppShell.tsx
   - src/frontend/src/app/globals.css
   - src/frontend/src/app/layout.tsx
+updated: 2026-03-24 09:22:27
 ---
-
 # TASK-112: 토스트 메시지 표시 시 화면 깜박임 버그 수정
 
 ## 배경
