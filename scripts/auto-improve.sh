@@ -95,73 +95,44 @@ REASON: claude CLI not found"
   echo "$eval_result"
 }
 
-# Calculate next TASK ID
-get_next_task_id() {
-  local offset="${1:-0}"
-  local max_num
-  max_num=$(find "$PROJECT_ROOT/docs/task" -name "TASK-*.md" | sed 's/.*TASK-0*//' | sed 's/-.*//' | sort -n | tail -1)
-  if [[ -z "$max_num" ]]; then
-    max_num=0
-  fi
-  printf "%03d" $(( 10#$max_num + 1 + offset ))
-}
+# Enrich request file with orchestration fields (branch, worktree, role, completion criteria)
+# Request 파일 자체를 실행 단위로 사용 — 별도 task 파일 생성 안 함
+enrich_request() {
+  local req_file="$1"
+  local req_id="$2"
+  local eval_result="$3"
 
-# Create a task file from an accepted request
-# Args: req_file req_id req_title req_priority req_body eval_result [depends_on_task_id]
-create_task() {
-  local req_id="$1"
-  local req_title="$2"
-  local req_priority="$3"
-  local req_body="$4"
-  local eval_result="$5"
-  local task_num="$6"
-  local depends_on="${7:-}"
-
-  local task_title
-  task_title=$(echo "$eval_result" | grep "^TASK_TITLE:" | head -1 | sed 's/TASK_TITLE: *//')
   local task_desc
   task_desc=$(echo "$eval_result" | sed -n '/^TASK_DESCRIPTION:/,$ p' | tail -n +2)
 
-  local task_id="TASK-${task_num}"
-  local task_slug
-  task_slug=$(echo "$task_title" | tr ' ' '-' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g' | cut -c1-30)
-  local task_file="$PROJECT_ROOT/docs/task/${task_id}-${task_slug}.md"
+  local slug
+  slug=$(echo "$req_id" | tr '[:upper:]' '[:lower:]')
 
-  # Build depends_on field
-  local depends_field="[]"
-  if [[ -n "$depends_on" ]]; then
-    depends_field="[${depends_on}]"
+  # frontmatter에 branch, worktree, role, reviewer_role 추가 (없으면)
+  if ! grep -q '^branch:' "$req_file"; then
+    if [[ "$(uname)" == "Darwin" ]]; then
+      sed -i '' "/^status:/a\\
+branch: task/${slug}\\
+worktree: ../repo-wt-${slug}\\
+role: general\\
+reviewer_role: reviewer-general\\
+depends_on: []" "$req_file"
+    else
+      sed -i "/^status:/a\\branch: task/${slug}\nworktree: ../repo-wt-${slug}\nrole: general\nreviewer_role: reviewer-general\ndepends_on: []" "$req_file"
+    fi
   fi
 
-  cat > "$task_file" << TASKEOF
----
-id: ${task_id}
-title: ${task_title}
-status: backlog
-priority: ${req_priority}
-sprint:
-depends_on: ${depends_field}
-branch: task/${task_id}-${task_slug}
-worktree: ../repo-wt-${task_id}
-role: general
-reviewer_role: reviewer-general
----
+  # 완료 조건을 본문에 추가 (이미 없으면)
+  if [[ -n "$task_desc" ]] && ! grep -q '## Completion Criteria' "$req_file"; then
+    echo "" >> "$req_file"
+    echo "## Completion Criteria" >> "$req_file"
+    echo "$task_desc" >> "$req_file"
+  fi
 
-# ${task_id}: ${task_title}
+  # status를 backlog로 변경 (orchestrate가 인식)
+  update_status "$req_file" "backlog"
 
-## 원본 요청
-
-- Request: ${req_id}
-- 제목: ${req_title}
-- 내용: ${req_body}
-
-## 완료 조건
-
-${task_desc}
-TASKEOF
-
-  log "Created $task_id: $task_title (depends_on: ${depends_field})"
-  echo "$task_file"
+  log "Enriched $req_id with orchestration fields"
 }
 
 # ──────────────────────────────────────────────────────────
@@ -334,55 +305,41 @@ while true; do
   log "  순차 처리 (dependent):   ${#DEPENDENT_PAIRS[@]} pair(s)"
   log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-  CREATED_TASK_FILES=()
-  CREATED_TASK_IDS=()
-  INDEPENDENT_REQ_FILES=()
+  ENRICHED_REQ_FILES=()
+  ENRICHED_REQ_IDS=()
 
   if [[ $INDEP_COUNT -gt 0 ]]; then
-    log "▶ Creating $INDEP_COUNT task(s) for parallel processing..."
+    log "▶ Enriching $INDEP_COUNT request(s) for parallel processing..."
 
-    task_offset=0
     for idx in "${INDEPENDENT_INDICES[@]}"; do
-      task_num=$(get_next_task_id "$task_offset")
-      task_file=$(create_task \
+      enrich_request \
+        "${REQ_FILES[$idx]}" \
         "${REQ_IDS[$idx]}" \
-        "${REQ_TITLES[$idx]}" \
-        "${REQ_PRIORITIES[$idx]}" \
-        "${REQ_BODIES[$idx]}" \
-        "${EVAL_RESULTS[$idx]}" \
-        "$task_num")
+        "${EVAL_RESULTS[$idx]}"
 
-      CREATED_TASK_FILES+=("$task_file")
-      CREATED_TASK_IDS+=("TASK-${task_num}")
-      INDEPENDENT_REQ_FILES+=("${REQ_FILES[$idx]}")
-      task_offset=$((task_offset + 1))
+      ENRICHED_REQ_FILES+=("${REQ_FILES[$idx]}")
+      ENRICHED_REQ_IDS+=("${REQ_IDS[$idx]}")
     done
 
-    # Git commit all independent tasks at once
+    # Git commit enriched requests
     cd "$PROJECT_ROOT"
-    for tf in "${CREATED_TASK_FILES[@]}"; do
-      git add "$tf" 2>/dev/null || true
+    for rf in "${ENRICHED_REQ_FILES[@]}"; do
+      git add "$rf" 2>/dev/null || true
     done
-    BATCH_LABEL=$(IFS=,; echo "${CREATED_TASK_IDS[*]}")
-    git commit -m "feat(${BATCH_LABEL}): auto-generated parallel tasks" 2>/dev/null || true
+    BATCH_LABEL=$(IFS=,; echo "${ENRICHED_REQ_IDS[*]}")
+    git commit -m "chore(${BATCH_LABEL}): enriched for orchestration" 2>/dev/null || true
 
-    # Run orchestrate.sh once — all independent tasks are in backlog with no deps
-    # orchestrate.sh will pick them all up in batch 0 and run them in parallel
+    # Run orchestrate.sh — it now reads docs/requests/ too
     if [[ -x "$ORCHESTRATE" ]]; then
-      log "Running orchestration for parallel batch: ${CREATED_TASK_IDS[*]}"
+      log "Running orchestration for: ${ENRICHED_REQ_IDS[*]}"
       bash "$ORCHESTRATE" 2>&1 | while IFS= read -r line; do
         log "[orchestrate] $line"
       done || {
-        log "Warning: Orchestration had errors for parallel batch"
+        log "Warning: Orchestration had errors"
       }
     fi
 
-    # Mark independent requests as done
-    for req_file in "${INDEPENDENT_REQ_FILES[@]}"; do
-      update_status "$req_file" "done"
-    done
-
-    log "✅ Parallel batch completed: ${CREATED_TASK_IDS[*]}"
+    log "✅ Parallel batch completed: ${ENRICHED_REQ_IDS[*]}"
   fi
 
   # ── Step 5: Handle dependent requests sequentially ──
@@ -441,40 +398,25 @@ while true; do
 
       log "Sequential: processing $dep_req_id (depends on: ${PREV_TASK_ID:-none})"
 
-      task_num=$(get_next_task_id 0)
-      depends_arg=""
-      if [[ -n "$PREV_TASK_ID" ]]; then
-        depends_arg="$PREV_TASK_ID"
-      fi
-
-      task_file=$(create_task \
+      enrich_request \
+        "${REQ_FILES[$dep_idx]}" \
         "${REQ_IDS[$dep_idx]}" \
-        "${REQ_TITLES[$dep_idx]}" \
-        "${REQ_PRIORITIES[$dep_idx]}" \
-        "${REQ_BODIES[$dep_idx]}" \
-        "${EVAL_RESULTS[$dep_idx]}" \
-        "$task_num" \
-        "$depends_arg")
-
-      local_task_id="TASK-${task_num}"
+        "${EVAL_RESULTS[$dep_idx]}"
 
       cd "$PROJECT_ROOT"
-      git add "$task_file" 2>/dev/null || true
-      git commit -m "feat(${local_task_id}): auto-generated from ${dep_req_id} (sequential)" 2>/dev/null || true
+      git add "${REQ_FILES[$dep_idx]}" 2>/dev/null || true
+      git commit -m "chore(${dep_req_id}): enriched for sequential orchestration" 2>/dev/null || true
 
       if [[ -x "$ORCHESTRATE" ]]; then
-        log "Running orchestration for sequential task: $local_task_id..."
+        log "Running orchestration for sequential: $dep_req_id..."
         bash "$ORCHESTRATE" 2>&1 | while IFS= read -r line; do
           log "[orchestrate] $line"
         done || {
-          log "Warning: Orchestration had errors for $local_task_id"
+          log "Warning: Orchestration had errors for $dep_req_id"
         }
       fi
 
-      update_status "${REQ_FILES[$dep_idx]}" "done"
-      log "✅ Sequential task completed: $dep_req_id → $local_task_id"
-
-      PREV_TASK_ID="$local_task_id"
+      log "✅ Sequential completed: $dep_req_id"
     done
 
     unset DEP_ORDER
@@ -487,7 +429,7 @@ while true; do
   log "  Accepted: $ACCEPTED_COUNT"
   log "  Rejected: $((TOTAL_COUNT - ACCEPTED_COUNT))"
   if [[ $INDEP_COUNT -gt 0 ]]; then
-    log "  Parallel (independent): $INDEP_COUNT → ${CREATED_TASK_IDS[*]}"
+    log "  Parallel (independent): $INDEP_COUNT → ${ENRICHED_REQ_IDS[*]}"
   fi
   if [[ ${#DEPENDENT_PAIRS[@]} -gt 0 ]]; then
     log "  Sequential (dependent): ${#DEPENDENT_PAIRS[@]} pair(s)"
@@ -497,7 +439,7 @@ while true; do
   # Cleanup arrays for next iteration
   unset REQ_FILES REQ_IDS REQ_TITLES REQ_PRIORITIES REQ_BODIES
   unset EVAL_RESULTS ACCEPTED_INDICES INDEPENDENT_INDICES DEPENDENT_PAIRS
-  unset CREATED_TASK_FILES CREATED_TASK_IDS INDEPENDENT_REQ_FILES
+  unset ENRICHED_REQ_FILES ENRICHED_REQ_IDS
 
   sleep 2
 done

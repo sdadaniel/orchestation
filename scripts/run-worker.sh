@@ -14,6 +14,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PATH="$HOME/.local/bin:$PATH"
 
 TASK_DIR="$REPO_ROOT/docs/task"
+REQ_DIR="$REPO_ROOT/docs/requests"
 OUTPUT_DIR="$REPO_ROOT/output"
 TOKEN_LOG="$OUTPUT_DIR/token-usage.log"
 
@@ -22,7 +23,11 @@ mkdir -p "$OUTPUT_DIR"
 # ─── 공통 함수 ───────────────────────────────────────────
 
 find_task_file() {
-  TASK_FILE=$(find "$TASK_DIR" -name "${TASK_ID}-*.md" | head -1)
+  # docs/task/ 또는 docs/requests/ 에서 검색
+  TASK_FILE=$(find "$TASK_DIR" -name "${TASK_ID}-*.md" 2>/dev/null | head -1)
+  if [ -z "$TASK_FILE" ]; then
+    TASK_FILE=$(find "$REQ_DIR" -name "${TASK_ID}-*.md" 2>/dev/null | head -1)
+  fi
   if [ -z "$TASK_FILE" ]; then
     echo "❌ Task 파일을 찾을 수 없습니다: ${TASK_ID}"
     exit 1

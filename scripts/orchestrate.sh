@@ -7,8 +7,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TASK_DIR="$REPO_ROOT/docs/task"
-RUN_TASK="$REPO_ROOT/scripts/run-task.sh"
-RUN_REVIEW="$REPO_ROOT/scripts/run-review.sh"
+REQ_DIR="$REPO_ROOT/docs/requests"
 MAX_REVIEW_RETRY=10
 SIGNAL_DIR="/tmp/orchestrate-$$"
 mkdir -p "$SIGNAL_DIR"
@@ -55,15 +54,30 @@ get_list() {
 # ── 헬퍼 함수 ─────────────────────────────────────────
 
 get_task_ids() {
-  find "$TASK_DIR" -name "TASK-*.md" | sort | while read -r f; do
+  # docs/task/ + docs/requests/ 둘 다 스캔
+  {
+    find "$TASK_DIR" -name "TASK-*.md" 2>/dev/null
+    find "$REQ_DIR" -name "REQ-*.md" 2>/dev/null
+  } | sort | while read -r f; do
     get_field "$f" "id"
   done
+}
+
+# docs/task/ 또는 docs/requests/ 에서 파일 찾기
+find_file() {
+  local id="$1"
+  local f=""
+  f=$(find "$TASK_DIR" -name "${id}-*.md" 2>/dev/null | head -1)
+  if [ -z "$f" ]; then
+    f=$(find "$REQ_DIR" -name "${id}-*.md" 2>/dev/null | head -1)
+  fi
+  echo "$f"
 }
 
 get_status() {
   local task_id="$1"
   local task_file
-  task_file=$(find "$TASK_DIR" -name "${task_id}-*.md" | head -1)
+  task_file=$(find_file "$task_id")
   if [ -z "$task_file" ]; then echo "unknown"; return; fi
   get_field "$task_file" "status"
 }
@@ -71,7 +85,7 @@ get_status() {
 get_branch() {
   local task_id="$1"
   local task_file
-  task_file=$(find "$TASK_DIR" -name "${task_id}-*.md" | head -1)
+  task_file=$(find_file "$task_id")
   if [ -z "$task_file" ]; then return; fi
   get_field "$task_file" "branch"
 }
@@ -79,7 +93,7 @@ get_branch() {
 get_worktree() {
   local task_id="$1"
   local task_file
-  task_file=$(find "$TASK_DIR" -name "${task_id}-*.md" | head -1)
+  task_file=$(find_file "$task_id")
   if [ -z "$task_file" ]; then return; fi
   local rel
   rel=$(get_field "$task_file" "worktree")
@@ -91,7 +105,7 @@ deps_satisfied() {
   local deps
   deps=$(
     local tf
-    tf=$(find "$TASK_DIR" -name "${task_id}-*.md" | head -1)
+    tf=$(find_file "$task_id")
     [ -n "$tf" ] && get_list "$tf" "depends_on"
   )
 
@@ -156,7 +170,7 @@ while true; do
   # ── status → in_progress ──
   IN_PROGRESS_FILES=()
   for task_id in "${BATCH[@]}"; do
-    tf=$(find "$TASK_DIR" -name "${task_id}-*.md" | head -1)
+    tf=$(find_file "$task_id")
     if [ -n "$tf" ]; then
       sed -i '' "s/^status: backlog/status: in_progress/" "$tf"
       IN_PROGRESS_FILES+=("$tf")
@@ -220,7 +234,7 @@ EOF
       echo "  ✅ ${task_id} 완료"
 
       # status → done
-      local_task_file=$(find "$TASK_DIR" -name "${task_id}-*.md" | head -1)
+      local_task_file=$(find_file "$task_id")
       if [ -n "$local_task_file" ]; then
         sed -i '' "s/^status: .*/status: done/" "$local_task_file"
       fi

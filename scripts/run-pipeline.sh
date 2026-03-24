@@ -6,7 +6,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TASK_DIR="$REPO_ROOT/docs/task"
-RUN_TASK="$REPO_ROOT/scripts/run-task.sh"
+RUN_WORKER="$REPO_ROOT/scripts/run-worker.sh"
 PIDS=()
 FAILED=0
 
@@ -94,7 +94,7 @@ run_batch() {
 
   for task_id in "${batch[@]}"; do
     echo "  🔧 ${task_id} 시작..."
-    "$RUN_TASK" "$task_id" &
+    "$RUN_WORKER" "$task_id" &
     PIDS+=($!)
   done
 
