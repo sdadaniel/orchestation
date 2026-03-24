@@ -5,14 +5,25 @@ import matter from "gray-matter";
 
 export const dynamic = "force-dynamic";
 
-const TASKS_DIR = path.join(process.cwd(), "../../docs/task");
+const TASKS_DIR = path.resolve(process.cwd(), "../../docs/task");
+
+const TASK_ID_PATTERN = /^TASK-\d{3}$/;
+
+function isValidTaskId(taskId: string): boolean {
+  return TASK_ID_PATTERN.test(taskId);
+}
 
 function findTaskFile(taskId: string): string | null {
   if (!fs.existsSync(TASKS_DIR)) return null;
   const files = fs.readdirSync(TASKS_DIR).filter((f) => f.endsWith(".md"));
   for (const file of files) {
     if (file.startsWith(taskId)) {
-      return path.join(TASKS_DIR, file);
+      const resolved = path.resolve(TASKS_DIR, file);
+      // Path traversal 방어: resolve된 경로가 TASKS_DIR 내부인지 확인
+      if (!resolved.startsWith(TASKS_DIR + path.sep) && resolved !== TASKS_DIR) {
+        return null;
+      }
+      return resolved;
     }
   }
   return null;
@@ -26,8 +37,8 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    if (!id || typeof id !== "string") {
-      return NextResponse.json({ error: "Invalid task ID" }, { status: 400 });
+    if (!id || typeof id !== "string" || !isValidTaskId(id)) {
+      return NextResponse.json({ error: "Invalid task ID format" }, { status: 400 });
     }
 
     const filePath = findTaskFile(id);
@@ -112,8 +123,8 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    if (!id || typeof id !== "string") {
-      return NextResponse.json({ error: "Invalid task ID" }, { status: 400 });
+    if (!id || typeof id !== "string" || !isValidTaskId(id)) {
+      return NextResponse.json({ error: "Invalid task ID format" }, { status: 400 });
     }
 
     const filePath = findTaskFile(id);
