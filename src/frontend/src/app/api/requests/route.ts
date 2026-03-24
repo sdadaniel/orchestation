@@ -58,11 +58,22 @@ updated: ${today}
 ${bodyContent}
 `;
 
+    const MAX_SLUG_LENGTH = 50;
     const slug = sanitizedTitle
       .toLowerCase()
       .replace(/[^a-z0-9가-힣]+/g, "-")
+      .replace(/-+$/, "")
+      .slice(0, MAX_SLUG_LENGTH)
       .replace(/-+$/, "");
-    const filePath = `${dir}/${taskId}-${slug}.md`;
+
+    const fileName = `${taskId}-${slug}.md`;
+    if (fileName.length > 255) {
+      return NextResponse.json(
+        { error: "Generated filename exceeds OS limit (255 chars)" },
+        { status: 400 },
+      );
+    }
+    const filePath = `${dir}/${fileName}`;
     fs.writeFileSync(filePath, fileContent, "utf-8");
 
     return NextResponse.json(
