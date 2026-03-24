@@ -9,7 +9,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
 TASK_DIR="$REPO_ROOT/docs/task"
 REQ_DIR="$REPO_ROOT/docs/requests"
-MAX_REVIEW_RETRY="${MAX_REVIEW_RETRY:-3}"
+MAX_REVIEW_RETRY="${MAX_REVIEW_RETRY:-2}"
 MAX_PARALLEL="${MAX_PARALLEL:-3}"
 SIGNAL_DIR="/tmp/orchestrate-$$"
 mkdir -p "$SIGNAL_DIR"
@@ -22,6 +22,9 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
 fi
 
 cleanup_lock() {
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🛑 Pipeline 종료"
   rm -rf "$SIGNAL_DIR" "$LOCK_DIR"
 }
 trap cleanup_lock EXIT
@@ -160,9 +163,20 @@ start_task() {
   local task_id="$1"
   echo "  🔧 ${task_id}: 시작..."
 
-  # status → in_progress
+  # branch/worktree 필드가 없으면 자동 추가
   local tf
   tf=$(find_file "$task_id")
+  if [ -n "$tf" ] && ! grep -q '^branch:' "$tf"; then
+    local slug
+    slug=$(echo "$task_id" | tr '[:upper:]' '[:lower:]')
+    local tmpfile
+    tmpfile=$(mktemp)
+    awk '/^status:/{print; print "branch: task/'"${slug}"'"; print "worktree: ../repo-wt-'"${slug}"'"; next} 1' "$tf" > "$tmpfile"
+    mv "$tmpfile" "$tf"
+    echo "  📝 ${task_id}: branch/worktree 필드 자동 추가"
+  fi
+
+  # status → in_progress
   if [ -n "$tf" ]; then
     sed_inplace_E "s/^status: (pending|stopped)/status: in_progress/" "$tf"
     git -C "$REPO_ROOT" add "$tf"
@@ -172,7 +186,7 @@ start_task() {
   # iTerm 패널에서 실행
   mkdir -p "$REPO_ROOT/output/logs"
   local log_file="$REPO_ROOT/output/logs/${task_id}.log"
-  local cmd="bash ${REPO_ROOT}/scripts/run-worker.sh ${task_id} ${SIGNAL_DIR} ${MAX_REVIEW_RETRY} 2>&1 | tee ${log_file}"
+  local cmd="bash ${REPO_ROOT}/scripts/run-worker.sh ${task_id} ${SIGNAL_DIR} ${MAX_REVIEW_RETRY} 2>&1 | tee ${log_file}; bash ${REPO_ROOT}/scripts/lib/close-iterm-session.sh"
 
   osascript <<EOF
 tell application "iTerm"
@@ -180,7 +194,7 @@ tell application "iTerm"
         create window with default profile
     end if
     tell current session of current window
-        split vertically with same profile command "/bin/zsh -lc '${cmd}; exit'"
+        split vertically with same profile command "/bin/zsh -lc '${cmd}'"
     end tell
 end tell
 EOF
@@ -225,11 +239,12 @@ process_done_task() {
   elif [ -f "${SIGNAL_DIR}/${task_id}-failed" ]; then
     echo "  ❌ ${task_id} 실패 (review retry 상한 초과)"
 
-    # 태스크를 failed 상태로 마킹
+    # 태스크를 failed 상태로 마킹 + 마지막 리뷰 피드백 기록
     local failed_task_file
     failed_task_file=$(find_file "$task_id")
     if [ -n "$failed_task_file" ]; then
       sed_inplace "s/^status: .*/status: failed/" "$failed_task_file"
+
       git -C "$REPO_ROOT" add "$failed_task_file"
       git -C "$REPO_ROOT" commit --only "$failed_task_file" -m "chore(${task_id}): status → failed (review retry 상한 초과)" || true
     fi
@@ -267,29 +282,15 @@ while true; do
     fi
   done <<< "$(get_task_ids)"
 
-  # 실행 중인 것도 없고 대기 큐도 비었으면 종료
+  # 실행 중인 것도 없고 대기 큐도 비었으면 → 새 태스크 대기
   if [ "${#RUNNING[@]}" -eq 0 ] && [ "${#QUEUE[@]}" -eq 0 ]; then
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "✅ Pipeline 완료!"
-
     if [ "$FAILED_COUNT" -gt 0 ]; then
-      echo "⚠️  실패한 태스크: ${FAILED_COUNT}개"
+      echo "  ⚠️  실패한 태스크: ${FAILED_COUNT}개"
+      FAILED_COUNT=0
     fi
-
-    REMAINING=0
-    while IFS= read -r task_id; do
-      [ -z "$task_id" ] && continue
-      local_status=$(get_status "$task_id")
-      if [ "$local_status" == "pending" ] || [ "$local_status" == "stopped" ]; then
-        REMAINING=$((REMAINING + 1))
-      fi
-    done <<< "$(get_task_ids)"
-
-    if [ "$REMAINING" -gt 0 ]; then
-      echo "⚠️  의존 관계 미충족으로 대기 중: ${REMAINING}개"
-    fi
-    break
+    echo "  ⏳ 새 태스크 대기 중... (30초마다 스캔)"
+    sleep 30
+    continue
   fi
 
   # ── 빈 슬롯에 새 태스크 투입 ──
@@ -331,6 +332,3 @@ while true; do
   done
   RUNNING=("${NEW_RUNNING[@]+"${NEW_RUNNING[@]}"}")
 done
-
-echo ""
-echo "✅ 모든 태스크 완료. iTerm 패널에서 확인하세요."
