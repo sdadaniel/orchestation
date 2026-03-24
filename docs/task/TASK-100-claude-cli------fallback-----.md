@@ -1,7 +1,7 @@
 ---
 id: TASK-100
 title: Claude CLI 실패 처리 강화 - fallback 포맷 통일 및 필드 검증
-status: pending
+status: in_progress
 priority: medium
 sprint:
 depends_on: [TASK-099]
