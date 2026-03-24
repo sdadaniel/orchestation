@@ -136,7 +136,7 @@ const SECTION_HEADER_H = 32;
 
 type NodeLayout = { id: string; x: number; y: number; req: RequestItem; isNextUp: boolean };
 type EdgeLayout = { fromId: string; toId: string; x1: number; y1: number; x2: number; y2: number };
-type SectionLayout = { label: string; x: number; y: number; w: number; h: number; color: string; extra: number };
+type SectionLayout = { key: string; label: string; x: number; y: number; w: number; h: number; color: string; extra: number };
 
 function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxParallel = 3) {
   const reqMap = new Map(requests.map((r) => [r.id, r]));
@@ -196,7 +196,7 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
   // Ghost section (single dashed placeholder for remaining backlog) - same height as other sections
   if (ghostCount > 0) {
     const ghostH = SECTION_HEADER_H + maxParallel * (NODE_H + ROW_GAP) + ROW_GAP;
-    sectionLayouts.push({ label: `BACKLOG`, x: sectionX, y: CANVAS_PAD, w: NODE_W + CANVAS_PAD, h: ghostH, color: "#71717a", extra: 0 });
+    sectionLayouts.push({ key: "ghost", label: `BACKLOG`, x: sectionX, y: CANVAS_PAD, w: NODE_W + CANVAS_PAD, h: ghostH, color: "#71717a", extra: 0 });
     sectionX += NODE_W + CANVAS_PAD + SECTION_GAP;
   }
 
@@ -204,7 +204,7 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
     const count = Math.max(sec.items.length, 1);
     const minCount = Math.max(count, maxParallel);
     const sectionH = SECTION_HEADER_H + minCount * (NODE_H + ROW_GAP) + ROW_GAP;
-    sectionLayouts.push({ label: sec.label, x: sectionX, y: CANVAS_PAD, w: NODE_W + CANVAS_PAD, h: sectionH, color: sec.color, extra: sec.extra });
+    sectionLayouts.push({ key: sec.key, label: sec.label, x: sectionX, y: CANVAS_PAD, w: NODE_W + CANVAS_PAD, h: sectionH, color: sec.color, extra: sec.extra });
 
     let nodeY = CANVAS_PAD + SECTION_HEADER_H + ROW_GAP;
     for (const req of sec.items) {
@@ -268,7 +268,15 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
     { label: "DONE", color: "#22c55e", box: computeGroup(new Set(["done"]), false) },
   ].filter((g) => g.box !== null);
 
-  return { nodes, edges, bounds, sections: sectionLayouts, ghostBox, topGroups };
+  // 상위 그룹이 1개 섹션만 감싸면 안쪽 라벨 숨김 (중복 방지)
+  const hideLabelKeys = new Set<string>();
+  for (const g of topGroups) {
+    const keys = g.label === "PENDING" ? ["queue", "pending"] : g.label === "IN PROGRESS" ? ["current"] : ["done"];
+    const matched = sections.filter((s) => keys.includes(s.key));
+    if (matched.length === 1) hideLabelKeys.add(matched[0].key);
+  }
+
+  return { nodes, edges, bounds, sections: sectionLayouts, ghostBox, topGroups, hideLabelKeys };
 }
 
 function DAGCanvas({ requests, tasks, onClickItem }: { requests: RequestItem[]; tasks: WaterfallTask[]; onClickItem: (req: RequestItem) => void }) {
@@ -333,8 +341,8 @@ function DAGCanvas({ requests, tasks, onClickItem }: { requests: RequestItem[]; 
           {/* Section backgrounds */}
           {layout.sections.map((sec) => (
             <g key={sec.label}>
-              <rect x={sec.x} y={sec.y} width={sec.w} height={sec.h} rx={8} fill="var(--muted)" opacity={0.3} stroke={sec.color} strokeWidth={1} strokeOpacity={0.3} />
-              <text x={sec.x + sec.w / 2} y={sec.y + 22} textAnchor="middle" fill={sec.color} fontSize={11} fontWeight={600} letterSpacing="0.05em" opacity={0.7}>{sec.label}</text>
+              {!layout.hideLabelKeys.has(sec.key) && <rect x={sec.x} y={sec.y} width={sec.w} height={sec.h} rx={8} fill="var(--muted)" opacity={0.3} stroke={sec.color} strokeWidth={1} strokeOpacity={0.3} />}
+              {!layout.hideLabelKeys.has(sec.key) && <text x={sec.x + sec.w / 2} y={sec.y + 22} textAnchor="middle" fill={sec.color} fontSize={11} fontWeight={600} letterSpacing="0.05em" opacity={0.7}>{sec.label}</text>}
               {sec.extra > 0 && <text x={sec.x + sec.w / 2} y={sec.h + sec.y - 8} textAnchor="middle" fill="var(--muted-foreground)" fontSize={10} opacity={0.6}>+{sec.extra} more</text>}
             </g>
           ))}
