@@ -1,7 +1,7 @@
 ---
 id: TASK-107
 title: Cost Summary에 phase별(task/review) 비용 비율 표시
-status: in_progress
+status: failed
 priority: medium
 sort_order: 5
 sprint:
@@ -29,5 +29,9 @@ updated: 2026-03-24 09:22:19
 - 기존 SummaryCards 레이아웃을 크게 변경하지 않고 새 항목을 추가하는 방식으로 구현한다
 
 ## 실패 사유 (2026-03-24 17:57)
+
+Not logged in · Please run /login
+
+## 실패 사유 (2026-03-24 18:22)
 
 Not logged in · Please run /login
