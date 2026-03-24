@@ -1,7 +1,7 @@
 ---
 id: TASK-105
 title: CostTable 기본 정렬을 시간순으로 변경하고 컬럼 헤더 정렬 토글 구현
-status: failed
+status: in_progress
 priority: medium
 sort_order: 4
 sprint:
@@ -10,7 +10,7 @@ branch: task/TASK-105-costtable---------
 worktree: ../repo-wt-TASK-105
 role: general
 reviewer_role: reviewer-general
-updated: 2026-03-24 09:22:15
+updated: 2026-03-24 09:23:17
 ---
 # TASK-105: CostTable 기본 정렬을 시간순으로 변경하고 컬럼 헤더 정렬 토글 구현
 
