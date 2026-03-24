@@ -1,8 +1,9 @@
 ---
 id: TASK-111
 title: 상태 변경 시 의존성 검증 추가
-status: pending
+status: in_progress
 priority: high
+sort_order: 0
 sprint:
 depends_on: []
 branch: task/TASK-111-status-change-dependency-validation
