@@ -1,7 +1,7 @@
 ---
 id: TASK-116
 title: 실행 중 상태 애니메이션 인디케이터 추가
-status: in_progress
+status: done
 branch: task/task-116
 worktree: ../repo-wt-task-116
 priority: medium
