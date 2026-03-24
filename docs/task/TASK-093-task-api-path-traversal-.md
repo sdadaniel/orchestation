@@ -1,7 +1,7 @@
 ---
 id: TASK-093
 title: Task API path traversal 방어
-status: in_progress
+status: done
 priority: high
 sprint:
 depends_on: []
