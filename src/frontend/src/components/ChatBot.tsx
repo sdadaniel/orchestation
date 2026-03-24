@@ -55,6 +55,7 @@ export function ChatBot() {
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const sessionsRef = useRef<Session[]>([]);
 
   // 초기 로드 — 빈 세션은 제거하고 로드
   useEffect(() => {
@@ -62,6 +63,11 @@ export function ChatBot() {
     setSessions(loaded);
     setActiveSessionId(loaded[0]?.id ?? null);
   }, []);
+
+  // sessionsRef를 항상 최신 sessions와 동기화
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
 
   // 세션 저장 — 메시지가 있는 세션만 저장
   useEffect(() => {
@@ -147,16 +153,24 @@ export function ChatBot() {
     );
 
     try {
+      // sessionsRef에서 최신 messages를 읽어 stale closure 문제 방지
+      const latestSession = sessionsRef.current.find(
+        (s) => s.id === currentSessionId,
+      );
+      const latestMessages = latestSession?.messages ?? [];
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId: currentSessionId,
           message: userMsg.content,
-          history: activeSession?.messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })) ?? [],
+          history: latestMessages
+            .filter((m) => m.id !== assistantMsgId)
+            .map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
         }),
       });
 
@@ -232,7 +246,7 @@ export function ChatBot() {
     } finally {
       setIsStreaming(false);
     }
-  }, [input, activeSessionId, isStreaming, activeSession]);
+  }, [input, activeSessionId, isStreaming]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
