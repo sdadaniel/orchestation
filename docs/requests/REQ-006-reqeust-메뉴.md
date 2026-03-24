@@ -1,7 +1,7 @@
 ---
 id: REQ-006
 title: reqeust 메뉴
-status: pending
+status: done
 priority: medium
 created: 2026-03-23
 ---

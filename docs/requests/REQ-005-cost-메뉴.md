@@ -1,7 +1,7 @@
 ---
 id: REQ-005
 title: cost 메뉴
-status: pending
+status: done
 priority: medium
 created: 2026-03-23
 ---

@@ -1,7 +1,7 @@
 ---
 id: TASK-045
 title: 운영 서비스 준비 개선점 분석 및 REQ 등록
-status: in_progress
+status: backlog
 priority: medium
 sprint:
 depends_on: []

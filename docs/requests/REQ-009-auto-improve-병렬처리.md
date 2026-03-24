@@ -1,7 +1,7 @@
 ---
 id: REQ-009
 title: auto-improve 병렬 처리
-status: pending
+status: done
 priority: high
 created: 2026-03-23
 ---

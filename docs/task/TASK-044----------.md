@@ -1,7 +1,7 @@
 ---
 id: TASK-044
 title: 운영 서비스 전환을 위한 개선 요청 목록 작성 및 등록
-status: in_progress
+status: backlog
 priority: medium
 sprint:
 depends_on: []
