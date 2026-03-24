@@ -270,10 +270,59 @@ process_done_task() {
 echo "🚀 Pipeline 시작"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-RUNNING=()   # 현재 실행 중인 태스크 ID 목록
+# ── 기존 in_progress 태스크 복원 (이전 실행에서 남은 워커 추적) ──
+RUNNING=()
 FAILED_COUNT=0
 
+recover_in_progress() {
+  local dir="$1"
+  [ -d "$dir" ] || return 0
+  find "$dir" -maxdepth 1 \( -name "TASK-*.md" -o -name "REQ-*.md" \) 2>/dev/null | while read -r f; do
+    local st
+    st=$(get_field "$f" "status")
+    if [ "$st" = "in_progress" ]; then
+      local tid
+      tid=$(get_field "$f" "id")
+      [ -n "$tid" ] && echo "$tid"
+    fi
+  done
+}
+
+while IFS= read -r tid; do
+  [ -z "$tid" ] && continue
+  RUNNING+=("$tid")
+  echo "  ♻️  기존 in_progress 태스크 복원: ${tid}"
+done <<< "$(recover_in_progress "$TASK_DIR"; recover_in_progress "$REQ_DIR")"
+
+if [ "${#RUNNING[@]}" -gt 0 ]; then
+  echo "  📊 복원된 슬롯: ${#RUNNING[@]}/${MAX_PARALLEL}"
+fi
+
 while true; do
+  # ── 실행 중인 태스크 완료 여부 체크 (슬롯 투입 전에 먼저 갱신) ──
+  if [ "${#RUNNING[@]}" -gt 0 ]; then
+    NEW_RUNNING=()
+    for task_id in "${RUNNING[@]}"; do
+      [ -z "$task_id" ] && continue
+      rc=0
+      process_done_task "$task_id" || rc=$?
+      if [ "$rc" -eq 2 ]; then
+        # 아직 진행 중
+        NEW_RUNNING+=("$task_id")
+      elif [ "$rc" -eq 1 ]; then
+        # 실패
+        FAILED_COUNT=$((FAILED_COUNT + 1))
+      fi
+      # rc=0 (성공)이면 RUNNING에서 제거됨
+    done
+    # 빈 배열 안전 처리 (bash 3.2 호환)
+    if [ "${#NEW_RUNNING[@]}" -gt 0 ]; then
+      RUNNING=("${NEW_RUNNING[@]}")
+    else
+      RUNNING=()
+    fi
+  fi
+
   # ── 실행 가능한 태스크 큐 갱신 ──
   QUEUE=()
   while IFS= read -r task_id; do
@@ -298,6 +347,7 @@ while true; do
 
   # ── 빈 슬롯에 새 태스크 투입 ──
   qi=0
+  echo "  🔍 슬롯 체크: RUNNING=${#RUNNING[@]}/${MAX_PARALLEL}, QUEUE=${#QUEUE[@]}"
   while [ "${#RUNNING[@]}" -lt "$MAX_PARALLEL" ] && [ "$qi" -lt "${#QUEUE[@]}" ]; do
     next_task="${QUEUE[$qi]}"
     qi=$((qi + 1))
@@ -317,21 +367,5 @@ while true; do
     echo "  📊 슬롯: ${#RUNNING[@]}/${MAX_PARALLEL} (대기: $((${#QUEUE[@]} - qi)))"
   done
 
-  # ── 실행 중인 태스크 완료 여부 체크 ──
   sleep 2
-
-  NEW_RUNNING=()
-  for task_id in "${RUNNING[@]+"${RUNNING[@]}"}"; do
-    rc=0
-    process_done_task "$task_id" || rc=$?
-    if [ "$rc" -eq 2 ]; then
-      # 아직 진행 중
-      NEW_RUNNING+=("$task_id")
-    elif [ "$rc" -eq 1 ]; then
-      # 실패
-      FAILED_COUNT=$((FAILED_COUNT + 1))
-    fi
-    # rc=0 (성공)이면 RUNNING에서 제거됨
-  done
-  RUNNING=("${NEW_RUNNING[@]+"${NEW_RUNNING[@]}"}")
 done
