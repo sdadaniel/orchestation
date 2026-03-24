@@ -194,7 +194,10 @@ tell application "iTerm"
         create window with default profile
     end if
     tell current session of current window
-        split vertically with same profile command "/bin/zsh -lc '${cmd}'"
+        set newSession to (split vertically with same profile)
+        tell newSession
+            write text "${cmd}"
+        end tell
     end tell
 end tell
 EOF
