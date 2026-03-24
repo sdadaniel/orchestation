@@ -15,6 +15,8 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # Load signal helper for atomic signal file operations
 source "$REPO_ROOT/scripts/lib/signal.sh"
+# Load context builder for minimal context loading
+source "$REPO_ROOT/scripts/lib/context-builder.sh"
 
 # EXIT trap: 비정상 종료 시에도 signal 파일 생성
 _worker_exit_code=0
@@ -122,7 +124,8 @@ invoke_claude() {
   local conversation_file="$2"
 
   cd "$WORKTREE_PATH"
-  echo "$prompt" | claude --output-format json --dangerously-skip-permissions --system-prompt "$ROLE_PROMPT" > "$conversation_file"
+  # --bare: CLAUDE.md 자동 탐색, hooks, LSP, auto-memory 등 비활성화하여 컨텍스트 최소화
+  echo "$prompt" | claude --bare --output-format json --dangerously-skip-permissions --system-prompt "$ROLE_PROMPT" > "$conversation_file"
   JSON_OUTPUT=$(cat "$conversation_file")
 }
 
@@ -166,40 +169,15 @@ run_task() {
   ensure_worktree
   load_role_prompt "$ROLE" "general"
 
-  local scope_section=""
-  if [ -n "$SCOPE" ]; then
-    local scope_list=""
-    while IFS= read -r f; do
-      [ -n "$f" ] && scope_list="${scope_list}
-- ${f}"
-    done <<< "$SCOPE"
-    scope_section="
-## 작업 범위 가이드
-아래 파일들을 우선적으로 확인하고 이 범위 안에서 작업을 완료해라:${scope_list}
+  # 컨텍스트 필터링: 완료된 태스크를 .claudeignore로 제외
+  setup_context_filter "$WORKTREE_PATH" "$REPO_ROOT"
+  echo "🔒 컨텍스트 필터 설정 완료 (완료된 태스크 제외)"
 
-이 범위만으로 완료 조건을 충족할 수 없다고 판단되면, 범위 밖 파일도 자유롭게 수정해도 된다.
-단, 범위 밖 작업은 최소한으로 하고 완료 조건 충족에 필요한 경우에만 해라.
-"
-  fi
-
-  local prompt="## 작업 규칙
-- 이 Worktree 안에서만 코드를 수정한다
-- main 브랜치를 직접 수정하지 않는다
-- Task 상태를 완료 처리하지 않는다
-- 작업이 끝나면 변경사항을 커밋해라
-${scope_section}
-지금 수행할 Task는 docs/task/${TASK_FILENAME} 에 정의되어 있다.
-해당 파일을 읽고, 완료 조건을 모두 충족하도록 작업해라."
+  # 태스크 내용을 프롬프트에 직접 임베드 (파일 읽기 최소화)
+  local prompt
+  prompt=$(build_task_prompt "$TASK_FILE" "$TASK_FILENAME" "$SCOPE" "$feedback_file")
 
   if [ -n "$feedback_file" ] && [ -f "$feedback_file" ]; then
-    local feedback
-    feedback=$(cat "$feedback_file")
-    prompt="${prompt}
-
-## 이전 리뷰 피드백 (수정 요청)
-아래는 이전 리뷰에서 받은 수정 요청이다. 반드시 이 피드백을 반영하여 작업해라:
-
-${feedback}"
     echo "📝 이전 리뷰 피드백 포함"
   fi
 
@@ -225,33 +203,12 @@ run_review() {
     return 1
   fi
 
-  local prompt="## 리뷰 규칙
-- 코드를 직접 수정하지 않는다
-- Task 파일의 완료 조건을 기준으로 검증한다
-- git diff main에 나온 파일만 검증하라. 관련 없는 코드를 읽지 마라
-- 불필요한 파일 탐색을 하지 마라. 간결하게 리뷰하고 결론을 빠르게 내라
+  # 컨텍스트 필터링 (리뷰에도 동일 적용)
+  setup_context_filter "$WORKTREE_PATH" "$REPO_ROOT"
 
-지금 리뷰할 Task는 docs/task/${TASK_FILENAME} 에 정의되어 있다.
-
-다음 순서로 리뷰를 수행해라:
-
-1. docs/task/${TASK_FILENAME} 을 읽고 완료 조건을 확인해라
-2. 이 브랜치에서 변경된 코드를 git diff main 으로 확인해라
-3. 완료 조건을 하나씩 검증해라
-4. 테스트가 있으면 실행해서 통과 여부를 확인해라
-
-리뷰 결과를 다음 형식으로 출력해라:
-
-## 리뷰 결과: [승인 / 수정요청]
-
-### 완료 조건 체크
-- [ ] 또는 [x] 각 완료 조건 항목
-
-### 발견된 문제 (있을 경우)
-- 문제 설명
-
-### 총평
-- 한줄 요약"
+  # 태스크 내용을 프롬프트에 직접 임베드
+  local prompt
+  prompt=$(build_review_prompt "$TASK_FILE" "$TASK_FILENAME")
 
   invoke_claude "$prompt" "$OUTPUT_DIR/${TASK_ID}-review-conversation.jsonl"
   local result

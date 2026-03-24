@@ -62,15 +62,20 @@ get_list() {
 
 get_task_ids() {
   # docs/task/ + docs/requests/ 둘 다 스캔
+  # 완료(done)/in_progress 태스크는 조기 제외하여 불필요한 처리 방지
   # priority 순 정렬: high(1) → medium(2) → low(3) → 기타(4), 동일 priority 내 id순
   {
-    find "$TASK_DIR" -name "TASK-*.md" 2>/dev/null
-    find "$REQ_DIR" -name "REQ-*.md" 2>/dev/null
+    find "$TASK_DIR" -maxdepth 1 -name "TASK-*.md" 2>/dev/null
+    find "$REQ_DIR" -maxdepth 1 -name "REQ-*.md" 2>/dev/null
   } | while read -r f; do
     local id pri st weight sort_ord status_weight
     id=$(get_field "$f" "id")
     pri=$(get_field "$f" "priority")
     st=$(get_field "$f" "status")
+    # 완료/진행 중 태스크 조기 제외
+    case "$st" in
+      done|in_progress) continue ;;
+    esac
     sort_ord=$(get_field "$f" "sort_order")
     sort_ord="${sort_ord:-0}"
     # stopped(0)가 pending(1)보다 우선
