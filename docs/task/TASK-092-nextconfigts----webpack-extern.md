@@ -1,7 +1,7 @@
 ---
 id: TASK-092
 title: next.config.ts 보안 헤더 및 webpack externals 설정
-status: failed
+status: in_progress
 priority: low
 sprint:
 depends_on: []
