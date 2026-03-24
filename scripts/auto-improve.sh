@@ -81,7 +81,8 @@ evaluate_request() {
 DECISION: accept 또는 reject
 REASON: 한줄 사유
 TASK_TITLE: (accept일 경우) 태스크 제목
-TASK_DESCRIPTION: (accept일 경우) 구체적인 완료 조건 목록"
+TASK_DESCRIPTION: (accept일 경우) 구체적인 완료 조건 목록
+SCOPE: (accept일 경우) 수정 대상 파일 경로 목록 (콤마 구분, src/ 기준 상대경로). 보수적으로 넓게 잡아라 — 직접 수정할 파일뿐 아니라 관련 훅, 유틸, 타입 파일도 포함해라. 확실하지 않으면 디렉토리 단위로 넓게 잡아도 된다."
 
   local eval_result=""
   if command -v claude &>/dev/null; then
@@ -103,22 +104,46 @@ enrich_request() {
   local eval_result="$3"
 
   local task_desc
-  task_desc=$(echo "$eval_result" | sed -n '/^TASK_DESCRIPTION:/,$ p' | tail -n +2)
+  task_desc=$(echo "$eval_result" | sed -n '/^TASK_DESCRIPTION:/,/^SCOPE:/{ /^SCOPE:/d; p }' | tail -n +2)
+  if [[ -z "$task_desc" ]]; then
+    task_desc=$(echo "$eval_result" | sed -n '/^TASK_DESCRIPTION:/,$ p' | tail -n +2)
+  fi
+
+  # SCOPE 파싱: 콤마 구분 → YAML 리스트로 변환
+  local scope_line scope_yaml=""
+  scope_line=$(echo "$eval_result" | grep "^SCOPE:" | head -1 | sed 's/^SCOPE: *//')
+  if [[ -n "$scope_line" ]]; then
+    scope_yaml="scope:"
+    IFS=',' read -ra SCOPE_ITEMS <<< "$scope_line"
+    for item in "${SCOPE_ITEMS[@]}"; do
+      item=$(echo "$item" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+      [[ -n "$item" ]] && scope_yaml="${scope_yaml}
+  - ${item}"
+    done
+  fi
 
   local slug
   slug=$(echo "$req_id" | tr '[:upper:]' '[:lower:]')
 
-  # frontmatter에 branch, worktree, role, reviewer_role 추가 (없으면)
+  # frontmatter에 branch, worktree, role, reviewer_role, scope 추가 (없으면)
   if ! grep -q '^branch:' "$req_file"; then
+    local extra_fields="branch: task/${slug}
+worktree: ../repo-wt-${slug}
+role: general
+reviewer_role: reviewer-general
+depends_on: []"
+    if [[ -n "$scope_yaml" ]]; then
+      extra_fields="${extra_fields}
+${scope_yaml}"
+    fi
     if [[ "$(uname)" == "Darwin" ]]; then
-      sed -i '' "/^status:/a\\
-branch: task/${slug}\\
-worktree: ../repo-wt-${slug}\\
-role: general\\
-reviewer_role: reviewer-general\\
-depends_on: []" "$req_file"
+      # macOS: sed -i '' 로 줄바꿈 포함 삽입이 어려우므로 임시파일 사용
+      local tmpfile
+      tmpfile=$(mktemp)
+      awk -v fields="$extra_fields" '/^status:/{print; print fields; next} 1' "$req_file" > "$tmpfile"
+      mv "$tmpfile" "$req_file"
     else
-      sed -i "/^status:/a\\branch: task/${slug}\nworktree: ../repo-wt-${slug}\nrole: general\nreviewer_role: reviewer-general\ndepends_on: []" "$req_file"
+      sed -i "/^status:/a\\${extra_fields}" "$req_file"
     fi
   fi
 
@@ -129,8 +154,8 @@ depends_on: []" "$req_file"
     echo "$task_desc" >> "$req_file"
   fi
 
-  # status를 backlog로 변경 (orchestrate가 인식)
-  update_status "$req_file" "backlog"
+  # status를 pending으로 변경 (orchestrate가 인식)
+  update_status "$req_file" "pending"
 
   log "Enriched $req_id with orchestration fields"
 }
@@ -145,6 +170,19 @@ log "Sleep interval: ${SLEEP_INTERVAL}s"
 
 while true; do
   check_stop_flag
+
+  # ── Step 0: Run orchestrate for already-pending TASK files ──
+  PENDING_TASK_COUNT=$(find "$PROJECT_ROOT/docs/task" -name "TASK-*.md" -exec grep -l "^status: pending" {} \; 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "$PENDING_TASK_COUNT" -gt 0 ]] && [[ -x "$ORCHESTRATE" ]]; then
+    log "Found $PENDING_TASK_COUNT pending task(s) in docs/task/ — running orchestrate..."
+    bash "$ORCHESTRATE" 2>&1 | while IFS= read -r line; do
+      log "[orchestrate] $line"
+    done || {
+      log "Warning: Orchestration had errors"
+    }
+    log "✅ Orchestration for existing tasks completed"
+    check_stop_flag
+  fi
 
   # ── Step 1: Collect ALL pending requests ──
   PENDING_LINES=""
