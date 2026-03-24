@@ -319,8 +319,8 @@ function DAGCanvas({ requests, tasks, onClickItem }: { requests: RequestItem[]; 
           {/* Pending group background */}
           {layout.pendingGroup && (
             <g>
-              <rect x={layout.pendingGroup.x} y={layout.pendingGroup.y} width={layout.pendingGroup.w} height={layout.pendingGroup.h} rx={12} fill="none" stroke="#eab308" strokeWidth={1} strokeDasharray="6 4" strokeOpacity={0.25} />
-              <text x={layout.pendingGroup.x + 12} y={layout.pendingGroup.y + 14} fill="#eab308" fontSize={10} fontWeight={600} letterSpacing="0.08em" opacity={0.4}>PENDING</text>
+              <rect x={layout.pendingGroup.x} y={layout.pendingGroup.y} width={layout.pendingGroup.w} height={layout.pendingGroup.h} rx={12} fill="#eab308" fillOpacity={0.03} stroke="#eab308" strokeWidth={1.5} strokeDasharray="8 4" strokeOpacity={0.5} />
+              <text x={layout.pendingGroup.x + layout.pendingGroup.w / 2} y={layout.pendingGroup.y + 14} textAnchor="middle" fill="#eab308" fontSize={11} fontWeight={700} letterSpacing="0.1em" opacity={0.6}>PENDING</text>
             </g>
           )}
           {/* Section backgrounds */}
