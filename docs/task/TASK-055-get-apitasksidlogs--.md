@@ -1,7 +1,7 @@
 ---
 id: TASK-055
 title: GET /api/tasks/[id]/logs 엔드포인트 구현
-status: in_progress
+status: done
 priority: high
 sprint:
 depends_on: []
