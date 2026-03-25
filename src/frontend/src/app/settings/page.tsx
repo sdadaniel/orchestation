@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings, Save, Cpu, Loader2, Monitor, Terminal } from "lucide-react";
+import { Settings, Save, Cpu, Loader2, Monitor, Terminal, Key, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
 import type { WorkerMode } from "@/lib/settings";
@@ -8,6 +8,7 @@ import type { WorkerMode } from "@/lib/settings";
 interface AppSettings {
   maxParallel: number;
   workerMode: WorkerMode;
+  claudeApiKey: string; // masked value from server
 }
 
 export default function SettingsPage() {
@@ -17,7 +18,11 @@ export default function SettingsPage() {
   const [draft, setDraft] = useState<AppSettings>({
     maxParallel: 3,
     workerMode: "background",
+    claudeApiKey: "",
   });
+  // separate state for new key input (not part of draft to avoid sending masked value back)
+  const [newApiKey, setNewApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
   const { addToast } = useToast();
 
   const fetchSettings = useCallback(async () => {
@@ -40,17 +45,31 @@ export default function SettingsPage() {
   }, [fetchSettings]);
 
   const handleSave = async () => {
+    // validate new API key if provided
+    if (newApiKey.trim() !== "" && newApiKey.trim().length < 8) {
+      addToast("API Key가 너무 짧습니다", "error");
+      return;
+    }
+
     setSaving(true);
     try {
+      const payload = {
+        ...draft,
+        // only send new key if user typed one; otherwise send masked (server will preserve existing)
+        claudeApiKey: newApiKey.trim() !== "" ? newApiKey.trim() : draft.claudeApiKey,
+      };
+
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         const updated = await res.json();
         setSettings(updated);
         setDraft(updated);
+        setNewApiKey("");
+        setShowApiKey(false);
         addToast("Settings saved", "success");
       } else {
         addToast("Failed to save settings", "error");
@@ -65,7 +84,8 @@ export default function SettingsPage() {
   const isDirty =
     settings !== null &&
     (draft.maxParallel !== settings.maxParallel ||
-      draft.workerMode !== settings.workerMode);
+      draft.workerMode !== settings.workerMode ||
+      newApiKey.trim() !== "");
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -173,6 +193,75 @@ export default function SettingsPage() {
                       iTerm 터미널 실행
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* API Section */}
+          <section>
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              API
+            </h2>
+
+            <div className="border border-border rounded-md p-4 space-y-4">
+              {/* Claude API Key */}
+              <div className="flex items-start gap-3">
+                <Key className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <p className="text-xs font-medium">Claude API Key</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Anthropic Claude API Key입니다. 오케스트레이션 실행 시{" "}
+                    <code className="font-mono text-[10px] bg-muted px-1 py-0.5 rounded">
+                      ANTHROPIC_API_KEY
+                    </code>{" "}
+                    환경변수로 전달됩니다.
+                  </p>
+
+                  {/* Current key display */}
+                  {draft.claudeApiKey && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-muted-foreground">현재:</span>
+                      <code className="text-[11px] font-mono bg-muted px-2 py-0.5 rounded text-foreground">
+                        {draft.claudeApiKey}
+                      </code>
+                    </div>
+                  )}
+
+                  {/* New key input */}
+                  <div className="relative">
+                    <input
+                      id="claudeApiKey"
+                      type={showApiKey ? "text" : "password"}
+                      value={newApiKey}
+                      onChange={(e) => setNewApiKey(e.target.value)}
+                      placeholder={
+                        draft.claudeApiKey
+                          ? "새 API Key 입력 (변경 시에만)"
+                          : "sk-ant-..."
+                      }
+                      autoComplete="off"
+                      className="w-full rounded border border-border bg-background px-3 py-1.5 pr-9 text-xs focus:outline-none focus:ring-1 focus:ring-primary font-mono placeholder:font-sans placeholder:text-muted-foreground"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showApiKey ? (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+
+                  {newApiKey.trim() !== "" && newApiKey.trim().length < 8 && (
+                    <p className="text-[11px] text-destructive">
+                      API Key가 너무 짧습니다.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

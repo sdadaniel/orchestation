@@ -288,9 +288,21 @@ start_task() {
   mkdir -p "$REPO_ROOT/output/logs"
   local log_file="$REPO_ROOT/output/logs/${task_id}.log"
 
+  # ── config.json에서 ANTHROPIC_API_KEY 읽기 ──
+  local _api_key=""
+  if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
+    _api_key=$(jq -r '.claudeApiKey // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
+  elif [ -f "$CONFIG_FILE" ]; then
+    _api_key=$(awk -F'"' '/"claudeApiKey"/{print $4; exit}' "$CONFIG_FILE" 2>/dev/null || echo "")
+  fi
+
   if [ "$WORKER_MODE" = "iterm" ]; then
     # iTerm 패널에서 실행 (기존 방식)
-    local cmd="bash '${REPO_ROOT}/scripts/run-worker.sh' '${task_id}' '${SIGNAL_DIR}' '${MAX_REVIEW_RETRY}' 2>&1 | tee '${log_file}'; bash '${REPO_ROOT}/scripts/lib/close-iterm-session.sh'"
+    local api_key_export=""
+    if [ -n "$_api_key" ]; then
+      api_key_export="export ANTHROPIC_API_KEY='${_api_key}'; "
+    fi
+    local cmd="${api_key_export}bash '${REPO_ROOT}/scripts/run-worker.sh' '${task_id}' '${SIGNAL_DIR}' '${MAX_REVIEW_RETRY}' 2>&1 | tee '${log_file}'; bash '${REPO_ROOT}/scripts/lib/close-iterm-session.sh'"
     osascript <<EOF
 tell application "iTerm"
     if (count of windows) = 0 then
@@ -306,8 +318,13 @@ end tell
 EOF
   else
     # 백그라운드 실행
-    nohup bash "${REPO_ROOT}/scripts/run-worker.sh" "${task_id}" "${SIGNAL_DIR}" "${MAX_REVIEW_RETRY}" \
-      > "${log_file}" 2>&1 &
+    if [ -n "$_api_key" ]; then
+      ANTHROPIC_API_KEY="${_api_key}" nohup bash "${REPO_ROOT}/scripts/run-worker.sh" "${task_id}" "${SIGNAL_DIR}" "${MAX_REVIEW_RETRY}" \
+        > "${log_file}" 2>&1 &
+    else
+      nohup bash "${REPO_ROOT}/scripts/run-worker.sh" "${task_id}" "${SIGNAL_DIR}" "${MAX_REVIEW_RETRY}" \
+        > "${log_file}" 2>&1 &
+    fi
     local pid=$!
     echo "$pid" > "/tmp/worker-${task_id}.pid"
     echo "  🔄 ${task_id}: 백그라운드 실행 중 (PID=${pid}, 로그: output/logs/${task_id}.log)"

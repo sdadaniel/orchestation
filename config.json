@@ -1,4 +1,5 @@
 {
   "maxParallel": 3,
-  "workerMode": "background"
+  "workerMode": "background",
+  "claudeApiKey": ""
 }
