@@ -1,7 +1,7 @@
 ---
 id: TASK-132
 title: 전역 상태 관리 통합 (useRequests 등 중복 인스턴스 제거)
-status: in_progress
+status: failed
 branch: task/task-132
 worktree: ../repo-wt-task-132
 priority: high
