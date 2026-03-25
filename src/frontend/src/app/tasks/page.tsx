@@ -104,7 +104,7 @@ function TasksPageInner() {
               </div>
             )}
             <div className="space-y-1">
-              {items.map((req, i) => <RequestCard key={req.id} req={req} onUpdate={updateRequest} onDelete={deleteRequest} onReorder={reorderRequest} isFirst={i === 0} isLast={i === items.length - 1} />)}
+              {items.map((req, i) => <RequestCard key={req.id} req={req} onUpdate={updateRequest} onDelete={deleteRequest} onReorder={req.status === "pending" ? reorderRequest : undefined} isFirst={i === 0} isLast={i === items.length - 1} />)}
             </div>
           </div>
         );
