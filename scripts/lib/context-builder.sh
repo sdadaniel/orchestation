@@ -2,14 +2,7 @@
 # context-builder.sh — 태스크 실행에 필요한 최소 컨텍스트만 빌드
 # 완료된 태스크/요청 파일을 제외하고 해당 태스크에 직접 관련된 파일만 포함
 
-# ── frontmatter 필드 읽기 (get_field와 동일 로직) ────────
-_cb_get_field() {
-  awk -v key="$2" '
-    NR==1 && /^---$/ { in_fm=1; next }
-    in_fm && /^---$/ { exit }
-    in_fm && $0 ~ "^"key":" { sub("^"key":[ ]*", ""); print; exit }
-  ' "$1"
-}
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 # ── 완료된 태스크 ID 목록 반환 ───────────────────────────
 # 용도: 완료된 태스크를 컨텍스트에서 제외
@@ -22,7 +15,7 @@ get_done_task_ids() {
     [ ! -d "$dir" ] && continue
     find "$dir" -maxdepth 1 \( -name "TASK-*.md" -o -name "REQ-*.md" \) 2>/dev/null | while read -r f; do
       local st 2>/dev/null || true
-      st=$(_cb_get_field "$f" "status")
+      st=$(get_field "$f" "status")
       if [ "$st" = "done" ]; then
         basename "$f"
       fi

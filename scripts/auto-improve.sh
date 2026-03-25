@@ -8,6 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$PROJECT_ROOT/scripts/lib/common.sh"
 source "$PROJECT_ROOT/scripts/lib/sed-inplace.sh"
 REQUESTS_DIR="$PROJECT_ROOT/docs/requests"
 ORCHESTRATE="$PROJECT_ROOT/scripts/orchestrate.sh"
@@ -39,12 +40,6 @@ update_status() {
   log "Updated $(basename "$file") -> status: $new_status"
 }
 
-# Extract frontmatter field value
-get_field() {
-  local file="$1"
-  local field="$2"
-  grep "^${field}:" "$file" | head -1 | sed "s/^${field}: *//"
-}
 
 # Get body content (after frontmatter)
 get_body() {

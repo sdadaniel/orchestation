@@ -2,18 +2,11 @@
 # model-selector.sh — 태스크 복잡도 기반 모델 선택
 # 단순 태스크는 claude-haiku-4-5, 복잡한 태스크는 claude-sonnet-4-6 사용
 
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+
 # ── 기본 모델 설정 ──────────────────────────────────────
 MODEL_SIMPLE="${MODEL_SIMPLE:-claude-haiku-4-5}"
 MODEL_COMPLEX="${MODEL_COMPLEX:-claude-sonnet-4-6}"
-
-# ── frontmatter 필드 읽기 ───────────────────────────────
-_ms_get_field() {
-  awk -v key="$2" '
-    NR==1 && /^---$/ { in_fm=1; next }
-    in_fm && /^---$/ { exit }
-    in_fm && $0 ~ "^"key":" { sub("^"key":[ ]*", ""); print; exit }
-  ' "$1"
-}
 
 # ── scope 라인 수 세기 ──────────────────────────────────
 _ms_count_scope() {
@@ -62,7 +55,7 @@ determine_complexity() {
 
   # 1. frontmatter complexity 필드 (최우선)
   local complexity
-  complexity=$(_ms_get_field "$task_file" "complexity")
+  complexity=$(get_field "$task_file" "complexity")
   if [ -n "$complexity" ]; then
     case "$complexity" in
       simple|low)  echo "simple"; return ;;
@@ -75,7 +68,7 @@ determine_complexity() {
 
   # 2. 휴리스틱 분류
   local title
-  title=$(_ms_get_field "$task_file" "title")
+  title=$(get_field "$task_file" "title")
   title=$(echo "$title" | tr '[:upper:]' '[:lower:]')
 
   local scope_count
@@ -164,7 +157,7 @@ log_model_selection() {
   fi
 
   local fm_complexity
-  fm_complexity=$(_ms_get_field "$task_file" "complexity")
+  fm_complexity=$(get_field "$task_file" "complexity")
   local source_info="heuristic"
   if [ -n "$fm_complexity" ]; then
     source_info="frontmatter(complexity=${fm_complexity})"

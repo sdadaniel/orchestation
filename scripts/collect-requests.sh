@@ -5,6 +5,8 @@
 
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
 REQUESTS_DIR="${1:?Usage: collect-requests.sh <requests_dir>}"
 
 if [[ ! -d "$REQUESTS_DIR" ]]; then
@@ -12,12 +14,6 @@ if [[ ! -d "$REQUESTS_DIR" ]]; then
   exit 0
 fi
 
-# Extract frontmatter field value
-get_field() {
-  local file="$1"
-  local field="$2"
-  grep "^${field}:" "$file" | head -1 | sed "s/^${field}: *//"
-}
 
 # Get body content (after frontmatter)
 get_body() {

@@ -6,6 +6,7 @@ set -euo pipefail
 # 병렬 태스크는 각각 별도 iTerm 패널에서 실행
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$REPO_ROOT/scripts/lib/common.sh"
 source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
 source "$REPO_ROOT/scripts/lib/merge-resolver.sh"
 TASK_DIR="$REPO_ROOT/docs/task"
@@ -70,25 +71,6 @@ if [ "$WORKER_MODE" = "iterm" ]; then
   fi
 fi
 
-# ── frontmatter 파서 ──────────────────────────────────
-
-get_field() {
-  awk -v key="$2" '
-    NR==1 && /^---$/ { in_fm=1; next }
-    in_fm && /^---$/ { exit }
-    in_fm && $0 ~ "^"key":" { sub("^"key":[ ]*", ""); print; exit }
-  ' "$1"
-}
-
-get_list() {
-  awk -v key="$2" '
-    NR==1 && /^---$/ { in_fm=1; next }
-    in_fm && /^---$/ { exit }
-    in_fm && $0 ~ "^"key":" { in_list=1; next }
-    in_list && /^ +- / { sub(/^ +- /, ""); print; next }
-    in_list && /^[^ ]/ { exit }
-  ' "$1"
-}
 
 # ── 헬퍼 함수 ─────────────────────────────────────────
 
