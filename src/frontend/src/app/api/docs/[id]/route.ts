@@ -76,8 +76,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const manifest = readManifest();
-  const node = findNodeById(manifest.tree, id);
+
+  // Search in full tree (includes all dirs like todo/, not just prd/)
+  const fullTree = readFullTree();
+  const node = findNodeById(fullTree.tree, id);
 
   if (!node) {
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
@@ -89,8 +91,12 @@ export async function DELETE(
     deleteDocFile(file);
   }
 
-  removeNodeById(manifest.tree, id);
-  writeManifest(manifest);
+  // Also remove from prd manifest if present
+  const manifest = readManifest();
+  if (findNodeById(manifest.tree, id)) {
+    removeNodeById(manifest.tree, id);
+    writeManifest(manifest);
+  }
 
   return NextResponse.json({ ok: true });
 }

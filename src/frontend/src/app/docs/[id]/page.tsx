@@ -2,12 +2,14 @@
 
 import { use, useState, useCallback } from "react";
 import { useDocDetail } from "@/hooks/useDocTree";
-import { BookOpen, Pencil, Save, X, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { BookOpen, Pencil, Save, X, ChevronRight, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 export default function DocsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const { doc, isLoading, refetch } = useDocDetail(id);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState("");
@@ -114,14 +116,29 @@ export default function DocsPage({ params }: { params: Promise<{ id: string }> }
               </button>
             </>
           ) : (
-            <button
-              type="button"
-              onClick={startEdit}
-              className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              <Pencil className="h-3 w-3" />
-              Edit
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={startEdit}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                <Pencil className="h-3 w-3" />
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!confirm("이 문서를 삭제하시겠습니까?")) return;
+                  const res = await fetch(`/api/docs/${id}`, { method: "DELETE" });
+                  if (res.ok) router.push("/docs");
+                  else alert("삭제 실패");
+                }}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              >
+                <Trash2 className="h-3 w-3" />
+                Delete
+              </button>
+            </>
           )}
         </div>
       </div>
