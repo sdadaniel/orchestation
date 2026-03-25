@@ -1,0 +1,13 @@
+{
+  "apiKey": "",
+  "srcPaths": ["src/"],
+  "model": "claude-sonnet-4-6",
+  "maxParallel": 3,
+  "maxReviewRetry": 2,
+  "nightWorker": {
+    "until": "07:00",
+    "budget": null,
+    "maxTasks": 10,
+    "types": "typecheck,lint,review"
+  }
+}
