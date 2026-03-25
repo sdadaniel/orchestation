@@ -15,6 +15,23 @@ MAX_PARALLEL="${MAX_PARALLEL:-3}"
 SIGNAL_DIR="/tmp/orchestrate-$$"
 mkdir -p "$SIGNAL_DIR"
 
+# ── workerMode 결정 (환경변수 > config.json > 기본값 background) ──
+CONFIG_FILE="$REPO_ROOT/config.json"
+if [ -z "${WORKER_MODE:-}" ]; then
+  if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
+    WORKER_MODE=$(jq -r '.workerMode // "background"' "$CONFIG_FILE" 2>/dev/null || echo "background")
+  elif [ -f "$CONFIG_FILE" ]; then
+    WORKER_MODE=$(awk -F'"' '/"workerMode"/{print $4; exit}' "$CONFIG_FILE" 2>/dev/null || echo "background")
+  else
+    WORKER_MODE="background"
+  fi
+fi
+case "$WORKER_MODE" in
+  background|iterm) ;;
+  *) echo "⚠️  WORKER_MODE '${WORKER_MODE}' 무효 → background 사용"; WORKER_MODE="background" ;;
+esac
+echo "⚙️  Worker 실행 모드: ${WORKER_MODE}"
+
 # ── 중복 실행 방지 (lock) ─────────────────────────────
 LOCK_DIR="/tmp/orchestrate.lock"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
@@ -26,6 +43,13 @@ cleanup_lock() {
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "🛑 Pipeline 종료"
+  # background 모드: 실행 중인 워커 프로세스 종료
+  if [ "${WORKER_MODE:-background}" = "background" ]; then
+    for _tid in "${RUNNING[@]+"${RUNNING[@]}"}"; do
+      [ -z "$_tid" ] && continue
+      _stop_worker "$_tid"
+    done
+  fi
   rm -rf "$SIGNAL_DIR" "$LOCK_DIR"
 }
 trap cleanup_lock EXIT
@@ -37,9 +61,13 @@ if [ ! -d "$TASK_DIR" ]; then
   exit 1
 fi
 
-if ! osascript -e 'tell application "System Events" to (name of processes) contains "iTerm2"' | grep -q true; then
-  echo "❌ iTerm2가 실행 중이지 않습니다." >&2
-  exit 1
+# iTerm 모드일 때만 iTerm2 실행 여부 확인
+if [ "$WORKER_MODE" = "iterm" ]; then
+  if ! osascript -e 'tell application "System Events" to (name of processes) contains "iTerm2"' | grep -q true; then
+    echo "❌ iTerm2가 실행 중이지 않습니다. (iterm 모드)" >&2
+    echo "   iTerm2를 실행하거나 WORKER_MODE=background 로 전환하세요." >&2
+    exit 1
+  fi
 fi
 
 # ── frontmatter 파서 ──────────────────────────────────
@@ -233,6 +261,22 @@ stop_dependents() {
   done <<< "$(get_task_ids)"
 }
 
+# ── background 워커 종료 헬퍼 ─────────────────────────
+
+_stop_worker() {
+  local task_id="$1"
+  local pid_file="/tmp/worker-${task_id}.pid"
+  if [ -f "$pid_file" ]; then
+    local pid
+    pid=$(cat "$pid_file" 2>/dev/null || true)
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      kill "$pid" 2>/dev/null || true
+      echo "  🛑 ${task_id}: 백그라운드 프로세스 종료 (PID=${pid})"
+    fi
+    rm -f "$pid_file"
+  fi
+}
+
 # ── 태스크 시작 헬퍼 ──────────────────────────────────
 
 start_task() {
@@ -259,12 +303,13 @@ start_task() {
     git -C "$REPO_ROOT" commit --only "$tf" -m "chore(${task_id}): status → in_progress"
   fi
 
-  # iTerm 패널에서 실행
   mkdir -p "$REPO_ROOT/output/logs"
   local log_file="$REPO_ROOT/output/logs/${task_id}.log"
-  local cmd="bash '${REPO_ROOT}/scripts/run-worker.sh' '${task_id}' '${SIGNAL_DIR}' '${MAX_REVIEW_RETRY}' 2>&1 | tee '${log_file}'; bash '${REPO_ROOT}/scripts/lib/close-iterm-session.sh'"
 
-  osascript <<EOF
+  if [ "$WORKER_MODE" = "iterm" ]; then
+    # iTerm 패널에서 실행 (기존 방식)
+    local cmd="bash '${REPO_ROOT}/scripts/run-worker.sh' '${task_id}' '${SIGNAL_DIR}' '${MAX_REVIEW_RETRY}' 2>&1 | tee '${log_file}'; bash '${REPO_ROOT}/scripts/lib/close-iterm-session.sh'"
+    osascript <<EOF
 tell application "iTerm"
     if (count of windows) = 0 then
         create window with default profile
@@ -277,6 +322,14 @@ tell application "iTerm"
     end tell
 end tell
 EOF
+  else
+    # 백그라운드 실행
+    nohup bash "${REPO_ROOT}/scripts/run-worker.sh" "${task_id}" "${SIGNAL_DIR}" "${MAX_REVIEW_RETRY}" \
+      > "${log_file}" 2>&1 &
+    local pid=$!
+    echo "$pid" > "/tmp/worker-${task_id}.pid"
+    echo "  🔄 ${task_id}: 백그라운드 실행 중 (PID=${pid}, 로그: output/logs/${task_id}.log)"
+  fi
 }
 
 # 완료된 태스크 처리 (머지 + 상태 업데이트)
@@ -334,6 +387,7 @@ process_done_task() {
       "**${task_id}:** ${task_title}\n\n태스크가 성공적으로 완료되어 main에 머지되었습니다."
 
     rm -f "${SIGNAL_DIR}/${task_id}-done"
+    rm -f "/tmp/worker-${task_id}.pid"
     return 0
   elif [ -f "${SIGNAL_DIR}/${task_id}-failed" ]; then
     echo "  ❌ ${task_id} 실패 (review retry 상한 초과)"
@@ -368,6 +422,7 @@ process_done_task() {
       "**${task_id}:** ${failed_title}\n\n리뷰 retry 상한 초과로 실패했습니다. 리뷰 피드백을 확인해주세요."
 
     rm -f "${SIGNAL_DIR}/${task_id}-failed"
+    rm -f "/tmp/worker-${task_id}.pid"
     # 의존 태스크 연쇄 중단
     stop_dependents "$task_id"
     return 1

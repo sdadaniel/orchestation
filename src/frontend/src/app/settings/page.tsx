@@ -1,18 +1,23 @@
 "use client";
 
-import { Settings, Save, Cpu, Loader2 } from "lucide-react";
+import { Settings, Save, Cpu, Loader2, Monitor, Terminal } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
+import type { WorkerMode } from "@/lib/settings";
 
 interface AppSettings {
   maxParallel: number;
+  workerMode: WorkerMode;
 }
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState<AppSettings>({ maxParallel: 3 });
+  const [draft, setDraft] = useState<AppSettings>({
+    maxParallel: 3,
+    workerMode: "background",
+  });
   const { addToast } = useToast();
 
   const fetchSettings = useCallback(async () => {
@@ -57,7 +62,10 @@ export default function SettingsPage() {
     }
   };
 
-  const isDirty = settings !== null && draft.maxParallel !== settings.maxParallel;
+  const isDirty =
+    settings !== null &&
+    (draft.maxParallel !== settings.maxParallel ||
+      draft.workerMode !== settings.workerMode);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -122,6 +130,48 @@ export default function SettingsPage() {
                         {n}
                       </button>
                     ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-border" />
+
+              {/* Worker Mode */}
+              <div className="flex items-start gap-3">
+                <Monitor className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <p className="text-xs font-medium">Worker 실행 모드</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    백그라운드 모드는 iTerm 없이 조용히 실행됩니다.
+                    iTerm 모드는 각 태스크를 별도 패널에서 실행합니다.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() =>
+                        setDraft((prev) => ({ ...prev, workerMode: "background" }))
+                      }
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded border transition-colors ${
+                        draft.workerMode === "background"
+                          ? "border-primary bg-primary/10 text-primary font-medium"
+                          : "border-border text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      <Monitor className="h-3 w-3" />
+                      백그라운드 실행
+                    </button>
+                    <button
+                      onClick={() =>
+                        setDraft((prev) => ({ ...prev, workerMode: "iterm" }))
+                      }
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded border transition-colors ${
+                        draft.workerMode === "iterm"
+                          ? "border-primary bg-primary/10 text-primary font-medium"
+                          : "border-border text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      <Terminal className="h-3 w-3" />
+                      iTerm 터미널 실행
+                    </button>
                   </div>
                 </div>
               </div>
