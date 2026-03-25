@@ -1,6 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { MonitorSnapshot } from "@/hooks/useMonitor";
+import type { TooltipValueType, TooltipPayloadEntry, LegendPayload } from "recharts";
 import {
   LineChart,
   Line,
@@ -131,10 +133,9 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                   itemStyle={tooltipItemStyle}
                   labelStyle={tooltipLabelStyle}
                   cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(v: any, _: any, props: any) => [
-                    `${v}%`,
-                    props?.payload?.label ?? "",
+                  formatter={(value: TooltipValueType | undefined, _: number | string | undefined, item: TooltipPayloadEntry): [string, string] => [
+                    `${value}%`,
+                    String(item?.payload?.label ?? ""),
                   ]}
                 />
                 <Bar dataKey="cpu" radius={[3, 3, 0, 0]}>
@@ -175,10 +176,9 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                   itemStyle={tooltipItemStyle}
                   labelStyle={tooltipLabelStyle}
                   cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(v: any, _: any, props: any) => [
-                    `${v} MB`,
-                    props?.payload?.label ?? "",
+                  formatter={(value: TooltipValueType | undefined, _: number | string | undefined, item: TooltipPayloadEntry): [string, string] => [
+                    `${value} MB`,
+                    String(item?.payload?.label ?? ""),
                   ]}
                 />
                 <Bar dataKey="mem" radius={[3, 3, 0, 0]}>
@@ -223,20 +223,18 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                   contentStyle={tooltipContentStyle}
                   itemStyle={tooltipItemStyle}
                   labelStyle={tooltipLabelStyle}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(v: any, name: any) => {
+                  formatter={(value: TooltipValueType | undefined, name: number | string | undefined): [string, string] => {
                     const pid = String(name).replace("cpu_", "");
                     const idx = processes.findIndex((p) => String(p.pid) === pid);
-                    return [`${typeof v === "number" ? v.toFixed(1) : v}%`, idx >= 0 ? `T${idx + 1} (PID ${pid})` : `PID ${pid}`];
+                    return [`${typeof value === "number" ? value.toFixed(1) : value}%`, idx >= 0 ? `T${idx + 1} (PID ${pid})` : `PID ${pid}`];
                   }}
                   labelFormatter={(_, payload) => payload?.[0]?.payload?.timeLabel ?? ""}
                 />
                 <Legend
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(val: any) => {
-                    const pid = String(val).replace("cpu_", "");
+                  formatter={(value: string | undefined, _entry: LegendPayload, _index: number): ReactNode => {
+                    const pid = String(value).replace("cpu_", "");
                     const idx = processes.findIndex((p) => String(p.pid) === pid);
-                    return idx >= 0 ? `T${idx + 1}` : val;
+                    return idx >= 0 ? `T${idx + 1}` : value;
                   }}
                   wrapperStyle={{ fontSize: "10px", paddingTop: "2px" }}
                   iconType="plainline"
@@ -287,20 +285,18 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                   contentStyle={tooltipContentStyle}
                   itemStyle={tooltipItemStyle}
                   labelStyle={tooltipLabelStyle}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(v: any, name: any) => {
+                  formatter={(value: TooltipValueType | undefined, name: number | string | undefined): [string, string] => {
                     const pid = String(name).replace("mem_", "");
                     const idx = processes.findIndex((p) => String(p.pid) === pid);
-                    return [`${typeof v === "number" ? v.toFixed(0) : v} MB`, idx >= 0 ? `T${idx + 1} (PID ${pid})` : `PID ${pid}`];
+                    return [`${typeof value === "number" ? value.toFixed(0) : value} MB`, idx >= 0 ? `T${idx + 1} (PID ${pid})` : `PID ${pid}`];
                   }}
                   labelFormatter={(_, payload) => payload?.[0]?.payload?.timeLabel ?? ""}
                 />
                 <Legend
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(val: any) => {
-                    const pid = String(val).replace("mem_", "");
+                  formatter={(value: string | undefined, _entry: LegendPayload, _index: number): ReactNode => {
+                    const pid = String(value).replace("mem_", "");
                     const idx = processes.findIndex((p) => String(p.pid) === pid);
-                    return idx >= 0 ? `T${idx + 1}` : val;
+                    return idx >= 0 ? `T${idx + 1}` : value;
                   }}
                   wrapperStyle={{ fontSize: "10px", paddingTop: "2px" }}
                   iconType="plainline"
