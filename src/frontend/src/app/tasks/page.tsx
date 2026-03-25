@@ -301,8 +301,8 @@ function TasksPageInner() {
         </div>
       )}
 
-      {/* Search only for Graph */}
-      {activeTab === TAB_STACK && (
+      {/* Search only for Graph — 제거됨 */}
+      {false && activeTab === TAB_STACK && (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="ID, 제목, 내용으로 검색..." className="w-full bg-muted/50 border border-border rounded-lg pl-9 pr-3 py-2 text-xs outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50" />
@@ -320,7 +320,51 @@ function TasksPageInner() {
       )}
 
       {/* Views */}
-      {activeTab === TAB_STACK && <DAGCanvas requests={filtered} tasks={allWaterfallTasks} onClickItem={(req) => router.push(`/tasks/${req.id}`)} />}
+      {activeTab === TAB_STACK && (() => {
+        const inProgressTasks = requests.filter((r) => r.status === "in_progress");
+        // scope를 태스크별로 그룹핑
+        const taskScopes = inProgressTasks
+          .filter((r) => (r.scope ?? []).length > 0)
+          .map((r) => {
+            const scopes = r.scope ?? [];
+            // 공통 prefix 추출
+            const getPrefix = (s: string) => {
+              const parts = s.replace(/\/\*\*$/, "").split("/");
+              return parts.length > 2 ? parts.slice(0, 3).join("/") : parts.join("/");
+            };
+            const grouped = new Map<string, string[]>();
+            for (const s of scopes) {
+              const prefix = getPrefix(s);
+              if (!grouped.has(prefix)) grouped.set(prefix, []);
+              grouped.get(prefix)!.push(s);
+            }
+            return { taskId: r.id, title: r.title, groups: grouped };
+          });
+        return (
+          <>
+            {taskScopes.length > 0 && (
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-blue-400 mb-2">점유 중인 Scope</div>
+                <div className="space-y-2">
+                  {taskScopes.map((t) => (
+                    <div key={t.taskId}>
+                      <div className="text-[10px] font-medium text-blue-300 mb-1">{t.taskId} <span className="text-blue-500/50 font-normal">{t.title}</span></div>
+                      <div className="flex flex-wrap gap-1">
+                        {[...t.groups.entries()].map(([prefix, paths]) => (
+                          <span key={prefix} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300/80 border border-blue-500/15">
+                            {prefix}{paths.length > 1 ? ` (${paths.length})` : paths[0] !== prefix ? `/${paths[0].slice(prefix.length + 1)}` : ""}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <DAGCanvas requests={filtered} tasks={allWaterfallTasks} onClickItem={(req) => router.push(`/tasks/${req.id}`)} />
+          </>
+        );
+      })()}
 
       {/* List View */}
       {activeTab !== TAB_STACK && (

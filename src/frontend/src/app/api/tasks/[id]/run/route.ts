@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { execSync } from "child_process";
+import fs from "fs";
 import taskRunnerManager from "@/lib/task-runner-manager";
 import orchestrationManager from "@/lib/orchestration-manager";
 import { parseAllRequests, findRequestFile, parseRequestFile } from "@/lib/request-parser";
@@ -37,6 +38,19 @@ export async function POST(
           { status: 409 },
         );
       }
+    }
+  }
+
+  // branch/worktree 자동 추가 (없으면)
+  if (taskFile) {
+    const raw = fs.readFileSync(taskFile, "utf-8");
+    if (!raw.includes("\nbranch:")) {
+      const slug = id.toLowerCase();
+      const updated = raw.replace(
+        /^(status:\s*.+)$/m,
+        `$1\nbranch: task/${slug}\nworktree: ../repo-wt-${slug}`,
+      );
+      fs.writeFileSync(taskFile, updated, "utf-8");
     }
   }
 

@@ -115,17 +115,32 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
     for (const depId of deps) {
       const depNode = nodeMap.get(depId);
       if (!depNode) continue;
-      // 왼쪽 노드 → 오른쪽 노드 방향으로 연결
-      const leftNode = depNode.x < node.x ? depNode : node;
-      const rightNode = depNode.x < node.x ? node : depNode;
-      edges.push({
-        fromId: leftNode.id,
-        toId: rightNode.id,
-        x1: leftNode.x + NODE_W,
-        y1: leftNode.y + NODE_H / 2,
-        x2: rightNode.x,
-        y2: rightNode.y + NODE_H / 2,
-      });
+      // 같은 섹션(같은 x)이면 세로 우회, 다른 섹션이면 가로 연결
+      const sameSection = Math.abs(depNode.x - node.x) < 10;
+      if (sameSection) {
+        // 위 노드 → 아래 노드, 오른쪽으로 우회하는 곡선
+        const topNode = depNode.y < node.y ? depNode : node;
+        const botNode = depNode.y < node.y ? node : depNode;
+        edges.push({
+          fromId: topNode.id,
+          toId: botNode.id,
+          x1: topNode.x + NODE_W,
+          y1: topNode.y + NODE_H / 2,
+          x2: botNode.x + NODE_W,
+          y2: botNode.y + NODE_H / 2,
+        });
+      } else {
+        const leftNode = depNode.x < node.x ? depNode : node;
+        const rightNode = depNode.x < node.x ? node : depNode;
+        edges.push({
+          fromId: leftNode.id,
+          toId: rightNode.id,
+          x1: leftNode.x + NODE_W,
+          y1: leftNode.y + NODE_H / 2,
+          x2: rightNode.x,
+          y2: rightNode.y + NODE_H / 2,
+        });
+      }
     }
   }
 
@@ -249,7 +264,7 @@ export default function DAGCanvas({ requests, tasks, onClickItem }: { requests: 
   const bc = (s: string, nu: boolean) => nu ? "#facc15" : s === "in_progress" || s === "reviewing" ? "#3b82f6" : s === "done" ? "#22c55e" : s === "rejected" ? "#ef4444" : "var(--border)";
 
   return (
-    <div className="relative w-full" style={{ height: "calc(100vh - 180px)", minHeight: 400 }}>
+    <div className="relative w-full" style={{ height: "calc(100vh - 380px)", minHeight: 250 }}>
       <div className="absolute top-2 right-2 z-20 flex items-center gap-1 bg-card/80 backdrop-blur border border-border rounded-md px-2 py-1">
         <button type="button" onClick={fit} className="text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-muted transition-colors flex items-center gap-1"><Maximize2 className="h-3 w-3" />Fit</button>
         <span className="text-[10px] text-muted-foreground w-8 text-center">{Math.round(tf.current.scale * 100)}%</span>
@@ -279,7 +294,21 @@ export default function DAGCanvas({ requests, tasks, onClickItem }: { requests: 
               {sec.extra > 0 && <text x={sec.x + sec.w / 2} y={sec.h + sec.y - 8} textAnchor="middle" fill="var(--muted-foreground)" fontSize={10} opacity={0.6}>+{sec.extra} more</text>}
             </g>
           ))}
-          {layout.edges.map((e) => { const k = `${e.fromId}-${e.toId}`, h = hovEdge === k, cp = Math.max(Math.abs(e.x2 - e.x1) * 0.4, 40), d = `M ${e.x1} ${e.y1} C ${e.x1 + cp} ${e.y1}, ${e.x2 - cp} ${e.y2}, ${e.x2} ${e.y2}`; return (<g key={k}><path d={d} fill="none" stroke="transparent" strokeWidth={14} style={{ pointerEvents: "stroke", cursor: "pointer" }} onMouseEnter={() => setHovEdge(k)} onMouseLeave={() => setHovEdge(null)} /><path d={d} fill="none" stroke={h ? "var(--primary)" : "#ffffff"} strokeWidth={h ? 2.5 : 1.5} opacity={h ? 1 : 0.5} markerEnd={h ? "url(#dag-arrow-hover)" : "url(#dag-arrow)"} style={{ transition: "all 0.15s ease" }} /></g>); })}
+          {layout.edges.map((e) => {
+            const k = `${e.fromId}-${e.toId}`;
+            const h = hovEdge === k;
+            const sameX = Math.abs(e.x1 - e.x2) < 10;
+            let d: string;
+            if (sameX) {
+              // 같은 섹션: 오른쪽으로 우회하는 곡선
+              const bulge = NODE_W * 0.4;
+              d = `M ${e.x1} ${e.y1} C ${e.x1 + bulge} ${e.y1}, ${e.x2 + bulge} ${e.y2}, ${e.x2} ${e.y2}`;
+            } else {
+              const cp = Math.max(Math.abs(e.x2 - e.x1) * 0.4, 40);
+              d = `M ${e.x1} ${e.y1} C ${e.x1 + cp} ${e.y1}, ${e.x2 - cp} ${e.y2}, ${e.x2} ${e.y2}`;
+            }
+            return (<g key={k}><path d={d} fill="none" stroke="transparent" strokeWidth={14} style={{ pointerEvents: "stroke", cursor: "pointer" }} onMouseEnter={() => setHovEdge(k)} onMouseLeave={() => setHovEdge(null)} /><path d={d} fill="none" stroke={h ? "var(--primary)" : "#ffffff"} strokeWidth={h ? 2.5 : 1.5} opacity={h ? 1 : 0.5} markerEnd={h ? "url(#dag-arrow-hover)" : "url(#dag-arrow)"} style={{ transition: "all 0.15s ease" }} /></g>);
+          })}
           {layout.nodes.map((n) => (
             <foreignObject key={n.id} x={n.x} y={n.y} width={NODE_W} height={NODE_H} style={{ overflow: "visible" }}>
               <div className={cn("flex flex-col gap-1 p-2.5 rounded-lg border transition-all h-full", n.req.status === "done" && "opacity-50", n.req.status === "rejected" && "opacity-50", n.isNextUp && "dag-node-next-up", (n.req.status === "in_progress" || n.req.status === "reviewing") && "dag-node-active")} style={{ borderColor: bc(n.req.status, n.isNextUp), background: "var(--card)" }}>

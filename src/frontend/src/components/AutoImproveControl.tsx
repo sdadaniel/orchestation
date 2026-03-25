@@ -77,8 +77,6 @@ export default function AutoImproveControl({ hasRunningTasks = false }: { hasRun
     }
   };
 
-  const isRunning = status === "running" || hasRunningTasks;
-
   return (
     <div className="flex items-center gap-3">
       {status === "stopping" ? (
@@ -86,7 +84,7 @@ export default function AutoImproveControl({ hasRunningTasks = false }: { hasRun
           <Loader2 className="h-3 w-3 animate-spin" />
           Stopping...
         </span>
-      ) : isRunning ? (
+      ) : status === "running" ? (
         <>
           <HorseRunningIndicator />
           <button

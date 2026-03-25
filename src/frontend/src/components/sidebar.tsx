@@ -20,6 +20,7 @@ import {
   Square,
   Loader2,
   Bell,
+  Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
@@ -632,6 +633,17 @@ export function TaskSidebar({
               )}
             </>
           )}
+        </div>
+
+        {/* ── Night Worker ── */}
+        <div className="mb-2">
+          <Link
+            href="/night-worker"
+            className={cn("tree-item text-sidebar-foreground no-underline", currentPath === "/night-worker" && "active")}
+          >
+            <Moon className="h-3.5 w-3.5" />
+            <span>Night Worker</span>
+          </Link>
         </div>
 
         {/* ── Notices ── */}

@@ -30,10 +30,10 @@ export const PRIORITY_COLORS: Record<string, string> = {
 
 // ── Tabs ─────────────────────────────────────────────
 
-export const TAB_STACK = "stack";
+export const TAB_STACK = "current";
 export const TAB_ALL = "all";
 export const TABS = [TAB_STACK, TAB_ALL, ...STATUS_ORDER] as const;
-export const TAB_LABEL: Record<string, string> = { stack: "Graph", all: "All", ...STATUS_LABEL };
+export const TAB_LABEL: Record<string, string> = { current: "Current", all: "All", ...STATUS_LABEL };
 
 // ── DAG Layout ───────────────────────────────────────
 

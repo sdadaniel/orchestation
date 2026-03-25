@@ -250,11 +250,11 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         if (!res.ok) return;
         const data = await res.json();
         setRunLogs(data.logs || []);
+        // task 데이터도 주기적으로 갱신 (status 반영)
+        const taskRes = await fetch(`/api/requests/${id}`);
+        if (taskRes.ok) setTask(await taskRes.json());
         if (data.status !== "running") {
           setRunStatus(data.status);
-          // Refresh task data after completion
-          const taskRes = await fetch(`/api/requests/${id}`);
-          if (taskRes.ok) setTask(await taskRes.json());
         }
       } catch {
         // ignore
@@ -273,6 +273,12 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       }
       setRunStatus("running");
       setRunLogs([]);
+      setActiveTab("logs");
+      // task 데이터 refetch (status 반영)
+      setTimeout(async () => {
+        const taskRes = await fetch(`/api/requests/${id}`);
+        if (taskRes.ok) setTask(await taskRes.json());
+      }, 2000);
     } catch {
       alert("실행 요청 실패");
     }
@@ -332,7 +338,20 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           ) : (
             <span className={cn("w-2 h-2 rounded-full", STATUS_DOT[task.status])} />
           )}
-          <span className="text-xs font-medium">{STATUS_LABEL[task.status] || task.status}</span>
+          <select
+            value={task.status}
+            onChange={async (e) => {
+              const newStatus = e.target.value;
+              await fetch(`/api/requests/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
+              const res = await fetch(`/api/requests/${id}`);
+              if (res.ok) setTask(await res.json());
+            }}
+            className="text-xs font-medium bg-transparent border-none outline-none cursor-pointer hover:text-primary transition-colors"
+          >
+            {["pending", "stopped", "in_progress", "reviewing", "done", "failed", "rejected"].map((s) => (
+              <option key={s} value={s}>{STATUS_LABEL[s] || s}</option>
+            ))}
+          </select>
         </div>
         <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium", PRIORITY_COLORS[task.priority])}>
           {task.priority}
@@ -582,7 +601,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         ) : (
           <div className="text-center py-12 text-sm text-muted-foreground">
-            비용 정보가 없습니다.
+            {task.status === "in_progress" ? "태스크 완료 후 비용 정보가 표시됩니다." : "비용 정보가 없습니다."}
           </div>
         )
       )}
@@ -615,7 +634,26 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       )}
 
       {activeTab === "logs" && (
-        task.status === "in_progress" ? (
+        runStatus === "running" ? (
+          <div className="rounded-lg border border-border overflow-hidden bg-[#0d1117]">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#161b22] border-b border-border">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-[11px] text-zinc-400 font-mono">RUN — {id}</span>
+              <span className="text-[10px] text-zinc-600 ml-auto font-mono">{runLogs.length} lines</span>
+            </div>
+            <div className="overflow-y-auto max-h-[500px] p-0 font-mono text-[11px] leading-[1.7]">
+              {runLogs.map((line, i) => (
+                <div key={i} className="px-3 py-0.5 hover:bg-white/[0.03] text-zinc-400">
+                  <span className="text-zinc-600 select-none mr-3 inline-block w-5 text-right">{i + 1}</span>
+                  {line}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : task.status === "in_progress" ? (
           <LiveLogPanel taskId={id} />
         ) : task.executionLog ? (
           <div className="space-y-3">
