@@ -72,7 +72,7 @@ get_task_ids() {
     find "$TASK_DIR" -maxdepth 1 -name "TASK-*.md" 2>/dev/null
     find "$REQ_DIR" -maxdepth 1 -name "REQ-*.md" 2>/dev/null
   } | while read -r f; do
-    local id pri st weight sort_ord status_weight
+    local id pri st weight sort_ord status_weight 2>/dev/null || true
     id=$(get_field "$f" "id")
     pri=$(get_field "$f" "priority")
     st=$(get_field "$f" "status")
@@ -215,7 +215,7 @@ start_task() {
   # iTerm 패널에서 실행
   mkdir -p "$REPO_ROOT/output/logs"
   local log_file="$REPO_ROOT/output/logs/${task_id}.log"
-  local cmd="bash ${REPO_ROOT}/scripts/run-worker.sh ${task_id} ${SIGNAL_DIR} ${MAX_REVIEW_RETRY} 2>&1 | tee ${log_file}; bash ${REPO_ROOT}/scripts/lib/close-iterm-session.sh"
+  local cmd="bash '${REPO_ROOT}/scripts/run-worker.sh' '${task_id}' '${SIGNAL_DIR}' '${MAX_REVIEW_RETRY}' 2>&1 | tee '${log_file}'; bash '${REPO_ROOT}/scripts/lib/close-iterm-session.sh'"
 
   osascript <<EOF
 tell application "iTerm"

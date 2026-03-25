@@ -27,8 +27,10 @@ source "$REPO_ROOT/scripts/lib/context-builder.sh"
 source "$REPO_ROOT/scripts/lib/model-selector.sh"
 
 # EXIT trap: 비정상 종료 시에도 signal 파일 생성
+# _worker_signal_sent=true이면 이미 signal을 보냈으므로 중복 생성 방지
 _worker_exit_code=0
-trap '_worker_exit_code=$?; if [ "$_worker_exit_code" -ne 0 ] && [ -n "$SIGNAL_DIR" ]; then signal_create "$SIGNAL_DIR" "$TASK_ID" "failed"; fi' EXIT
+_worker_signal_sent=false
+trap '_worker_exit_code=$?; if [ "$_worker_exit_code" -ne 0 ] && [ -n "$SIGNAL_DIR" ] && [ "$_worker_signal_sent" = false ]; then signal_create "$SIGNAL_DIR" "$TASK_ID" "failed"; fi' EXIT
 
 TASK_DIR="$REPO_ROOT/docs/task"
 REQ_DIR="$REPO_ROOT/docs/requests"
@@ -133,7 +135,14 @@ invoke_claude() {
   local model="${3:-}"
 
   cd "$WORKTREE_PATH"
-  echo "$prompt" | claude --output-format json --dangerously-skip-permissions --system-prompt "$ROLE_PROMPT" > "$conversation_file"
+  local model_args=()
+  if [ -n "$model" ]; then
+    model_args=(--model "$model")
+  fi
+  if ! echo "$prompt" | claude --output-format json --dangerously-skip-permissions "${model_args[@]}" --system-prompt "$ROLE_PROMPT" > "$conversation_file"; then
+    echo "❌ Claude 호출 실패" >&2
+    return 1
+  fi
   JSON_OUTPUT=$(cat "$conversation_file")
 }
 
@@ -287,6 +296,7 @@ for i in $(seq 0 "$MAX_RETRY"); do
       rm -f "$FEEDBACK_FILE"
       log_retry "attempt=${local_attempt}/${local_total} 리뷰 승인됨 ✅"
       if [ -n "$SIGNAL_DIR" ]; then
+        _worker_signal_sent=true
         signal_create "$SIGNAL_DIR" "$TASK_ID" "done"
       fi
       exit 0
@@ -301,6 +311,7 @@ for i in $(seq 0 "$MAX_RETRY"); do
   if [ "$i" -eq "$MAX_RETRY" ]; then
     log_retry "retry 상한(${MAX_RETRY}) 초과 → failed 처리"
     if [ -n "$SIGNAL_DIR" ]; then
+      _worker_signal_sent=true
       signal_create "$SIGNAL_DIR" "$TASK_ID" "failed"
     fi
     exit 1

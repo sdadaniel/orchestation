@@ -6,10 +6,6 @@
 MODEL_SIMPLE="${MODEL_SIMPLE:-claude-haiku-4-5}"
 MODEL_COMPLEX="${MODEL_COMPLEX:-claude-sonnet-4-6}"
 
-# 기본값 상수 (환경변수 재설정 시 참조)
-_MS_DEFAULT_SIMPLE="claude-haiku-4-5"
-_MS_DEFAULT_COMPLEX="claude-sonnet-4-6"
-
 # ── frontmatter 필드 읽기 ───────────────────────────────
 _ms_get_field() {
   awk -v key="$2" '
@@ -144,12 +140,9 @@ select_model() {
   local complexity
   complexity=$(determine_complexity "$task_file")
 
-  local model_simple="${MODEL_SIMPLE:-$_MS_DEFAULT_SIMPLE}"
-  local model_complex="${MODEL_COMPLEX:-$_MS_DEFAULT_COMPLEX}"
-
   case "$complexity" in
-    simple) echo "$model_simple" ;;
-    *)      echo "$model_complex" ;;
+    simple) echo "$MODEL_SIMPLE" ;;
+    *)      echo "$MODEL_COMPLEX" ;;
   esac
 }
 

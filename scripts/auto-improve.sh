@@ -178,15 +178,11 @@ depends_on: []"
       extra_fields="${extra_fields}
 ${scope_yaml}"
     fi
-    if [[ "$(uname)" == "Darwin" ]]; then
-      # macOS: sed -i '' 로 줄바꿈 포함 삽입이 어려우므로 임시파일 사용
-      local tmpfile
-      tmpfile=$(mktemp)
-      awk -v fields="$extra_fields" '/^status:/{print; print fields; next} 1' "$req_file" > "$tmpfile"
-      mv "$tmpfile" "$req_file"
-    else
-      sed -i "/^status:/a\\${extra_fields}" "$req_file"
-    fi
+    # awk로 status: 행 뒤에 필드 삽입 (macOS/Linux 호환)
+    local tmpfile
+    tmpfile=$(mktemp)
+    awk -v fields="$extra_fields" '/^status:/{print; print fields; next} 1' "$req_file" > "$tmpfile"
+    mv "$tmpfile" "$req_file"
   fi
 
   # 완료 조건을 본문에 추가 (이미 없으면)
@@ -217,6 +213,7 @@ while true; do
   PENDING_TASK_COUNT=$(find "$PROJECT_ROOT/docs/task" -name "TASK-*.md" -exec grep -l "^status: pending" {} \; 2>/dev/null | wc -l | tr -d ' ')
   if [[ "$PENDING_TASK_COUNT" -gt 0 ]] && [[ -x "$ORCHESTRATE" ]]; then
     log "Found $PENDING_TASK_COUNT pending task(s) in docs/task/ — running orchestrate..."
+    ORCHESTRATE_EXIT=0
     ORCHESTRATE_OUTPUT=$(bash "$ORCHESTRATE" 2>&1) || ORCHESTRATE_EXIT=$?
     while IFS= read -r line; do
       log "[orchestrate] $line"
@@ -400,6 +397,12 @@ while true; do
   ENRICHED_REQ_FILES=()
   ENRICHED_REQ_IDS=()
 
+  # EVAL_RESULTS는 ACCEPTED_INDICES 순서로 저장되므로 인덱스 매핑 생성
+  declare -A EVAL_RESULTS_MAP=()
+  for _ai in "${!ACCEPTED_INDICES[@]}"; do
+    EVAL_RESULTS_MAP[${ACCEPTED_INDICES[$_ai]}]="${EVAL_RESULTS[$_ai]}"
+  done
+
   if [[ $INDEP_COUNT -gt 0 ]]; then
     log "▶ Enriching $INDEP_COUNT request(s) for parallel processing..."
 
@@ -407,7 +410,7 @@ while true; do
       enrich_request \
         "${REQ_FILES[$idx]}" \
         "${REQ_IDS[$idx]}" \
-        "${EVAL_RESULTS[$idx]}"
+        "${EVAL_RESULTS_MAP[$idx]}"
 
       ENRICHED_REQ_FILES+=("${REQ_FILES[$idx]}")
       ENRICHED_REQ_IDS+=("${REQ_IDS[$idx]}")
@@ -424,6 +427,7 @@ while true; do
     # Run orchestrate.sh — it now reads docs/requests/ too
     if [[ -x "$ORCHESTRATE" ]]; then
       log "Running orchestration for: ${ENRICHED_REQ_IDS[*]}"
+      ORCHESTRATE_EXIT=0
       ORCHESTRATE_OUTPUT=$(bash "$ORCHESTRATE" 2>&1) || ORCHESTRATE_EXIT=$?
       while IFS= read -r line; do
         log "[orchestrate] $line"
@@ -501,7 +505,7 @@ while true; do
       enrich_request \
         "${REQ_FILES[$dep_idx]}" \
         "${REQ_IDS[$dep_idx]}" \
-        "${EVAL_RESULTS[$dep_idx]}"
+        "${EVAL_RESULTS_MAP[$dep_idx]}"
 
       cd "$PROJECT_ROOT"
       git add "${REQ_FILES[$dep_idx]}" 2>/dev/null || true
@@ -509,6 +513,7 @@ while true; do
 
       if [[ -x "$ORCHESTRATE" ]]; then
         log "Running orchestration for sequential: $dep_req_id..."
+        ORCHESTRATE_EXIT=0
         ORCHESTRATE_OUTPUT=$(bash "$ORCHESTRATE" 2>&1) || ORCHESTRATE_EXIT=$?
         while IFS= read -r line; do
           log "[orchestrate] $line"
@@ -542,7 +547,7 @@ while true; do
 
   # Cleanup arrays for next iteration
   unset REQ_FILES REQ_IDS REQ_TITLES REQ_PRIORITIES REQ_BODIES
-  unset EVAL_RESULTS ACCEPTED_INDICES INDEPENDENT_INDICES DEPENDENT_PAIRS
+  unset EVAL_RESULTS EVAL_RESULTS_MAP ACCEPTED_INDICES INDEPENDENT_INDICES DEPENDENT_PAIRS
   unset ENRICHED_REQ_FILES ENRICHED_REQ_IDS
 
   sleep 2
