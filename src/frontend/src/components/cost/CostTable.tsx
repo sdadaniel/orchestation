@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo } from "react";
 import type { CostEntry } from "@/lib/cost-parser";
+import { useSortableTable } from "./useSortableTable";
+import { SortIcon } from "./SortIcon";
 
 const PAGE_SIZE = 20;
 
 interface CostTableProps {
   entries: CostEntry[];
 }
+
+type SortColumn = "timestamp" | "cost" | "time" | "tokens";
 
 function formatTimestamp(raw: string): string {
   // raw format: "YYYY-MM-DD HH:MM:SS"
@@ -24,36 +28,74 @@ function formatDuration(ms: number): string {
   return `${minutes}m ${remainSec}s`;
 }
 
+function getTotalTokens(entry: CostEntry): number {
+  return entry.inputTokens + entry.outputTokens + entry.cacheCreate + entry.cacheRead;
+}
+
+const COMPARATORS: Record<SortColumn, (a: CostEntry, b: CostEntry) => number> = {
+  timestamp: (a, b) => a.timestamp.localeCompare(b.timestamp),
+  cost: (a, b) => a.costUsd - b.costUsd,
+  time: (a, b) => a.durationMs - b.durationMs,
+  tokens: (a, b) => getTotalTokens(a) - getTotalTokens(b),
+};
+
+const SORTABLE_HEADERS: { key: SortColumn; label: string; align?: "right" }[] = [
+  { key: "timestamp", label: "시각" },
+  { key: "cost", label: "Cost", align: "right" },
+  { key: "time", label: "Time", align: "right" },
+  { key: "tokens", label: "Tokens", align: "right" },
+];
+
 export function CostTable({ entries }: CostTableProps) {
-  const sorted = [...entries].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-  const maxCost = sorted.length > 0 ? sorted[0].costUsd : 0;
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const visible = sorted.slice(0, visibleCount);
-  const hasMore = visibleCount < sorted.length;
+  const { sorted, sort, toggleSort } = useSortableTable<CostEntry, SortColumn>(
+    entries,
+    "timestamp",
+    "desc",
+    COMPARATORS,
+  );
+
+  const maxCost = useMemo(() => {
+    if (entries.length === 0) return 0;
+    return Math.max(...entries.map((e) => e.costUsd));
+  }, [entries]);
+
+  function renderSortableHeader(key: SortColumn, label: string, align?: "right") {
+    const isActive = sort.column === key;
+    return (
+      <th
+        key={key}
+        className={`font-medium cursor-pointer select-none hover:text-foreground transition-colors ${
+          align === "right" ? "text-right" : ""
+        } ${isActive ? "text-foreground" : ""}`}
+        onClick={() => toggleSort(key)}
+        role="columnheader"
+        aria-sort={isActive ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
+      >
+        {label}
+        <SortIcon active={isActive} direction={sort.direction} />
+      </th>
+    );
+  }
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs compact-table">
         <thead>
           <tr className="border-b border-border text-left text-[10px] text-muted-foreground uppercase tracking-wider">
-            <th className="font-medium">시각</th>
+            {renderSortableHeader("timestamp", "시각")}
             <th className="font-medium">Task ID</th>
             <th className="font-medium">Phase</th>
             <th className="font-medium">Model</th>
-            <th className="font-medium text-right">Cost</th>
-            <th className="font-medium text-right">Time</th>
+            {renderSortableHeader("cost", "Cost", "right")}
+            {renderSortableHeader("time", "Time", "right")}
             <th className="font-medium text-right">Turns</th>
-            <th className="font-medium text-right">Tokens</th>
+            {renderSortableHeader("tokens", "Tokens", "right")}
           </tr>
         </thead>
         <tbody>
           {visible.map((entry, idx) => {
             const isHighest = entry.costUsd === maxCost && maxCost > 0;
-            const totalTokens =
-              entry.inputTokens +
-              entry.outputTokens +
-              entry.cacheCreate +
-              entry.cacheRead;
+            const totalTokens = getTotalTokens(entry);
 
             return (
               <tr
