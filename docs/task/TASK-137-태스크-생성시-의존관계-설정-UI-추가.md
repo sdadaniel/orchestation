@@ -1,7 +1,7 @@
 ---
 id: TASK-137
 title: 태스크 생성 시 의존 관계 설정 UI 추가
-status: in_progress
+status: done
 branch: task/task-137
 worktree: ../repo-wt-task-137
 priority: medium
