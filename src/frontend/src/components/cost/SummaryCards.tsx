@@ -2,6 +2,7 @@
 
 import type { CostEntry, TaskCostSummary } from "@/lib/cost-parser";
 import { aggregateByModel } from "@/lib/cost-aggregation";
+import { aggregateCostByPhase } from "@/lib/cost-phase";
 
 interface SummaryCardsProps {
   entries: CostEntry[];
@@ -18,6 +19,7 @@ export function SummaryCards({ entries, summaryByTask }: SummaryCardsProps) {
   );
 
   const modelSummaries = aggregateByModel(entries);
+  const phaseSummary = aggregateCostByPhase(entries);
 
   return (
     <div className="space-y-2">
@@ -38,6 +40,20 @@ export function SummaryCards({ entries, summaryByTask }: SummaryCardsProps) {
         <div className="stat-item">
           <span className="stat-label">Tokens</span>
           <span className="stat-value">{totalTokens.toLocaleString()}</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">Phase Cost</span>
+          <span className="stat-value text-[10px]">
+            <span style={{ color: "#3b82f6" }}>Task ${phaseSummary.taskCost.toFixed(2)} ({phaseSummary.taskPct}%)</span>
+            {" / "}
+            <span style={{ color: "#a855f7" }}>Review ${phaseSummary.reviewCost.toFixed(2)} ({phaseSummary.reviewPct}%)</span>
+            {phaseSummary.otherCost > 0 && (
+              <>
+                {" / "}
+                <span style={{ color: "#6b7280" }}>기타 ${phaseSummary.otherCost.toFixed(2)} ({phaseSummary.otherPct}%)</span>
+              </>
+            )}
+          </span>
         </div>
       </div>
 
