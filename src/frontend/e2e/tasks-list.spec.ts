@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 import {
   setupTaskListMocks,
   CHAIN_REQUESTS,
@@ -6,7 +6,7 @@ import {
 } from "./helpers/mock";
 
 /** Scope assertions to the main content area, excluding the sidebar */
-const main = (page: Parameters<typeof page.locator>[0] extends never ? never : any) =>
+const main = (page: Page) =>
   page.locator(".content-container");
 
 test.describe("Tasks List Page", () => {
