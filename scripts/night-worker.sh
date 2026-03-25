@@ -193,11 +193,26 @@ scope:
   TOTAL_COST=$(echo "$TOTAL_COST $cost" | awk '{printf "%.4f", $1 + $2}')
 
   # frontmatter가 포함된 응답에서 태스크 파일 생성
-  local title
-  title=$(echo "$task_content" | grep '^title:' | head -1 | sed 's/^title: *//')
+  # Claude 응답에서 --- 블록 찾기
+  local title=""
+
+  # 방법1: frontmatter 안의 title
+  if echo "$task_content" | grep -q '^---'; then
+    title=$(echo "$task_content" | sed -n '/^---$/,/^---$/p' | grep '^title:' | head -1 | sed 's/^title: *//')
+  fi
+
+  # 방법2: 그냥 title: 로 시작하는 줄
+  if [ -z "$title" ]; then
+    title=$(echo "$task_content" | grep -i '^title:' | head -1 | sed 's/^[Tt]itle: *//')
+  fi
+
+  # 방법3: 첫 번째 # 헤딩
+  if [ -z "$title" ]; then
+    title=$(echo "$task_content" | grep '^# ' | head -1 | sed 's/^# *//')
+  fi
 
   if [ -z "$title" ]; then
-    log "  ⚠️  태스크 제목 추출 실패"
+    log "  ⚠️  태스크 제목 추출 실패 — 응답 앞부분: $(echo "$task_content" | head -3 | tr '\n' ' ')"
     return 1
   fi
 
@@ -206,7 +221,26 @@ scope:
   local filename="${task_id}-${slug}.md"
   local filepath="$TASK_DIR/$filename"
 
-  echo "$task_content" > "$filepath"
+  # frontmatter가 없으면 직접 생성
+  if echo "$task_content" | head -1 | grep -q '^---$'; then
+    # id를 실제 task_id로 교체
+    echo "$task_content" | sed "s/^id: .*/id: ${task_id}/" > "$filepath"
+  else
+    cat > "$filepath" <<TASKEOF
+---
+id: ${task_id}
+title: ${title}
+status: pending
+priority: medium
+mode: night
+created: $(date '+%Y-%m-%d')
+updated: $(date '+%Y-%m-%d')
+depends_on: []
+scope: []
+---
+${task_content}
+TASKEOF
+  fi
   log "  ✅ 태스크 생성: $task_id - $title"
   log "     파일: $filename"
 
