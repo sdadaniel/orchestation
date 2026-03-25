@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Play, Square, Loader2 } from "lucide-react";
+import { HorseRunningIndicator } from "@/components/HorseRunningIndicator";
 
 type RunStatus = "idle" | "running" | "completed" | "failed";
 
@@ -87,18 +88,21 @@ export default function AutoImproveControl() {
           Run
         </button>
       ) : status === "running" ? (
-        <button
-          type="button"
-          onClick={handleStop}
-          disabled={loading}
-          className={cn(
-            "filter-pill flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300",
-            loading && "opacity-50 cursor-not-allowed"
-          )}
-        >
-          <Square className="h-3 w-3" />
-          Stop
-        </button>
+        <>
+          <HorseRunningIndicator />
+          <button
+            type="button"
+            onClick={handleStop}
+            disabled={loading}
+            className={cn(
+              "filter-pill flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300",
+              loading && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <Square className="h-3 w-3" />
+            Stop
+          </button>
+        </>
       ) : null}
 
       {error && (
