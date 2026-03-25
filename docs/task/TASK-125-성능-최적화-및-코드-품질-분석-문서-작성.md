@@ -1,7 +1,7 @@
 ---
 id: TASK-125
 title: 성능 최적화 및 코드 품질 분석 문서 작성
-status: in_progress
+status: done
 branch: task/task-125
 worktree: ../repo-wt-task-125
 priority: medium
