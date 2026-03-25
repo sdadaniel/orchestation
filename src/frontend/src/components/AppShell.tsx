@@ -111,7 +111,7 @@ function HomeDashboard({
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { groups, isLoading, error, refetch } = useTasks();
+  const { groups, isLoading, refetch } = useTasks();
   const { prds } = usePrds();
   const { tree: docTree, createDoc, updateDoc, deleteDoc, reorderDoc, fetchTree } = useDocTree();
   const { justFinished, clearFinished } = useOrchestrationStatus();

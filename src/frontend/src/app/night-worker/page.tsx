@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Moon, Play, Square, Clock, DollarSign, FileText, Loader2, CheckCircle2, XCircle, History, Zap, AlertTriangle } from "lucide-react";
+import { Moon, Play, Square, Clock, DollarSign, FileText, Loader2, CheckCircle2, Zap, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NightWorkerStatus = "idle" | "running" | "completed" | "stopped" | "failed";

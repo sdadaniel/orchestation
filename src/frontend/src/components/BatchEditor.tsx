@@ -8,7 +8,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PriorityBadge } from "@/components/ui/badge";
 import {
   STATUS_STYLES,
-  PRIORITY_STYLES,
   type TaskStatus,
   type TaskPriority,
 } from "../../lib/constants";
@@ -173,9 +172,6 @@ export function BatchEditor({ batches, onSave, onClose }: BatchEditorProps) {
       <div className="max-h-80 overflow-y-auto">
         {taskOrder.map((task) => {
           const statusStyle = STATUS_STYLES[task.status as TaskStatus];
-          const priorityStyle =
-            PRIORITY_STYLES[task.priority as TaskPriority] ??
-            PRIORITY_STYLES.medium;
           const isDragging = draggedId === task.id;
 
           return (

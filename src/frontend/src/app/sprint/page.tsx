@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useSprints } from "@/hooks/useSprints";
 import { useSprintDetail } from "@/hooks/useSprintDetail";
 import { Progress } from "@/components/ui/progress";

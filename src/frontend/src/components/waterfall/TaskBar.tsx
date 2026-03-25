@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import { PriorityBadge } from "@/components/ui/badge";
 import {
   STATUS_STYLES,
-  PRIORITY_STYLES,
   type TaskStatus,
   type TaskPriority,
 } from "../../../lib/constants";
@@ -17,8 +16,6 @@ type TaskBarProps = {
 
 export function TaskBar({ task, onClick }: TaskBarProps) {
   const statusStyle = STATUS_STYLES[task.status as TaskStatus];
-  const priorityStyle =
-    PRIORITY_STYLES[task.priority as TaskPriority] ?? PRIORITY_STYLES.medium;
 
   return (
     <button

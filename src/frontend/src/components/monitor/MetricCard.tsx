@@ -56,7 +56,6 @@ export function MetricCard({
   }));
 
   const chartHeight = large ? 180 : 64;
-  const ChartComponent = large ? LineChart : AreaChart;
 
   return (
     <div className="rounded border border-border bg-card overflow-hidden">

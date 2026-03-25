@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useNotices, type NoticeItem } from "@/hooks/useNotices";
+import { useNotices } from "@/hooks/useNotices";
 import { cn } from "@/lib/utils";
 import { Info, AlertTriangle, AlertCircle, MessageSquare, Trash2, Check, Search } from "lucide-react";
 import { MarkdownContent } from "@/components/MarkdownContent";

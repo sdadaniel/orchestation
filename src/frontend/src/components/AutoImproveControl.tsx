@@ -7,7 +7,7 @@ import { HorseRunningIndicator } from "@/components/HorseRunningIndicator";
 
 type RunStatus = "idle" | "running" | "stopping" | "completed" | "failed";
 
-export default function AutoImproveControl({ hasRunningTasks = false }: { hasRunningTasks?: boolean } = {}) {
+export default function AutoImproveControl() {
   const [status, setStatus] = useState<RunStatus>("idle");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

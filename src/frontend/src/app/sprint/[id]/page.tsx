@@ -2,7 +2,7 @@
 
 import { use, useState, useCallback } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, FileQuestion, Plus, Pencil, ListChecks } from "lucide-react";
+import { AlertCircle, ArrowLeft, FileQuestion, Plus, ListChecks } from "lucide-react";
 import { useSprintDetail } from "@/hooks/useSprintDetail";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -370,7 +370,6 @@ export default function SprintDetailPage({
 }) {
   const { id } = use(params);
   const { sprint, isLoading, error, notFound, refetch } = useSprintDetail(id);
-  const [selectedTask, setSelectedTask] = useState<SprintDetailTask | null>(null);
   const [editingTask, setEditingTask] = useState<SprintDetailTask | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("list");
   const [showAddTask, setShowAddTask] = useState(false);

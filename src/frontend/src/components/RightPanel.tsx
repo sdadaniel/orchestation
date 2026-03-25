@@ -3,8 +3,6 @@
 import { cn } from "@/lib/utils";
 import { StatusBadge, PriorityBadge } from "@/components/ui/badge";
 import {
-  STATUS_STYLES,
-  PRIORITY_STYLES,
   type TaskStatus,
   type TaskPriority,
 } from "../../lib/constants";
@@ -87,10 +85,6 @@ export function RightPanel({ task, prd }: RightPanelProps) {
       </div>
     );
   }
-
-  const statusStyle = STATUS_STYLES[task.status as TaskStatus] ?? STATUS_STYLES.pending;
-  const priorityStyle =
-    PRIORITY_STYLES[task.priority as TaskPriority] ?? PRIORITY_STYLES.medium;
 
   return (
     <div className="ide-right">
