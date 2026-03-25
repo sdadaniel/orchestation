@@ -1,7 +1,7 @@
 ---
 id: TASK-143
 title: "API route 및 hooks 매직 넘버 분석 보고서 작성"
-status: in_progress
+status: done
 branch: task/task-143
 worktree: ../repo-wt-task-143
 priority: medium
