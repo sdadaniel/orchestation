@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Loader2, Pencil, Check, X, Plus, Trash2, GitMerge } from "lucide-react";
+import { ArrowLeft, Loader2, Pencil, Check, X, Plus, Trash2, GitMerge, Sparkles, CheckSquare, Square as SquareIcon } from "lucide-react";
 import { DependsOnSelector, type TaskOption } from "@/components/DependsOnSelector";
 
 interface AnalyzedTask {
@@ -26,8 +26,27 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 type Step = "input" | "preview";
 
+interface Suggestion {
+  title: string;
+  description: string;
+  category: string;
+  priority: "high" | "medium" | "low";
+  scope: string[];
+  effort: "small" | "medium" | "large";
+}
+
+const CATEGORY_ICON: Record<string, string> = {
+  bug: "🐛", refactor: "🔄", performance: "⚡", test: "🧪",
+  docs: "📝", ux: "🎨", security: "🔒", cleanup: "🧹",
+};
+
+const EFFORT_LABEL: Record<string, string> = {
+  small: "30분 이내", medium: "1-2시간", large: "반나절+",
+};
+
 export default function NewTaskPage() {
   const router = useRouter();
+  const [pageTab, setPageTab] = useState<"write" | "suggest">("write");
   const [step, setStep] = useState<Step>("input");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -36,6 +55,74 @@ export default function NewTaskPage() {
   const [tasks, setTasks] = useState<AnalyzedTask[]>([]);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [confirming, setConfirming] = useState(false);
+
+  // Suggest tab state
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<Set<number>>(new Set());
+  const [creatingSuggestions, setCreatingSuggestions] = useState(false);
+
+  const handleSuggest = async () => {
+    setSuggestLoading(true);
+    setSuggestError(null);
+    setSuggestions([]);
+    setSelectedSuggestions(new Set());
+    try {
+      const res = await fetch("/api/tasks/suggest", { method: "POST" });
+      const data = await res.json();
+      if (data.error) setSuggestError(data.error);
+      if (data.suggestions) setSuggestions(data.suggestions);
+    } catch {
+      setSuggestError("추천 요청 실패");
+    } finally {
+      setSuggestLoading(false);
+    }
+  };
+
+  const toggleSuggestion = (idx: number) => {
+    setSelectedSuggestions((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  const createFromSuggestions = async () => {
+    setCreatingSuggestions(true);
+    try {
+      for (const idx of selectedSuggestions) {
+        const s = suggestions[idx];
+        const content = [
+          s.description,
+          "",
+          `**카테고리:** ${s.category}`,
+          `**예상 작업량:** ${EFFORT_LABEL[s.effort] || s.effort}`,
+          "",
+          "## Completion Criteria",
+          "- 위 설명의 개선 사항이 반영되었다",
+        ].join("\n");
+
+        await fetch("/api/requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: s.title,
+            content,
+            priority: s.priority,
+            scope: s.scope,
+            depends_on: [],
+          }),
+        });
+      }
+      router.push("/tasks");
+    } catch {
+      setSuggestError("태스크 생성 실패");
+    } finally {
+      setCreatingSuggestions(false);
+    }
+  };
 
   // Existing tasks for depends_on selection
   const [existingTasks, setExistingTasks] = useState<TaskOption[]>([]);
@@ -171,12 +258,126 @@ export default function NewTaskPage() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <h1 className="text-lg font-semibold">
-          {step === "input" ? "New Task" : "AI Analysis Result"}
+          {pageTab === "suggest" ? "태스크 추천" : step === "input" ? "New Task" : "AI Analysis Result"}
         </h1>
       </div>
 
-      {/* Step 1: Input */}
+      {/* Page Tabs */}
       {step === "input" && (
+        <div className="flex items-center gap-1 border-b border-border">
+          <button type="button" onClick={() => setPageTab("write")} className={cn("flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors", pageTab === "write" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
+            <Pencil className="h-3 w-3" />
+            직접 작성
+          </button>
+          <button type="button" onClick={() => setPageTab("suggest")} className={cn("flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors", pageTab === "suggest" ? "border-yellow-400 text-yellow-400" : "border-transparent text-muted-foreground hover:text-foreground")}>
+            <Sparkles className="h-3 w-3" />
+            추천받기
+          </button>
+        </div>
+      )}
+
+      {/* Suggest Tab */}
+      {pageTab === "suggest" && step === "input" && (
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">프로젝트를 분석하여 개선이 필요한 항목을 추천합니다. 원하는 항목을 선택하여 태스크로 생성하세요.</p>
+
+          {!suggestLoading && suggestions.length === 0 && (
+            <button
+              type="button"
+              onClick={handleSuggest}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-md bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/25 transition-colors font-medium"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              추천받기
+            </button>
+          )}
+
+          {suggestLoading && (
+            <div className="flex items-center gap-2 py-12 justify-center text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">프로젝트 분석 중... (1-2분 소요)</span>
+            </div>
+          )}
+
+          {suggestError && (
+            <div className="text-xs text-red-400">{suggestError}</div>
+          )}
+
+          {suggestions.length > 0 && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">{suggestions.length}개 추천 / {selectedSuggestions.size}개 선택</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedSuggestions.size === suggestions.length) setSelectedSuggestions(new Set());
+                    else setSelectedSuggestions(new Set(suggestions.map((_, i) => i)));
+                  }}
+                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {selectedSuggestions.size === suggestions.length ? "전체 해제" : "전체 선택"}
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => toggleSuggestion(i)}
+                    className={cn(
+                      "w-full text-left rounded-lg border p-3 transition-colors",
+                      selectedSuggestions.has(i)
+                        ? "border-yellow-500/40 bg-yellow-500/5"
+                        : "border-border hover:border-border/80",
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      {selectedSuggestions.has(i) ? (
+                        <CheckSquare className="h-4 w-4 text-yellow-400 shrink-0 mt-0.5" />
+                      ) : (
+                        <SquareIcon className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span>{CATEGORY_ICON[s.category] || "📋"}</span>
+                          <span className="text-sm font-medium">{s.title}</span>
+                          <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0", PRIORITY_COLORS[s.priority])}>{s.priority}</span>
+                          <span className="text-[10px] text-muted-foreground shrink-0">{EFFORT_LABEL[s.effort] || s.effort}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-1.5">{s.description}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {s.scope.map((p, j) => (
+                            <span key={j} className="text-[9px] font-mono px-1 py-0.5 rounded bg-muted text-muted-foreground">{p}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {selectedSuggestions.size > 0 && (
+                <button
+                  type="button"
+                  onClick={createFromSuggestions}
+                  disabled={creatingSuggestions}
+                  className={cn(
+                    "flex items-center gap-1.5 px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium",
+                    creatingSuggestions && "opacity-50 cursor-not-allowed",
+                  )}
+                >
+                  {creatingSuggestions ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  선택한 {selectedSuggestions.size}개 태스크 생성
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Step 1: Input (직접 작성) */}
+      {step === "input" && pageTab === "write" && (
         <div className="rounded-lg border border-border bg-card p-5 space-y-4">
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1.5">
