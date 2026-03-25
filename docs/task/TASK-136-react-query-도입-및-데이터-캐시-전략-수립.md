@@ -1,7 +1,7 @@
 ---
 id: TASK-136
 title: React Query 도입 및 데이터 캐시 전략 수립
-status: in_progress
+status: done
 branch: task/task-136
 worktree: ../repo-wt-task-136
 priority: high
