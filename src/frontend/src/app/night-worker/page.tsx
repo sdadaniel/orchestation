@@ -309,9 +309,9 @@ export default function NightWorkerPage() {
               <span className="text-[10px] text-zinc-600 ml-auto font-mono">{logs.length} lines</span>
             </div>
             <div className="overflow-y-auto max-h-[400px] p-0 font-mono text-[11px] leading-[1.7]">
-              {logs.map((line, i) => (
+              {[...logs].reverse().map((line, i) => (
                 <div key={i} className="px-3 py-0.5 hover:bg-white/[0.03] text-zinc-400">
-                  <span className="text-zinc-600 select-none mr-3 inline-block w-5 text-right">{i + 1}</span>
+                  <span className="text-zinc-600 select-none mr-3 inline-block w-5 text-right">{logs.length - i}</span>
                   {line}
                 </div>
               ))}

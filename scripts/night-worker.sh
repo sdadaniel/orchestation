@@ -173,18 +173,32 @@ scope:
 
 이슈를 찾지 못했으면 NOT_FOUND 라고만 출력하세요."
 
-  log "🔍 스캔 중: $scan_type (${task_id})"
+  log "🔍 스캔 시작: $scan_type (${task_id})"
+  log "   프롬프트 길이: $(echo "$prompt" | wc -c | tr -d ' ')자"
 
   local output_file="$LOG_DIR/night-worker-scan-${task_id}.json"
   cd "$REPO_ROOT"
 
+  local start_time
+  start_time=$(date +%s)
+
   local result
   result=$(echo "$prompt" | claude --output-format json --dangerously-skip-permissions 2>/dev/null) || true
 
+  local elapsed=$(( $(date +%s) - start_time ))
+
   if [ -z "$result" ]; then
-    log "  ❌ Claude 호출 실패"
+    log "  ❌ Claude 호출 실패 (${elapsed}초 소요)"
     return 1
   fi
+
+  # 비용 추적
+  local cost
+  cost=$(echo "$result" | jq -r '.total_cost_usd // 0' 2>/dev/null) || cost="0"
+  local tokens
+  tokens=$(echo "$result" | jq -r '.usage.output_tokens // 0' 2>/dev/null) || tokens="0"
+  TOTAL_COST=$(echo "$TOTAL_COST $cost" | awk '{printf "%.4f", $1 + $2}')
+  log "  💰 응답 수신 (${elapsed}초, \$${cost}, ${tokens} tokens)"
 
   # JSON에서 result 필드 추출
   local task_content
@@ -195,10 +209,7 @@ scope:
     return 1
   fi
 
-  # 비용 추적
-  local cost
-  cost=$(echo "$result" | jq -r '.total_cost_usd // 0' 2>/dev/null) || cost="0"
-  TOTAL_COST=$(echo "$TOTAL_COST $cost" | awk '{printf "%.4f", $1 + $2}')
+  log "  📄 응답 미리보기: $(echo "$task_content" | head -1 | cut -c1-80)"
 
   # frontmatter가 포함된 응답에서 태스크 파일 생성
   # Claude 응답에서 --- 블록 찾기
