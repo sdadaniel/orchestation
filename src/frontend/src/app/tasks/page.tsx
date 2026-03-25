@@ -217,7 +217,7 @@ function TasksPageInner() {
     <div className="space-y-4 max-w-3xl mx-auto pb-16">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4"><h1 className="text-lg font-semibold">Tasks</h1><AutoImproveControl /></div>
+        <div className="flex items-center gap-4"><h1 className="text-lg font-semibold">Tasks</h1><AutoImproveControl hasRunningTasks={requests.some((r) => r.status === "in_progress")} /></div>
         <button type="button" onClick={() => router.push("/tasks/new")} className="filter-pill active flex items-center gap-1"><Plus className="h-3 w-3" />New Task</button>
       </div>
 

@@ -7,7 +7,7 @@ import { HorseRunningIndicator } from "@/components/HorseRunningIndicator";
 
 type RunStatus = "idle" | "running" | "stopping" | "completed" | "failed";
 
-export default function AutoImproveControl() {
+export default function AutoImproveControl({ hasRunningTasks = false }: { hasRunningTasks?: boolean } = {}) {
   const [status, setStatus] = useState<RunStatus>("idle");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,27 +77,16 @@ export default function AutoImproveControl() {
     }
   };
 
+  const isRunning = status === "running" || hasRunningTasks;
+
   return (
     <div className="flex items-center gap-3">
-      {status === "idle" || status === "completed" || status === "failed" ? (
-        <button
-          type="button"
-          onClick={handleRun}
-          disabled={loading}
-          className={cn(
-            "filter-pill active flex items-center gap-1.5 text-xs",
-            loading && "opacity-50 cursor-not-allowed"
-          )}
-        >
-          <Play className="h-3 w-3" />
-          Run
-        </button>
-      ) : status === "stopping" ? (
+      {status === "stopping" ? (
         <span className="filter-pill flex items-center gap-1.5 text-xs text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin" />
           Stopping...
         </span>
-      ) : status === "running" ? (
+      ) : isRunning ? (
         <>
           <HorseRunningIndicator />
           <button
@@ -113,7 +102,20 @@ export default function AutoImproveControl() {
             Stop
           </button>
         </>
-      ) : null}
+      ) : (
+        <button
+          type="button"
+          onClick={handleRun}
+          disabled={loading}
+          className={cn(
+            "filter-pill active flex items-center gap-1.5 text-xs",
+            loading && "opacity-50 cursor-not-allowed"
+          )}
+        >
+          <Play className="h-3 w-3" />
+          Run
+        </button>
+      )}
 
       {error && (
         <span className="text-xs text-red-500">{error}</span>
