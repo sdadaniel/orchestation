@@ -1,7 +1,7 @@
 ---
 id: TASK-123
 title: 프론트엔드 코드 구조 및 네이밍 분석
-status: in_progress
+status: done
 branch: task/task-123
 worktree: ../repo-wt-task-123
 priority: high
