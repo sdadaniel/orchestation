@@ -1,7 +1,7 @@
 ---
 id: TASK-131
 title: Task 목록 및 상세 페이지 디자인 개선
-status: in_progress
+status: done
 branch: task/task-131
 worktree: ../repo-wt-task-131
 priority: medium
