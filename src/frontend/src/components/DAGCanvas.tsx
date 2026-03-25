@@ -27,54 +27,70 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
   }
 
   const priWeight = (p: string) => p === "high" ? 0 : p === "medium" ? 1 : p === "low" ? 2 : 3;
-  const allPending = requests.filter((r) => r.status === "pending");
-  const allStopped = requests.filter((r) => r.status === "stopped");
+  const allPending = requests.filter((r) => r.status === "pending" || r.status === "stopped");
   const current = requests.filter((r) => r.status === "in_progress" || r.status === "reviewing");
   const allDone = requests.filter((r) => r.status === "done" || r.status === "rejected");
+  const allFailed = requests.filter((r) => r.status === "failed");
 
-  const allReady = [...allStopped, ...allPending];
-  const nextUpSet = new Set(allReady.filter((r) => {
-    const deps = depsOf.get(r.id) || [];
-    return deps.length === 0 || deps.every((d) => statusMap.get(d) === "done");
-  }).map((r) => r.id));
+  // 의존 depth 계산: depth 0 = 의존 없거나 모두 done → 즉시 실행 가능
+  const pendingSet = new Set(allPending.map((r) => r.id));
+  const depthOf = new Map<string, number>();
+  const getDepth = (id: string, visited: Set<string> = new Set()): number => {
+    if (depthOf.has(id)) return depthOf.get(id)!;
+    if (visited.has(id)) return 0; // cycle guard
+    visited.add(id);
+    const deps = (depsOf.get(id) || []).filter((d) => pendingSet.has(d));
+    if (deps.length === 0) { depthOf.set(id, 0); return 0; }
+    const max = Math.max(...deps.map((d) => getDepth(d, visited)));
+    const depth = max + 1;
+    depthOf.set(id, depth);
+    return depth;
+  };
+  for (const r of allPending) getDepth(r.id);
 
-  const queueItems = allReady
-    .filter((r) => nextUpSet.has(r.id))
-    .sort((a, b) => {
-      const sa = a.status === "stopped" ? 0 : 1, sb = b.status === "stopped" ? 0 : 1;
-      if (sa !== sb) return sa - sb;
-      return priWeight(a.priority) - priWeight(b.priority) || a.id.localeCompare(b.id);
-    })
-    .slice(0, maxParallel);
-  const queueIds = new Set(queueItems.map((r) => r.id));
+  // depth별 그룹: Queue1(depth 0), Queue2(depth 1), 나머지는 ghost
+  const MAX_PENDING_QUEUES = 2;
+  const pendingByDepth: RequestItem[][] = [];
+  const maxDepth = allPending.length > 0 ? Math.max(...allPending.map((r) => depthOf.get(r.id) ?? 0)) : 0;
+  for (let d = 0; d <= Math.min(maxDepth, MAX_PENDING_QUEUES - 1); d++) {
+    pendingByDepth.push(
+      allPending
+        .filter((r) => (depthOf.get(r.id) ?? 0) === d)
+        .sort((a, b) => priWeight(a.priority) - priWeight(b.priority) || a.id.localeCompare(b.id))
+        .slice(0, maxParallel)
+    );
+  }
+  // 나머지 (depth >= MAX_PENDING_QUEUES 또는 슬라이스에서 잘린 것)
+  const shownIds = new Set(pendingByDepth.flat().map((r) => r.id));
+  const pendingRest = allPending.filter((r) => !shownIds.has(r.id));
 
-  const stoppedItems = allStopped.filter((r) => !queueIds.has(r.id)).slice(0, maxParallel);
-  const pendingNotQueue = allPending.filter((r) => !queueIds.has(r.id));
-  const backlog = pendingNotQueue.sort((a, b) => priWeight(a.priority) - priWeight(b.priority) || a.id.localeCompare(b.id)).slice(0, maxParallel);
-  const backlogRest = pendingNotQueue.slice(maxParallel, maxParallel * 2);
+  const queueItems = pendingByDepth[0] ?? [];
   const done = allDone.slice(-maxParallel).reverse();
-
-  const pendingExtra = pendingNotQueue.length - backlog.length - backlogRest.length;
   const doneExtra = allDone.length - done.length;
 
-  const sections: { key: string; label: string; items: RequestItem[]; color: string; extra: number }[] = [
-    ...(backlogRest.length > 0 ? [{ key: "backlog2", label: "BACKLOG", items: backlogRest, color: "#a1a1aa", extra: 0 }] : []),
-    ...(backlog.length > 0 ? [{ key: "backlog", label: "BACKLOG", items: backlog, color: "#a1a1aa", extra: 0 }] : []),
-    ...(stoppedItems.length > 0 ? [{ key: "stopped", label: "STOPPED", items: stoppedItems, color: "#8b5cf6", extra: 0 }] : []),
-    { key: "queue", label: "QUEUE", items: queueItems, color: "#eab308", extra: 0 },
-    { key: "current", label: "IN PROGRESS", items: current, color: "#3b82f6", extra: 0 },
-    { key: "done", label: "DONE", items: done, color: "#22c55e", extra: doneExtra },
-  ];
+  const sections: { key: string; label: string; items: RequestItem[]; color: string; extra: number }[] = [];
+
+  // Pending queues: 깊은 depth부터 (오른쪽이 Queue1)
+  for (let i = pendingByDepth.length - 1; i >= 1; i--) {
+    if (pendingByDepth[i].length > 0) {
+      sections.push({ key: `pending-${i}`, label: `QUEUE ${i + 1}`, items: pendingByDepth[i], color: "#a1a1aa", extra: 0 });
+    }
+  }
+  // Queue1 (depth 0 = 즉시 실행 가능)
+  sections.push({ key: "queue", label: "QUEUE", items: queueItems, color: "#eab308", extra: 0 });
+  sections.push({ key: "current", label: "IN PROGRESS", items: current, color: "#3b82f6", extra: 0 });
+  sections.push({ key: "done", label: "DONE", items: done, color: "#22c55e", extra: doneExtra });
+  if (allFailed.length > 0) sections.push({ key: "failed", label: "FAILED", items: allFailed.slice(0, maxParallel), color: "#ef4444", extra: Math.max(0, allFailed.length - maxParallel) });
 
   const nodes: NodeLayout[] = [];
   const sectionLayouts: SectionLayout[] = [];
-  const ghostCount = pendingExtra > 0 ? 1 : 0;
-  const totalGhostExtra = pendingExtra;
+  const ghostCount = pendingRest.length > 0 ? 1 : 0;
+  const totalGhostExtra = pendingRest.length;
   let sectionX = CANVAS_PAD;
 
   if (ghostCount > 0) {
     const ghostH = SECTION_HEADER_H + maxParallel * (NODE_H + ROW_GAP) + ROW_GAP;
-    sectionLayouts.push({ key: "ghost", label: "BACKLOG", x: sectionX, y: CANVAS_PAD, w: NODE_W + CANVAS_PAD, h: ghostH, color: "#71717a", extra: 0 });
+    sectionLayouts.push({ key: "ghost", label: "PENDING", x: sectionX, y: CANVAS_PAD, w: NODE_W + CANVAS_PAD, h: ghostH, color: "#71717a", extra: 0 });
     sectionX += NODE_W + CANVAS_PAD + SECTION_GAP;
   }
 
@@ -93,6 +109,25 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
   }
 
   const edges: EdgeLayout[] = [];
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  for (const node of nodes) {
+    const deps = depsOf.get(node.id) || [];
+    for (const depId of deps) {
+      const depNode = nodeMap.get(depId);
+      if (!depNode) continue;
+      // 왼쪽 노드 → 오른쪽 노드 방향으로 연결
+      const leftNode = depNode.x < node.x ? depNode : node;
+      const rightNode = depNode.x < node.x ? node : depNode;
+      edges.push({
+        fromId: leftNode.id,
+        toId: rightNode.id,
+        x1: leftNode.x + NODE_W,
+        y1: leftNode.y + NODE_H / 2,
+        x2: rightNode.x,
+        y2: rightNode.y + NODE_H / 2,
+      });
+    }
+  }
 
   const allX = nodes.map((n) => n.x).concat(sectionLayouts.map((s) => s.x));
   const allXR = nodes.map((n) => n.x + NODE_W).concat(sectionLayouts.map((s) => s.x + s.w));
@@ -125,23 +160,56 @@ function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxPa
     };
   };
 
+  // pending 큐 키 수집
+  const pendingKeys = new Set(sections.filter((s) => s.key.startsWith("pending-") || s.key === "queue").map((s) => s.key));
   const topGroups = [
-    { label: "PENDING", color: "#eab308", box: computeGroup(new Set(["backlog", "backlog2"]), true) },
-    { label: "STOPPED", color: "#8b5cf6", box: computeGroup(new Set(["stopped"]), false) },
-    { label: "QUEUE", color: "#eab308", box: computeGroup(new Set(["queue"]), false) },
+    { label: "PENDING", color: "#eab308", box: computeGroup(pendingKeys, true) },
+    { label: "FAILED", color: "#ef4444", box: computeGroup(new Set(["failed"]), false) },
     { label: "IN PROGRESS", color: "#3b82f6", box: computeGroup(new Set(["current"]), false) },
     { label: "DONE", color: "#22c55e", box: computeGroup(new Set(["done"]), false) },
   ].filter((g) => g.box !== null);
 
   const hideLabelKeys = new Set<string>();
   for (const g of topGroups) {
-    const keyMap: Record<string, string[]> = { "PENDING": ["backlog", "backlog2"], "STOPPED": ["stopped"], "QUEUE": ["queue"], "IN PROGRESS": ["current"], "DONE": ["done"] };
+    const keyMap: Record<string, string[]> = {
+      "PENDING": [...pendingKeys],
+      "FAILED": ["failed"],
+      "IN PROGRESS": ["current"],
+      "DONE": ["done"],
+    };
     const keys = keyMap[g.label] || [];
     const matched = sections.filter((s) => keys.includes(s.key));
     if (matched.length <= 1) matched.forEach((m) => hideLabelKeys.add(m.key));
   }
 
-  return { nodes, edges, bounds, sections: sectionLayouts, ghostBox, topGroups, hideLabelKeys };
+  // ghost → 첫 번째 보이는 pending 노드로 연결선
+  let ghostEdge: { x1: number; y1: number; x2: number; y2: number } | null = null;
+  if (ghostBox && pendingByDepth.length > 0) {
+    // ghost에 숨겨진 태스크 중 보이는 노드에 의존하는 게 있는지 확인
+    const hasLink = pendingRest.some((r) => {
+      const deps = depsOf.get(r.id) || [];
+      return deps.some((d) => nodeMap.has(d));
+    }) || pendingRest.some((r) => {
+      // 또는 보이는 노드가 ghost 태스크에 의존하는지
+      return nodes.some((n) => (depsOf.get(n.id) || []).includes(r.id));
+    });
+    if (hasLink) {
+      // ghost 오른쪽 중앙 → 가장 왼쪽 pending 노드의 왼쪽 중앙
+      const leftmostPendingNode = nodes
+        .filter((n) => pendingSet.has(n.id))
+        .sort((a, b) => a.x - b.x)[0];
+      if (leftmostPendingNode) {
+        ghostEdge = {
+          x1: ghostBox.x + ghostBox.w,
+          y1: ghostBox.y + NODE_H / 2,
+          x2: leftmostPendingNode.x,
+          y2: leftmostPendingNode.y + NODE_H / 2,
+        };
+      }
+    }
+  }
+
+  return { nodes, edges, bounds, sections: sectionLayouts, ghostBox, ghostEdge, topGroups, hideLabelKeys };
 }
 
 // ── Component ────────────────────────────────────────
@@ -188,6 +256,7 @@ export default function DAGCanvas({ requests, tasks, onClickItem }: { requests: 
       </div>
       <div className="absolute bottom-2 left-2 z-20 flex items-center gap-3 bg-card/80 backdrop-blur border border-border rounded-md px-3 py-1.5">
         <span className="flex items-center gap-1 text-[10px] text-muted-foreground"><span className="w-2 h-2 rounded-full bg-yellow-500" />Pending</span>
+        <span className="flex items-center gap-1 text-[10px] text-muted-foreground"><span className="w-2 h-2 rounded-full bg-red-500" />Failed</span>
         <span className="flex items-center gap-1 text-[10px] text-muted-foreground"><span className="w-2 h-2 rounded-full bg-blue-500" />In Progress</span>
         <span className="flex items-center gap-1 text-[10px] text-muted-foreground"><span className="w-2 h-2 rounded-full bg-emerald-500" />Done</span>
       </div>
@@ -204,13 +273,13 @@ export default function DAGCanvas({ requests, tasks, onClickItem }: { requests: 
             </g>
           ))}
           {layout.sections.map((sec) => (
-            <g key={sec.label}>
+            <g key={sec.key}>
               {!layout.hideLabelKeys.has(sec.key) && <rect x={sec.x} y={sec.y} width={sec.w} height={sec.h} rx={8} fill="var(--muted)" opacity={0.3} stroke={sec.color} strokeWidth={1} strokeOpacity={0.3} />}
               {!layout.hideLabelKeys.has(sec.key) && <text x={sec.x + sec.w / 2} y={sec.y + 22} textAnchor="middle" fill={sec.color} fontSize={11} fontWeight={600} letterSpacing="0.05em" opacity={0.7}>{sec.label}</text>}
               {sec.extra > 0 && <text x={sec.x + sec.w / 2} y={sec.h + sec.y - 8} textAnchor="middle" fill="var(--muted-foreground)" fontSize={10} opacity={0.6}>+{sec.extra} more</text>}
             </g>
           ))}
-          {layout.edges.map((e) => { const k = `${e.fromId}-${e.toId}`, h = hovEdge === k, cp = Math.max(Math.abs(e.x2 - e.x1) * 0.4, 40), d = `M ${e.x1} ${e.y1} C ${e.x1 + cp} ${e.y1}, ${e.x2 - cp} ${e.y2}, ${e.x2} ${e.y2}`; return (<g key={k}><path d={d} fill="none" stroke="transparent" strokeWidth={14} style={{ pointerEvents: "stroke", cursor: "pointer" }} onMouseEnter={() => setHovEdge(k)} onMouseLeave={() => setHovEdge(null)} /><path d={d} fill="none" stroke={h ? "var(--primary)" : "var(--muted-foreground)"} strokeWidth={h ? 2 : 1} strokeDasharray={h ? "none" : "5 3"} opacity={h ? 0.9 : 0.3} markerEnd={h ? "url(#dag-arrow-hover)" : "url(#dag-arrow)"} style={{ transition: "all 0.15s ease" }} /></g>); })}
+          {layout.edges.map((e) => { const k = `${e.fromId}-${e.toId}`, h = hovEdge === k, cp = Math.max(Math.abs(e.x2 - e.x1) * 0.4, 40), d = `M ${e.x1} ${e.y1} C ${e.x1 + cp} ${e.y1}, ${e.x2 - cp} ${e.y2}, ${e.x2} ${e.y2}`; return (<g key={k}><path d={d} fill="none" stroke="transparent" strokeWidth={14} style={{ pointerEvents: "stroke", cursor: "pointer" }} onMouseEnter={() => setHovEdge(k)} onMouseLeave={() => setHovEdge(null)} /><path d={d} fill="none" stroke={h ? "var(--primary)" : "#ffffff"} strokeWidth={h ? 2.5 : 1.5} opacity={h ? 1 : 0.5} markerEnd={h ? "url(#dag-arrow-hover)" : "url(#dag-arrow)"} style={{ transition: "all 0.15s ease" }} /></g>); })}
           {layout.nodes.map((n) => (
             <foreignObject key={n.id} x={n.x} y={n.y} width={NODE_W} height={NODE_H} style={{ overflow: "visible" }}>
               <div className={cn("flex flex-col gap-1 p-2.5 rounded-lg border transition-all h-full", n.req.status === "done" && "opacity-50", n.req.status === "rejected" && "opacity-50", n.isNextUp && "dag-node-next-up", (n.req.status === "in_progress" || n.req.status === "reviewing") && "dag-node-active")} style={{ borderColor: bc(n.req.status, n.isNextUp), background: "var(--card)" }}>
@@ -230,6 +299,13 @@ export default function DAGCanvas({ requests, tasks, onClickItem }: { requests: 
               <text x={layout.ghostBox.x + layout.ghostBox.w / 2} y={layout.ghostBox.y + layout.ghostBox.h / 2 + 5} textAnchor="middle" fill="#a1a1aa" fontSize={13} fontWeight={500}>{layout.ghostBox.count} more</text>
             </g>
           )}
+          {layout.ghostEdge && (() => {
+            const e = layout.ghostEdge;
+            const cp = Math.max(Math.abs(e.x2 - e.x1) * 0.4, 40);
+            const d = `M ${e.x1} ${e.y1} C ${e.x1 + cp} ${e.y1}, ${e.x2 - cp} ${e.y2}, ${e.x2} ${e.y2}`;
+            const h = hovEdge === "ghost";
+            return (<g><path d={d} fill="none" stroke="transparent" strokeWidth={14} style={{ pointerEvents: "stroke", cursor: "pointer" }} onMouseEnter={() => setHovEdge("ghost")} onMouseLeave={() => setHovEdge(null)} /><path d={d} fill="none" stroke={h ? "var(--primary)" : "#ffffff"} strokeWidth={h ? 2.5 : 1.5} opacity={h ? 1 : 0.5} markerEnd={h ? "url(#dag-arrow-hover)" : "url(#dag-arrow)"} style={{ transition: "all 0.15s ease" }} /></g>);
+          })()}
         </g>
       </svg>
     </div>

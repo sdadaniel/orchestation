@@ -12,7 +12,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, content, priority, scope } = body;
+    const { title, content, priority, scope, depends_on } = body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0) {
       return NextResponse.json({ error: "title is required" }, { status: 400 });
@@ -50,13 +50,16 @@ export async function POST(request: Request) {
     const scopeLines = Array.isArray(scope) && scope.length > 0
       ? `scope:\n${scope.map((s: string) => `  - ${s}`).join("\n")}\n`
       : "";
+    const dependsOnLines = Array.isArray(depends_on) && depends_on.length > 0
+      ? `depends_on: [${depends_on.join(", ")}]\n`
+      : "";
 
     const fileContent = `---
 id: ${taskId}
 title: ${sanitizedTitle}
 status: pending
 priority: ${taskPriority}
-${scopeLines}created: ${today}
+${scopeLines}${dependsOnLines}created: ${today}
 updated: ${today}
 ---
 ${bodyContent}

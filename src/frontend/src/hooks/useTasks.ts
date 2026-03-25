@@ -67,19 +67,24 @@ export function useTasks(): UseTasksResult {
     };
   }, [fetchKey]);
 
-  // SSE: task 파일 변경 시 즉시 갱신
+  // SSE: task 파일 변경 시 디바운스 후 갱신
   useEffect(() => {
     let es: EventSource | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const debouncedRefetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => refetch(), 1000);
+    };
 
     const connect = () => {
       es = new EventSource("/api/tasks/watch");
       es.onmessage = (e) => {
-        if (e.data === "changed") refetch();
+        if (e.data === "changed") debouncedRefetch();
       };
       es.onerror = () => {
         es?.close();
-        // 2초 후 재연결
         reconnectTimer = setTimeout(connect, 2000);
       };
     };
@@ -89,6 +94,7 @@ export function useTasks(): UseTasksResult {
     return () => {
       es?.close();
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (debounceTimer) clearTimeout(debounceTimer);
     };
   }, [refetch]);
 

@@ -21,9 +21,9 @@ export async function POST(
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
 
-  // 같은 priority + 같은 status 내에서 sort_order 기준 정렬
+  // 같은 status 내에서 sort_order 기준 정렬
   const siblings = all
-    .filter((r) => r.priority === target.priority && r.status === target.status)
+    .filter((r) => r.status === target.status)
     .sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id));
 
   const idx = siblings.findIndex((r) => r.id === id);

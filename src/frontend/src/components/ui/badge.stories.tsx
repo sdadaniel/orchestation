@@ -25,7 +25,7 @@ export const AllStatuses: Story = {
     <div className="flex flex-wrap gap-2">
       <StatusBadge status="pending" />
       <StatusBadge status="in_progress" />
-      <StatusBadge status="in_review" />
+      <StatusBadge status="reviewing" />
       <StatusBadge status="done" />
     </div>
   ),
@@ -34,7 +34,6 @@ export const AllStatuses: Story = {
 export const AllPriorities: Story = {
   render: () => (
     <div className="flex flex-wrap gap-2">
-      <PriorityBadge priority="critical" />
       <PriorityBadge priority="high" />
       <PriorityBadge priority="medium" />
       <PriorityBadge priority="low" />

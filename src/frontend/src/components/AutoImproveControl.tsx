@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Play, Square, Loader2 } from "lucide-react";
 import { HorseRunningIndicator } from "@/components/HorseRunningIndicator";
 
-type RunStatus = "idle" | "running" | "completed" | "failed";
+type RunStatus = "idle" | "running" | "stopping" | "completed" | "failed";
 
 export default function AutoImproveControl() {
   const [status, setStatus] = useState<RunStatus>("idle");
@@ -23,7 +23,13 @@ export default function AutoImproveControl() {
           setError(`실행 실패 (exit code: ${data.exitCode ?? "unknown"})`);
         }
         prevStatusRef.current = data.status;
-        setStatus(data.status);
+        // stopping 중이면 실제 종료될 때까지 상태 유지
+        // 같은 상태면 setState 호출 자체를 건너뛰어 불필요한 리렌더 방지
+        setStatus((prev) => {
+          if (prev === "stopping" && data.status === "running") return prev;
+          if (prev === data.status) return prev;
+          return data.status;
+        });
       }
     } catch {
       // silently ignore polling errors
@@ -55,20 +61,19 @@ export default function AutoImproveControl() {
   };
 
   const handleStop = async () => {
-    setLoading(true);
     setError(null);
+    setStatus("stopping");
     try {
       const res = await fetch("/api/orchestrate/stop", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Failed to stop");
-      } else {
-        setStatus("idle");
+        setStatus("running");
       }
+      // polling이 실제 종료 감지하면 idle로 전환
     } catch (err) {
       setError(err instanceof Error ? err.message : "Network error");
-    } finally {
-      setLoading(false);
+      setStatus("running");
     }
   };
 
@@ -87,6 +92,11 @@ export default function AutoImproveControl() {
           <Play className="h-3 w-3" />
           Run
         </button>
+      ) : status === "stopping" ? (
+        <span className="filter-pill flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Stopping...
+        </span>
       ) : status === "running" ? (
         <>
           <HorseRunningIndicator />

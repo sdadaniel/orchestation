@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Loader2, FileText, Terminal, ClipboardCheck, Play, Square, RotateCcw, CheckCircle2, GitBranch, Check, Copy } from "lucide-react";
+import { ArrowLeft, Loader2, FileText, Terminal, ClipboardCheck, Play, Square, RotateCcw, CheckCircle2, GitBranch, Check, Copy, DollarSign, Trash2 } from "lucide-react";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { HorseRunningIndicator } from "@/components/HorseRunningIndicator";
 
@@ -168,7 +168,9 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"detail" | "execution" | "review" | "logs">("detail");
+  const [activeTab, setActiveTab] = useState<"detail" | "scope" | "cost" | "ai-result" | "review" | "logs">("detail");
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiResultLoading, setAiResultLoading] = useState(false);
   const [runStatus, setRunStatus] = useState<"idle" | "running" | "completed" | "failed">("idle");
   const [runLogs, setRunLogs] = useState<string[]>([]);
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
@@ -188,6 +190,18 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
     }
     fetchTask();
   }, [id]);
+
+  // Lazy-load AI result
+  useEffect(() => {
+    if (activeTab === "ai-result" && aiResult === null && !aiResultLoading) {
+      setAiResultLoading(true);
+      fetch(`/api/tasks/${id}/result`)
+        .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+        .then((data) => setAiResult(data.result ?? ""))
+        .catch(() => setAiResult(""))
+        .finally(() => setAiResultLoading(false));
+    }
+  }, [activeTab, aiResult, aiResultLoading, id]);
 
   // Check orchestration status
   useEffect(() => {
@@ -296,7 +310,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   return (
-    <div className="space-y-5 max-w-2xl">
+    <div className="space-y-5 max-w-3xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
@@ -328,10 +342,24 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         </span>
         {task.branch && <BranchBadge branch={task.branch} />}
 
-        {/* Run / Stop button */}
+        {/* Run / Stop / Delete buttons */}
         <div className="ml-auto flex items-center gap-2">
           {runStatus === "running" && (
             <HorseRunningIndicator />
+          )}
+          {task.status === "pending" && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (!confirm(`${displayTaskId(task.id)} 삭제하시겠습니까?`)) return;
+                const res = await fetch(`/api/requests/${id}`, { method: "DELETE" });
+                if (res.ok) router.push("/tasks");
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-border text-muted-foreground hover:text-red-400 hover:border-red-400/50 transition-colors"
+            >
+              <Trash2 className="h-3 w-3" />
+              삭제
+            </button>
           )}
           {runStatus === "running" || task.status === "in_progress" ? (
             <button
@@ -346,19 +374,21 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
             <button
               type="button"
               onClick={handleRun}
-              disabled={isPipelineRunning || task.status === "in_progress"}
+              disabled={isPipelineRunning || task.status === "in_progress" || task.status === "done" || task.status === "rejected"}
               title={
                 isPipelineRunning
                   ? "파이프라인 실행 중에는 개별 실행 불가"
                   : task.status === "in_progress"
                     ? "이미 실행 중인 태스크입니다"
-                    : `${displayTaskId(task.id)} 실행`
+                    : task.status === "done" || task.status === "rejected"
+                      ? "완료된 태스크입니다"
+                      : `${displayTaskId(task.id)} 실행`
               }
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md transition-colors",
-                isPipelineRunning || task.status === "in_progress"
+                isPipelineRunning || task.status === "in_progress" || task.status === "done" || task.status === "rejected"
                   ? "bg-muted text-muted-foreground cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700 text-white",
+                  : "bg-muted hover:bg-muted/80 text-foreground border border-border",
               )}
             >
               <Play className="h-3 w-3" />
@@ -399,7 +429,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           </h2>
           <div className="flex items-center gap-0">
             {task.depends_on_detail?.map((dep) => (
-              <div key={dep.id} className="flex items-center gap-0 flex-1 min-w-0">
+              <div key={dep.id} className="flex items-center gap-0 w-1/3 shrink-0">
                 <button
                   type="button"
                   onClick={() => router.push(`/tasks/${dep.id}`)}
@@ -418,7 +448,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                 <span className="text-muted-foreground mx-1.5 text-sm shrink-0">&rarr;</span>
               </div>
             ))}
-            <div className="flex flex-col gap-1 px-2.5 py-2 rounded-lg border-2 border-primary bg-primary/5 flex-1 min-w-0">
+            <div className="flex flex-col gap-1 px-2.5 py-2 rounded-lg border-2 border-primary bg-primary/5 w-1/3 shrink-0 min-w-0">
               <div className="flex items-center gap-1.5">
                 {task.status === "in_progress" ? (
                   <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -430,7 +460,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
               <span className="text-[11px] leading-tight font-medium truncate">{task.title}</span>
             </div>
             {task.depended_by?.map((dep) => (
-              <div key={dep.id} className="flex items-center gap-0 flex-1 min-w-0">
+              <div key={dep.id} className="flex items-center gap-0 w-1/3 shrink-0">
                 <span className="text-muted-foreground mx-1.5 text-sm shrink-0">&rarr;</span>
                 <button
                   type="button"
@@ -456,7 +486,10 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-border">
         {([
-          { key: "detail" as const, label: "상세", icon: FileText },
+          { key: "detail" as const, label: "Content", icon: FileText },
+          { key: "scope" as const, label: "Scope", icon: FileText },
+          { key: "cost" as const, label: "Cost", icon: DollarSign },
+          { key: "ai-result" as const, label: "AI Result", icon: CheckCircle2 },
           { key: "logs" as const, label: "로그", icon: Terminal },
           { key: "review" as const, label: "리뷰 결과", icon: ClipboardCheck },
         ]).map((tab) => (
@@ -490,58 +523,73 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
             ) : <p className="text-sm text-muted-foreground">(No description)</p>}
           </div>
 
-          {/* Scope */}
-          {task.scope?.length > 0 && (
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                Scope
-              </h2>
-              <ul className="space-y-0.5">
-                {task.scope.map((s, i) => (
-                  <li key={i} className="text-xs text-muted-foreground font-mono flex items-start gap-1.5">
-                    <span className="mt-0.5 shrink-0">-</span>
-                    <span>{s}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Cost Info */}
-          {task.costEntries && task.costEntries.length > 0 && (
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                Cost
-              </h2>
-              <div className="space-y-1">
-                {task.costEntries.map((entry, i) => (
-                  <div key={i} className="flex items-center gap-3 text-xs">
-                    <span className="text-muted-foreground w-16 shrink-0 capitalize">{entry.phase}</span>
-                    <span className="font-mono w-16 shrink-0">{entry.cost}</span>
-                    <span className="text-muted-foreground w-16 shrink-0">{entry.duration}</span>
-                    <span className="text-muted-foreground font-mono">{entry.tokens}</span>
-                  </div>
-                ))}
-                <div className="border-t border-border pt-1 mt-1 flex items-center gap-3 text-xs font-medium">
-                  <span className="w-16 shrink-0">Total</span>
-                  <span className="font-mono w-16 shrink-0">
-                    ${task.costEntries.reduce((sum, e) => sum + parseFloat((e.cost ?? "0").replace("$", "")), 0).toFixed(4)}
-                  </span>
-                  <span className="text-muted-foreground w-16 shrink-0">
-                    {task.costEntries.reduce((sum, e) => sum + parseFloat(e.duration || "0"), 0).toFixed(1)}s
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       {/* logs 탭은 아래에서 통합 렌더링 */}
 
+      {activeTab === "scope" && (
+        <div>
+          {task.scope?.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {task.scope.map((s, i) => (
+                <span key={i} className="inline-flex items-center text-[11px] font-mono px-2 py-0.5 rounded-full bg-muted border border-border text-muted-foreground">{s}</span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Scope가 지정되지 않았습니다.</p>
+          )}
+        </div>
+      )}
+
+      {activeTab === "ai-result" && (
+        <div>
+          {aiResultLoading ? (
+            <div className="flex items-center gap-2 py-8 justify-center text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading...
+            </div>
+          ) : aiResult ? (
+            <MarkdownContent>{aiResult}</MarkdownContent>
+          ) : (
+            <p className="text-sm text-muted-foreground">아직 AI 결과가 없습니다.</p>
+          )}
+        </div>
+      )}
+
+      {activeTab === "cost" && (
+        task.costEntries && task.costEntries.length > 0 ? (
+          <div>
+            <div className="space-y-1">
+              {task.costEntries.map((entry, i) => (
+                <div key={i} className="flex items-center gap-3 text-xs">
+                  <span className="text-muted-foreground w-16 shrink-0 capitalize">{entry.phase}</span>
+                  <span className="font-mono w-16 shrink-0">{entry.cost}</span>
+                  <span className="text-muted-foreground w-16 shrink-0">{entry.duration}</span>
+                  <span className="text-muted-foreground font-mono">{entry.tokens}</span>
+                </div>
+              ))}
+              <div className="border-t border-border pt-1 mt-1 flex items-center gap-3 text-xs font-medium">
+                <span className="w-16 shrink-0">Total</span>
+                <span className="font-mono w-16 shrink-0">
+                  ${task.costEntries.reduce((sum, e) => sum + parseFloat((e.cost ?? "0").replace("$", "")), 0).toFixed(4)}
+                </span>
+                <span className="text-muted-foreground w-16 shrink-0">
+                  {task.costEntries.reduce((sum, e) => sum + parseFloat(e.duration || "0"), 0).toFixed(1)}s
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-12 text-sm text-muted-foreground">
+            비용 정보가 없습니다.
+          </div>
+        )
+      )}
+
       {activeTab === "review" && (
         task.reviewResult ? (
-          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <div className="space-y-3">
             <div className="text-xs space-y-1">
               {task.reviewResult.subtype && (
                 <div className="flex gap-2">
@@ -562,9 +610,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
             )}
           </div>
         ) : (
-          <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-            아직 리뷰 결과가 없습니다.
-          </div>
+          <p className="text-sm text-muted-foreground">아직 리뷰 결과가 없습니다.</p>
         )
       )}
 
@@ -572,7 +618,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         task.status === "in_progress" ? (
           <LiveLogPanel taskId={id} />
         ) : task.executionLog ? (
-          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <div className="space-y-3">
             <div className="text-xs space-y-1">
               {task.executionLog.subtype && (
                 <div className="flex gap-2">
@@ -611,9 +657,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
             )}
           </div>
         ) : (
-          <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-            아직 실행 로그가 없습니다.
-          </div>
+          <p className="text-sm text-muted-foreground">아직 실행 로그가 없습니다.</p>
         )
       )}
     </div>

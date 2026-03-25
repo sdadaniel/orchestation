@@ -93,7 +93,7 @@ export function CostTable({ entries }: CostTableProps) {
           </tr>
         </thead>
         <tbody>
-          {visible.map((entry, idx) => {
+          {sorted.map((entry, idx) => {
             const isHighest = entry.costUsd === maxCost && maxCost > 0;
             const totalTokens = getTotalTokens(entry);
 
@@ -149,15 +149,6 @@ export function CostTable({ entries }: CostTableProps) {
           })}
         </tbody>
       </table>
-      {hasMore && (
-        <button
-          type="button"
-          onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-          className="w-full py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors border-t border-border"
-        >
-          더보기 ({sorted.length - visibleCount}건 남음)
-        </button>
-      )}
     </div>
   );
 }

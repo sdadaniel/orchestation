@@ -12,6 +12,7 @@ interface AnalyzedTask {
   priority: "high" | "medium" | "low";
   criteria: string[];
   scope: string[];
+  depends_on: number[];
 }
 
 export async function POST(request: Request) {
@@ -43,10 +44,11 @@ ${description.trim() ? `Description: ${description.trim()}` : ""}
 
 Rules:
 - If the request is simple, return 1 task. If complex, split into 2-5 tasks.
-- Each task must have: title, description, priority (high/medium/low), criteria (completion criteria as string array), scope (array of file paths that will likely be modified or read).
+- Each task must have: title, description, priority (high/medium/low), criteria (completion criteria as string array), scope (array of file paths that will likely be modified or read), depends_on (array of 0-based step indices this task depends on, e.g. [0] means depends on step 1).
 - scope must use glob patterns ending with ** for the relevant directories, not individual file paths. Be conservative and include broadly. Use relative paths from project root (e.g. "src/frontend/src/components/**", "scripts/lib/**"). Only go to the directory level, never specify exact filenames.
+- depends_on defines execution order. If step 2 depends on step 1, set depends_on:[0] on step 2. First step should have depends_on:[].
 - Return ONLY valid JSON in this exact format, no markdown, no explanation:
-{"tasks":[{"title":"...","description":"...","priority":"medium","criteria":["criterion 1"],"scope":["src/frontend/src/components/**"]}]}`;
+{"tasks":[{"title":"...","description":"...","priority":"medium","criteria":["criterion 1"],"scope":["src/frontend/src/components/**"],"depends_on":[]}]}`;
 
   return new Promise<Response>((resolve) => {
     const child = spawn(
@@ -131,6 +133,9 @@ Rules:
               : [],
             scope: Array.isArray(t.scope)
               ? t.scope.filter((s: unknown) => typeof s === "string")
+              : [],
+            depends_on: Array.isArray(t.depends_on)
+              ? t.depends_on.filter((d: unknown) => typeof d === "number")
               : [],
           }),
         );

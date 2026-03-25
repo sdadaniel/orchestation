@@ -19,7 +19,7 @@ tell application "iTerm"
         repeat with t in tabs of w
             repeat with s in sessions of t
                 if unique ID of s is "$SID" then
-                    close s
+                    tell s to write text "exit"
                 end if
             end repeat
         end repeat

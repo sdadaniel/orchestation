@@ -198,9 +198,8 @@ body {
 }
 
 .tree-item.active {
-  background-color: var(--sidebar-accent);
+  background-color: color-mix(in srgb, var(--foreground) 14%, transparent);
   font-weight: 600;
-  border-left: 2px solid var(--primary);
 }
 
 /* Right panel section */
@@ -555,6 +554,8 @@ body {
   display: flex;
   flex-direction: column;
   padding: 6px 8px;
+  min-height: 40px;
+  justify-content: center;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--background);

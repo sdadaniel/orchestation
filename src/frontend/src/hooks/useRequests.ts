@@ -104,7 +104,7 @@ export function useRequests() {
       const target = prev.find((r) => r.id === id);
       if (!target) return prev;
       const siblings = prev
-        .filter((r) => r.priority === target.priority && r.status === target.status)
+        .filter((r) => r.status === target.status)
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id.localeCompare(b.id));
       const sibIdx = siblings.findIndex((r) => r.id === id);
       const swapSibIdx = direction === "up" ? sibIdx - 1 : sibIdx + 1;

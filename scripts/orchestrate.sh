@@ -301,11 +301,16 @@ process_done_task() {
       git -C "$REPO_ROOT" commit --only "$failed_task_file" -m "chore(${task_id}): status → failed (review retry 상한 초과)" || true
     fi
 
-    # worktree 정리
+    # worktree + 브랜치 정리
     local failed_wt_path
     failed_wt_path=$(get_worktree "$task_id")
     if [ -d "$failed_wt_path" ]; then
       git -C "$REPO_ROOT" worktree remove "$failed_wt_path" --force 2>/dev/null || true
+    fi
+    local failed_branch
+    failed_branch=$(get_branch "$task_id")
+    if [ -n "$failed_branch" ]; then
+      git -C "$REPO_ROOT" branch -D "$failed_branch" 2>/dev/null || true
     fi
 
     # 실패 Notice

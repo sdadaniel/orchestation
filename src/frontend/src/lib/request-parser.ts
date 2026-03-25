@@ -29,8 +29,13 @@ export function parseRequestFile(filePath: string): RequestData | null {
     const title = fm.match(/^title:\s*(.+)$/m)?.[1]?.trim() || "";
     const status = (fm.match(/^status:\s*(.+)$/m)?.[1]?.trim() || "pending") as RequestData["status"];
     const priority = (fm.match(/^priority:\s*(.+)$/m)?.[1]?.trim() || "medium") as RequestData["priority"];
-    const created = fm.match(/^created:\s*(.+)$/m)?.[1]?.trim() || "";
-    const updated = fm.match(/^updated:\s*(.+)$/m)?.[1]?.trim() || created;
+    const mt = fs.statSync(filePath).mtime;
+    const mtime = `${mt.getFullYear()}-${String(mt.getMonth()+1).padStart(2,"0")}-${String(mt.getDate()).padStart(2,"0")} ${String(mt.getHours()).padStart(2,"0")}:${String(mt.getMinutes()).padStart(2,"0")}`;
+    const timeStr = `${String(mt.getHours()).padStart(2,"0")}:${String(mt.getMinutes()).padStart(2,"0")}`;
+    const rawCreated = fm.match(/^created:\s*(.+)$/m)?.[1]?.trim() || "";
+    const rawUpdated = fm.match(/^updated:\s*(.+)$/m)?.[1]?.trim() || "";
+    const created = rawCreated ? (rawCreated.length <= 10 ? `${rawCreated} ${timeStr}` : rawCreated) : mtime;
+    const updated = rawUpdated ? (rawUpdated.length <= 10 ? `${rawUpdated} ${timeStr}` : rawUpdated) : mtime;
     const sort_order = parseInt(fm.match(/^sort_order:\s*(.+)$/m)?.[1]?.trim() || "0", 10) || 0;
     const branch = fm.match(/^branch:\s*(.+)$/m)?.[1]?.trim() || "";
 

@@ -11,6 +11,7 @@ interface AnalyzedTask {
   priority: "high" | "medium" | "low";
   criteria: string[];
   scope?: string[];
+  depends_on?: number[];
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -62,13 +63,20 @@ export default function NewTaskPage() {
   const handleConfirm = async () => {
     setConfirming(true);
     try {
-      for (const task of tasks) {
+      const createdIds: string[] = [];
+      for (let i = 0; i < tasks.length; i++) {
+        const task = tasks[i];
         const content = [
           task.description,
           "",
           "## Completion Criteria",
           ...task.criteria.map((c) => `- ${c}`),
         ].join("\n");
+
+        // Resolve depends_on indices to actual TASK IDs
+        const dependsOn = (task.depends_on ?? [])
+          .filter((idx) => idx >= 0 && idx < createdIds.length)
+          .map((idx) => createdIds[idx]);
 
         const res = await fetch("/api/requests", {
           method: "POST",
@@ -78,12 +86,15 @@ export default function NewTaskPage() {
             content,
             priority: task.priority,
             scope: task.scope ?? [],
+            depends_on: dependsOn,
           }),
         });
 
         if (!res.ok) {
           throw new Error("Failed to create task");
         }
+        const created = await res.json();
+        createdIds.push(created.id);
       }
       router.push("/tasks");
     } catch (err) {
@@ -112,7 +123,7 @@ export default function NewTaskPage() {
   };
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto">
+    <div className="space-y-4 max-w-3xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
