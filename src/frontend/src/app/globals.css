@@ -5,6 +5,15 @@ input, textarea, select {
   color-scheme: dark;
 }
 
+/* 브라우저 autofill 배경색 제거 */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--background) inset !important;
+  -webkit-text-fill-color: var(--foreground) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -407,7 +416,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--muted);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 4px 12px;

@@ -8,7 +8,10 @@ export const dynamic = "force-dynamic";
 const PROJECT_ROOT = path.resolve(process.cwd(), "..", "..");
 const PID_FILE = "/tmp/night-worker.pid";
 const STATE_FILE = "/tmp/night-worker.state";
-const LOG_FILE = path.join(PROJECT_ROOT, "output", "logs", "night-worker.log");
+const ORCH_LOG_DIR = path.join(PROJECT_ROOT, ".orchestration", "output", "logs");
+const LEGACY_LOG_DIR = path.join(PROJECT_ROOT, "output", "logs");
+const LOG_DIR = fs.existsSync(path.join(PROJECT_ROOT, ".orchestration")) ? ORCH_LOG_DIR : LEGACY_LOG_DIR;
+const LOG_FILE = path.join(LOG_DIR, "night-worker.log");
 
 /** GET — 상태 + 로그 반환 */
 export async function GET() {
