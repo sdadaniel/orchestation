@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { execSync } from "child_process";
 import taskRunnerManager from "@/lib/task-runner-manager";
 import orchestrationManager from "@/lib/orchestration-manager";
+import { parseAllRequests, findRequestFile, parseRequestFile } from "@/lib/request-parser";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,25 @@ export async function POST(
       { error: "파이프라인 실행 중입니다. 중지 후 다시 시도하세요." },
       { status: 409 }
     );
+  }
+
+  // 의존성 체크: depends_on의 모든 task가 done이어야 실행 가능
+  const taskFile = findRequestFile(id);
+  if (taskFile) {
+    const taskData = parseRequestFile(taskFile);
+    if (taskData && taskData.depends_on.length > 0) {
+      const allTasks = parseAllRequests();
+      const unmetDeps = taskData.depends_on.filter((depId) => {
+        const dep = allTasks.find((t) => t.id === depId);
+        return !dep || dep.status !== "done";
+      });
+      if (unmetDeps.length > 0) {
+        return NextResponse.json(
+          { error: `의존성 미충족: ${unmetDeps.join(", ")}이(가) 아직 완료되지 않았습니다.` },
+          { status: 409 },
+        );
+      }
+    }
   }
 
   const result = taskRunnerManager.run(id);

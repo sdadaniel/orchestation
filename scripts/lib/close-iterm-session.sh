@@ -13,16 +13,19 @@ if [ -z "$SID" ]; then
   exit 0
 fi
 
-osascript <<EOF
-tell application "iTerm"
+osascript -e "
+tell application \"iTerm\"
     repeat with w in windows
         repeat with t in tabs of w
             repeat with s in sessions of t
-                if unique ID of s is "$SID" then
-                    tell s to write text "exit"
+                if unique ID of s is \"$SID\" then
+                    tell t to close
                 end if
             end repeat
         end repeat
     end repeat
 end tell
-EOF
+" 2>/dev/null
+
+# fallback: osascript 실패 시 프로세스 트리 종료
+kill -9 $$ 2>/dev/null

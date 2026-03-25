@@ -64,6 +64,39 @@ export function useRequests() {
     };
   }, [fetchRequests]);
 
+  // SSE: task 파일 변경 시 디바운스 후 자동 갱신
+  useEffect(() => {
+    let es: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const debouncedRefetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (isMountedRef.current) fetchRequests();
+      }, 1000);
+    };
+
+    const connect = () => {
+      es = new EventSource("/api/tasks/watch");
+      es.onmessage = (e) => {
+        if (e.data === "changed") debouncedRefetch();
+      };
+      es.onerror = () => {
+        es?.close();
+        reconnectTimer = setTimeout(connect, 2000);
+      };
+    };
+
+    connect();
+
+    return () => {
+      es?.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [fetchRequests]);
+
   const createRequest = useCallback(async (title: string, content: string, priority: string) => {
     const res = await fetch("/api/requests", {
       method: "POST",

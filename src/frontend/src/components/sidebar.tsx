@@ -645,14 +645,7 @@ export function TaskSidebar({
               {noticesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
               <Link href="/notices" className={cn("no-underline text-inherit")} onClick={(e) => e.stopPropagation()}>Notices</Link>
             </button>
-            <div className="flex items-center gap-1">
-              {noticeItems.filter((n) => !n.read).length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-medium">
-                  {noticeItems.filter((n) => !n.read).length}
-                </span>
-              )}
-              <span className="text-[10px] text-muted-foreground">{noticeItems.length}</span>
-            </div>
+            <span className="text-[10px] text-muted-foreground">{noticeItems.length}</span>
           </div>
 
           {noticesExpanded && (
