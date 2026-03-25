@@ -7,6 +7,7 @@ resolve_merge_conflict() {
   local repo_root="$1"
   local task_id="$2"
   local branch="$3"
+  local base_branch="${4:-${BASE_BRANCH:-main}}"
 
   local conflict_files
   conflict_files=$(git -C "$repo_root" diff --name-only --diff-filter=U)
@@ -16,7 +17,7 @@ resolve_merge_conflict() {
   echo "     충돌 파일: $conflict_files"
 
   # Claude에게 충돌 해결 요청
-  local prompt="머지 충돌이 발생했습니다. 다음 파일들의 충돌 마커(<<<<<<< ======= >>>>>>>)를 해결하세요.
+  local prompt="${branch}를 ${base_branch}에 머지하는 중 충돌이 발생했습니다. 다음 파일들의 충돌 마커(<<<<<<< ======= >>>>>>>)를 해결하세요.
 두 변경사항의 의도를 모두 살려서 병합하세요. 충돌 마커를 제거하고 올바른 코드만 남기세요.
 
 충돌 파일:

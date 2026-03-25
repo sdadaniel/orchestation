@@ -12,6 +12,19 @@ MAX_PARALLEL="${MAX_PARALLEL:-3}"
 PIDS=()
 FAILED=0
 
+# ── BASE_BRANCH 결정 (환경변수 > config.json > 기본값 main) ──
+CONFIG_FILE="$REPO_ROOT/config.json"
+if [ -z "${BASE_BRANCH:-}" ]; then
+  if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
+    BASE_BRANCH=$(jq -r '.baseBranch // "main"' "$CONFIG_FILE" 2>/dev/null || echo "main")
+  elif [ -f "$CONFIG_FILE" ]; then
+    BASE_BRANCH=$(awk -F'"' '/"baseBranch"/{print $4; exit}' "$CONFIG_FILE" 2>/dev/null || echo "main")
+  else
+    BASE_BRANCH="main"
+  fi
+fi
+[ -z "${BASE_BRANCH:-}" ] && BASE_BRANCH="main"
+
 echo "🚀 Pipeline 시작"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
@@ -131,8 +144,8 @@ run_batch() {
             git -C "$REPO_ROOT" worktree remove "$wt_path" --force 2>/dev/null || true
           fi
 
-          if git -C "$REPO_ROOT" log --oneline "main..$branch" 2>/dev/null | grep -q .; then
-            echo "  🔀 ${chunk[$i]}: $branch → main 머지"
+          if git -C "$REPO_ROOT" log --oneline "${BASE_BRANCH}..$branch" 2>/dev/null | grep -q .; then
+            echo "  🔀 ${chunk[$i]}: $branch → ${BASE_BRANCH} 머지"
             git -C "$REPO_ROOT" merge "$branch" --no-ff --no-edit
           fi
 

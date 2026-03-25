@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings, Save, Cpu, Loader2, Monitor, Terminal } from "lucide-react";
+import { Settings, Save, Cpu, Loader2, Monitor, Terminal, GitBranch } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
 import type { WorkerMode } from "@/lib/settings";
@@ -8,6 +8,7 @@ import type { WorkerMode } from "@/lib/settings";
 interface AppSettings {
   maxParallel: number;
   workerMode: WorkerMode;
+  baseBranch: string;
 }
 
 export default function SettingsPage() {
@@ -17,7 +18,9 @@ export default function SettingsPage() {
   const [draft, setDraft] = useState<AppSettings>({
     maxParallel: 3,
     workerMode: "background",
+    baseBranch: "main",
   });
+  const [localBranches, setLocalBranches] = useState<string[]>([]);
   const { addToast } = useToast();
 
   const fetchSettings = useCallback(async () => {
@@ -35,9 +38,22 @@ export default function SettingsPage() {
     }
   }, [addToast]);
 
+  const fetchBranches = useCallback(async () => {
+    try {
+      const res = await fetch("/api/settings/branches");
+      if (res.ok) {
+        const data = await res.json();
+        setLocalBranches(data.branches ?? []);
+      }
+    } catch {
+      // branch list is optional — ignore errors
+    }
+  }, []);
+
   useEffect(() => {
     fetchSettings();
-  }, [fetchSettings]);
+    fetchBranches();
+  }, [fetchSettings, fetchBranches]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -65,7 +81,8 @@ export default function SettingsPage() {
   const isDirty =
     settings !== null &&
     (draft.maxParallel !== settings.maxParallel ||
-      draft.workerMode !== settings.workerMode);
+      draft.workerMode !== settings.workerMode ||
+      draft.baseBranch !== settings.baseBranch);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -173,6 +190,49 @@ export default function SettingsPage() {
                       iTerm 터미널 실행
                     </button>
                   </div>
+                </div>
+              </div>
+
+              <div className="border-t border-border" />
+
+              {/* Base Branch */}
+              <div className="flex items-start gap-3">
+                <GitBranch className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <label htmlFor="baseBranch" className="text-xs font-medium">
+                    Base Branch
+                  </label>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    태스크 완료 시 머지할 대상 브랜치입니다. 기본값은 <code className="bg-muted px-1 rounded text-[10px]">main</code>입니다.
+                  </p>
+                  <input
+                    id="baseBranch"
+                    type="text"
+                    value={draft.baseBranch}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setDraft((prev) => ({ ...prev, baseBranch: v }));
+                    }}
+                    placeholder="main"
+                    className="w-48 rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  {localBranches.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {localBranches.map((b) => (
+                        <button
+                          key={b}
+                          onClick={() => setDraft((prev) => ({ ...prev, baseBranch: b }))}
+                          className={`px-2 py-0.5 text-[11px] rounded border transition-colors ${
+                            draft.baseBranch === b
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          {b}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

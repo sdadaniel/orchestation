@@ -10,6 +10,19 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
 
+# ── BASE_BRANCH 결정 (환경변수 > config.json > 기본값 main) ──
+CONFIG_FILE="$REPO_ROOT/config.json"
+if [ -z "${BASE_BRANCH:-}" ]; then
+  if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
+    BASE_BRANCH=$(jq -r '.baseBranch // "main"' "$CONFIG_FILE" 2>/dev/null || echo "main")
+  elif [ -f "$CONFIG_FILE" ]; then
+    BASE_BRANCH=$(awk -F'"' '/"baseBranch"/{print $4; exit}' "$CONFIG_FILE" 2>/dev/null || echo "main")
+  else
+    BASE_BRANCH="main"
+  fi
+fi
+[ -z "${BASE_BRANCH:-}" ] && BASE_BRANCH="main"
+
 DRY_RUN=false
 if [[ "${1:-}" == "--dry-run" ]]; then
   DRY_RUN=true
@@ -98,8 +111,8 @@ for tf in "${stuck_files[@]}"; do
       done_count=$((done_count + 1))
       # 머지 시도
       if [ -n "$branch" ] && git -C "$REPO_ROOT" rev-parse --verify "$branch" &>/dev/null; then
-        if git -C "$REPO_ROOT" log --oneline "main..$branch" 2>/dev/null | grep -q .; then
-          echo "    🔀 $branch → main 머지"
+        if git -C "$REPO_ROOT" log --oneline "${BASE_BRANCH}..$branch" 2>/dev/null | grep -q .; then
+          echo "    🔀 $branch → ${BASE_BRANCH} 머지"
           git -C "$REPO_ROOT" merge "$branch" --no-ff --no-edit || echo "    ⚠️  머지 충돌 — 수동 처리 필요"
         fi
         git -C "$REPO_ROOT" branch -d "$branch" 2>/dev/null || true
