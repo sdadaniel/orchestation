@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Loader2, Pencil, Check, X, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Pencil, Check, X, Plus, Trash2, GitMerge } from "lucide-react";
+import { DependsOnSelector, type TaskOption } from "@/components/DependsOnSelector";
 
 interface AnalyzedTask {
   title: string;
@@ -11,7 +12,10 @@ interface AnalyzedTask {
   priority: "high" | "medium" | "low";
   criteria: string[];
   scope?: string[];
+  /** Within-batch dependency indices (0-based) */
   depends_on?: number[];
+  /** Pre-existing TASK-XXX IDs this task depends on */
+  external_depends_on?: string[];
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -33,6 +37,20 @@ export default function NewTaskPage() {
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [confirming, setConfirming] = useState(false);
 
+  // Existing tasks for depends_on selection
+  const [existingTasks, setExistingTasks] = useState<TaskOption[]>([]);
+  // External deps selected on input step (applied to first task after analysis)
+  const [inputExternalDeps, setInputExternalDeps] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/tasks")
+      .then((r) => r.json())
+      .then((data: TaskOption[]) => {
+        if (Array.isArray(data)) setExistingTasks(data);
+      })
+      .catch(() => {});
+  }, []);
+
   const handleAnalyze = async () => {
     if (!title.trim()) return;
     setAnalyzing(true);
@@ -51,7 +69,17 @@ export default function NewTaskPage() {
       }
 
       const data = await res.json();
-      setTasks(data.tasks);
+      const analyzedTasks: AnalyzedTask[] = data.tasks;
+
+      // Apply inputExternalDeps to the first task
+      if (inputExternalDeps.length > 0 && analyzedTasks.length > 0) {
+        analyzedTasks[0] = {
+          ...analyzedTasks[0],
+          external_depends_on: inputExternalDeps,
+        };
+      }
+
+      setTasks(analyzedTasks);
       setStep("preview");
     } catch (err) {
       setAnalyzeError(err instanceof Error ? err.message : "Analysis failed");
@@ -73,10 +101,13 @@ export default function NewTaskPage() {
           ...task.criteria.map((c) => `- ${c}`),
         ].join("\n");
 
-        // Resolve depends_on indices to actual TASK IDs
-        const dependsOn = (task.depends_on ?? [])
+        // Resolve within-batch depends_on indices to actual TASK IDs
+        const resolvedBatchDeps = (task.depends_on ?? [])
           .filter((idx) => idx >= 0 && idx < createdIds.length)
           .map((idx) => createdIds[idx]);
+
+        // Merge with pre-existing external deps
+        const dependsOn = [...resolvedBatchDeps, ...(task.external_depends_on ?? [])];
 
         const res = await fetch("/api/requests", {
           method: "POST",
@@ -177,6 +208,24 @@ export default function NewTaskPage() {
             />
           </div>
 
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+              <GitMerge className="h-3 w-3" />
+              Depends On (optional)
+            </label>
+            <DependsOnSelector
+              selected={inputExternalDeps}
+              onChange={setInputExternalDeps}
+              tasks={existingTasks}
+              placeholder="Select tasks this depends on..."
+            />
+            {inputExternalDeps.length > 0 && (
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Applied to first task in the analysis result
+              </p>
+            )}
+          </div>
+
           {analyzeError && (
             <div className="text-sm text-red-500 bg-red-500/10 rounded px-3 py-2">
               {analyzeError}
@@ -240,6 +289,7 @@ export default function NewTaskPage() {
               onUpdate={(updates) => updateTask(idx, updates)}
               onRemove={() => removeTask(idx)}
               totalTasks={tasks.length}
+              existingTasks={existingTasks}
             />
           ))}
 
@@ -311,6 +361,7 @@ function TaskPreviewCard({
   onUpdate,
   onRemove,
   totalTasks,
+  existingTasks,
 }: {
   task: AnalyzedTask;
   index: number;
@@ -319,7 +370,13 @@ function TaskPreviewCard({
   onUpdate: (updates: Partial<AnalyzedTask>) => void;
   onRemove: () => void;
   totalTasks: number;
+  existingTasks: TaskOption[];
 }) {
+  // Within-batch deps labels: "Step N"
+  const batchDepLabels = (task.depends_on ?? []).map((i) => `Step ${i + 1}`);
+  const externalDeps = task.external_depends_on ?? [];
+  const hasDeps = batchDepLabels.length > 0 || externalDeps.length > 0;
+
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-2">
       {/* Header */}
@@ -327,9 +384,6 @@ function TaskPreviewCard({
         <span className="text-xs font-mono text-muted-foreground">
           {totalTasks > 1 ? `Step ${index + 1}/${totalTasks}` : "Task"}
         </span>
-        {index > 0 && totalTasks > 1 && (
-          <span className="text-[10px] text-muted-foreground">← Step {index} 완료 후 실행</span>
-        )}
         <span
           className={cn(
             "text-[10px] px-1.5 py-0.5 rounded border font-medium",
@@ -387,6 +441,57 @@ function TaskPreviewCard({
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+
+          {/* Depends On (external) - edit */}
+          <div>
+            <label className="block text-[11px] font-medium text-muted-foreground mb-1 flex items-center gap-1">
+              <GitMerge className="h-3 w-3" />
+              Depends On (existing tasks)
+            </label>
+            <DependsOnSelector
+              selected={externalDeps}
+              onChange={(ids) => onUpdate({ external_depends_on: ids })}
+              tasks={existingTasks}
+              placeholder="Add dependency..."
+            />
+          </div>
+
+          {/* Within-batch deps - edit as checkboxes */}
+          {totalTasks > 1 && (
+            <div>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                Within-batch dependencies
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {Array.from({ length: totalTasks }, (_, i) => i).filter((i) => i !== index).map((i) => {
+                  const checked = (task.depends_on ?? []).includes(i);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        const cur = task.depends_on ?? [];
+                        onUpdate({
+                          depends_on: checked
+                            ? cur.filter((d) => d !== i)
+                            : [...cur, i].sort((a, b) => a - b),
+                        });
+                      }}
+                      className={cn(
+                        "text-[11px] px-2 py-0.5 rounded border transition-colors",
+                        checked
+                          ? "bg-primary/15 text-primary border-primary/30"
+                          : "bg-muted text-muted-foreground border-border hover:border-primary/40",
+                      )}
+                    >
+                      Step {i + 1}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-[11px] font-medium text-muted-foreground mb-1">
               Completion Criteria
@@ -470,6 +575,33 @@ function TaskPreviewCard({
           {task.description && (
             <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
           )}
+
+          {/* Depends On - view mode */}
+          {hasDeps && (
+            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+                <GitMerge className="h-3 w-3" />
+                Depends on:
+              </span>
+              {batchDepLabels.map((label, i) => (
+                <span
+                  key={`batch-${i}`}
+                  className="text-[11px] px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border font-mono"
+                >
+                  {label}
+                </span>
+              ))}
+              {externalDeps.map((id) => (
+                <span
+                  key={id}
+                  className="text-[11px] px-1.5 py-0.5 rounded border bg-primary/15 text-primary border-primary/30 font-mono"
+                >
+                  {id}
+                </span>
+              ))}
+            </div>
+          )}
+
           {task.criteria.length > 0 && (
             <div className="mt-2">
               <span className="text-[11px] font-medium text-muted-foreground">
