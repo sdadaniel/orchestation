@@ -1,7 +1,7 @@
 ---
 id: TASK-141
 title: "ProcessMetrics.tsx eslint-disable any 타입 6건 제거"
-status: in_progress
+status: done
 branch: task/task-141
 worktree: ../repo-wt-task-141
 priority: medium
