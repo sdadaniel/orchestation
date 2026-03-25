@@ -1,7 +1,7 @@
 ---
 id: TASK-134
 title: Playwright E2E 테스트 세팅 및 핵심 시나리오 작성
-status: in_progress
+status: done
 branch: task/task-134
 worktree: ../repo-wt-task-134
 priority: high
