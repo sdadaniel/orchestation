@@ -8,7 +8,12 @@ source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 # 용도: 완료된 태스크를 컨텍스트에서 제외
 get_done_task_ids() {
   local repo_root="$1"
-  local task_dir="$repo_root/docs/task"
+  local task_dir
+  if [ -d "$repo_root/.orchestration/tasks" ]; then
+    task_dir="$repo_root/.orchestration/tasks"
+  else
+    task_dir="$repo_root/docs/task"
+  fi
   local req_dir="$repo_root/docs/requests"
 
   for dir in "$task_dir" "$req_dir"; do

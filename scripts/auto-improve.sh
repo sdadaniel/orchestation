@@ -205,9 +205,11 @@ while true; do
   check_stop_flag
 
   # ── Step 0: Run orchestrate for already-pending TASK files ──
-  PENDING_TASK_COUNT=$(find "$PROJECT_ROOT/docs/task" -name "TASK-*.md" -exec grep -l "^status: pending" {} \; 2>/dev/null | wc -l | tr -d ' ')
+  local _task_search_dir="$PROJECT_ROOT/docs/task"
+  [ -d "$PROJECT_ROOT/.orchestration/tasks" ] && _task_search_dir="$PROJECT_ROOT/.orchestration/tasks"
+  PENDING_TASK_COUNT=$(find "$_task_search_dir" -name "TASK-*.md" -exec grep -l "^status: pending" {} \; 2>/dev/null | wc -l | tr -d ' ')
   if [[ "$PENDING_TASK_COUNT" -gt 0 ]] && [[ -x "$ORCHESTRATE" ]]; then
-    log "Found $PENDING_TASK_COUNT pending task(s) in docs/task/ — running orchestrate..."
+    log "Found $PENDING_TASK_COUNT pending task(s) — running orchestrate..."
     ORCHESTRATE_EXIT=0
     ORCHESTRATE_OUTPUT=$(bash "$ORCHESTRATE" 2>&1) || ORCHESTRATE_EXIT=$?
     while IFS= read -r line; do

@@ -5,7 +5,7 @@ import matter from "gray-matter";
 
 export const dynamic = "force-dynamic";
 
-const TASKS_DIR = path.resolve(process.cwd(), "../../docs/task");
+const TASKS_DIR = (() => { const p = path.resolve(process.cwd(), "..", ".."); const o = path.join(p, ".orchestration", "tasks"); return require("fs").existsSync(o) ? o : path.join(p, "docs", "task"); })();
 
 const TASK_ID_PATTERN = /^TASK-\d{3}$/;
 

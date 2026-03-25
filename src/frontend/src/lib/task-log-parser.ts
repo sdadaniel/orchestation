@@ -26,7 +26,9 @@ export function isValidTaskId(id: string): boolean {
  * Check if a task exists in docs/task/ directory
  */
 export function taskExists(taskId: string): boolean {
-  const tasksDir = path.join(process.cwd(), "../../docs/task");
+  const projectRoot = path.resolve(process.cwd(), "..", "..");
+  const orchDir = path.join(projectRoot, ".orchestration", "tasks");
+  const tasksDir = fs.existsSync(orchDir) ? orchDir : path.join(projectRoot, "docs", "task");
   if (!fs.existsSync(tasksDir)) return false;
   const files = fs.readdirSync(tasksDir).filter((f) => f.endsWith(".md"));
   return files.some((f) => f.startsWith(taskId));

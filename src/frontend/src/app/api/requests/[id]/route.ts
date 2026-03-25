@@ -5,7 +5,7 @@ import { findRequestFile, parseRequestFile, parseAllRequests, getRequestsDir } f
 
 export const dynamic = "force-dynamic";
 
-const OUTPUT_DIR = path.join(process.cwd(), "../../output");
+const OUTPUT_DIR = (() => { const p = path.resolve(process.cwd(), "..", ".."); const o = path.join(p, ".orchestration", "output"); return require("fs").existsSync(o) ? o : path.join(p, "output"); })();
 
 export async function GET(
   _request: Request,

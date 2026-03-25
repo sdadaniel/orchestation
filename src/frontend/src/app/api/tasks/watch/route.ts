@@ -4,7 +4,7 @@ import path from "path";
 
 export const dynamic = "force-dynamic";
 
-const TASKS_DIR = path.join(process.cwd(), "../../docs/task");
+const TASKS_DIR = (() => { const p = path.resolve(process.cwd(), "..", ".."); const o = path.join(p, ".orchestration", "tasks"); return require("fs").existsSync(o) ? o : path.join(p, "docs", "task"); })();
 
 /** SSE endpoint — task 파일 변경 시 즉시 알림 */
 export async function GET() {

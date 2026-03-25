@@ -6,7 +6,11 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
-TASK_DIR="$REPO_ROOT/docs/task"
+if [ -d "$REPO_ROOT/.orchestration/tasks" ]; then
+  TASK_DIR="$REPO_ROOT/.orchestration/tasks"
+else
+  TASK_DIR="$REPO_ROOT/docs/task"
+fi
 RUN_WORKER="$REPO_ROOT/scripts/run-worker.sh"
 MAX_PARALLEL="${MAX_PARALLEL:-3}"
 PIDS=()

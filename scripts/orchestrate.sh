@@ -9,7 +9,12 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$REPO_ROOT/scripts/lib/common.sh"
 source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
 source "$REPO_ROOT/scripts/lib/merge-resolver.sh"
-TASK_DIR="$REPO_ROOT/docs/task"
+# .orchestration/tasks를 우선, 없으면 docs/task fallback
+if [ -d "$REPO_ROOT/.orchestration/tasks" ]; then
+  TASK_DIR="$REPO_ROOT/.orchestration/tasks"
+else
+  TASK_DIR="$REPO_ROOT/docs/task"
+fi
 REQ_DIR="$REPO_ROOT/docs/requests"
 MAX_REVIEW_RETRY="${MAX_REVIEW_RETRY:-2}"
 MAX_PARALLEL="${MAX_PARALLEL:-3}"

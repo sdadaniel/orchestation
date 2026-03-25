@@ -5,7 +5,11 @@ set -euo pipefail
 # status: done인 태스크를 docs/task/archive/로 이동
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TASK_DIR="$REPO_ROOT/docs/task"
+if [ -d "$REPO_ROOT/.orchestration/tasks" ]; then
+  TASK_DIR="$REPO_ROOT/.orchestration/tasks"
+else
+  TASK_DIR="$REPO_ROOT/docs/task"
+fi
 ARCHIVE_DIR="$TASK_DIR/archive"
 
 mkdir -p "$ARCHIVE_DIR"

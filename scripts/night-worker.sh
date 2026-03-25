@@ -15,8 +15,16 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
 source "$REPO_ROOT/scripts/lib/merge-resolver.sh"
 
-TASK_DIR="$REPO_ROOT/docs/task"
-LOG_DIR="$REPO_ROOT/output/logs"
+if [ -d "$REPO_ROOT/.orchestration/tasks" ]; then
+  TASK_DIR="$REPO_ROOT/.orchestration/tasks"
+else
+  TASK_DIR="$REPO_ROOT/docs/task"
+fi
+if [ -d "$REPO_ROOT/.orchestration/output/logs" ]; then
+  LOG_DIR="$REPO_ROOT/.orchestration/output/logs"
+else
+  LOG_DIR="$REPO_ROOT/output/logs"
+fi
 mkdir -p "$LOG_DIR"
 
 NOTICE_API="http://localhost:3000/api/notices"

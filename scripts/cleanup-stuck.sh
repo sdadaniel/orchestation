@@ -17,9 +17,21 @@ if [[ "${1:-}" == "--dry-run" ]]; then
   echo ""
 fi
 
-TASK_DIR="$REPO_ROOT/docs/task"
-LOG_DIR="$REPO_ROOT/output/logs"
-OUTPUT_DIR="$REPO_ROOT/output"
+if [ -d "$REPO_ROOT/.orchestration/tasks" ]; then
+  TASK_DIR="$REPO_ROOT/.orchestration/tasks"
+else
+  TASK_DIR="$REPO_ROOT/docs/task"
+fi
+if [ -d "$REPO_ROOT/.orchestration/output/logs" ]; then
+  LOG_DIR="$REPO_ROOT/.orchestration/output/logs"
+else
+  LOG_DIR="$REPO_ROOT/output/logs"
+fi
+if [ -d "$REPO_ROOT/.orchestration/output" ]; then
+  OUTPUT_DIR="$REPO_ROOT/.orchestration/output"
+else
+  OUTPUT_DIR="$REPO_ROOT/output"
+fi
 
 get_field() {
   awk -v key="$2" '

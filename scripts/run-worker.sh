@@ -32,9 +32,17 @@ _worker_exit_code=0
 _worker_signal_sent=false
 trap '_worker_exit_code=$?; if [ "$_worker_exit_code" -ne 0 ] && [ -n "$SIGNAL_DIR" ] && [ "$_worker_signal_sent" = false ]; then signal_create "$SIGNAL_DIR" "$TASK_ID" "failed"; fi' EXIT
 
-TASK_DIR="$REPO_ROOT/docs/task"
+if [ -d "$REPO_ROOT/.orchestration/tasks" ]; then
+  TASK_DIR="$REPO_ROOT/.orchestration/tasks"
+else
+  TASK_DIR="$REPO_ROOT/docs/task"
+fi
 REQ_DIR="$REPO_ROOT/docs/requests"
-OUTPUT_DIR="$REPO_ROOT/output"
+if [ -d "$REPO_ROOT/.orchestration/output" ]; then
+  OUTPUT_DIR="$REPO_ROOT/.orchestration/output"
+else
+  OUTPUT_DIR="$REPO_ROOT/output"
+fi
 TOKEN_LOG="$OUTPUT_DIR/token-usage.log"
 
 mkdir -p "$OUTPUT_DIR"
