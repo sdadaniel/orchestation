@@ -1,7 +1,7 @@
 ---
 id: TASK-144
 title: "Settings 페이지에 Claude API Key 입력 기능 추가"
-status: in_progress
+status: done
 branch: task/task-144
 worktree: ../repo-wt-task-144
 priority: high
