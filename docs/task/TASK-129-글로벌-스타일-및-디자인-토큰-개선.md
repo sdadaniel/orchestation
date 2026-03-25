@@ -1,7 +1,7 @@
 ---
 id: TASK-129
 title: 글로벌 스타일 및 디자인 토큰 개선
-status: in_progress
+status: failed
 branch: task/task-129
 worktree: ../repo-wt-task-129
 priority: high
