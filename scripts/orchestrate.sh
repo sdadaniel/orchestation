@@ -134,6 +134,53 @@ get_worktree() {
   echo "$REPO_ROOT/$rel"
 }
 
+# 실행 중인 태스크와 scope가 겹치는지 체크
+# 겹치면 1(false), 안 겹치면 0(true) 반환
+scope_not_conflicting() {
+  local task_id="$1"
+  local tf
+  tf=$(find_file "$task_id")
+  [ -z "$tf" ] && return 0
+
+  local new_scope
+  new_scope=$(get_list "$tf" "scope")
+  # scope가 없으면 충돌 없음
+  [ -z "$new_scope" ] && return 0
+
+  for running_id in "${RUNNING[@]+"${RUNNING[@]}"}"; do
+    [ -z "$running_id" ] && continue
+    local rtf
+    rtf=$(find_file "$running_id")
+    [ -z "$rtf" ] && continue
+
+    local running_scope
+    running_scope=$(get_list "$rtf" "scope")
+    [ -z "$running_scope" ] && continue
+
+    # scope 패턴 겹침 체크
+    while IFS= read -r ns; do
+      [ -z "$ns" ] && continue
+      while IFS= read -r rs; do
+        [ -z "$rs" ] && continue
+        # 정확히 같거나, 한쪽이 다른 쪽의 상위 경로이면 충돌
+        if [ "$ns" = "$rs" ]; then
+          echo "  ⚠️  ${task_id}: scope 충돌 (${ns}) ← ${running_id} 실행 중"
+          return 1
+        fi
+        # glob 패턴: src/frontend/** vs src/frontend/src/app/** → 겹침
+        # 간단히: 한쪽이 다른쪽으로 시작하면 충돌
+        local ns_base="${ns%%/\*\*}"
+        local rs_base="${rs%%/\*\*}"
+        if [[ "$ns_base" == "$rs_base"* ]] || [[ "$rs_base" == "$ns_base"* ]]; then
+          echo "  ⚠️  ${task_id}: scope 충돌 (${ns} ↔ ${rs}) ← ${running_id} 실행 중"
+          return 1
+        fi
+      done <<< "$running_scope"
+    done <<< "$new_scope"
+  done
+  return 0
+}
+
 deps_satisfied() {
   local task_id="$1"
   local deps
@@ -399,6 +446,11 @@ while true; do
       fi
     done
     if $already_running; then continue; fi
+
+    # scope 겹침 체크: 실행 중인 태스크와 scope가 겹치면 스킵
+    if ! scope_not_conflicting "$next_task"; then
+      continue
+    fi
 
     start_task "$next_task"
     RUNNING+=("$next_task")
