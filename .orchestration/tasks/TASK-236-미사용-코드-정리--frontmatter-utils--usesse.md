@@ -1,7 +1,7 @@
 ---
 id: TASK-236
 title: 미사용 코드 정리 (frontmatter-utils, useSSEWatch, userIdx)
-status: in_progress
+status: failed
 branch: task/task-236
 worktree: ../repo-wt-task-236
 priority: medium
