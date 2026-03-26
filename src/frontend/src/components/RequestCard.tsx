@@ -53,23 +53,27 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
     }
   }, [expanded, aiResult, aiResultLoading, req.id]);
 
-  // Lazy-load execution log + review when switching tabs
+  // Lazy-load execution log + review when switching tabs (single fetch for both)
   useEffect(() => {
-    if (cardTab === "logs" && execLog === null && !execLogLoading) {
-      setExecLogLoading(true);
+    const needsLog = cardTab === "logs" && execLog === null && !execLogLoading;
+    const needsReview = cardTab === "review" && reviewResult === null && !reviewLoading;
+    if (needsLog || needsReview) {
+      if (needsLog) setExecLogLoading(true);
+      if (needsReview) setReviewLoading(true);
       fetch(`/api/requests/${req.id}`)
         .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
-        .then((data) => setExecLog(data.executionLog ?? null))
-        .catch(() => setExecLog(null))
-        .finally(() => setExecLogLoading(false));
-    }
-    if (cardTab === "review" && reviewResult === null && !reviewLoading) {
-      setReviewLoading(true);
-      fetch(`/api/requests/${req.id}`)
-        .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
-        .then((data) => setReviewResult(data.reviewResult ?? null))
-        .catch(() => setReviewResult(null))
-        .finally(() => setReviewLoading(false));
+        .then((data) => {
+          setExecLog(data.executionLog ?? null);
+          setReviewResult(data.reviewResult ?? null);
+        })
+        .catch(() => {
+          setExecLog(null);
+          setReviewResult(null);
+        })
+        .finally(() => {
+          setExecLogLoading(false);
+          setReviewLoading(false);
+        });
     }
   }, [cardTab, execLog, execLogLoading, reviewResult, reviewLoading, req.id]);
 
