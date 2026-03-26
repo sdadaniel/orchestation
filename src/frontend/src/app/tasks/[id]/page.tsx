@@ -20,6 +20,19 @@ interface DepRef {
   status: string;
 }
 
+interface ExecutionLog {
+  subtype?: string;
+  num_turns?: number;
+  duration_ms?: number;
+  total_cost_usd?: number;
+  result?: string;
+}
+
+interface ReviewResult {
+  subtype?: string;
+  result?: string;
+}
+
 interface TaskDetail {
   id: string;
   title: string;
@@ -29,10 +42,8 @@ interface TaskDetail {
   content: string;
   depends_on_detail: DepRef[];
   depended_by: DepRef[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  executionLog: Record<string, any> | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  reviewResult: Record<string, any> | null;
+  executionLog: ExecutionLog | null;
+  reviewResult: ReviewResult | null;
   costEntries: CostEntry[];
   scope: string[];
   branch: string;
