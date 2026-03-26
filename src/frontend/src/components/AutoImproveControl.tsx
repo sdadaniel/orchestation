@@ -6,6 +6,11 @@ import { Play, Square, Loader2 } from "lucide-react";
 import { HorseRunningIndicator } from "@/components/HorseRunningIndicator";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 
+// API response type definitions
+interface OrchestrationActionResponse {
+  error?: string;
+}
+
 export default function AutoImproveControl({
   hasRunningTasks = false,
 }: {
@@ -40,7 +45,7 @@ export default function AutoImproveControl({
     setError(null);
     try {
       const res = await fetch("/api/orchestrate/run", { method: "POST" });
-      const data = await res.json();
+      const data: OrchestrationActionResponse = await res.json();
       if (!res.ok) {
         setError(data.error || "Failed to start");
       }
@@ -57,7 +62,7 @@ export default function AutoImproveControl({
     setIsStopping(true);
     try {
       const res = await fetch("/api/orchestrate/stop", { method: "POST" });
-      const data = await res.json();
+      const data: OrchestrationActionResponse = await res.json();
       if (!res.ok) {
         setError(data.error || "Failed to stop");
         setIsStopping(false);
