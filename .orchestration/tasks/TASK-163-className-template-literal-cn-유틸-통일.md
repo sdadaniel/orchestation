@@ -1,7 +1,7 @@
 ---
 id: TASK-163
 title: className 템플릿 리터럴을 cn() 유틸로 통일
-status: in_progress
+status: done
 branch: task/task-163
 worktree: ../repo-wt-task-163
 priority: medium
