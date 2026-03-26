@@ -461,11 +461,17 @@ process_signals_for_task() {
     return 3  # RUNNING에서 제거
   fi
 
-  # 2) task-done → review 시작
+  # 2) task-done → review 시작 (hard limit 체크)
   if [ -f "${SIGNAL_DIR}/${task_id}-task-done" ]; then
+    rm -f "/tmp/worker-${task_id}.pid"
+    local claude_count
+    claude_count=$(count_claude_procs)
+    if [ "$claude_count" -ge "$MAX_CLAUDE_PROCS" ]; then
+      echo "  ⏸️ ${task_id} task 완료, review 대기 (claude ${claude_count}/${MAX_CLAUDE_PROCS})"
+      return 2  # signal 파일은 남겨둠 → 다음 루프에서 재시도
+    fi
     echo "  ✅ ${task_id} task 완료 → review 시작"
     rm -f "${SIGNAL_DIR}/${task_id}-task-done"
-    rm -f "/tmp/worker-${task_id}.pid"
     start_review "$task_id"
     return 2  # 아직 진행 중 (review 대기)
   fi
@@ -488,13 +494,19 @@ process_signals_for_task() {
     return $?
   fi
 
-  # 5) review-rejected → retry 또는 failed
+  # 5) review-rejected → retry 또는 failed (hard limit 체크)
   if [ -f "${SIGNAL_DIR}/${task_id}-review-rejected" ]; then
-    rm -f "${SIGNAL_DIR}/${task_id}-review-rejected"
     rm -f "/tmp/worker-${task_id}.pid"
     local rc
     rc=$(get_retry_count "$task_id")
     if [ "$rc" -lt "$MAX_REVIEW_RETRY" ]; then
+      local claude_count
+      claude_count=$(count_claude_procs)
+      if [ "$claude_count" -ge "$MAX_CLAUDE_PROCS" ]; then
+        echo "  ⏸️ ${task_id} retry 대기 (claude ${claude_count}/${MAX_CLAUDE_PROCS})"
+        return 2  # signal 파일은 남겨둠 → 다음 루프에서 재시도
+      fi
+      rm -f "${SIGNAL_DIR}/${task_id}-review-rejected"
       increment_retry "$task_id"
       echo "  🔄 ${task_id} review 수정요청 → retry ($((rc + 1))/${MAX_REVIEW_RETRY})"
       local output_dir
