@@ -200,7 +200,7 @@ export const useTasksStore = create<TasksState>()(
         // Persist to server; rollback on failure
         try {
           const res = await fetch(`/api/requests/${id}/reorder`, {
-            method: "POST",
+            method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ direction }),
           });

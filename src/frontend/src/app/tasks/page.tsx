@@ -100,14 +100,16 @@ function TasksPageInner() {
 
   const sorted = useMemo(() => {
     const items = [...filtered];
+    // sort_order as tiebreaker (ascending) so reorder is reflected immediately
+    const byOrder = (a: RequestItem, b: RequestItem) => (a.sort_order ?? 0) - (b.sort_order ?? 0);
     switch (sortKey) {
       case "newest":
-        return items.sort((a, b) => (b.updated || b.created).localeCompare(a.updated || a.created));
+        return items.sort((a, b) => (b.updated || b.created).localeCompare(a.updated || a.created) || byOrder(a, b));
       case "oldest":
-        return items.sort((a, b) => (a.updated || a.created).localeCompare(b.updated || b.created));
+        return items.sort((a, b) => (a.updated || a.created).localeCompare(b.updated || b.created) || byOrder(a, b));
       case "priority": {
         const w = (p: string) => p === "high" ? 0 : p === "medium" ? 1 : p === "low" ? 2 : 3;
-        return items.sort((a, b) => w(a.priority) - w(b.priority) || (b.updated || b.created).localeCompare(a.updated || a.created));
+        return items.sort((a, b) => w(a.priority) - w(b.priority) || byOrder(a, b));
       }
       case "id":
         return items.sort((a, b) => a.id.localeCompare(b.id));
