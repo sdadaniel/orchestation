@@ -1,7 +1,7 @@
 ---
 id: TASK-219
 title: fix-noUncheckedIndexedAccess-notices-route
-status: in_progress
+status: done
 branch: task/task-219
 worktree: ../repo-wt-task-219
 priority: medium
