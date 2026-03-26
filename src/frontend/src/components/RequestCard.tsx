@@ -70,16 +70,35 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
     { key: "review", label: "리뷰 결과", icon: ClipboardCheck },
   ];
 
+  const statusAccent = {
+    in_progress: "#3b82f6",
+    reviewing: "#f97316",
+    done: "#22c55e",
+    rejected: "#ef4444",
+    stopped: "#8b5cf6",
+  } as Record<string, string>;
+
   return (
-    <div className="board-card">
+    <div
+      className="board-card"
+      style={statusAccent[req.status] ? { borderLeftWidth: "2px", borderLeftColor: statusAccent[req.status] } : undefined}
+    >
       <div className="flex items-center gap-2 h-10 cursor-pointer" onClick={() => setExpanded(!expanded)}>
         {expanded ? <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
-        {req.status === "in_progress" ? <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" /> : <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[req.status])} />}
-        <Link href={`/tasks/${req.id}`} onClick={(e) => e.stopPropagation()} className="font-mono text-[11px] text-muted-foreground shrink-0 hover:text-primary hover:underline transition-colors">{req.id}</Link>
-        <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0", PRIORITY_COLORS[req.priority])}>{req.priority}</span>
-        <span className="text-sm flex-1 truncate text-left">{req.title}</span>
-        {req.status === "in_progress" && <button type="button" title="Stop" onClick={(e) => { e.stopPropagation(); onUpdate(req.id, { status: "pending" }); }} className="shrink-0 p-1 rounded hover:bg-red-500/15 text-muted-foreground hover:text-red-400 transition-colors"><Square className="h-3 w-3" /></button>}
-        <span className="text-[10px] text-muted-foreground shrink-0">{req.updated || req.created}</span>
+        {req.status === "in_progress" ? (
+          <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[req.status])} />
+        )}
+        <Link href={`/tasks/${req.id}`} onClick={(e) => e.stopPropagation()} className="font-mono text-[10px] text-muted-foreground/70 shrink-0 hover:text-primary hover:underline transition-colors">{req.id}</Link>
+        <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0 leading-none", PRIORITY_COLORS[req.priority])}>{req.priority}</span>
+        <span className={cn("text-[13px] flex-1 truncate text-left leading-snug", req.status === "done" || req.status === "rejected" ? "text-muted-foreground" : "font-medium")}>{req.title}</span>
+        {req.status === "in_progress" && (
+          <button type="button" title="Stop" onClick={(e) => { e.stopPropagation(); onUpdate(req.id, { status: "pending" }); }} className="shrink-0 p-1 rounded hover:bg-red-500/15 text-muted-foreground hover:text-red-400 transition-colors">
+            <Square className="h-3 w-3" />
+          </button>
+        )}
+        <span className="text-[10px] text-muted-foreground/60 shrink-0 tabular-nums">{(req.updated || req.created).slice(0, 10)}</span>
         {onReorder && (
           <div className="flex flex-col shrink-0" onClick={(e) => e.stopPropagation()}>
             <button type="button" disabled={isFirst} onClick={() => onReorder(req.id, "up")} className={cn("p-0.5 rounded transition-colors", isFirst ? "text-muted-foreground/30 cursor-default" : "text-muted-foreground hover:text-foreground hover:bg-muted")}><ChevronUp className="h-3 w-3" /></button>
@@ -88,19 +107,19 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
         )}
       </div>
       {expanded && (
-        <div className="mt-2 pt-2 border-t border-border px-3 pb-2">
+        <div className="mt-2 pt-2 border-t border-border/60 px-1 pb-1">
           {/* Tabs */}
-          <div className="flex items-center gap-1 mb-2 border-b border-border">
+          <div className="flex items-center gap-0.5 mb-2 border-b border-border/60">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
                 type="button"
                 onClick={() => setCardTab(tab.key)}
                 className={cn(
-                  "flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border-b-2 -mb-px transition-colors",
+                  "flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium border-b-2 -mb-px transition-colors rounded-t",
                   cardTab === tab.key
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50",
                 )}
               >
                 <tab.icon className="h-3 w-3" />
@@ -111,7 +130,7 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
 
           {/* Content Tab */}
           {cardTab === "content" && (
-            <div style={{ height: 200, scrollbarWidth: "none" }} className="overflow-y-auto">
+            <div style={{ maxHeight: 260, scrollbarWidth: "none" }} className="overflow-y-auto px-1">
               {editing ? (
                 <div className="space-y-2">
                   <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full bg-muted border border-border rounded px-2 py-1 text-sm outline-none focus:border-primary" />
@@ -138,7 +157,7 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
 
           {/* Scope Tab */}
           {cardTab === "scope" && (
-            <div style={{ height: 200, scrollbarWidth: "none" }} className="overflow-y-auto">
+            <div style={{ maxHeight: 260, scrollbarWidth: "none" }} className="overflow-y-auto px-1">
               {req.scope?.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {req.scope.map((s, i) => (
@@ -153,14 +172,14 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
 
           {/* AI Result Tab */}
           {cardTab === "ai-result" && (
-            <div style={{ height: 200, scrollbarWidth: "none" }} className="overflow-y-auto">
+            <div style={{ maxHeight: 260, scrollbarWidth: "none" }} className="overflow-y-auto px-1">
               {aiResultLoading ? <p className="text-xs text-muted-foreground">Loading...</p> : aiResult ? <MarkdownContent>{aiResult}</MarkdownContent> : <p className="text-xs text-muted-foreground">아직 AI 결과가 없습니다.</p>}
             </div>
           )}
 
           {/* Logs Tab */}
           {cardTab === "logs" && (
-            <div style={{ height: 200, scrollbarWidth: "none" }} className="overflow-y-auto">
+            <div style={{ maxHeight: 260, scrollbarWidth: "none" }} className="overflow-y-auto px-1">
               {execLogLoading ? (
                 <p className="text-xs text-muted-foreground">Loading...</p>
               ) : execLog ? (
@@ -205,7 +224,7 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
 
           {/* Review Tab */}
           {cardTab === "review" && (
-            <div style={{ height: 200, scrollbarWidth: "none" }} className="overflow-y-auto">
+            <div style={{ maxHeight: 260, scrollbarWidth: "none" }} className="overflow-y-auto px-1">
               {reviewLoading ? (
                 <p className="text-xs text-muted-foreground">Loading...</p>
               ) : reviewResult ? (

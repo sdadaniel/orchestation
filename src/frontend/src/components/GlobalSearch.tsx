@@ -218,32 +218,70 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
         <>
           <div className="search-backdrop" onClick={() => setIsOpen(false)} />
           <div className="search-dropdown" ref={listRef}>
-            {results.slice(0, 20).map((item, idx) => (
-              <button
-                key={`${item.type}-${item.id}`}
-                className={`search-item ${idx === activeIndex ? "search-item-active" : ""}`}
-                onMouseEnter={() => setActiveIndex(idx)}
-                onClick={() => navigate(item)}
-              >
-                <span className="search-item-icon">
-                  {item.type === "task" ? (
-                    <ListTodoIcon className="h-3.5 w-3.5" />
-                  ) : (
-                    <FileTextIcon className="h-3.5 w-3.5" />
+            {(() => {
+              const sliced = results.slice(0, 20);
+              const taskItems = sliced.filter((i) => i.type === "task");
+              const docItems = sliced.filter((i) => i.type === "doc");
+              const hasBoth = taskItems.length > 0 && docItems.length > 0;
+              let globalIdx = 0;
+
+              return (
+                <>
+                  {taskItems.length > 0 && (
+                    <>
+                      {hasBoth && <div className="search-group-label">Tasks</div>}
+                      {taskItems.map((item) => {
+                        const idx = sliced.indexOf(item);
+                        const iidx = globalIdx++;
+                        void iidx;
+                        return (
+                          <button
+                            key={`task-${item.id}`}
+                            className={`search-item ${idx === activeIndex ? "search-item-active" : ""}`}
+                            onMouseEnter={() => setActiveIndex(idx)}
+                            onClick={() => navigate(item)}
+                          >
+                            <span className="search-item-icon">
+                              <ListTodoIcon className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="search-item-id font-mono">{item.displayId}</span>
+                            <span className="search-item-title">{item.title}</span>
+                            {item.status && (
+                              <span className={`search-item-status ${statusColors[item.status] || ""}`}>
+                                {statusLabel[item.status] || item.status}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </>
                   )}
-                </span>
-                <span className="search-item-id font-mono">{item.displayId}</span>
-                <span className="search-item-title">{item.title}</span>
-                {item.status && (
-                  <span className={`search-item-status ${statusColors[item.status] || ""}`}>
-                    {statusLabel[item.status] || item.status}
-                  </span>
-                )}
-                <span className="search-item-type">
-                  {item.type === "task" ? "Task" : "Doc"}
-                </span>
-              </button>
-            ))}
+                  {docItems.length > 0 && (
+                    <>
+                      {hasBoth && <div className="search-group-label">Docs</div>}
+                      {docItems.map((item) => {
+                        const idx = sliced.indexOf(item);
+                        return (
+                          <button
+                            key={`doc-${item.id}`}
+                            className={`search-item ${idx === activeIndex ? "search-item-active" : ""}`}
+                            onMouseEnter={() => setActiveIndex(idx)}
+                            onClick={() => navigate(item)}
+                          >
+                            <span className="search-item-icon">
+                              <FileTextIcon className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="search-item-id font-mono">{item.displayId}</span>
+                            <span className="search-item-title">{item.title}</span>
+                            <span className="search-item-type">Doc</span>
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                </>
+              );
+            })()}
             {results.length > 20 && (
               <div className="search-more">+{results.length - 20}개 더 있음</div>
             )}
