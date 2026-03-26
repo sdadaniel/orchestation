@@ -1,7 +1,9 @@
 ---
 id: TASK-241
 title: orchestration-manager.ts PID 읽기·프로세스 킬 중복 코드 및 silent catch 정리
-status: pending
+status: in_progress
+branch: task/task-241
+worktree: ../repo-wt-task-241
 priority: medium
 mode: night
 created: 2026-03-26
