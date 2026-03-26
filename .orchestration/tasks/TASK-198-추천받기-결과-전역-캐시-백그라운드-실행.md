@@ -1,7 +1,7 @@
 ---
 id: TASK-198
 title: 추천받기 결과 전역 캐시 + 백그라운드 실행
-status: in_progress
+status: done
 branch: task/task-198
 worktree: ../repo-wt-task-198
 priority: high
