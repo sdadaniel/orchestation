@@ -1,7 +1,7 @@
 ---
 id: TASK-197
 title: Notice 렌더링 개선 — 줄바꿈, 마크다운, 내용 풍부화
-status: in_progress
+status: done
 branch: task/task-197
 worktree: ../repo-wt-task-197
 priority: high
