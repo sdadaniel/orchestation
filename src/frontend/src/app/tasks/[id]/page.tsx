@@ -206,7 +206,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
     if (activeTab === "ai-result" && aiResult === null && !aiResultLoading) {
       setAiResultLoading(true);
       fetch(`/api/tasks/${id}/result`)
-        .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
         .then((data) => setAiResult(data.result ?? ""))
         .catch(() => setAiResult(""))
         .finally(() => setAiResultLoading(false));

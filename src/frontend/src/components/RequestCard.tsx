@@ -61,7 +61,7 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
       if (needsLog) setExecLogLoading(true);
       if (needsReview) setReviewLoading(true);
       fetch(`/api/requests/${req.id}`)
-        .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
         .then((data) => {
           setExecLog(data.executionLog ?? null);
           setReviewResult(data.reviewResult ?? null);
