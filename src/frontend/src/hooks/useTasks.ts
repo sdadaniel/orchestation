@@ -6,6 +6,7 @@ import type { SprintResponse } from "@/lib/waterfall";
 import { buildWaterfallGroups } from "@/lib/waterfall";
 import type { WaterfallGroup } from "@/types/waterfall";
 import { queryKeys } from "@/lib/query-keys";
+import { useSSEWatch } from "@/hooks/useSSEWatch";
 
 type UseTasksResult = {
   groups: WaterfallGroup[];
@@ -39,10 +40,14 @@ export function useTasks(): UseTasksResult {
     staleTime: 5_000,
   });
 
+  const refetch = () => queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+
+  useSSEWatch("/api/tasks/watch", refetch);
+
   return {
     groups,
     isLoading,
     error: error ? (error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.") : null,
-    refetch: () => queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all }),
+    refetch,
   };
 }

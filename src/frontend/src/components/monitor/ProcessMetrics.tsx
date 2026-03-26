@@ -48,6 +48,56 @@ function formatTime(secondsAgo: number) {
   return `-${s}s`;
 }
 
+interface BarChartConfig {
+  title: string;
+  unit: string;
+  dataKey: "cpu" | "mem";
+  yAxisWidth: number;
+  formatValue: (v: TooltipValueType | undefined) => string;
+}
+
+interface LineChartConfig {
+  title: string;
+  unit: string;
+  prefix: "cpu_" | "mem_";
+  yAxisWidth: number;
+  formatValue: (v: number) => string;
+}
+
+const barChartConfigs: BarChartConfig[] = [
+  {
+    title: "CPU per Terminal",
+    unit: "Percent",
+    dataKey: "cpu",
+    yAxisWidth: 30,
+    formatValue: (v) => `${v}%`,
+  },
+  {
+    title: "Memory per Terminal",
+    unit: "MB",
+    dataKey: "mem",
+    yAxisWidth: 35,
+    formatValue: (v) => `${v} MB`,
+  },
+];
+
+const lineChartConfigs: LineChartConfig[] = [
+  {
+    title: "CPU History",
+    unit: "Percent",
+    prefix: "cpu_",
+    yAxisWidth: 30,
+    formatValue: (v) => `${v.toFixed(1)}%`,
+  },
+  {
+    title: "Memory History",
+    unit: "MB",
+    prefix: "mem_",
+    yAxisWidth: 35,
+    formatValue: (v) => `${v.toFixed(0)} MB`,
+  },
+];
+
 export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
   const processes = current.claudeProcesses || [];
   const totalCpu = processes.reduce((s, p) => s + p.cpu, 0);
@@ -105,218 +155,118 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
 
       {/* 바 차트 */}
       <div className="grid grid-cols-2 gap-3">
-        {/* CPU per terminal */}
-        <div className="rounded border border-border bg-card overflow-hidden">
-          <div className="px-3 pt-2.5 pb-1">
-            <div className="text-xs font-medium text-foreground">
-              CPU per Terminal <span className="text-muted-foreground font-normal">(Percent)</span>
+        {barChartConfigs.map((cfg) => (
+          <div key={cfg.dataKey} className="rounded border border-border bg-card overflow-hidden">
+            <div className="px-3 pt-2.5 pb-1">
+              <div className="text-xs font-medium text-foreground">
+                {cfg.title} <span className="text-muted-foreground font-normal">({cfg.unit})</span>
+              </div>
+            </div>
+            <div style={{ height: 180 }} className="px-2 pb-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={barData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    tick={axisTickStyle}
+                    axisLine={{ stroke: "hsl(var(--border))" }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={axisTickStyle}
+                    axisLine={{ stroke: "hsl(var(--border))" }}
+                    tickLine={false}
+                    width={cfg.yAxisWidth}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipContentStyle}
+                    itemStyle={tooltipItemStyle}
+                    labelStyle={tooltipLabelStyle}
+                    cursor={{ fill: "rgba(255,255,255,0.05)" }}
+                    formatter={(value: TooltipValueType | undefined, _: number | string | undefined, item: TooltipPayloadEntry): [string, string] => [
+                      cfg.formatValue(value),
+                      String(item?.payload?.label ?? ""),
+                    ]}
+                  />
+                  <Bar dataKey={cfg.dataKey} radius={[3, 3, 0, 0]}>
+                    {barData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
-          <div style={{ height: 180 }} className="px-2 pb-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  tick={axisTickStyle}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={axisTickStyle}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
-                  tickLine={false}
-                  width={30}
-                />
-                <Tooltip
-                  contentStyle={tooltipContentStyle}
-                  itemStyle={tooltipItemStyle}
-                  labelStyle={tooltipLabelStyle}
-                  cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                  formatter={(value: TooltipValueType | undefined, _: number | string | undefined, item: TooltipPayloadEntry): [string, string] => [
-                    `${value}%`,
-                    String(item?.payload?.label ?? ""),
-                  ]}
-                />
-                <Bar dataKey="cpu" radius={[3, 3, 0, 0]}>
-                  {barData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Memory per terminal */}
-        <div className="rounded border border-border bg-card overflow-hidden">
-          <div className="px-3 pt-2.5 pb-1">
-            <div className="text-xs font-medium text-foreground">
-              Memory per Terminal <span className="text-muted-foreground font-normal">(MB)</span>
-            </div>
-          </div>
-          <div style={{ height: 180 }} className="px-2 pb-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  tick={axisTickStyle}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={axisTickStyle}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
-                  tickLine={false}
-                  width={35}
-                />
-                <Tooltip
-                  contentStyle={tooltipContentStyle}
-                  itemStyle={tooltipItemStyle}
-                  labelStyle={tooltipLabelStyle}
-                  cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                  formatter={(value: TooltipValueType | undefined, _: number | string | undefined, item: TooltipPayloadEntry): [string, string] => [
-                    `${value} MB`,
-                    String(item?.payload?.label ?? ""),
-                  ]}
-                />
-                <Bar dataKey="mem" radius={[3, 3, 0, 0]}>
-                  {barData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* 시계열 라인 차트 */}
       <div className="grid grid-cols-2 gap-3">
-        {/* CPU History */}
-        <div className="rounded border border-border bg-card overflow-hidden">
-          <div className="px-3 pt-2.5 pb-1">
-            <div className="text-xs font-medium text-foreground">
-              CPU History <span className="text-muted-foreground font-normal">(Percent)</span>
+        {lineChartConfigs.map((cfg) => (
+          <div key={cfg.prefix} className="rounded border border-border bg-card overflow-hidden">
+            <div className="px-3 pt-2.5 pb-1">
+              <div className="text-xs font-medium text-foreground">
+                {cfg.title} <span className="text-muted-foreground font-normal">({cfg.unit})</span>
+              </div>
+            </div>
+            <div style={{ height: 180 }} className="px-2 pb-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={timeSeriesData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                  <XAxis
+                    dataKey="timeLabel"
+                    tick={axisTickStyle}
+                    axisLine={{ stroke: "hsl(var(--border))" }}
+                    tickLine={false}
+                    interval={xAxisInterval}
+                  />
+                  <YAxis
+                    domain={[0, "auto"]}
+                    tick={axisTickStyle}
+                    axisLine={{ stroke: "hsl(var(--border))" }}
+                    tickLine={false}
+                    width={cfg.yAxisWidth}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipContentStyle}
+                    itemStyle={tooltipItemStyle}
+                    labelStyle={tooltipLabelStyle}
+                    formatter={(value: TooltipValueType | undefined, name: number | string | undefined): [string, string] => {
+                      const pid = String(name).replace(cfg.prefix, "");
+                      const idx = processes.findIndex((p) => String(p.pid) === pid);
+                      return [
+                        typeof value === "number" ? cfg.formatValue(value) : String(value),
+                        idx >= 0 ? `T${idx + 1} (PID ${pid})` : `PID ${pid}`,
+                      ];
+                    }}
+                    labelFormatter={(_, payload) => payload?.[0]?.payload?.timeLabel ?? ""}
+                  />
+                  <Legend
+                    formatter={(value: string | undefined, _entry: LegendPayload, _index: number): ReactNode => {
+                      const pid = String(value).replace(cfg.prefix, "");
+                      const idx = processes.findIndex((p) => String(p.pid) === pid);
+                      return idx >= 0 ? `T${idx + 1}` : value;
+                    }}
+                    wrapperStyle={{ fontSize: "10px", paddingTop: "2px" }}
+                    iconType="plainline"
+                    iconSize={12}
+                  />
+                  {processes.map((p, i) => (
+                    <Line
+                      key={p.pid}
+                      type="monotone"
+                      dataKey={`${cfg.prefix}${p.pid}`}
+                      stroke={COLORS[i % COLORS.length]}
+                      strokeWidth={1.5}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
-          <div style={{ height: 180 }} className="px-2 pb-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={timeSeriesData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
-                <XAxis
-                  dataKey="timeLabel"
-                  tick={axisTickStyle}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
-                  tickLine={false}
-                  interval={xAxisInterval}
-                />
-                <YAxis
-                  domain={[0, "auto"]}
-                  tick={axisTickStyle}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
-                  tickLine={false}
-                  width={30}
-                />
-                <Tooltip
-                  contentStyle={tooltipContentStyle}
-                  itemStyle={tooltipItemStyle}
-                  labelStyle={tooltipLabelStyle}
-                  formatter={(value: TooltipValueType | undefined, name: number | string | undefined): [string, string] => {
-                    const pid = String(name).replace("cpu_", "");
-                    const idx = processes.findIndex((p) => String(p.pid) === pid);
-                    return [`${typeof value === "number" ? value.toFixed(1) : value}%`, idx >= 0 ? `T${idx + 1} (PID ${pid})` : `PID ${pid}`];
-                  }}
-                  labelFormatter={(_, payload) => payload?.[0]?.payload?.timeLabel ?? ""}
-                />
-                <Legend
-                  formatter={(value: string | undefined, _entry: LegendPayload, _index: number): ReactNode => {
-                    const pid = String(value).replace("cpu_", "");
-                    const idx = processes.findIndex((p) => String(p.pid) === pid);
-                    return idx >= 0 ? `T${idx + 1}` : value;
-                  }}
-                  wrapperStyle={{ fontSize: "10px", paddingTop: "2px" }}
-                  iconType="plainline"
-                  iconSize={12}
-                />
-                {processes.map((p, i) => (
-                  <Line
-                    key={p.pid}
-                    type="monotone"
-                    dataKey={`cpu_${p.pid}`}
-                    stroke={COLORS[i % COLORS.length]}
-                    strokeWidth={1.5}
-                    dot={false}
-                    isAnimationActive={false}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Memory History */}
-        <div className="rounded border border-border bg-card overflow-hidden">
-          <div className="px-3 pt-2.5 pb-1">
-            <div className="text-xs font-medium text-foreground">
-              Memory History <span className="text-muted-foreground font-normal">(MB)</span>
-            </div>
-          </div>
-          <div style={{ height: 180 }} className="px-2 pb-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={timeSeriesData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
-                <XAxis
-                  dataKey="timeLabel"
-                  tick={axisTickStyle}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
-                  tickLine={false}
-                  interval={xAxisInterval}
-                />
-                <YAxis
-                  domain={[0, "auto"]}
-                  tick={axisTickStyle}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
-                  tickLine={false}
-                  width={35}
-                />
-                <Tooltip
-                  contentStyle={tooltipContentStyle}
-                  itemStyle={tooltipItemStyle}
-                  labelStyle={tooltipLabelStyle}
-                  formatter={(value: TooltipValueType | undefined, name: number | string | undefined): [string, string] => {
-                    const pid = String(name).replace("mem_", "");
-                    const idx = processes.findIndex((p) => String(p.pid) === pid);
-                    return [`${typeof value === "number" ? value.toFixed(0) : value} MB`, idx >= 0 ? `T${idx + 1} (PID ${pid})` : `PID ${pid}`];
-                  }}
-                  labelFormatter={(_, payload) => payload?.[0]?.payload?.timeLabel ?? ""}
-                />
-                <Legend
-                  formatter={(value: string | undefined, _entry: LegendPayload, _index: number): ReactNode => {
-                    const pid = String(value).replace("mem_", "");
-                    const idx = processes.findIndex((p) => String(p.pid) === pid);
-                    return idx >= 0 ? `T${idx + 1}` : value;
-                  }}
-                  wrapperStyle={{ fontSize: "10px", paddingTop: "2px" }}
-                  iconType="plainline"
-                  iconSize={12}
-                />
-                {processes.map((p, i) => (
-                  <Line
-                    key={p.pid}
-                    type="monotone"
-                    dataKey={`mem_${p.pid}`}
-                    stroke={COLORS[i % COLORS.length]}
-                    strokeWidth={1.5}
-                    dot={false}
-                    isAnimationActive={false}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* 프로세스 테이블 */}

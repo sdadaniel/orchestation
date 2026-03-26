@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import { useSSEWatch } from "@/hooks/useSSEWatch";
 
 export interface RequestItem {
   id: string;
@@ -141,6 +142,10 @@ export function useRequests() {
     },
   });
 
+  const refetch = () => queryClient.invalidateQueries({ queryKey: queryKeys.requests.all });
+
+  useSSEWatch("/api/tasks/watch", refetch);
+
   const pendingCount = requests.filter((r) => r.status === "pending").length;
 
   return {
@@ -155,6 +160,6 @@ export function useRequests() {
     deleteRequest: (id: string) => deleteMutation.mutateAsync(id),
     reorderRequest: (id: string, direction: "up" | "down") =>
       reorderMutation.mutateAsync({ id, direction }),
-    refetch: () => queryClient.invalidateQueries({ queryKey: queryKeys.requests.all }),
+    refetch,
   };
 }
