@@ -1,7 +1,9 @@
 ---
 id: TASK-180
 title: "settings.ts 미사용 디렉토리 헬퍼 함수 제거"
-status: pending
+status: in_progress
+branch: task/task-180
+worktree: ../repo-wt-task-180
 priority: medium
 mode: night
 created: 2026-03-25
