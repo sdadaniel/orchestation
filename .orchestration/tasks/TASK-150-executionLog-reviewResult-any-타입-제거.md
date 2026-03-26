@@ -1,7 +1,7 @@
 ---
 id: TASK-150
 title: "executionLog/reviewResult Record<string, any>를 구체 인터페이스로 교체"
-status: in_progress
+status: done
 branch: task/task-150
 worktree: ../repo-wt-task-150
 priority: medium
