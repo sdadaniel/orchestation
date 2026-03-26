@@ -201,15 +201,61 @@ getStatus() {
 
 ---
 
+---
+
+## 7. 서버 재시작 시 cleanupZombies가 실행 중인 워커를 좀비로 오판
+
+**증상**: 서버 재시작하면 실제로 돌고 있는 태스크가 stopped로 바뀜
+
+**원인**:
+- cleanupZombies()가 PID 파일로 워커 생존 확인
+- 서버 재시작 시 이전 orchestrate.sh가 만든 PID 파일이 남아있을 수도 있고 없을 수도 있음
+- PID 파일이 없으면 "워커 없음" → 좀비로 판정 → stopped
+- 하지만 실제로는 워커가 살아있을 수 있음 (PID 파일만 정리된 상태)
+
+**수정 방향**:
+- cleanupZombies()에서 PID 파일뿐 아니라 `pgrep -f "job-task.sh TASK-XXX"`로 실제 프로세스 확인
+- 프로세스가 살아있으면 좀비가 아님 → in_progress 유지
+
+---
+
+## 8. exit code 1로 실행 실패 반복
+
+**증상**: Run 누르면 즉시 "실행 실패 (exit code: 1)"
+
+**가능한 원인**:
+- git working tree가 dirty (uncommitted 변경)
+- orchestrate.sh의 `git commit --only`가 실패
+- `set -euo pipefail`로 인해 스크립트 전체 종료
+
+**수정 방향**:
+- `start_task()`의 git commit에 `|| true` 추가하여 dirty tree에서도 진행
+- 또는 commit 전에 working tree 상태 체크
+
+---
+
+## 9. Run 후 즉시 종료되는 문제 (exit code 0)
+
+**증상**: Run 누르면 시작했다가 즉시 종료 (exit code 0)
+
+**원인**:
+- lock 파일이 남아있으면 "이미 실행 중" → exit 0
+- stale lock 감지가 PID 파일 기반인데 PID 파일이 정리된 상태면 오판
+
+**현재 대응**: stale lock 감지 + 서버 시작 시 lock 정리 (구현됨)
+
+---
+
 ## 우선순위별 수정 순서
 
-| 순위 | 문제 | 의존 관계 | 난이도 |
-|------|------|----------|--------|
-| 1 | orchestrate.sh 중복 실행 방지 | 없음 (근본 원인) | 중간 |
-| 2 | orchestration-manager status 동기화 | 1번 선행 | 중간 |
-| 3 | Stop/Stopping 정상화 | 1, 2번 선행 | 낮음 |
-| 4 | 좀비 in_progress 주기적 정리 | 서버 시작 시 정리는 완료 | 낮음 |
-| 5 | Monitor/Running 카운트 정합성 | 4번 선행 | 낮음 |
-| 6 | MAX_PARALLEL 초과 (잔여) | 1번 선행 | 낮음 |
-
-**1번(중복 실행 방지)이 해결되면 2~6번은 대부분 자연스럽게 해결되거나 난이도가 크게 낮아짐.**
+| 순위 | 문제 | 상태 |
+|------|------|------|
+| 1 | orchestrate.sh 중복 실행 방지 | ✅ 수정됨 (run에서 pgrep 이중 체크) |
+| 2 | orchestration-manager status 동기화 | ✅ 수정됨 (getStatus에서 process 생존 확인) |
+| 3 | Stop 즉시 전체 종료 | ✅ 수정됨 (kill all + stopped + 정리) |
+| 4 | 좀비 in_progress 정리 | ✅ 수정됨 (서버 시작 시 + stop 시) |
+| 5 | Monitor/Running 카운트 정합성 | ✅ 좀비 제거로 해결 |
+| 6 | MAX_PARALLEL 초과 | ✅ review/retry hard limit 추가 |
+| 7 | 서버 재시작 시 워커 오판 | ❌ 미수정 — pgrep으로 실제 프로세스 확인 필요 |
+| 8 | dirty tree에서 git commit 실패 | ❌ 미수정 — commit에 || true 또는 사전 체크 필요 |
+| 9 | stale lock으로 Run 즉시 종료 | ⚠️ 부분 수정 — 서버 시작 시 정리는 됨 |
