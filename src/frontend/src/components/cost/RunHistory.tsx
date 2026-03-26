@@ -5,6 +5,8 @@ import type { RunHistoryEntry } from "@/hooks/useRunHistory";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Select } from "@/components/ui/select";
+import { useSortableTable } from "./useSortableTable";
+import { SortIcon } from "./SortIcon";
 
 interface RunHistoryProps {
   runs: RunHistoryEntry[];
@@ -40,21 +42,52 @@ function formatTimestamp(iso: string): string {
   }
 }
 
+type RunSortColumn = "time" | "status" | "tasks" | "duration" | "cost" | "details";
+
+const RUN_COMPARATORS: Record<RunSortColumn, (a: RunHistoryEntry, b: RunHistoryEntry) => number> = {
+  time: (a, b) => a.startedAt.localeCompare(b.startedAt),
+  status: (a, b) => a.status.localeCompare(b.status),
+  tasks: (a, b) => (a.tasksCompleted + a.tasksFailed) - (b.tasksCompleted + b.tasksFailed),
+  duration: (a, b) => a.totalDurationMs - b.totalDurationMs,
+  cost: (a, b) => a.totalCostUsd - b.totalCostUsd,
+  details: (a, b) => a.taskResults.length - b.taskResults.length,
+};
+
 export function RunHistory({ runs }: RunHistoryProps) {
+  const { sorted, sort, toggleSort } = useSortableTable<RunHistoryEntry, RunSortColumn>(
+    runs,
+    "time",
+    "desc",
+    RUN_COMPARATORS,
+  );
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(20);
 
   if (runs.length === 0) return null;
 
-  // Sort by most recent first
-  const sorted = [...runs].sort(
-    (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
-  );
-
   const totalItems = sorted.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const safePage = Math.min(page, totalPages);
   const paginatedItems = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  function renderSortableHeader(key: RunSortColumn, label: string, align?: "right") {
+    const isActive = sort.column === key;
+    return (
+      <th
+        key={key}
+        className={cn(
+          "font-medium cursor-pointer select-none hover:text-foreground transition-colors",
+          align === "right" && "text-right",
+          isActive && "text-foreground"
+        )}
+        onClick={() => { toggleSort(key); setPage(1); }}
+      >
+        {label}
+        <SortIcon active={isActive} direction={sort.direction} />
+      </th>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -62,12 +95,12 @@ export function RunHistory({ runs }: RunHistoryProps) {
         <table className="w-full text-xs compact-table">
           <thead>
             <tr className="border-b border-border text-left text-[10px] text-muted-foreground uppercase tracking-wider">
-              <th className="font-medium">Time</th>
-              <th className="font-medium">Result</th>
-              <th className="font-medium text-right">Tasks</th>
-              <th className="font-medium text-right">Duration</th>
-              <th className="font-medium text-right">Cost</th>
-              <th className="font-medium">Details</th>
+              {renderSortableHeader("time", "Time")}
+              {renderSortableHeader("status", "Result")}
+              {renderSortableHeader("tasks", "Tasks", "right")}
+              {renderSortableHeader("duration", "Duration", "right")}
+              {renderSortableHeader("cost", "Cost", "right")}
+              {renderSortableHeader("details", "Details")}
             </tr>
           </thead>
           <tbody>
