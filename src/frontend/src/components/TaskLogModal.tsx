@@ -23,7 +23,7 @@ export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
     try {
       const res = await fetch(`/api/orchestrate/logs?since=0`);
       if (!res.ok) throw new Error("로그를 불러올 수 없습니다.");
-      const data = await res.json();
+      const data = await res.json() as { logs?: string[] };
 
       if (!data.logs || !Array.isArray(data.logs)) {
         setLogs([]);
@@ -32,7 +32,7 @@ export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
 
       // Filter logs relevant to this task
       const taskId = task.id;
-      const filtered = (data.logs as string[]).filter((line: string) => {
+      const filtered = data.logs.filter((line: string) => {
         const lower = line.toLowerCase();
         const taskIdLower = taskId.toLowerCase();
         return (

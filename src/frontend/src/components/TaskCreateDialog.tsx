@@ -77,7 +77,7 @@ export function TaskCreateDialog({
       });
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json() as { error?: string };
         throw new Error(data.error || "Failed to create task");
       }
 
