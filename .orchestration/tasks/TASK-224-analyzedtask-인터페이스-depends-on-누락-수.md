@@ -1,7 +1,7 @@
 ---
 id: TASK-224
 title: AnalyzedTask-인터페이스-depends_on-누락-수정
-status: in_progress
+status: failed
 branch: task/task-224
 worktree: ../repo-wt-task-224
 priority: medium
