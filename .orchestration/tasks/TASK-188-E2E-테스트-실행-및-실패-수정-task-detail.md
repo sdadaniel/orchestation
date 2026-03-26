@@ -1,12 +1,12 @@
 ---
 id: TASK-188
 title: E2E 테스트 실행 및 실패 수정 — task-detail
-status: stopped
+status: failed
 branch: task/task-188
 worktree: ../repo-wt-task-188
 priority: medium
 created: 2026-03-26
-updated: 2026-03-26 08:48:38
+updated: 2026-03-26 08:52:17
 depends_on:
   - TASK-186
 scope:
