@@ -1,7 +1,7 @@
 ---
 id: TASK-165
 title: task-log-parser JSON.parse any 타입 제거
-status: in_progress
+status: done
 branch: task/task-165
 worktree: ../repo-wt-task-165
 priority: medium
