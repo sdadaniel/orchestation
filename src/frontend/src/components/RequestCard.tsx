@@ -8,6 +8,19 @@ import { type RequestItem } from "@/hooks/useRequests";
 import { PRIORITY_COLORS, STATUS_DOT } from "@/app/tasks/constants";
 import { MarkdownContent } from "@/components/MarkdownContent";
 
+interface ExecutionLog {
+  subtype?: string;
+  num_turns?: number;
+  duration_ms?: number;
+  total_cost_usd?: number;
+  result?: string;
+}
+
+interface ReviewResult {
+  subtype?: string;
+  result?: string;
+}
+
 type CardTab = "content" | "scope" | "ai-result" | "logs" | "review";
 
 export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, onReorder, isFirst, isLast }: {
@@ -25,11 +38,9 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
   const [editPriority, setEditPriority] = useState(req.priority);
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiResultLoading, setAiResultLoading] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [execLog, setExecLog] = useState<Record<string, any> | null>(null);
+  const [execLog, setExecLog] = useState<ExecutionLog | null>(null);
   const [execLogLoading, setExecLogLoading] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [reviewResult, setReviewResult] = useState<Record<string, any> | null>(null);
+  const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [cardTab, setCardTab] = useState<CardTab>("content");
   const isReadOnly = req.status === "done";
