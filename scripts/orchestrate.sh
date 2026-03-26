@@ -402,7 +402,9 @@ process_done_task() {
     task_title=$(get_field "$local_task_file" "title")
     post_notice "info" \
       "${task_id} 완료" \
-      "**${task_id}:** ${task_title}\n\n태스크가 성공적으로 완료되어 ${BASE_BRANCH}에 머지되었습니다."
+      "**${task_id}:** ${task_title}
+
+태스크가 성공적으로 완료되어 ${BASE_BRANCH}에 머지되었습니다."
 
     rm -f "${SIGNAL_DIR}/${task_id}-done"
     rm -f "/tmp/worker-${task_id}.pid"

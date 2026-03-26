@@ -33,9 +33,16 @@ $conflict_files"
   if [ -n "$remaining" ]; then
     # 해결 실패 → abort + Notice(error)
     git -C "$repo_root" merge --abort
+    local conflict_list
+    conflict_list=$(echo "$conflict_files" | sed 's/^/- /')
     post_notice "error" \
       "${task_id} 머지 충돌 자동 해결 실패" \
-      "**Branch:** \`${branch}\`\n\n**충돌 파일:**\n$(echo "$conflict_files" | sed 's/^/- /')\n\nClaude가 자동 해결에 실패했습니다. 수동 확인이 필요합니다."
+      "**Branch:** \`${branch}\`
+
+**충돌 파일:**
+${conflict_list}
+
+Claude가 자동 해결에 실패했습니다. 수동 확인이 필요합니다."
     echo "  ❌ ${task_id}: 자동 해결 실패"
     return 1
   fi
@@ -43,9 +50,16 @@ $conflict_files"
   # 해결 성공 → 커밋 + Notice(warning)
   git -C "$repo_root" add -A
   git -C "$repo_root" commit --no-edit
+  local conflict_list2
+  conflict_list2=$(echo "$conflict_files" | sed 's/^/- /')
   post_notice "warning" \
     "${task_id} 머지 충돌 자동 해결 완료" \
-    "**Branch:** \`${branch}\`\n\n**충돌 파일:**\n$(echo "$conflict_files" | sed 's/^/- /')\n\nClaude가 자동으로 충돌을 해결했습니다. 결과를 확인해주세요."
+    "**Branch:** \`${branch}\`
+
+**충돌 파일:**
+${conflict_list2}
+
+Claude가 자동으로 충돌을 해결했습니다. 결과를 확인해주세요."
   echo "  ✅ ${task_id}: 머지 충돌 자동 해결 완료 (Notice 생성)"
   return 0
 }
