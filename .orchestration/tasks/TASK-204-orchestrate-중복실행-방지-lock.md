@@ -1,17 +1,16 @@
 ---
 id: TASK-204
 title: orchestrate.sh 중복 실행 방지 lock 추가
-status: in_progress
+status: done
 branch: task/task-204
 worktree: ../repo-wt-task-204
 priority: high
 created: 2026-03-26
-updated: 2026-03-26
+updated: 2026-03-26 05:51:23
 depends_on: []
 scope:
   - scripts/orchestrate.sh
 ---
-
 ## 현상
 - orchestrate.sh에 중복 실행 방지 로직이 없음
 - 웹 UI에서 여러 번 트리거하거나 auto-improve.sh가 호출하면 2개 이상 동시에 뜰 수 있음

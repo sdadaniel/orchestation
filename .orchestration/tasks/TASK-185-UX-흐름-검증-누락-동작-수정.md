@@ -1,7 +1,7 @@
 ---
 id: TASK-185
 title: UX 흐름 검증 — 사용자 동선별 누락 동작 수정
-status: in_progress
+status: done
 branch: task/task-185
 worktree: ../repo-wt-task-185
 priority: high
