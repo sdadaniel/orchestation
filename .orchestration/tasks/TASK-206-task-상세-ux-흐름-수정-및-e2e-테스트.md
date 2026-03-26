@@ -1,7 +1,7 @@
 ---
 id: TASK-206
 title: Task 상세 UX 흐름 수정 및 E2E 테스트
-status: in_progress
+status: failed
 branch: task/task-206
 worktree: ../repo-wt-task-206
 priority: high
