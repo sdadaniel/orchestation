@@ -11,7 +11,7 @@ import DAGCanvas from "@/components/DAGCanvas";
 import { RequestCard } from "@/components/RequestCard";
 import { Select } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
-import { PRIORITY_COLORS, STATUS_DOT, STATUS_LABEL, STATUS_ORDER, TAB_STACK, TAB_ALL, TABS, TAB_LABEL } from "./constants";
+import { PRIORITY_COLORS, STATUS_DOT, STATUS_ORDER, TAB_STACK, TAB_ALL, TABS, TAB_LABEL } from "./constants";
 
 function ChainGroup({ items, onUpdate, onDelete, onReorder, isFirst, isLast }: { items: RequestItem[]; onUpdate: (id: string, updates: Partial<Pick<RequestItem, "status" | "title" | "content" | "priority">>) => Promise<void>; onDelete: (id: string) => Promise<void>; onReorder?: (id: string, direction: "up" | "down") => Promise<void>; isFirst?: boolean; isLast?: boolean }) {
   const [expanded, setExpanded] = useState(false);
@@ -139,17 +139,6 @@ function TasksPageInner() {
   const safePage = Math.min(page, totalPages);
   const paginatedItems = flatItems.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  // For ALL tab: re-group paginated items by status
-  const paginatedGrouped = useMemo(() => {
-    if (activeTab !== TAB_ALL) return null;
-    const result: Record<string, RequestItem[]> = {};
-    for (const item of paginatedItems) {
-      if (!result[item.status]) result[item.status] = [];
-      result[item.status].push(item);
-    }
-    return result;
-  }, [activeTab, paginatedItems]);
-
   // 의존 체인 그룹핑: 연결된 태스크들을 하나의 그룹으로 묶음
   const depChainGroups = useMemo(() => {
     const taskMap = new Map(allWaterfallTasks.map((t) => [t.id, t]));
@@ -204,9 +193,6 @@ function TasksPageInner() {
     return groups;
   }, [paginatedItems, allWaterfallTasks]);
 
-  const filteredStatuses = activeTab === TAB_ALL
-    ? STATUS_ORDER.filter((s) => (paginatedGrouped?.[s]?.length ?? 0) > 0)
-    : [activeTab];
   const showFilters = activeTab !== TAB_STACK;
   const hasActiveFilters = priorityFilter !== "all" || dateFrom || dateTo;
 
@@ -217,7 +203,7 @@ function TasksPageInner() {
     <div className="space-y-4 max-w-3xl mx-auto pb-16">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4"><h1 className="text-lg font-semibold">Tasks</h1><AutoImproveControl hasRunningTasks={requests.some((r) => r.status === "in_progress")} /></div>
+        <div className="flex items-center gap-4"><h1 className="text-lg font-semibold">Tasks</h1><AutoImproveControl /></div>
         <button type="button" onClick={() => router.push("/tasks/new")} className="filter-pill active flex items-center gap-1"><Plus className="h-3 w-3" />New Task</button>
       </div>
 

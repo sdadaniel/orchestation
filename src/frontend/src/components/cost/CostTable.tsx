@@ -5,8 +5,6 @@ import type { CostEntry } from "@/lib/cost-parser";
 import { useSortableTable } from "./useSortableTable";
 import { SortIcon } from "./SortIcon";
 
-const PAGE_SIZE = 20;
-
 interface CostTableProps {
   entries: CostEntry[];
 }
@@ -38,13 +36,6 @@ const COMPARATORS: Record<SortColumn, (a: CostEntry, b: CostEntry) => number> = 
   time: (a, b) => a.durationMs - b.durationMs,
   tokens: (a, b) => getTotalTokens(a) - getTotalTokens(b),
 };
-
-const SORTABLE_HEADERS: { key: SortColumn; label: string; align?: "right" }[] = [
-  { key: "timestamp", label: "시각" },
-  { key: "cost", label: "Cost", align: "right" },
-  { key: "time", label: "Time", align: "right" },
-  { key: "tokens", label: "Tokens", align: "right" },
-];
 
 export function CostTable({ entries }: CostTableProps) {
   const { sorted, sort, toggleSort } = useSortableTable<CostEntry, SortColumn>(

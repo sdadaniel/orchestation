@@ -18,7 +18,6 @@ type SectionLayout = { key: string; label: string; x: number; y: number; w: numb
 function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxParallel = 3) {
   const reqMap = new Map(requests.map((r) => [r.id, r]));
   const taskMap = new Map(tasks.map((t) => [t.id, t]));
-  const statusMap = new Map(requests.map((r) => [r.id, r.status]));
 
   const depsOf = new Map<string, string[]>();
   for (const req of requests) {

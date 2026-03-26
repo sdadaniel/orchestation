@@ -3,7 +3,6 @@ import {
   readFullTree,
   readManifest,
   writeManifest,
-  findNodeById,
   insertNode,
   generateId,
   writeDocContent,

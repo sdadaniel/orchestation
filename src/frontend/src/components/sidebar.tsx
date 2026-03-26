@@ -24,11 +24,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
-import { StatusBadge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import type { WaterfallGroup } from "@/types/waterfall";
 import {
-  STATUS_STYLES,
   type TaskStatus,
 } from "../../lib/constants";
 import type { DocNode } from "@/hooks/useDocTree";
@@ -415,11 +413,7 @@ function DocTreeNode({
 }
 
 export function TaskSidebar({
-  groups,
-  prds,
   docTree,
-  filter,
-  onFilterChange,
   onDocCreate,
   onDocDelete,
   onDocRename,

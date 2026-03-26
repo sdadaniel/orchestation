@@ -12,7 +12,6 @@ import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge, PriorityBadge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import {
   STATUS_STYLES,
   PRIORITY_STYLES,

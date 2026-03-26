@@ -5,10 +5,6 @@ import {
   CHAIN_TASKS,
 } from "./helpers/mock";
 
-/** Scope assertions to the main content area, excluding the sidebar */
-const main = (page: Parameters<typeof page.locator>[0] extends never ? never : any) =>
-  page.locator(".content-container");
-
 test.describe("Tasks List Page", () => {
   // ── Tab active style ──────────────────────────────────────────────────────
 

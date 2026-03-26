@@ -201,7 +201,7 @@ export default function RequestsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-semibold">Tasks</h1>
-          <AutoImproveControl hasRunningTasks={requests.some((r) => r.status === "in_progress")} />
+          <AutoImproveControl />
         </div>
         <button
           type="button"

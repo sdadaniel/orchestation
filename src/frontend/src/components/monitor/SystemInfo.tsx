@@ -3,7 +3,6 @@
 interface SystemInfoProps {
   threadCount: number;
   processCount: number;
-  loadAvg: { "1m": number; "5m": number; "15m": number };
   cpuCores: number;
 }
 
@@ -18,7 +17,7 @@ function InfoRow({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-export function SystemInfo({ threadCount, processCount, loadAvg, cpuCores }: SystemInfoProps) {
+export function SystemInfo({ threadCount, processCount, cpuCores }: SystemInfoProps) {
   return (
     <div className="space-y-3">
       <InfoRow label="스레드" value={threadCount} />
