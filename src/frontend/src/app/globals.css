@@ -358,6 +358,14 @@ body {
   white-space: nowrap;
 }
 
+.running-indicator-dots {
+  /* Fixed width prevents layout shift as dots appear/disappear */
+  display: inline-block;
+  width: 1.5em;
+  text-align: left;
+  vertical-align: bottom;
+}
+
 .running-indicator-dots::after {
   content: "";
   animation: running-dots 1.5s steps(4, end) infinite;
@@ -395,6 +403,8 @@ body {
   max-width: 480px;
   width: 100%;
   margin: 0 auto;
+  /* flex: 1 anchors the search bar position regardless of sibling width changes */
+  flex: 1;
 }
 .global-search {
   display: flex;
