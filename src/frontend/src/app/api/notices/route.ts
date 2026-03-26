@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     for (const f of existingFiles) {
       const m = f.match(/NOTICE-(\d+)/);
       if (m) {
-        const num = parseInt(m[1], 10);
+        const num = parseInt(m[1]!, 10);
         if (num > maxNum) maxNum = num;
       }
     }
