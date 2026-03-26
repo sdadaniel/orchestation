@@ -1,7 +1,7 @@
 ---
 id: TASK-176
 title: 컴포넌트 fetch res.json() any 타입 제거
-status: in_progress
+status: failed
 branch: task/task-176
 worktree: ../repo-wt-task-176
 priority: medium
