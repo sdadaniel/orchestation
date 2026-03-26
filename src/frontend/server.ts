@@ -1,11 +1,10 @@
 import { createServer } from "http";
-import fs from "fs";
+import fs, { appendFileSync } from "fs";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
 import os from "os";
 
-import { appendFileSync } from "fs";
 import { resolve } from "path";
 
 const CRASH_LOG = resolve(process.cwd(), "../..", ".orchestration/output/crash.log");
