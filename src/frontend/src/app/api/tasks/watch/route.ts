@@ -1,60 +1,37 @@
 import fs from "fs";
-import path from "path";
 import { TASKS_DIR } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
 
-/** SSE endpoint — task 파일 변경 시 즉시 알림 */
-export async function GET() {
-  const stream = new ReadableStream({
-    start(controller) {
-      const encoder = new TextEncoder();
+// 마지막 변경 시각을 서버 메모리에 유지
+let lastChangedAt = Date.now();
 
-      const send = (event: string) => {
-        try {
-          controller.enqueue(encoder.encode(`data: ${event}\n\n`));
-        } catch { /* closed */ }
-      };
+// fs.watch는 서버 시작 시 1회만 설정
+let watcherInitialized = false;
 
-      // 초기 연결 확인
-      send("connected");
+function initWatcher() {
+  if (watcherInitialized) return;
+  watcherInitialized = true;
 
-      // 파일 감시
-      let watcher: fs.FSWatcher | null = null;
-      let debounce: ReturnType<typeof setTimeout> | null = null;
+  try {
+    fs.watch(TASKS_DIR, { recursive: true }, (_event, filename) => {
+      if (!filename?.endsWith(".md")) return;
+      lastChangedAt = Date.now();
+    });
+  } catch {
+    // TASKS_DIR 없으면 무시
+  }
+}
 
-      try {
-        watcher = fs.watch(TASKS_DIR, { recursive: true }, (_event, filename) => {
-          if (!filename?.endsWith(".md")) return;
-          // 디바운스: 연속 변경 시 100ms 후 1회만 전송
-          if (debounce) clearTimeout(debounce);
-          debounce = setTimeout(() => send("changed"), 100);
-        });
-      } catch {
-        send("watch-error");
-      }
+/** GET /api/tasks/watch — 마지막 변경 시각 반환 (polling 방식) */
+export async function GET(request: Request) {
+  initWatcher();
 
-      // 30초마다 keep-alive
-      const keepAlive = setInterval(() => send("ping"), 30000);
+  const { searchParams } = new URL(request.url);
+  const since = parseInt(searchParams.get("since") || "0", 10);
 
-      // 클린업 (연결 종료 시)
-      const cleanup = () => {
-        if (watcher) watcher.close();
-        if (debounce) clearTimeout(debounce);
-        clearInterval(keepAlive);
-        try { controller.close(); } catch { /* already closed */ }
-      };
-
-      // 5분 후 자동 종료 (클라이언트가 재연결)
-      setTimeout(cleanup, 5 * 60 * 1000);
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
+  return Response.json({
+    changed: lastChangedAt > since,
+    lastChangedAt,
   });
 }

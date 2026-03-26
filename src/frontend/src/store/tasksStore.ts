@@ -223,55 +223,35 @@ export const useTasksStore = create<TasksState>()(
   ),
 );
 
-/* ── Singleton SSE connection (client-side only) ── */
+/* ── Polling 기반 변경 감지 (SSE 제거 — 브라우저 로딩 스피너 방지) ── */
 
-let sseConnected = false;
-let sseInstance: EventSource | null = null;
-let sseReconnectTimer: ReturnType<typeof setTimeout> | null = null;
-let sseDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let pollConnected = false;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+let lastSeen = Date.now();
 
-function connectSSE() {
-  if (typeof window === "undefined") return;
-  sseInstance = new EventSource("/api/tasks/watch");
-
-  sseInstance.onmessage = (e) => {
-    if (e.data === "changed") {
-      if (sseDebounceTimer) clearTimeout(sseDebounceTimer);
-      sseDebounceTimer = setTimeout(() => {
-        useTasksStore.getState().fetchAll();
-      }, 1000);
+async function pollForChanges() {
+  try {
+    const res = await fetch(`/api/tasks/watch?since=${lastSeen}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.changed) {
+      lastSeen = data.lastChangedAt;
+      useTasksStore.getState().fetchAll();
     }
-  };
-
-  // exponential backoff: 2s → 4s → 8s → 16s → max 30s
-  let sseBackoff = 2000;
-
-  sseInstance.onerror = () => {
-    sseInstance?.close();
-    sseInstance = null;
-    sseReconnectTimer = setTimeout(() => {
-      connectSSE();
-      sseBackoff = Math.min(sseBackoff * 2, 30000);
-    }, sseBackoff);
-  };
-
-  sseInstance.onopen = () => {
-    sseBackoff = 2000; // 연결 성공 시 backoff 리셋
-  };
+  } catch { /* ignore */ }
 }
 
 export function startTasksSSE() {
-  if (sseConnected || typeof window === "undefined") return;
-  sseConnected = true;
-  connectSSE();
+  if (pollConnected || typeof window === "undefined") return;
+  pollConnected = true;
+  pollForChanges(); // 즉시 1회
+  pollTimer = setInterval(pollForChanges, 5000); // 5초 간격
 }
 
 export function stopTasksSSE() {
-  sseInstance?.close();
-  sseInstance = null;
-  if (sseReconnectTimer) clearTimeout(sseReconnectTimer);
-  if (sseDebounceTimer) clearTimeout(sseDebounceTimer);
-  sseConnected = false;
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = null;
+  pollConnected = false;
 }
 
 // 자동 시작 제거 — 컴포넌트에서 명시적으로 시작/정지할 것
