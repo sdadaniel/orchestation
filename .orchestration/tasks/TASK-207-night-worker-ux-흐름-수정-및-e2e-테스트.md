@@ -1,7 +1,9 @@
 ---
 id: TASK-207
 title: Night Worker UX 흐름 수정 및 E2E 테스트
-status: pending
+status: in_progress
+branch: task/task-207
+worktree: ../repo-wt-task-207
 priority: medium
 scope:
   - src/frontend/src/**
