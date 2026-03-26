@@ -1,11 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import type { RunHistoryEntry } from "@/hooks/useRunHistory";
 import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Select } from "@/components/ui/select";
 
 interface RunHistoryProps {
   runs: RunHistoryEntry[];
 }
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
@@ -36,6 +41,9 @@ function formatTimestamp(iso: string): string {
 }
 
 export function RunHistory({ runs }: RunHistoryProps) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(20);
+
   if (runs.length === 0) return null;
 
   // Sort by most recent first
@@ -43,11 +51,13 @@ export function RunHistory({ runs }: RunHistoryProps) {
     (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
   );
 
+  const totalItems = sorted.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paginatedItems = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+
   return (
-    <div>
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-        Execution History
-      </h3>
+    <div className="space-y-3">
       <div className="overflow-x-auto">
         <table className="w-full text-xs compact-table">
           <thead>
@@ -61,7 +71,7 @@ export function RunHistory({ runs }: RunHistoryProps) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((run) => (
+            {paginatedItems.map((run) => (
               <tr
                 key={run.id}
                 className="border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors"
@@ -108,6 +118,75 @@ export function RunHistory({ runs }: RunHistoryProps) {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalItems > 0 && (
+        <div className="flex items-center justify-between pt-2 border-t border-border">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground">페이지당</span>
+            <Select
+              size="inline"
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+            >
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n}개</option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={safePage <= 1}
+              onClick={() => setPage(safePage - 1)}
+              className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+              .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, i) =>
+                p === "..." ? (
+                  <span key={`dots-${i}`} className="px-1 text-[11px] text-muted-foreground">...</span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPage(p as number)}
+                    className={cn(
+                      "min-w-[28px] h-7 rounded text-[11px] font-medium transition-colors",
+                      safePage === p
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    {p}
+                  </button>
+                ),
+              )}
+
+            <button
+              type="button"
+              disabled={safePage >= totalPages}
+              onClick={() => setPage(safePage + 1)}
+              className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <span className="text-[11px] text-muted-foreground">
+            {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, totalItems)} / {totalItems}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
