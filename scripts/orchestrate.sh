@@ -97,8 +97,8 @@ cleanup_lock() {
     local _tf
     _tf=$(find_file "$_tid" 2>/dev/null)
     if [ -n "$_tf" ] && grep -q 'status: in_progress' "$_tf" 2>/dev/null; then
-      sed_inplace "s/^status: in_progress/status: pending/" "$_tf"
-      echo "  ↩️  ${_tid}: in_progress → pending 원복"
+      sed_inplace "s/^status: in_progress/status: stopped/" "$_tf"
+      echo "  ⏹️  ${_tid}: in_progress → stopped"
     fi
   done
   rm -rf "$SIGNAL_DIR" "$LOCK_DIR" "$RETRY_DIR"

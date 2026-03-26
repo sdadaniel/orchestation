@@ -81,10 +81,10 @@ class OrchestrationManager {
         }
 
         if (!alive) {
-          const updated = content.replace("status: in_progress", "status: pending");
+          const updated = content.replace("status: in_progress", "status: stopped");
           fs.writeFileSync(filePath, updated);
           cleaned++;
-          console.log(`[orchestrate] zombie cleanup: ${taskId} in_progress → pending`);
+          console.log(`[orchestrate] zombie cleanup: ${taskId} in_progress → stopped`);
         }
       }
 
@@ -114,10 +114,24 @@ class OrchestrationManager {
   }
 
   getState(): OrchestrationState {
+    this.getStatus(); // status 동기화
     return { ...this.state, logs: [...this.state.logs], taskResults: [...this.state.taskResults] };
   }
 
   getStatus(): OrchestrationStatus {
+    // process 객체가 있는데 실제로 죽어있으면 즉시 갱신
+    if (this.state.status === "running" && this.process) {
+      if (this.process.exitCode !== null || this.process.killed) {
+        this.state.status = "failed";
+        this.state.finishedAt = new Date().toISOString();
+        this.process = null;
+      }
+    }
+    // process 없는데 running이면 보정
+    if (this.state.status === "running" && !this.process && !this.launching) {
+      this.state.status = "failed";
+      this.state.finishedAt = new Date().toISOString();
+    }
     return this.state.status;
   }
 
@@ -126,7 +140,7 @@ class OrchestrationManager {
   }
 
   isRunning(): boolean {
-    return this.state.status === "running";
+    return this.getStatus() === "running";
   }
 
   private launching = false;
@@ -135,6 +149,15 @@ class OrchestrationManager {
     if (this.isRunning() || this.launching) {
       return { success: false, error: "Orchestration is already running" };
     }
+
+    // pgrep 이중 체크: process 객체 외에 실제 프로세스도 확인
+    try {
+      const existing = execSync('pgrep -f "orchestrate.sh" 2>/dev/null || true', { encoding: "utf-8" }).trim();
+      if (existing) {
+        return { success: false, error: "orchestrate.sh가 이미 실행 중입니다" };
+      }
+    } catch { /* ignore */ }
+
     this.launching = true;
 
     // Resolve orchestrate.sh path relative to project root
@@ -206,15 +229,60 @@ class OrchestrationManager {
   }
 
   stop(): { success: boolean; error?: string } {
-    if (!this.isRunning() || !this.process) {
-      return { success: false, error: "No orchestration is running" };
+    this.appendLog("[orchestrate] Stop requested by user — 즉시 전체 종료");
+
+    // 1) orchestrate.sh kill
+    if (this.process) {
+      killProcessGracefully(this.process);
     }
+    // pgrep으로 놓친 인스턴스도 kill
+    try { execSync('pkill -f "orchestrate.sh" 2>/dev/null || true', { stdio: "ignore" }); } catch { /* ignore */ }
 
-    this.appendLog("[orchestrate] Stop requested by user");
+    // 2) 모든 워커 kill
+    try { execSync('pkill -f "job-task.sh" 2>/dev/null || true', { stdio: "ignore" }); } catch { /* ignore */ }
+    try { execSync('pkill -f "job-review.sh" 2>/dev/null || true', { stdio: "ignore" }); } catch { /* ignore */ }
+    try { execSync('pkill -f "claude.*--dangerously-skip-permissions" 2>/dev/null || true', { stdio: "ignore" }); } catch { /* ignore */ }
 
-    killProcessGracefully(this.process);
+    // 3) in_progress → stopped
+    this.markAllInProgressAsStopped();
+
+    // 4) lock/signal/PID 정리
+    try { execSync('rm -rf /tmp/orchestrate.lock /tmp/orchestrate-retry /tmp/worker-TASK-*.pid 2>/dev/null || true', { stdio: "ignore" }); } catch { /* ignore */ }
+
+    // 5) status 즉시 반영
+    this.state.status = "failed";
+    this.state.exitCode = 130; // SIGINT convention
+    this.state.finishedAt = new Date().toISOString();
+    this.process = null;
+    this.saveRunHistory();
+
+    this.appendLog("[orchestrate] 전체 종료 완료");
 
     return { success: true };
+  }
+
+  /** in_progress 태스크를 모두 stopped로 변경 */
+  private markAllInProgressAsStopped() {
+    try {
+      const projectRoot = path.resolve(process.cwd(), "..", "..");
+      const tasksDir = path.join(projectRoot, ".orchestration", "tasks");
+      if (!fs.existsSync(tasksDir)) return;
+
+      const files = fs.readdirSync(tasksDir).filter((f) => f.endsWith(".md"));
+      for (const file of files) {
+        const filePath = path.join(tasksDir, file);
+        const content = fs.readFileSync(filePath, "utf-8");
+        if (content.includes("status: in_progress")) {
+          fs.writeFileSync(filePath, content.replace("status: in_progress", "status: stopped"));
+          const idMatch = file.match(/^(TASK-\d+)/);
+          if (idMatch) {
+            this.appendLog(`[orchestrate] ${idMatch[1]}: in_progress → stopped`);
+          }
+        }
+      }
+    } catch (err) {
+      this.appendLog(`[orchestrate] markAllInProgressAsStopped error: ${err}`);
+    }
   }
 
   private appendLog(line: string) {
