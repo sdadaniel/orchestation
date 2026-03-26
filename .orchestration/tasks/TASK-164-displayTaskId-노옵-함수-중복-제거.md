@@ -1,7 +1,9 @@
 ---
 id: TASK-164
 title: displayTaskId 노옵 함수 중복 제거
-status: pending
+status: in_progress
+branch: task/task-164
+worktree: ../repo-wt-task-164
 priority: medium
 mode: night
 created: 2026-03-25
