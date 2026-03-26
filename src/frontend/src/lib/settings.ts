@@ -14,6 +14,7 @@ export interface Settings {
   apiKey: string;
   srcPaths: string[];
   model: string;
+  baseBranch: string;
   maxParallel: number;
   maxReviewRetry: number;
   workerMode: WorkerMode;
@@ -24,6 +25,7 @@ const DEFAULTS: Settings = {
   apiKey: "",
   srcPaths: ["src/"],
   model: "claude-sonnet-4-6",
+  baseBranch: "main",
   maxParallel: 3,
   maxReviewRetry: 2,
   workerMode: "background",
@@ -68,6 +70,7 @@ export function loadSettings(): Settings {
       apiKey: typeof parsed.apiKey === "string" ? parsed.apiKey : DEFAULTS.apiKey,
       srcPaths: Array.isArray(parsed.srcPaths) ? parsed.srcPaths : DEFAULTS.srcPaths,
       model: typeof parsed.model === "string" ? parsed.model : DEFAULTS.model,
+      baseBranch: typeof parsed.baseBranch === "string" ? parsed.baseBranch : DEFAULTS.baseBranch,
       maxParallel:
         typeof parsed.maxParallel === "number" && parsed.maxParallel >= 1
           ? Math.floor(parsed.maxParallel)
@@ -98,6 +101,7 @@ export function saveSettings(settings: Partial<Settings>): Settings {
     apiKey: typeof settings.apiKey === "string" ? settings.apiKey : current.apiKey,
     srcPaths: Array.isArray(settings.srcPaths) ? settings.srcPaths : current.srcPaths,
     model: typeof settings.model === "string" ? settings.model : current.model,
+    baseBranch: typeof settings.baseBranch === "string" ? settings.baseBranch : current.baseBranch,
     maxParallel:
       typeof settings.maxParallel === "number" && settings.maxParallel >= 1
         ? Math.floor(settings.maxParallel)

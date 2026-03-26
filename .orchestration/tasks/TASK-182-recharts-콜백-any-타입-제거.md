@@ -1,5 +1,5 @@
 ---
-id: TASK-149
+id: TASK-182
 title: "Recharts Tooltip/Legend 콜백 any 타입을 구체 타입으로 교체"
 status: pending
 priority: medium

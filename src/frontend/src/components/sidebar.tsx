@@ -27,6 +27,7 @@ import { useToast } from "@/components/ui/toast";
 import { Input } from "@/components/ui/input";
 import type { WaterfallGroup } from "@/types/waterfall";
 import {
+  STATUS_STYLES,
   type TaskStatus,
 } from "../../lib/constants";
 import type { DocNode } from "@/hooks/useDocTree";
@@ -64,11 +65,11 @@ export interface PrdInfo {
 }
 
 type TaskSidebarProps = {
-  groups: WaterfallGroup[];
+  groups?: WaterfallGroup[];
   prds: PrdInfo[];
   docTree: DocNode[];
-  filter: SidebarFilter;
-  onFilterChange: (filter: SidebarFilter) => void;
+  filter?: SidebarFilter;
+  onFilterChange?: (filter: SidebarFilter) => void;
   onDocCreate?: (title: string, type: "doc" | "folder", parentId?: string | null) => Promise<void>;
   onDocDelete?: (id: string) => Promise<void>;
   onDocRename?: (id: string, title: string) => Promise<void>;
