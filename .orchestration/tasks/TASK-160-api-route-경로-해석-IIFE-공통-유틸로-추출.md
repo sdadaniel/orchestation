@@ -1,7 +1,7 @@
 ---
 id: TASK-160
 title: API route 경로 해석 IIFE 공통 유틸로 추출
-status: in_progress
+status: done
 branch: task/task-160
 worktree: ../repo-wt-task-160
 priority: medium
