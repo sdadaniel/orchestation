@@ -1,7 +1,7 @@
 ---
 id: TASK-166
 title: store/index.ts 데드 모듈 및 zustand 미사용 의존성 제거
-status: in_progress
+status: done
 branch: task/task-166
 worktree: ../repo-wt-task-166
 priority: medium
