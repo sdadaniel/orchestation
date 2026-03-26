@@ -95,6 +95,8 @@ export function parseCostLog(): CostData {
   const entries: CostEntry[] = [];
 
   for (const line of content.split("\n")) {
+    // model_selection 로그는 비용이 아니므로 제외
+    if (line.includes("model_selection")) continue;
     const entry = parseCostLogLine(line);
     if (entry) {
       entries.push(entry);
