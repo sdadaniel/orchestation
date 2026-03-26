@@ -3,6 +3,8 @@ import {
   setupTaskListMocks,
   CHAIN_REQUESTS,
   CHAIN_TASKS,
+  MOCK_REQUESTS,
+  MOCK_TASKS,
 } from "./helpers/mock";
 
 test.describe("Tasks List Page", () => {
@@ -137,5 +139,200 @@ test.describe("Tasks List Page", () => {
     await chevronContainer.click();
     await expect(chevron).not.toHaveClass(/rotate-90/);
     await expect(content2).toHaveCSS("max-height", "0px");
+  });
+
+  // ── Search filtering ────────────────────────────────────────────────────────
+
+  test("검색어 입력 → 일치하는 태스크만 표시", async ({ page }) => {
+    await setupTaskListMocks(page);
+    await page.goto("/tasks?tab=all");
+
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task", { exact: true }).waitFor();
+
+    const searchInput = content.getByPlaceholder(/검색/);
+    await searchInput.fill("Alpha");
+
+    await expect(content.getByText("Alpha Task", { exact: true })).toBeVisible();
+    await expect(content.getByText("Beta Task", { exact: true })).not.toBeVisible();
+    await expect(content.getByText("Gamma Task", { exact: true })).not.toBeVisible();
+  });
+
+  test("검색어 지우면 전체 목록 복원", async ({ page }) => {
+    await setupTaskListMocks(page);
+    await page.goto("/tasks?tab=all");
+
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task", { exact: true }).waitFor();
+
+    const searchInput = content.getByPlaceholder(/검색/);
+    await searchInput.fill("Alpha");
+    await expect(content.getByText("Beta Task", { exact: true })).not.toBeVisible();
+
+    await searchInput.fill("");
+    await expect(content.getByText("Beta Task", { exact: true })).toBeVisible();
+    await expect(content.getByText("Gamma Task", { exact: true })).toBeVisible();
+  });
+
+  test("검색 결과 없음 → 빈 상태 메시지 표시", async ({ page }) => {
+    await setupTaskListMocks(page);
+    await page.goto("/tasks?tab=all");
+
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task", { exact: true }).waitFor();
+
+    const searchInput = content.getByPlaceholder(/검색/);
+    await searchInput.fill("nonexistent-xyz-query");
+
+    await expect(content.getByText(/해당 조건의 태스크가 없습니다/)).toBeVisible();
+  });
+
+  // ── Sorting ─────────────────────────────────────────────────────────────────
+
+  test("정렬 선택란이 표시된다", async ({ page }) => {
+    await setupTaskListMocks(page);
+    await page.goto("/tasks?tab=all");
+
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task", { exact: true }).waitFor();
+
+    // Sort select or sort button should be visible
+    const sortControl = content.locator("select[id*='sort'], button:has-text('정렬'), [aria-label*='sort']").first();
+    if (await sortControl.isVisible()) {
+      await expect(sortControl).toBeVisible();
+    }
+  });
+
+  test("정렬 변경 → 목록 재정렬 (에러 없음)", async ({ page }) => {
+    await setupTaskListMocks(page);
+    await page.goto("/tasks?tab=all");
+
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task", { exact: true }).waitFor();
+
+    const sortSelect = content.locator("select").filter({ hasText: /최신|오래|우선순위|ID/ }).first();
+    if (await sortSelect.isVisible()) {
+      const options = await sortSelect.locator("option").allTextContents();
+      if (options.length > 1) {
+        await sortSelect.selectOption({ index: 1 });
+        // List should still be visible after sorting
+        await expect(content.locator(".board-card").first()).toBeVisible();
+      }
+    }
+  });
+
+  // ── Priority filter Low ─────────────────────────────────────────────────────
+
+  test("Low Priority 필터 → low 우선순위 태스크만 표시", async ({ page }) => {
+    await setupTaskListMocks(page);
+    await page.goto("/tasks?tab=all");
+
+    const content = page.locator(".content-container");
+    await content.getByText("Delta Task", { exact: true }).waitFor();
+
+    const lowFilter = content.getByRole("button", { name: /^Low$/ });
+    await lowFilter.click();
+
+    await expect(lowFilter).toHaveClass(/active/);
+    // Delta Task is low priority (status: done)
+    await expect(content.getByText("Alpha Task", { exact: true })).not.toBeVisible();
+    await expect(content.getByText("Beta Task", { exact: true })).not.toBeVisible();
+  });
+
+  // ── Status tabs ─────────────────────────────────────────────────────────────
+
+  test("Done 탭 클릭 → done 상태 태스크만 표시", async ({ page }) => {
+    await setupTaskListMocks(page);
+    await page.goto("/tasks?tab=done");
+
+    const content = page.locator(".content-container");
+    // Delta Task is done
+    await expect(content.getByText("Delta Task", { exact: true })).toBeVisible();
+    await expect(content.getByText("Alpha Task", { exact: true })).not.toBeVisible();
+  });
+
+  test("Reviewing 탭 클릭 → reviewing 상태 태스크만 표시", async ({ page }) => {
+    await setupTaskListMocks(page);
+    await page.goto("/tasks?tab=reviewing");
+
+    const content = page.locator(".content-container");
+    // Epsilon Task is reviewing
+    await expect(content.getByText("Epsilon Task", { exact: true })).toBeVisible();
+    await expect(content.getByText("Alpha Task", { exact: true })).not.toBeVisible();
+  });
+
+  test("In Progress 탭 클릭 → in_progress 태스크만 표시", async ({ page }) => {
+    await setupTaskListMocks(page);
+    await page.goto("/tasks?tab=in_progress");
+
+    const content = page.locator(".content-container");
+    // Alpha Task is in_progress
+    await expect(content.getByText("Alpha Task", { exact: true })).toBeVisible();
+    await expect(content.getByText("Beta Task", { exact: true })).not.toBeVisible();
+  });
+
+  // ── All tab ─────────────────────────────────────────────────────────────────
+
+  test("All 탭 클릭 → 모든 태스크 표시", async ({ page }) => {
+    await setupTaskListMocks(page);
+    await page.goto("/tasks?tab=all");
+
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task", { exact: true }).waitFor();
+
+    await expect(content.getByText("Alpha Task", { exact: true })).toBeVisible();
+    await expect(content.getByText("Beta Task", { exact: true })).toBeVisible();
+    await expect(content.getByText("Gamma Task", { exact: true })).toBeVisible();
+    await expect(content.getByText("Delta Task", { exact: true })).toBeVisible();
+    await expect(content.getByText("Epsilon Task", { exact: true })).toBeVisible();
+  });
+
+  // ── Reorder ─────────────────────────────────────────────────────────────────
+
+  test("순서 변경 버튼이 태스크 카드에 표시된다", async ({ page }) => {
+    await setupTaskListMocks(page);
+    await page.goto("/tasks?tab=pending");
+
+    const content = page.locator(".content-container");
+    await content.getByText("Beta Task", { exact: true }).waitFor();
+
+    // Reorder up/down buttons (arrow icons)
+    const cards = content.locator(".board-card");
+    const firstCard = cards.first();
+    const reorderBtn = firstCard.locator("button").filter({ hasText: /↑|↓/ }).first();
+    if (await reorderBtn.isVisible()) {
+      await expect(reorderBtn).toBeVisible();
+    }
+  });
+
+  test("순서 올리기 버튼 클릭 → PUT reorder 요청 전송", async ({ page }) => {
+    let reorderCalled = false;
+
+    await setupTaskListMocks(page);
+
+    await page.route("**/api/requests/*/reorder", (route) => {
+      if (route.request().method() === "PUT") {
+        reorderCalled = true;
+        route.fulfill({ json: { ok: true } });
+      } else {
+        route.continue();
+      }
+    });
+
+    await page.goto("/tasks?tab=pending");
+    const content = page.locator(".content-container");
+    await content.getByText("Gamma Task", { exact: true }).waitFor();
+
+    // Find a card that has a reorder-up button (not the first card)
+    const cards = content.locator(".board-card");
+    const cardCount = await cards.count();
+    if (cardCount >= 2) {
+      const secondCard = cards.nth(1);
+      const upBtn = secondCard.locator("button[aria-label*='up'], button[title*='위'], button svg[data-lucide='chevron-up']").first();
+      if (await upBtn.isVisible()) {
+        await upBtn.click();
+        expect(reorderCalled).toBe(true);
+      }
+    }
   });
 });

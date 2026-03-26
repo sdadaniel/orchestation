@@ -412,3 +412,62 @@ export async function setupNoticesMocks(
     }
   });
 }
+
+// ── Settings mock data ──────────────────────────────────────────────────────
+
+export const MOCK_SETTINGS = {
+  apiKey: "sk-ant-api03-test-key",
+  model: "claude-sonnet-4-5",
+  maxParallel: 3,
+  srcPaths: ["src/"],
+  maxReviewRetry: 2,
+  workerMode: "background",
+};
+
+export async function setupSettingsMocks(
+  page: Page,
+  settings: object = MOCK_SETTINGS,
+) {
+  await mockAppShellApis(page, {});
+
+  await page.route("**/api/settings", (route) => {
+    if (route.request().method() === "GET") {
+      route.fulfill({ json: settings });
+    } else if (route.request().method() === "PUT") {
+      try {
+        const body = JSON.parse(route.request().postData() ?? "{}");
+        route.fulfill({ json: { ...settings, ...body } });
+      } catch {
+        route.fulfill({ json: settings });
+      }
+    } else {
+      route.continue();
+    }
+  });
+}
+
+// ── Night Worker mock ───────────────────────────────────────────────────────
+
+export async function setupNightWorkerMocks(
+  page: Page,
+  opts: { orchestrateStatus?: string } = {},
+) {
+  const { orchestrateStatus = "idle" } = opts;
+
+  await mockAppShellApis(page, { orchestrateStatus });
+
+  // Orchestrate status override for night-worker specific needs
+  await page.route("**/api/orchestrate/status", (route) => {
+    route.fulfill({ json: { status: orchestrateStatus } });
+  });
+
+  // Night worker logs
+  await page.route("**/api/orchestrate/logs", (route) => {
+    route.fulfill({
+      json: [
+        { timestamp: "2026-03-26T02:00:00", level: "info", message: "Night Worker started" },
+        { timestamp: "2026-03-26T02:01:00", level: "info", message: "Processing tasks..." },
+      ],
+    });
+  });
+}
