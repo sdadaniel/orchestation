@@ -1,7 +1,7 @@
 ---
 id: TASK-203
 title: 태스크 상세페이지 stop 버튼 클릭 시 실제 정지 안 되는 버그 수정
-status: pending
+status: in_progress
 branch: task/task-203
 worktree: ../repo-wt-task-203
 priority: high
