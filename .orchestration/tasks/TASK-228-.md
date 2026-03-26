@@ -1,7 +1,7 @@
 ---
 id: TASK-228
 title: "cost-parser non-null assertion을 안전한 타입 가드로 교체"
-status: pending
+status: failed
 priority: medium
 mode: night
 created: 2026-03-26
