@@ -1,7 +1,9 @@
 ---
 id: TASK-219
 title: fix-noUncheckedIndexedAccess-notices-route
-status: pending
+status: in_progress
+branch: task/task-219
+worktree: ../repo-wt-task-219
 priority: medium
 mode: night
 created: 2026-03-26
