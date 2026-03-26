@@ -1,7 +1,9 @@
 ---
 id: TASK-176
 title: 컴포넌트 fetch res.json() any 타입 제거
-status: pending
+status: in_progress
+branch: task/task-176
+worktree: ../repo-wt-task-176
 priority: medium
 mode: night
 created: 2026-03-25
