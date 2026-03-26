@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { getErrorMessage } from "@/lib/error-utils";
 import { X, Terminal, Loader2, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getErrorMessage } from "@/lib/error-utils";
 import type { WaterfallTask } from "@/types/waterfall";
 
 interface TaskLogModalProps {

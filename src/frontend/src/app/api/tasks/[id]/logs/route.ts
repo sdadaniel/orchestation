@@ -6,7 +6,6 @@ import {
   hasLogSources,
   getTaskLogs,
 } from "@/lib/task-log-parser";
-import { getErrorMessage } from "@/lib/error-utils";
 
 export const dynamic = "force-dynamic";
 

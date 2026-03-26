@@ -7,7 +7,6 @@ import { getErrorMessage } from "@/lib/error-utils";
 import type { SprintResponse } from "@/lib/waterfall";
 import { buildWaterfallGroups } from "@/lib/waterfall";
 import type { WaterfallGroup } from "@/types/waterfall";
-import { getErrorMessage } from "@/lib/error-utils";
 
 export interface RequestItem {
   id: string;
