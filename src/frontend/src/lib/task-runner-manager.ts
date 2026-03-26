@@ -1,5 +1,6 @@
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
+import { pipeProcessLogs, killProcessGracefully } from "./process-utils";
 
 export type TaskRunStatus = "idle" | "running" | "completed" | "failed";
 
@@ -79,17 +80,7 @@ class TaskRunnerManager {
 
     this.runs.set(taskId, { state, process: proc });
 
-    proc.stdout?.on("data", (data: Buffer) => {
-      for (const line of data.toString("utf-8").split("\n")) {
-        if (line.trim()) state.logs.push(line);
-      }
-    });
-
-    proc.stderr?.on("data", (data: Buffer) => {
-      for (const line of data.toString("utf-8").split("\n")) {
-        if (line.trim()) state.logs.push(`[stderr] ${line}`);
-      }
-    });
+    pipeProcessLogs(proc, (line) => state.logs.push(line));
 
     proc.on("close", (code: number | null) => {
       state.exitCode = code ?? 1;
@@ -117,31 +108,7 @@ class TaskRunnerManager {
 
     run.state.logs.push(`[task-runner] Stop requested for ${taskId}`);
 
-    try {
-      if (run.process.pid) {
-        process.kill(-run.process.pid, "SIGTERM");
-      } else {
-        run.process.kill("SIGTERM");
-      }
-    } catch {
-      try {
-        run.process.kill("SIGTERM");
-      } catch {
-        // already exited
-      }
-    }
-
-    // Force kill after 5s
-    const proc = run.process;
-    setTimeout(() => {
-      if (proc && !proc.killed) {
-        try {
-          proc.kill("SIGKILL");
-        } catch {
-          // ignore
-        }
-      }
-    }, 5000);
+    killProcessGracefully(run.process);
 
     return { success: true };
   }

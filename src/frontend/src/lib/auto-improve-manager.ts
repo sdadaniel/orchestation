@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import fs from "fs";
+import { pipeProcessLogs } from "./process-utils";
 
 export type AutoImproveStatus = "idle" | "running" | "stopping" | "completed" | "failed";
 
@@ -88,23 +89,7 @@ class AutoImproveManager {
 
     const proc = this.process;
 
-    proc.stdout?.on("data", (data: Buffer) => {
-      const lines = data.toString("utf-8").split("\n");
-      for (const line of lines) {
-        if (line.trim()) {
-          this.appendLog(line);
-        }
-      }
-    });
-
-    proc.stderr?.on("data", (data: Buffer) => {
-      const lines = data.toString("utf-8").split("\n");
-      for (const line of lines) {
-        if (line.trim()) {
-          this.appendLog(`[stderr] ${line}`);
-        }
-      }
-    });
+    pipeProcessLogs(proc, (line) => this.appendLog(line));
 
     proc.on("close", (code: number | null, signal: string | null) => {
       this.state.exitCode = code ?? (signal ? 128 : 1);

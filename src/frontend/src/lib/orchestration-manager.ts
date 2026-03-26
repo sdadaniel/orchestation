@@ -3,6 +3,7 @@ import path from "path";
 import { appendRunHistory, type RunHistoryEntry } from "./run-history";
 import { parseCostLog } from "./cost-parser";
 import { loadSettings } from "./settings";
+import { pipeProcessLogs, killProcessGracefully } from "./process-utils";
 
 export type OrchestrationStatus = "idle" | "running" | "completed" | "failed";
 
@@ -108,24 +109,7 @@ class OrchestrationManager {
     this.launching = false;
     const proc = this.process;
 
-    proc.stdout?.on("data", (data: Buffer) => {
-      const lines = data.toString("utf-8").split("\n");
-      for (const line of lines) {
-        if (line.trim()) {
-          this.appendLog(line);
-          this.parseTaskResult(line);
-        }
-      }
-    });
-
-    proc.stderr?.on("data", (data: Buffer) => {
-      const lines = data.toString("utf-8").split("\n");
-      for (const line of lines) {
-        if (line.trim()) {
-          this.appendLog(`[stderr] ${line}`);
-        }
-      }
-    });
+    pipeProcessLogs(proc, (line) => this.appendLog(line), (line) => this.parseTaskResult(line));
 
     proc.on("close", (code: number | null, signal: string | null) => {
       this.state.exitCode = code ?? (signal ? 128 : 1);
@@ -155,34 +139,7 @@ class OrchestrationManager {
 
     this.appendLog("[orchestrate] Stop requested by user");
 
-    // Kill the process group
-    try {
-      // Attempt to kill the entire process group
-      if (this.process.pid) {
-        process.kill(-this.process.pid, "SIGTERM");
-      } else {
-        this.process.kill("SIGTERM");
-      }
-    } catch {
-      // Fallback: kill just the process
-      try {
-        this.process.kill("SIGTERM");
-      } catch {
-        // Process may have already exited
-      }
-    }
-
-    // If process doesn't exit in 5s, force kill
-    const proc = this.process;
-    setTimeout(() => {
-      if (proc && !proc.killed) {
-        try {
-          proc.kill("SIGKILL");
-        } catch {
-          // ignore
-        }
-      }
-    }, 5000);
+    killProcessGracefully(this.process);
 
     return { success: true };
   }
