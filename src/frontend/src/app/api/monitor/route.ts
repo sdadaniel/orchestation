@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import os from "os";
+import fs from "fs";
 import { execSync } from "child_process";
 import type { ClaudeProcess } from "@/lib/monitor-types";
 
@@ -7,6 +8,60 @@ export const dynamic = "force-dynamic";
 
 // 이전 CPU 시간을 저장하여 델타 계산
 let prevTimes: { user: number; sys: number; idle: number } | null = null;
+
+// /tmp/worker-TASK-XXX.pid 파일들을 읽어 pid→taskId 매핑 반환
+function getWorkerPidMap(): Map<number, string> {
+  const map = new Map<number, string>();
+  try {
+    const pidFiles = fs.readdirSync("/tmp").filter((f) => /^worker-TASK-\w+\.pid$/.test(f));
+    for (const file of pidFiles) {
+      const taskId = file.replace(/^worker-/, "").replace(/\.pid$/, "");
+      const raw = fs.readFileSync(`/tmp/${file}`, "utf-8").trim();
+      const pid = parseInt(raw, 10);
+      if (!isNaN(pid) && pid > 0) {
+        map.set(pid, taskId);
+      }
+    }
+  } catch {
+    // /tmp 읽기 실패 시 빈 맵
+  }
+  return map;
+}
+
+// 특정 PID의 모든 자손 PID 목록 (macOS ps 사용)
+function getDescendantPids(rootPid: number): Set<number> {
+  const descendants = new Set<number>();
+  try {
+    // ps axo pid,ppid 로 전체 프로세스 트리 조회
+    const result = execSync("ps axo pid=,ppid=", { encoding: "utf-8", timeout: 3000 });
+    const parentOf = new Map<number, number>(); // pid → ppid
+    for (const line of result.trim().split("\n")) {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length < 2) continue;
+      const pid = parseInt(parts[0], 10);
+      const ppid = parseInt(parts[1], 10);
+      if (!isNaN(pid) && !isNaN(ppid)) {
+        parentOf.set(pid, ppid);
+      }
+    }
+    // rootPid의 자손인지 BFS로 확인
+    const queue = [rootPid];
+    const visited = new Set([rootPid]);
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      for (const [pid, ppid] of parentOf) {
+        if (ppid === cur && !visited.has(pid)) {
+          visited.add(pid);
+          descendants.add(pid);
+          queue.push(pid);
+        }
+      }
+    }
+  } catch {
+    // 실패 시 빈 셋
+  }
+  return descendants;
+}
 
 function getClaudeProcesses(): ClaudeProcess[] {
   try {
@@ -17,35 +72,71 @@ function getClaudeProcesses(): ClaudeProcess[] {
     );
     const totalMem = os.totalmem();
     const lines = result.trim().split("\n").filter(Boolean);
-    let terminalIdx = 0;
 
-    return lines
+    // 워커 PID 맵: workerPid → taskId
+    const workerPidMap = getWorkerPidMap();
+
+    // 워커 PID에서 자손 PID → taskId 역매핑 구축
+    const pidToTaskId = new Map<number, string>();
+    for (const [workerPid, taskId] of workerPidMap) {
+      const descendants = getDescendantPids(workerPid);
+      for (const dpid of descendants) {
+        pidToTaskId.set(dpid, taskId);
+      }
+      // 워커 bash PID 자체도 포함
+      pidToTaskId.set(workerPid, taskId);
+    }
+
+    let workerIdx = 0;
+    let userIdx = 0;
+
+    const processes = lines
       .map((line) => {
         const parts = line.trim().split(/\s+/);
-        // 방어: parts 배열 길이가 최소 11 이상이어야 유효한 ps aux 출력
         if (parts.length < 11) return null;
 
         const pid = parseInt(parts[1], 10);
-        // 방어: PID가 NaN이면 스킵
         if (isNaN(pid)) return null;
 
         const cpu = parseFloat(parts[2]);
         const mem = parseFloat(parts[3]);
-        // 방어: CPU/MEM 파싱 실패 시 스킵
         if (isNaN(cpu) || isNaN(mem)) return null;
 
         const command = parts.slice(10).join(" ");
         const memMB = +((mem / 100) * totalMem / 1024 / 1024).toFixed(1);
 
-        return { pid, cpu, mem, memMB, command, label: "" };
+        // 워커 판별: PID 트리 우선, 커맨드 패턴 보조
+        const taskIdFromTree = pidToTaskId.get(pid);
+        const isWorkerByCommand =
+          command.includes("--dangerously-skip-permissions") ||
+          command.includes("--output-format json");
+
+        const isWorker = taskIdFromTree !== undefined || isWorkerByCommand;
+        const taskId = taskIdFromTree;
+
+        return { pid, cpu, mem, memMB, command, label: "", isWorker, taskId };
       })
       .filter((p): p is NonNullable<typeof p> => p !== null)
       .filter((p) => p.mem > 0.05) // 의미있는 프로세스만
-      .sort((a, b) => b.mem - a.mem)
+      .sort((a, b) => {
+        // 워커 우선, 그 다음 메모리 내림차순
+        if (a.isWorker !== b.isWorker) return a.isWorker ? -1 : 1;
+        return b.mem - a.mem;
+      })
       .map((p) => {
-        terminalIdx++;
-        return { ...p, label: `Terminal ${terminalIdx} (PID ${p.pid})` };
+        if (p.isWorker) {
+          workerIdx++;
+          const label = p.taskId
+            ? `Worker ${p.taskId} (PID ${p.pid})`
+            : `Worker ${workerIdx} (PID ${p.pid})`;
+          return { ...p, label };
+        } else {
+          userIdx++;
+          return { ...p, label: `User ${userIdx} (PID ${p.pid})` };
+        }
       });
+
+    return processes;
   } catch {
     return [];
   }
