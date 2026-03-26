@@ -1,7 +1,9 @@
 ---
 id: TASK-194
 title: 사이드바 Tasks/Notices 대메뉴 접기/펼치기 (Docs와 동일 패턴)
-status: pending
+status: in_progress
+branch: task/task-194
+worktree: ../repo-wt-task-194
 priority: high
 created: 2026-03-26
 updated: 2026-03-26
