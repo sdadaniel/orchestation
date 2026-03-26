@@ -1,7 +1,7 @@
 ---
 id: TASK-208
 title: orchestrate.sh 중복 실행 방지 lock 추가
-status: pending
+status: in_progress
 branch: task/task-208
 worktree: ../repo-wt-task-208
 priority: high
