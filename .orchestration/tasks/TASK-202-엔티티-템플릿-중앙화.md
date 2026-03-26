@@ -1,7 +1,7 @@
 ---
 id: TASK-202
 title: 엔티티 프론트매터 템플릿 중앙화 — 5종 통합 관리
-status: in_progress
+status: done
 branch: task/task-202
 worktree: ../repo-wt-task-202
 priority: high
