@@ -644,6 +644,16 @@ RUNNING=()   # 현재 실행 중인 태스크 ID 목록
 FAILED_COUNT=0
 
 while true; do
+  # ── config.json에서 MAX_PARALLEL 핫 리로드 ──
+  if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
+    _new_mp=$(jq -r '.maxParallel // 3' "$CONFIG_FILE" 2>/dev/null || echo "")
+    if [ -n "$_new_mp" ] && [ "$_new_mp" != "$MAX_PARALLEL" ]; then
+      echo "  ⚙️  MAX_PARALLEL 변경: ${MAX_PARALLEL} → ${_new_mp}"
+      MAX_PARALLEL="$_new_mp"
+      MAX_CLAUDE_PROCS="$MAX_PARALLEL"
+    fi
+  fi
+
   # ── 실행 중인 태스크 완료 여부 체크 (슬롯 투입 전에 먼저 갱신) ──
   if [ "${#RUNNING[@]}" -gt 0 ]; then
     NEW_RUNNING=()
