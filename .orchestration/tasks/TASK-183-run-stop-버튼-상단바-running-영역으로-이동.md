@@ -1,7 +1,7 @@
 ---
 id: TASK-183
 title: Run/Stop 버튼을 Tasks 헤더에서 상단바 Running 영역으로 이동
-status: in_progress
+status: done
 branch: task/task-183
 worktree: ../repo-wt-task-183
 priority: high
