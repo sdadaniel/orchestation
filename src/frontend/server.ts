@@ -5,14 +5,31 @@ import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
 import os from "os";
 
+import { appendFileSync } from "fs";
+import { resolve } from "path";
+
+const CRASH_LOG = resolve(process.cwd(), "../..", ".orchestration/output/crash.log");
+
+function logCrash(type: string, err: Error | unknown) {
+  const ts = new Date().toISOString();
+  const msg = err instanceof Error ? `${err.message}\n${err.stack}` : String(err);
+  const line = `[${ts}] ${type}: ${msg}\n`;
+  try { appendFileSync(CRASH_LOG, line); } catch { /* ignore */ }
+  console.error(`[${type}]`, err);
+}
+
 // Suppress benign WebSocket frame errors from race conditions
 process.on("uncaughtException", (err) => {
   if (err.message?.includes("Invalid WebSocket frame")) {
     console.warn(`[ws] suppressed frame error: ${err.message}`);
     return;
   }
-  console.error("[fatal] uncaughtException:", err);
+  logCrash("uncaughtException", err);
   process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  logCrash("unhandledRejection", reason);
 });
 
 const dev = process.env.NODE_ENV !== "production";
