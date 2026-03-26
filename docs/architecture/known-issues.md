@@ -271,17 +271,166 @@ getStatus() {
 
 **증상**: 비정상 종료 후 UI에 "Running... 4", "실행 실패 (exit code: 128)" 계속 표시. 새로고침해도 유지.
 
-**원인**:
-- orchestration-manager의 state가 서버 메모리에 있음
-- 외부에서 프로세스를 kill하면 `proc.on("close")` 콜백이 안 탈 수 있음
-- getStatus()의 보정 로직이 있지만, process 객체가 null이 아니면서 실제로는 죽은 경우를 놓침
+### 아키텍처 배경
 
-**현재 대응**: 서버 재시작 시 constructor에서 상태 리셋
+```
+브라우저 → GET /api/orchestrate/status → orchestration-manager.getState()
+                                          ↑
+                                     서버 메모리 (singleton)
+                                          ↑
+                             this.state = { status, exitCode, ... }
+                             this.process = ChildProcess | null
+```
 
-**수정 방향**:
-- getStatus()에서 process가 있으면 `kill -0`으로 실제 생존 확인
-- 죽어있으면 즉시 state 리셋 + process = null
-- 또는 status API에서 매 호출마다 실제 프로세스 생존 확인
+- `orchestration-manager`는 Node.js 서버 프로세스의 메모리에 싱글톤으로 존재
+- `this.state.status`는 메모리 변수 — 파일이나 DB가 아님
+- 브라우저 새로고침 = API 재호출일 뿐, 서버 메모리는 안 바뀜
+
+### 상태가 꼬이는 5가지 시나리오
+
+**시나리오 A — 외부 kill로 proc.on("close") 누락**
+```
+1. run() → this.process = spawn(orchestrate.sh)
+2. this.state.status = "running"
+3. 외부에서 pkill orchestrate.sh (또는 OOM kill)
+4. Node.js의 proc.on("close") 콜백이 호출될 수도 있고 안 될 수도 있음
+   - process group kill (-pid)이면 Node.js 자체는 살아있으므로 close 이벤트 발생 가능
+   - 하지만 타이밍에 따라 stdout pipe가 먼저 끊기면서 에러 발생 가능
+5. close 콜백이 안 타면: this.state.status = "running" 유지, this.process는 여전히 non-null
+6. getStatus()의 보정 로직:
+   - this.process.exitCode !== null → 체크하지만, kill된 프로세스의 exitCode가
+     Node.js에 반영되는 타이밍이 비동기적 → 즉시 null이 아닐 수 있음
+   - this.process.killed → SIGTERM/SIGKILL을 Node.js API로 보낸 경우만 true
+     외부 pkill은 Node.js가 모르므로 killed = false
+7. 결과: status = "running" 무한 유지
+```
+
+**시나리오 B — stop()의 killProcessGracefully 타이밍**
+```
+1. stop() 호출 → killProcessGracefully(this.process)
+2. killProcessGracefully는 SIGTERM 보내고 5초 후 SIGKILL 예약 (setTimeout)
+3. stop()은 즉시 this.state.status = "failed" 설정 ← OK
+4. 하지만 proc.on("close") 콜백이 나중에 타면서 status를 다시 덮어쓸 수 있음:
+   - code=128 → status = "failed" (중복이지만 exitCode가 다를 수 있음)
+   - code=0 → status = "completed" (stop했는데 completed로 바뀜!)
+5. 결과: stop 후 status가 예측 불가능하게 변동
+```
+
+**시나리오 C — 워커가 orchestrate.sh를 재실행 (문제 10번)**
+```
+1. stop() → orchestrate.sh kill → status = "failed"
+2. 워커(claude)가 worktree에서 orchestrate.sh를 spawn
+3. 이 프로세스는 this.process가 아님 → manager가 모름
+4. getStatus()에서 this.process = null, status = "failed" → 보정 안 함
+5. 하지만 실제로는 orchestrate.sh가 돌고 있음
+6. Run 누르면 lock PID 체크에서 차단될 수도, 안 될 수도 (worktree 경로 lock)
+7. 결과: UI는 "failed"인데 실제로는 실행 중 → 불일치
+```
+
+**시나리오 D — HMR(Hot Module Replacement)에서 싱글톤 중복**
+```
+1. globalThis.__orchestrationManager__로 싱글톤 유지
+2. 코드 변경 → HMR → 모듈 재로딩
+3. globalThis에 이전 인스턴스가 남아있음 → 재사용 (의도된 동작)
+4. 하지만 이전 인스턴스의 this.process가 이미 죽은 프로세스를 가리킬 수 있음
+5. getStatus()가 죽은 process의 exitCode를 체크하지만 타이밍 이슈로 놓침
+6. 결과: HMR 후 stale 상태 유지
+```
+
+**시나리오 E — 서버 프로세스 자체 재시작 (npm run dev)**
+```
+1. 서버 kill → 새 서버 시작
+2. constructor의 cleanupZombies() 실행 → in_progress 태스크 정리
+3. 하지만 this.state는 새로 초기화 → status = "idle" ← 이건 OK
+4. 문제: cleanupZombies가 살아있는 워커를 오판할 수 있음 (문제 7번)
+5. 결과: 서버 재시작은 상태를 리셋하지만 부작용 가능
+```
+
+### 현재 getStatus() 보정 로직의 한계
+
+```typescript
+getStatus(): OrchestrationStatus {
+  // 체크 1: process.exitCode !== null || process.killed
+  //   한계: 외부 kill 시 exitCode 반영 타이밍이 비동기적
+  //   한계: 외부 pkill은 killed = false
+
+  // 체크 2: process 없는데 running이면 보정
+  //   한계: process가 null이 아닌데 죽어있는 경우를 못 잡음
+  //   이게 시나리오 A의 핵심
+}
+```
+
+**빠진 체크**: `this.process.pid`가 실제로 살아있는지 OS 레벨 확인
+
+### 제안 수정
+
+```typescript
+getStatus(): OrchestrationStatus {
+  if (this.state.status === "running" && this.process) {
+    // 1) Node.js 레벨 체크 (기존)
+    if (this.process.exitCode !== null || this.process.killed) {
+      this.handleProcessDeath("exitCode/killed 감지");
+      return this.state.status;
+    }
+
+    // 2) OS 레벨 체크 (신규) — 실제 프로세스 생존 확인
+    if (this.process.pid) {
+      try {
+        process.kill(this.process.pid, 0); // signal 0 = 생존 확인만
+      } catch {
+        // ESRCH = 프로세스 없음 → 죽었는데 Node.js가 모르는 상태
+        this.handleProcessDeath("OS 레벨 프로세스 사라짐");
+        return this.state.status;
+      }
+    }
+  }
+
+  // 3) process 없는데 running (기존)
+  if (this.state.status === "running" && !this.process && !this.launching) {
+    this.handleProcessDeath("process 객체 없음");
+  }
+
+  return this.state.status;
+}
+
+private handleProcessDeath(reason: string) {
+  this.appendLog(`[orchestrate] 프로세스 종료 감지: ${reason}`);
+  this.state.status = "failed";
+  this.state.finishedAt = new Date().toISOString();
+  this.state.exitCode = this.state.exitCode ?? 1;
+  this.process = null;
+  this.saveRunHistory();
+}
+```
+
+### 추가로 필요한 수정
+
+**stop() 후 close 콜백 충돌 방지**:
+```typescript
+private stopped = false;
+
+stop() {
+  this.stopped = true;
+  // ... kill logic ...
+  this.state.status = "failed";
+}
+
+// proc.on("close") 내부:
+proc.on("close", (code) => {
+  if (this.stopped) return; // stop()이 이미 상태 설정함 → 덮어쓰기 방지
+  // ... 기존 로직 ...
+});
+```
+
+### Trade-off
+
+| 방법 | 장점 | 단점 |
+|------|------|------|
+| process.kill(pid, 0) | OS 레벨 정확한 생존 확인 | 매 API 호출마다 syscall 1회 (무시 가능 수준) |
+| stopped 플래그 | close 콜백 충돌 방지 | 플래그 관리 복잡도 증가 |
+| 주기적 healthcheck interval | 폴링 없이도 감지 | setInterval 추가 = 리소스 |
+
+**권장**: process.kill(pid, 0) + stopped 플래그. 가장 확실하고 부작용 적음.
 
 ---
 
