@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getErrorMessage } from "@/lib/error-utils";
 
 type TaskCreateDialogProps = {
   open: boolean;
@@ -84,9 +85,7 @@ export function TaskCreateDialog({
       onCreated();
       onClose();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "태스크 생성에 실패했습니다.",
-      );
+      setError(getErrorMessage(err, "태스크 생성에 실패했습니다."));
     } finally {
       setSubmitting(false);
     }

@@ -18,6 +18,7 @@ import {
   type TaskStatus,
   type TaskPriority,
 } from "../../lib/constants";
+import { getErrorMessage } from "@/lib/error-utils";
 
 type TaskData = {
   id: string;
@@ -100,9 +101,7 @@ export function TaskEditSheet({
       onUpdated();
       onClose();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "태스크 수정에 실패했습니다.",
-      );
+      setError(getErrorMessage(err, "태스크 수정에 실패했습니다."));
     } finally {
       setSaving(false);
     }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { parseAllSprints } from "@/lib/sprint-parser";
 import fs from "fs";
 import path from "path";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -78,8 +79,7 @@ ${sanitizedGoal ? `- ${sanitizedGoal}` : "- TBD"}
   } catch (err) {
     return NextResponse.json(
       {
-        error:
-          err instanceof Error ? err.message : "Failed to create sprint",
+        error: getErrorMessage(err, "Failed to create sprint"),
       },
       { status: 500 },
     );

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import { parseAllRequests, getRequestsDir } from "@/lib/request-parser";
 import { generateNextTaskId } from "@/lib/task-id";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +77,7 @@ ${bodyContent}
     );
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to create task" },
+      { error: getErrorMessage(err, "Failed to create task") },
       { status: 500 },
     );
   }

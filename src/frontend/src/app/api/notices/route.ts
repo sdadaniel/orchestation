@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import { parseAllNotices, getNoticesDir } from "@/lib/notice-parser";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,7 @@ ${bodyContent}
     );
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to create notice" },
+      { error: getErrorMessage(err, "Failed to create notice") },
       { status: 500 },
     );
   }

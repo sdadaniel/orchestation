@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { appendRunHistory, type RunHistoryEntry } from "./run-history";
 import { parseCostLog } from "./cost-parser";
+import { getErrorMessage } from "./error-utils";
 import { loadSettings } from "./settings";
 import { pipeProcessLogs, killProcessGracefully } from "./process-utils";
 
@@ -172,7 +173,7 @@ class OrchestrationManager {
         stdio: ["ignore", "pipe", "pipe"],
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = getErrorMessage(err, String(err));
       this.appendLog(`[orchestrate] Failed to spawn: ${msg}`);
       this.state.status = "failed";
       this.state.finishedAt = new Date().toISOString();
@@ -416,7 +417,7 @@ class OrchestrationManager {
       appendRunHistory(entry);
       this.appendLog(`[orchestrate] Run history saved: ${entry.id} (${tasksCompleted} completed, ${tasksFailed} failed, $${totalCostUsd.toFixed(4)})`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = getErrorMessage(err, String(err));
       this.appendLog(`[orchestrate] Failed to save run history: ${msg}`);
     }
   }

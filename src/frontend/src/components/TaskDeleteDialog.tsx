@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
+import { getErrorMessage } from "@/lib/error-utils";
 import {
   Dialog,
   DialogContent,
@@ -41,9 +42,7 @@ export function TaskDeleteDialog({
       onDeleted();
       onClose();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "태스크 삭제에 실패했습니다.",
-      );
+      setError(getErrorMessage(err, "태스크 삭제에 실패했습니다."));
     } finally {
       setDeleting(false);
     }

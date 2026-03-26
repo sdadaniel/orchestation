@@ -5,6 +5,7 @@ import {
   hasLogSources,
   getTaskLogs,
 } from "@/lib/task-log-parser";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export async function GET(
   } catch (err) {
     return NextResponse.json(
       {
-        error: err instanceof Error ? err.message : "Failed to retrieve logs",
+        error: getErrorMessage(err, "Failed to retrieve logs"),
       },
       { status: 500 },
     );

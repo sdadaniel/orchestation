@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { TASKS_DIR } from "@/lib/paths";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -132,7 +133,7 @@ export async function PUT(
   } catch (err) {
     return NextResponse.json(
       {
-        error: err instanceof Error ? err.message : "Failed to update task",
+        error: getErrorMessage(err, "Failed to update task"),
       },
       { status: 500 },
     );
@@ -219,7 +220,7 @@ export async function DELETE(
   } catch (err) {
     return NextResponse.json(
       {
-        error: err instanceof Error ? err.message : "Failed to delete task",
+        error: getErrorMessage(err, "Failed to delete task"),
       },
       { status: 500 },
     );

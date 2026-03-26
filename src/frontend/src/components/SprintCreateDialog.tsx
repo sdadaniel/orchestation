@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { getErrorMessage } from "@/lib/error-utils";
 
 type SprintCreateDialogProps = {
   open: boolean;
@@ -68,9 +69,7 @@ export function SprintCreateDialog({
       onCreated();
       onClose();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "스프린트 생성에 실패했습니다.",
-      );
+      setError(getErrorMessage(err, "스프린트 생성에 실패했습니다."));
     } finally {
       setSubmitting(false);
     }

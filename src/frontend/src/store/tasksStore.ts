@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { TaskFrontmatter } from "@/lib/parser";
+import { getErrorMessage } from "@/lib/error-utils";
 import type { SprintResponse } from "@/lib/waterfall";
 import { buildWaterfallGroups } from "@/lib/waterfall";
 import type { WaterfallGroup } from "@/types/waterfall";
@@ -87,8 +88,7 @@ export const useTasksStore = create<TasksState>()(
         } catch (err) {
           set(
             {
-              tasksError:
-                err instanceof Error ? err.message : "알 수 없는 오류",
+              tasksError: getErrorMessage(err, "알 수 없는 오류"),
             },
             false,
             "tasks/fetchTasks/error",
@@ -116,8 +116,7 @@ export const useTasksStore = create<TasksState>()(
         } catch (err) {
           set(
             {
-              requestsError:
-                err instanceof Error ? err.message : "오류 발생",
+              requestsError: getErrorMessage(err, "오류 발생"),
             },
             false,
             "tasks/fetchRequests/error",

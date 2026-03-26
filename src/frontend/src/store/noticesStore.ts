@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export interface NoticeItem {
   id: string;
@@ -51,7 +52,7 @@ export const useNoticesStore = create<NoticesState>()(
           );
         } catch (err) {
           set(
-            { error: err instanceof Error ? err.message : "오류 발생" },
+            { error: getErrorMessage(err, "오류 발생") },
             false,
             "notices/fetch/error",
           );

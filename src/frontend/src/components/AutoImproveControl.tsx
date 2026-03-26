@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Play, Square, Loader2 } from "lucide-react";
 import { HorseRunningIndicator } from "@/components/HorseRunningIndicator";
+import { getErrorMessage } from "@/lib/error-utils";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 
 // API response type definitions
@@ -68,7 +69,7 @@ export default function AutoImproveControl({
       }
       // store의 polling이 running 감지하면 isStarting 자동 해제
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Network error");
+      setError(getErrorMessage(err, "Network error"));
       setIsStarting(false);
     }
   };
@@ -85,7 +86,7 @@ export default function AutoImproveControl({
       }
       // store의 polling이 실제 종료 감지하면 상태가 idle로 전환됨
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Network error");
+      setError(getErrorMessage(err, "Network error"));
       setIsStopping(false);
     }
   };

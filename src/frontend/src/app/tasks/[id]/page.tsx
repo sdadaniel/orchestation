@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ArrowLeft, Loader2, FileText, Terminal, ClipboardCheck, Play, Square, CheckCircle2, GitBranch, Check, DollarSign, Trash2 } from "lucide-react";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { HorseRunningIndicator } from "@/components/HorseRunningIndicator";
+import { getErrorMessage } from "@/lib/error-utils";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 
 interface CostEntry {
@@ -193,7 +194,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         const data = await res.json();
         setTask(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load task");
+        setError(getErrorMessage(err, "Failed to load task"));
       } finally {
         setIsLoading(false);
       }

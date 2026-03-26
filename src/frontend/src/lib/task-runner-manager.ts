@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import { pipeProcessLogs, killProcessGracefully } from "./process-utils";
+import { getErrorMessage } from "./error-utils";
 
 export type TaskRunStatus = "idle" | "running" | "completed" | "failed";
 
@@ -70,7 +71,7 @@ class TaskRunnerManager {
         detached: true,
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = getErrorMessage(err, String(err));
       state.logs.push(`[task-runner] Failed to spawn: ${msg}`);
       state.status = "failed";
       state.finishedAt = new Date().toISOString();

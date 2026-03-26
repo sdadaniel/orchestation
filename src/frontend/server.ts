@@ -6,6 +6,7 @@ import * as pty from "node-pty";
 import os from "os";
 
 import { resolve } from "path";
+import { getErrorMessage } from "./src/lib/error-utils";
 
 const CRASH_LOG = resolve(process.cwd(), "../..", ".orchestration/output/crash.log");
 
@@ -91,7 +92,7 @@ app.prepare().then(() => {
         env: cleanEnv,
       });
     } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = getErrorMessage(err, String(err));
       console.error(`[pty] failed to spawn shell="${shell}": ${reason}`);
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "error", message: reason }));
