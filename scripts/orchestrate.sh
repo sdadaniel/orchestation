@@ -39,6 +39,19 @@ case "$WORKER_MODE" in
 esac
 echo "⚙️  Worker 실행 모드: ${WORKER_MODE}"
 
+# ── BASE_BRANCH 결정 (환경변수 > config.json > 기본값 main) ──
+if [ -z "${BASE_BRANCH:-}" ]; then
+  if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
+    BASE_BRANCH=$(jq -r '.baseBranch // "main"' "$CONFIG_FILE" 2>/dev/null || echo "main")
+  elif [ -f "$CONFIG_FILE" ]; then
+    BASE_BRANCH=$(awk -F'"' '/"baseBranch"/{print $4; exit}' "$CONFIG_FILE" 2>/dev/null || echo "main")
+  else
+    BASE_BRANCH="main"
+  fi
+fi
+[ -z "${BASE_BRANCH:-}" ] && BASE_BRANCH="main"
+echo "⚙️  Base Branch: ${BASE_BRANCH}"
+
 # ── 중복 실행 방지 (lock) ─────────────────────────────
 LOCK_DIR="/tmp/orchestrate.lock"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
@@ -359,11 +372,11 @@ process_done_task() {
     local branch
     branch=$(get_branch "$task_id")
     if [ -n "$branch" ]; then
-      if git -C "$REPO_ROOT" log --oneline "main..$branch" 2>/dev/null | grep -q .; then
-        echo "  🔀 ${task_id}: $branch → main 머지"
+      if git -C "$REPO_ROOT" log --oneline "${BASE_BRANCH}..$branch" 2>/dev/null | grep -q .; then
+        echo "  🔀 ${task_id}: $branch → ${BASE_BRANCH} 머지"
         if ! git -C "$REPO_ROOT" merge "$branch" --no-ff --no-edit; then
           # 머지 충돌 → Claude로 자동 해결 시도
-          if ! resolve_merge_conflict "$REPO_ROOT" "$task_id" "$branch"; then
+          if ! resolve_merge_conflict "$REPO_ROOT" "$task_id" "$branch" "$BASE_BRANCH"; then
             # 해결 실패 → failed 처리 + 의존 태스크 연쇄 중단
             sed_inplace "s/^status: .*/status: failed/" "$local_task_file"
             git -C "$REPO_ROOT" add "$local_task_file"
@@ -389,7 +402,7 @@ process_done_task() {
     task_title=$(get_field "$local_task_file" "title")
     post_notice "info" \
       "${task_id} 완료" \
-      "**${task_id}:** ${task_title}\n\n태스크가 성공적으로 완료되어 main에 머지되었습니다."
+      "**${task_id}:** ${task_title}\n\n태스크가 성공적으로 완료되어 ${BASE_BRANCH}에 머지되었습니다."
 
     rm -f "${SIGNAL_DIR}/${task_id}-done"
     rm -f "/tmp/worker-${task_id}.pid"

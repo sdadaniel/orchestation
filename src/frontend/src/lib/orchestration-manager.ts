@@ -79,7 +79,11 @@ class OrchestrationManager {
     try {
       this.process = spawn("bash", [scriptPath], {
         cwd: projectRoot,
-        env: { ...process.env, MAX_PARALLEL: String(settings.maxParallel) },
+        env: {
+          ...process.env,
+          MAX_PARALLEL: String(settings.maxParallel),
+          BASE_BRANCH: settings.baseBranch,
+        },
         stdio: ["ignore", "pipe", "pipe"],
       });
     } catch (err) {

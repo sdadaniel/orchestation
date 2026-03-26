@@ -133,9 +133,11 @@ PROMPT
 }
 
 # ── 리뷰 프롬프트 빌드 ──────────────────────────────────
+# 인자: task_file, task_filename, base_branch(optional, 기본값: main)
 build_review_prompt() {
   local task_file="$1"
   local task_filename="$2"
+  local base_branch="${3:-${BASE_BRANCH:-main}}"
 
   local task_content
   task_content=$(embed_task_content "$task_file")
@@ -144,7 +146,7 @@ build_review_prompt() {
 ## 리뷰 규칙
 - 코드를 직접 수정하지 않는다
 - Task 파일의 완료 조건을 기준으로 검증한다
-- git diff main에 나온 파일만 검증하라. 관련 없는 코드를 읽지 마라
+- git diff ${base_branch}에 나온 파일만 검증하라. 관련 없는 코드를 읽지 마라
 - 불필요한 파일 탐색을 하지 마라. 간결하게 리뷰하고 결론을 빠르게 내라
 
 ## Task 정의 (${task_filename})
@@ -155,7 +157,7 @@ ${task_content}
 다음 순서로 리뷰를 수행해라:
 
 1. 위 Task의 완료 조건을 확인해라
-2. 이 브랜치에서 변경된 코드를 git diff main 으로 확인해라
+2. 이 브랜치에서 변경된 코드를 git diff ${base_branch} 으로 확인해라
 3. 완료 조건을 하나씩 검증해라
 4. 테스트가 있으면 실행해서 통과 여부를 확인해라
 
