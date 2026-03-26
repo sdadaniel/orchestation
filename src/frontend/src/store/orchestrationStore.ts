@@ -2,16 +2,9 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import type { OrchestrationStatus, OrchestrationStatusData } from "@/lib/orchestration-manager";
 
-export type OrchestrationStatus = "idle" | "running" | "completed" | "failed";
-
-export interface OrchestrationStatusData {
-  status: OrchestrationStatus;
-  startedAt: string | null;
-  finishedAt: string | null;
-  exitCode: number | null;
-  taskResults: { taskId: string; status: "success" | "failure" }[];
-}
+export type { OrchestrationStatus, OrchestrationStatusData };
 
 interface OrchestrationState {
   data: OrchestrationStatusData;

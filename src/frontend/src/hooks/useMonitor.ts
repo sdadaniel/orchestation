@@ -4,15 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useRef, useEffect, useState } from "react";
 import type { QueryKey } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import type { ClaudeProcess } from "@/lib/monitor-types";
 
-export interface ClaudeProcess {
-  pid: number;
-  cpu: number;
-  mem: number;
-  memMB: number;
-  command: string;
-  label: string;
-}
+export type { ClaudeProcess };
 
 export interface MonitorSnapshot {
   cpu: { user: number; system: number; idle: number };

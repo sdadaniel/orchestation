@@ -3,16 +3,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useEffect, useCallback, useState } from "react";
 import { queryKeys } from "@/lib/query-keys";
+import type { OrchestrationStatus, OrchestrationStatusData } from "@/lib/orchestration-manager";
 
-export type OrchestrationStatus = "idle" | "running" | "completed" | "failed";
-
-export interface OrchestrationStatusData {
-  status: OrchestrationStatus;
-  startedAt: string | null;
-  finishedAt: string | null;
-  exitCode: number | null;
-  taskResults: { taskId: string; status: "success" | "failure" }[];
-}
+export type { OrchestrationStatusData };
 
 type UseOrchestrationStatusResult = {
   data: OrchestrationStatusData;

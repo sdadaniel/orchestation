@@ -1,20 +1,12 @@
 import { NextResponse } from "next/server";
 import os from "os";
 import { execSync } from "child_process";
+import type { ClaudeProcess } from "@/lib/monitor-types";
 
 export const dynamic = "force-dynamic";
 
 // 이전 CPU 시간을 저장하여 델타 계산
 let prevTimes: { user: number; sys: number; idle: number } | null = null;
-
-export interface ClaudeProcess {
-  pid: number;
-  cpu: number;
-  mem: number;
-  memMB: number;
-  command: string;
-  label: string; // 터미널 식별 라벨
-}
 
 function getClaudeProcesses(): ClaudeProcess[] {
   try {

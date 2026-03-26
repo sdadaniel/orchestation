@@ -2,19 +2,9 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import type { RunHistoryEntry } from "@/lib/run-history";
 
-export interface RunHistoryEntry {
-  id: string;
-  startedAt: string;
-  finishedAt: string;
-  status: "completed" | "failed";
-  exitCode: number | null;
-  taskResults: { taskId: string; status: "success" | "failure" }[];
-  totalCostUsd: number;
-  totalDurationMs: number;
-  tasksCompleted: number;
-  tasksFailed: number;
-}
+export type { RunHistoryEntry };
 
 type UseRunHistoryResult = {
   runs: RunHistoryEntry[];

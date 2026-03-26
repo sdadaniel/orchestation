@@ -2,27 +2,9 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import type { DocNode, DocDetail } from "@/lib/doc-tree";
 
-/* ── Types (client-side mirror of server types) ── */
-
-export interface DocNode {
-  id: string;
-  title: string;
-  type: "doc" | "folder";
-  file?: string;
-  children: DocNode[];
-  readonly?: boolean;
-}
-
-export interface DocDetail {
-  id: string;
-  title: string;
-  type: "doc" | "folder";
-  file?: string;
-  content: string;
-  parentPath: string[];
-  readonly?: boolean;
-}
+export type { DocNode, DocDetail };
 
 interface Manifest {
   tree: DocNode[];

@@ -6,6 +6,14 @@ import { loadSettings } from "./settings";
 
 export type OrchestrationStatus = "idle" | "running" | "completed" | "failed";
 
+export interface OrchestrationStatusData {
+  status: OrchestrationStatus;
+  startedAt: string | null;
+  finishedAt: string | null;
+  exitCode: number | null;
+  taskResults: { taskId: string; status: "success" | "failure" }[];
+}
+
 export interface TaskResult {
   taskId: string;
   status: "success" | "failure";
