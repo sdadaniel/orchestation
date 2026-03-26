@@ -1,7 +1,7 @@
 ---
 id: TASK-174
 title: "throw new Error() 빈 메시지에 에러 문구 추가"
-status: in_progress
+status: done
 branch: task/task-174
 worktree: ../repo-wt-task-174
 priority: medium
