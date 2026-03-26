@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { PROJECT_ROOT } from "./paths";
 
 export type NoticeType = "info" | "warning" | "error" | "request";
 
@@ -13,7 +14,6 @@ export interface NoticeData {
   content: string;
 }
 
-const PROJECT_ROOT = path.resolve(process.cwd(), "..", "..");
 const ORCH_NOTICES_DIR = path.join(PROJECT_ROOT, ".orchestration", "notices");
 const LEGACY_NOTICES_DIR = path.join(PROJECT_ROOT, "docs", "notice");
 const NOTICES_DIR = fs.existsSync(ORCH_NOTICES_DIR) ? ORCH_NOTICES_DIR : LEGACY_NOTICES_DIR;

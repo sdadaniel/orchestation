@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { TASKS_DIR } from "./paths";
 
 export interface RequestData {
   id: string;
@@ -15,11 +16,6 @@ export interface RequestData {
   branch: string;
 }
 
-// .orchestration/tasks를 먼저 확인, 없으면 기존 docs/task fallback
-const PROJECT_ROOT = path.resolve(process.cwd(), "..", "..");
-const ORCH_TASKS_DIR = path.join(PROJECT_ROOT, ".orchestration", "tasks");
-const LEGACY_TASKS_DIR = path.join(PROJECT_ROOT, "docs", "task");
-const TASKS_DIR = fs.existsSync(ORCH_TASKS_DIR) ? ORCH_TASKS_DIR : LEGACY_TASKS_DIR;
 
 export function parseRequestFile(filePath: string): RequestData | null {
   try {

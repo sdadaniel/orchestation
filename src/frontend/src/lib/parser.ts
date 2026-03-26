@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import type { TaskStatus, TaskPriority } from "../../lib/constants";
+import { TASKS_DIR } from "./paths";
 
 export interface TaskFrontmatter {
   id: string;
@@ -40,10 +41,6 @@ function toTaskPriority(value: unknown): TaskPriority {
   return "medium";
 }
 
-const PROJECT_ROOT = path.resolve(process.cwd(), "..", "..");
-const ORCH_TASKS_DIR = path.join(PROJECT_ROOT, ".orchestration", "tasks");
-const LEGACY_TASKS_DIR = path.join(PROJECT_ROOT, "docs", "task");
-const TASKS_DIR = fs.existsSync(ORCH_TASKS_DIR) ? ORCH_TASKS_DIR : LEGACY_TASKS_DIR;
 
 export function parseTaskFile(filePath: string): TaskFrontmatter | null {
   try {

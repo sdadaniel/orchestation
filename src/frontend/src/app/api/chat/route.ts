@@ -1,11 +1,9 @@
 import { spawn } from "child_process";
 import path from "path";
+import { PROJECT_ROOT } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
-
-// 프로젝트 루트 디렉토리 (src/frontend 기준 ../../)
-const PROJECT_ROOT = path.resolve(process.cwd(), "../..");
 
 export async function POST(request: Request) {
   let message: string;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
+import { PROJECT_ROOT } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,6 @@ interface NightWorkerState {
   pid: number | null;
 }
 
-const PROJECT_ROOT = path.resolve(process.cwd(), "..", "..");
 const PID_FILE = "/tmp/night-worker.pid";
 const STATE_FILE = "/tmp/night-worker.state";
 const ORCH_LOG_DIR = path.join(PROJECT_ROOT, ".orchestration", "output", "logs");

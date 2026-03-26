@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { TASKS_DIR } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
-
-const TASKS_DIR = (() => { const p = path.resolve(process.cwd(), "..", ".."); const o = path.join(p, ".orchestration", "tasks"); return fs.existsSync(o) ? o : path.join(p, "docs", "task"); })();
 
 /** 가벼운 엔드포인트 — task 디렉토리의 최신 수정 시간만 반환 */
 export async function GET() {

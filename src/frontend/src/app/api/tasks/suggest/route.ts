@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { execSync } from "child_process";
 import path from "path";
+import { PROJECT_ROOT } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
-
-const PROJECT_ROOT = path.resolve(process.cwd(), "..", "..");
 
 export async function POST() {
   try {

@@ -1,10 +1,9 @@
 import { spawn } from "child_process";
 import path from "path";
+import { PROJECT_ROOT } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
-
-const PROJECT_ROOT = path.resolve(process.cwd(), "../..");
 
 interface AnalyzedTask {
   title: string;

@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { findRequestFile, parseRequestFile, parseAllRequests, getRequestsDir } from "@/lib/request-parser";
+import { OUTPUT_DIR } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
-
-const OUTPUT_DIR = (() => { const p = path.resolve(process.cwd(), "..", ".."); const o = path.join(p, ".orchestration", "output"); return fs.existsSync(o) ? o : path.join(p, "output"); })();
 
 export async function GET(
   _request: Request,

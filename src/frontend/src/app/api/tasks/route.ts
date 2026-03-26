@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { parseAllTasks } from "@/lib/parser";
 import fs from "fs";
 import path from "path";
+import { TASKS_DIR } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
-
-const TASKS_DIR = (() => { const p = path.resolve(process.cwd(), "..", ".."); const o = path.join(p, ".orchestration", "tasks"); return fs.existsSync(o) ? o : path.join(p, "docs", "task"); })();
 
 export async function GET() {
   const tasks = parseAllTasks();
