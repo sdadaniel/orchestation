@@ -1,7 +1,9 @@
 ---
 id: TASK-181
 title: api route task-id 생성 로직 중복 공통 유틸 추출
-status: pending
+status: in_progress
+branch: task/task-181
+worktree: ../repo-wt-task-181
 priority: medium
 mode: night
 created: 2026-03-25
