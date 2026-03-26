@@ -87,7 +87,17 @@ export function CostTable({ entries }: CostTableProps) {
   return (
     <div className="space-y-3">
       <div className="overflow-x-auto">
-        <table className="w-full text-xs compact-table">
+        <table className="w-full text-xs compact-table table-fixed">
+          <colgroup>
+            <col className="w-[100px]" />
+            <col className="w-[70px]" />
+            <col className="w-[200px]" />
+            <col className="w-[90px]" />
+            <col className="w-[80px]" />
+            <col className="w-[60px]" />
+            <col className="w-[100px]" />
+            <col className="w-[160px]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-border text-left text-[10px] text-muted-foreground uppercase tracking-wider">
               <th className="font-medium">Task ID</th>
