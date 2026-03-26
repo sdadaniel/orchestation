@@ -1,7 +1,9 @@
 ---
 id: TASK-158
 title: night-worker route JSON.parse any 타입 제거
-status: pending
+status: in_progress
+branch: task/task-158
+worktree: ../repo-wt-task-158
 priority: medium
 mode: night
 created: 2026-03-25
