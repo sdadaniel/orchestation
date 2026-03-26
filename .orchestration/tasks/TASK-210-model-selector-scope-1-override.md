@@ -1,7 +1,7 @@
 ---
 id: TASK-210
 title: model-selector scope ≤ 1일 때 키워드 무시하고 simple 강제
-status: pending
+status: in_progress
 branch: task/task-210
 worktree: ../repo-wt-task-210
 priority: high
