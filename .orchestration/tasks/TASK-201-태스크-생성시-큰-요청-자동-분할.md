@@ -1,7 +1,7 @@
 ---
 id: TASK-201
 title: 태스크 생성 시 큰 요청 자동 분할 로직 추가
-status: in_progress
+status: done
 branch: task/task-201
 worktree: ../repo-wt-task-201
 priority: high
