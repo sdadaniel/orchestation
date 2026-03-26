@@ -1,7 +1,7 @@
 ---
 id: TASK-181
 title: api route task-id 생성 로직 중복 공통 유틸 추출
-status: in_progress
+status: done
 branch: task/task-181
 worktree: ../repo-wt-task-181
 priority: medium
