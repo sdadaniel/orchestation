@@ -1,7 +1,7 @@
 ---
 id: TASK-168
 title: Recharts formatter 콜백 any 타입을 구체 타입으로 교체
-status: in_progress
+status: done
 branch: task/task-168
 worktree: ../repo-wt-task-168
 priority: medium
