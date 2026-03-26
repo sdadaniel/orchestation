@@ -1,7 +1,9 @@
 ---
 id: TASK-182
 title: "Recharts Tooltip/Legend 콜백 any 타입을 구체 타입으로 교체"
-status: pending
+status: in_progress
+branch: task/task-182
+worktree: ../repo-wt-task-182
 priority: medium
 mode: night
 created: 2026-03-25
