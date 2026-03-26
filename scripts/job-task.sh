@@ -182,38 +182,27 @@ model_args=()
 [ -n "$selected_model" ] && model_args=(--model "$selected_model")
 
 CONV_FILE="$OUTPUT_DIR/${TASK_ID}-task-conversation.jsonl"
-STREAM_LOG="$REPO_ROOT/output/logs/${TASK_ID}-stream.log"
 
-# stream-json + verbose로 실시간 로그 출력
-# tee로 파일 저장 + awk로 사람이 읽을 수 있는 이벤트만 stdout에 출력
-echo "$prompt" | claude --output-format stream-json --verbose --dangerously-skip-permissions "${model_args[@]}" --system-prompt "$ROLE_PROMPT" > "$CONV_FILE" &
-CLAUDE_PID=$!
+# stream-json: claude → tee → 파일 저장 + stdout 실시간 파싱
+# stdbuf -oL로 라인 버퍼링 강제 → 실시간 출력
+echo "$prompt" | claude --output-format stream-json --verbose --dangerously-skip-permissions "${model_args[@]}" --system-prompt "$ROLE_PROMPT" \
+  | stdbuf -oL tee "$CONV_FILE" \
+  | while IFS= read -r line; do
+      type=$(echo "$line" | jq -r '.type // empty' 2>/dev/null)
+      case "$type" in
+        assistant)
+          text=$(echo "$line" | jq -r '.message.content[]? | select(.type=="text") | .text // empty' 2>/dev/null)
+          [ -n "$text" ] && echo "🤖 $text"
+          ;;
+        result)
+          echo "━━━ Claude 작업 완료 ━━━"
+          ;;
+      esac
+    done
 
-# 백그라운드로 stream 파싱: CONV_FILE을 tail -f로 읽어서 실시간 출력
-(
-  sleep 2  # claude가 파일 쓰기 시작할 때까지 대기
-  tail -f "$CONV_FILE" 2>/dev/null | while IFS= read -r line; do
-    type=$(echo "$line" | jq -r '.type // empty' 2>/dev/null)
-    case "$type" in
-      assistant)
-        text=$(echo "$line" | jq -r '.message.content[]? | select(.type=="text") | .text // empty' 2>/dev/null)
-        [ -n "$text" ] && echo "🤖 $text"
-        ;;
-      result)
-        echo "━━━ Claude 작업 완료 ━━━"
-        break
-        ;;
-    esac
-  done
-) &
-PARSER_PID=$!
-
-# claude 프로세스 완료 대기
-wait "$CLAUDE_PID"
-CLAUDE_EXIT=$?
-kill "$PARSER_PID" 2>/dev/null
-
-if [ "$CLAUDE_EXIT" -ne 0 ]; then
+# 파이프 exit code: PIPESTATUS[0]이 claude의 exit code
+CLAUDE_EXIT=${PIPESTATUS[0]}
+if [ "$CLAUDE_EXIT" -ne 0 ] && [ "$CLAUDE_EXIT" -ne "" ]; then
   echo "❌ Claude 호출 실패 (exit=$CLAUDE_EXIT)" >&2
   exit 1
 fi
