@@ -1,7 +1,7 @@
 ---
 id: TASK-193
 title: E2E 테스트 실행 및 실패 수정 — current-tab
-status: in_progress
+status: failed
 branch: task/task-193
 worktree: ../repo-wt-task-193
 priority: medium
