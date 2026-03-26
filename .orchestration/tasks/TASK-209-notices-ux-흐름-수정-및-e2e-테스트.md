@@ -1,7 +1,9 @@
 ---
 id: TASK-209
 title: Notices UX 흐름 수정 및 E2E 테스트
-status: pending
+status: in_progress
+branch: task/task-209
+worktree: ../repo-wt-task-209
 priority: high
 scope:
   - src/frontend/src/**
