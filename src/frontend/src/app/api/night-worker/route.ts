@@ -5,6 +5,18 @@ import path from "path";
 
 export const dynamic = "force-dynamic";
 
+/** Night Worker 상태 인터페이스 */
+interface NightWorkerState {
+  status: string;
+  startedAt: string | null;
+  until: string | null;
+  budget: string | number | null;
+  maxTasks: number;
+  tasksCreated: number;
+  totalCost: string;
+  pid: number | null;
+}
+
 const PROJECT_ROOT = path.resolve(process.cwd(), "..", "..");
 const PID_FILE = "/tmp/night-worker.pid";
 const STATE_FILE = "/tmp/night-worker.state";
@@ -16,17 +28,17 @@ const LOG_FILE = path.join(LOG_DIR, "night-worker.log");
 /** GET — 상태 + 로그 반환 */
 export async function GET() {
   // 상태 파일 읽기
-  let state = { status: "idle", startedAt: null, until: null, budget: null, maxTasks: 0, tasksCreated: 0, totalCost: "0", pid: null };
+  let state: NightWorkerState = { status: "idle", startedAt: null, until: null, budget: null, maxTasks: 0, tasksCreated: 0, totalCost: "0", pid: null };
   if (fs.existsSync(STATE_FILE)) {
     try {
-      state = JSON.parse(fs.readFileSync(STATE_FILE, "utf-8"));
+      state = JSON.parse(fs.readFileSync(STATE_FILE, "utf-8")) as NightWorkerState;
     } catch { /* ignore */ }
   }
 
   // PID 생존 확인
   if (state.pid) {
     try {
-      process.kill(state.pid as number, 0);
+      process.kill(state.pid, 0);
     } catch {
       // 프로세스 없음 → idle
       state.status = state.status === "running" ? "completed" : state.status;
@@ -120,7 +132,7 @@ export async function DELETE() {
   // 상태 업데이트
   if (fs.existsSync(STATE_FILE)) {
     try {
-      const state = JSON.parse(fs.readFileSync(STATE_FILE, "utf-8"));
+      const state = JSON.parse(fs.readFileSync(STATE_FILE, "utf-8")) as NightWorkerState;
       state.status = "stopped";
       state.pid = null;
       fs.writeFileSync(STATE_FILE, JSON.stringify(state), "utf-8");
