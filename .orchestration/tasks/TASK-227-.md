@@ -7,7 +7,7 @@ worktree: ../repo-wt-task-227
 priority: medium
 mode: night
 created: 2026-03-26
-updated: 2026-03-26
+updated: 2026-03-26 09:39:55
 depends_on: []
 scope:
   - src/frontend/src/lib/error-utils.ts
