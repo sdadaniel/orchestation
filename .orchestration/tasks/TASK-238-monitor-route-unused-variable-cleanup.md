@@ -1,7 +1,7 @@
 ---
 id: TASK-238
 title: monitor-route-unused-variable-cleanup
-status: in_progress
+status: failed
 branch: task/task-238
 worktree: ../repo-wt-task-238
 priority: medium
