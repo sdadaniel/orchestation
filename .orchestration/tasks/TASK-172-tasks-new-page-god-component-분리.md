@@ -1,7 +1,9 @@
 ---
 id: TASK-172
 title: tasks/new/page.tsx 840줄 god component 분리
-status: pending
+status: in_progress
+branch: task/task-172
+worktree: ../repo-wt-task-172
 priority: medium
 mode: night
 created: 2026-03-25
