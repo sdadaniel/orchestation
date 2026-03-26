@@ -1,7 +1,7 @@
 ---
 id: TASK-187
 title: E2E 테스트 실행 및 실패 수정 — tasks-list
-status: in_progress
+status: done
 branch: task/task-187
 worktree: ../repo-wt-task-187
 priority: medium
