@@ -775,27 +775,11 @@ button.timeline-task-label:hover {
 }
 
 /* ── Task status accent card ───────────────────────────── */
-.board-card-in-progress {
-  border-left-width: 2px;
-  border-left-color: #3b82f6;
-}
-.board-card-reviewing {
-  border-left-width: 2px;
-  border-left-color: #f97316;
-}
 .board-card-done {
-  border-left-width: 2px;
-  border-left-color: #22c55e;
   opacity: 0.8;
 }
 .board-card-rejected {
-  border-left-width: 2px;
-  border-left-color: #ef4444;
   opacity: 0.8;
-}
-.board-card-stopped {
-  border-left-width: 2px;
-  border-left-color: #8b5cf6;
 }
 
 /* ── Section header utility ────────────────────────────── */
