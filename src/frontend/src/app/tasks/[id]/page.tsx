@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useCallback, useRef, use } from "react";
 import { useRouter } from "next/navigation";
+import { getErrorMessage } from "@/lib/error-utils";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Loader2, FileText, Terminal, ClipboardCheck, Play, Square, CheckCircle2, GitBranch, Check, DollarSign, Trash2 } from "lucide-react";
 import { MarkdownContent } from "@/components/MarkdownContent";
@@ -80,40 +81,64 @@ interface LogEntry {
   message: string;
 }
 
-function LiveLogPanel({ taskId }: { taskId: string }) {
-  const [entries, setEntries] = useState<LogEntry[]>([]);
+function LiveLogPanel({ taskId, onStatusChange }: { taskId: string; onStatusChange?: (status: string) => void }) {
+  const [lines, setLines] = useState<string[]>([]);
   const [waiting, setWaiting] = useState(true);
+  const logBodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let alive = true;
-    const poll = async () => {
-      if (!alive) return;
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/task-logs/${taskId}`);
+
+    ws.onmessage = (event) => {
       try {
-        const res = await fetch(`/api/tasks/${taskId}/logs`);
-        if (!res.ok) return;
-        const data: LogEntry[] = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setEntries([...data].reverse());
+        const msg = JSON.parse(event.data);
+        if (msg.type === "log" && msg.line) {
+          setLines((prev) => [...prev, msg.line]);
           setWaiting(false);
+        } else if (msg.type === "status") {
+          onStatusChange?.(msg.status);
         }
       } catch {
         // ignore
       }
     };
-    poll();
-    const id = setInterval(poll, 1500);
-    return () => { alive = false; clearInterval(id); };
-  }, [taskId]);
 
-  const levelColor = (level: string) => {
-    if (level === "error") return "text-red-400";
-    if (level === "warn") return "text-yellow-400";
+    ws.onerror = () => {
+      // fallback: if WebSocket fails, poll once
+      fetch(`/api/tasks/${taskId}/logs`)
+        .then((r) => r.json())
+        .then((data: LogEntry[]) => {
+          if (Array.isArray(data) && data.length > 0) {
+            setLines(data.map((e) => `${e.timestamp} ${e.message}`));
+            setWaiting(false);
+          }
+        })
+        .catch(() => {});
+    };
+
+    return () => {
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
+    };
+  }, [taskId, onStatusChange]);
+
+  // Auto-scroll to bottom on new lines
+  useEffect(() => {
+    const el = logBodyRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [lines.length]);
+
+  const lineColor = (line: string) => {
+    if (/error|fail|exception/i.test(line)) return "text-red-400";
+    if (/warn/i.test(line)) return "text-yellow-400";
     return "text-zinc-400";
   };
 
-  const levelBorder = (level: string) => {
-    if (level === "error") return "border-l-red-500/60";
-    if (level === "warn") return "border-l-yellow-500/60";
+  const lineBorder = (line: string) => {
+    if (/error|fail|exception/i.test(line)) return "border-l-red-500/60";
+    if (/warn/i.test(line)) return "border-l-yellow-500/60";
     return "border-l-transparent";
   };
 
@@ -126,28 +151,27 @@ function LiveLogPanel({ taskId }: { taskId: string }) {
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
         </span>
         <span className="text-[11px] text-zinc-400 font-mono">LIVE — {taskId}</span>
-        <span className="text-[10px] text-zinc-600 ml-auto font-mono">{entries.length} lines</span>
+        <span className="text-[10px] text-zinc-600 ml-auto font-mono">{lines.length} lines</span>
       </div>
       {/* log body */}
-      <div className="overflow-y-auto max-h-[500px] p-0 font-mono text-[11px] leading-[1.7]">
+      <div ref={logBodyRef} className="overflow-y-auto max-h-[500px] p-0 font-mono text-[11px] leading-[1.7]">
         {waiting ? (
           <div className="text-zinc-600 text-center py-12 flex flex-col items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span>로그 대기 중...</span>
           </div>
         ) : (
-          entries.map((entry, i) => (
+          lines.map((line, i) => (
             <div
               key={i}
               className={cn(
                 "px-3 py-0.5 hover:bg-white/[0.03] border-l-2 transition-colors",
-                i === 0 ? "border-l-emerald-500/60 bg-emerald-500/[0.04]" : levelBorder(entry.level),
-                levelColor(entry.level),
+                i === lines.length - 1 ? "border-l-emerald-500/60 bg-emerald-500/[0.04]" : lineBorder(line),
+                lineColor(line),
               )}
             >
-              <span className="text-zinc-600 select-none mr-3 inline-block w-5 text-right">{entries.length - i}</span>
-              <span className="text-zinc-600 mr-2">{entry.timestamp}</span>
-              {entry.message}
+              <span className="text-zinc-600 select-none mr-3 inline-block w-5 text-right">{i + 1}</span>
+              {line}
             </div>
           ))
         )}
@@ -182,7 +206,6 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [aiResultLoading, setAiResultLoading] = useState(false);
   const [runStatus, setRunStatus] = useState<"idle" | "running" | "completed" | "failed">("idle");
-  const [runLogs, setRunLogs] = useState<string[]>([]);
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
 
   useEffect(() => {
@@ -193,7 +216,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         const data = await res.json();
         setTask(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load task");
+        setError(getErrorMessage(err, "Failed to load task"));
       } finally {
         setIsLoading(false);
       }
@@ -213,6 +236,13 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
     }
   }, [activeTab, aiResult, aiResultLoading, id]);
 
+  // Auto-switch to logs tab when task is running
+  useEffect(() => {
+    if (task?.status === "in_progress" || runStatus === "running") {
+      setActiveTab("logs");
+    }
+  }, [task?.status, runStatus]);
+
   // Orchestration 상태는 store에서 구독 (중복 interval 제거)
   const isPipelineRunningFromStore = useOrchestrationStore((s) => s.isRunning);
   useEffect(() => {
@@ -228,10 +258,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         const data = await res.json();
         if (data.status === "running") {
           setRunStatus("running");
-          setRunLogs(data.logs || []);
         } else if (data.status === "completed" || data.status === "failed") {
           setRunStatus(data.status);
-          setRunLogs(data.logs || []);
         }
       } catch {
         // ignore
@@ -240,27 +268,16 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
     checkRunStatus();
   }, [id]);
 
-  // Poll task run status while running
-  useEffect(() => {
-    if (runStatus !== "running") return;
-    const interval = setInterval(async () => {
+  // Refetch task data when run finishes (status 반영)
+  const handleRunStatusChange = useCallback(async (status: string) => {
+    if (status === "completed" || status === "failed") {
+      setRunStatus(status as "completed" | "failed");
       try {
-        const res = await fetch(`/api/tasks/${id}/run`);
-        if (!res.ok) return;
-        const data = await res.json();
-        setRunLogs(data.logs || []);
-        // task 데이터도 주기적으로 갱신 (status 반영)
         const taskRes = await fetch(`/api/requests/${id}`);
         if (taskRes.ok) setTask(await taskRes.json());
-        if (data.status !== "running") {
-          setRunStatus(data.status);
-        }
-      } catch {
-        // ignore
-      }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [runStatus, id]);
+      } catch { /* ignore */ }
+    }
+  }, [id]);
 
   const handleRun = async () => {
     try {
@@ -271,7 +288,6 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         return;
       }
       setRunStatus("running");
-      setRunLogs([]);
       setActiveTab("logs");
       // task 데이터 refetch (status 반영)
       setTimeout(async () => {
@@ -438,11 +454,6 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400">
           <Loader2 className="h-3 w-3 animate-spin" />
           태스크 실행 중...
-          {runLogs.length > 0 && (
-            <span className="ml-auto text-[10px] text-muted-foreground">
-              {runLogs.length} lines
-            </span>
-          )}
         </div>
       )}
       {runStatus === "completed" && (
@@ -650,27 +661,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       )}
 
       {activeTab === "logs" && (
-        runStatus === "running" ? (
-          <div className="rounded-lg border border-border overflow-hidden bg-[#0d1117]">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#161b22] border-b border-border">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <span className="text-[11px] text-zinc-400 font-mono">RUN — {id}</span>
-              <span className="text-[10px] text-zinc-600 ml-auto font-mono">{runLogs.length} lines</span>
-            </div>
-            <div className="overflow-y-auto max-h-[500px] p-0 font-mono text-[11px] leading-[1.7]">
-              {runLogs.map((line, i) => (
-                <div key={i} className="px-3 py-0.5 hover:bg-white/[0.03] text-zinc-400">
-                  <span className="text-zinc-600 select-none mr-3 inline-block w-5 text-right">{i + 1}</span>
-                  {line}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : task.status === "in_progress" ? (
-          <LiveLogPanel taskId={id} />
+        (runStatus === "running" || task.status === "in_progress") ? (
+          <LiveLogPanel taskId={id} onStatusChange={handleRunStatusChange} />
         ) : task.executionLog ? (
           <div className="space-y-3">
             <div className="text-xs space-y-1">

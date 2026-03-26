@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { getErrorMessage } from "@/lib/error-utils";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Loader2, Pencil, Check, X, Plus, Trash2, GitMerge, Sparkles, CheckSquare, Square as SquareIcon } from "lucide-react";
 import { DependsOnSelector, type TaskOption } from "@/components/DependsOnSelector";
@@ -169,7 +170,7 @@ export default function NewTaskPage() {
       setTasks(analyzedTasks);
       setStep("preview");
     } catch (err) {
-      setAnalyzeError(err instanceof Error ? err.message : "Analysis failed");
+      setAnalyzeError(getErrorMessage(err, "Analysis failed"));
     } finally {
       setAnalyzing(false);
     }
@@ -216,7 +217,7 @@ export default function NewTaskPage() {
       }
       router.push("/tasks");
     } catch (err) {
-      setAnalyzeError(err instanceof Error ? err.message : "Failed to create tasks");
+      setAnalyzeError(getErrorMessage(err, "Failed to create tasks"));
     } finally {
       setConfirming(false);
     }

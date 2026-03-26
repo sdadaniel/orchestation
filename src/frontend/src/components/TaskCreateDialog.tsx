@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { getErrorMessage } from "@/lib/error-utils";
 import {
   Dialog,
   DialogContent,
@@ -85,7 +86,7 @@ export function TaskCreateDialog({
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "태스크 생성에 실패했습니다.",
+        getErrorMessage(err, "태스크 생성에 실패했습니다."),
       );
     } finally {
       setSubmitting(false);

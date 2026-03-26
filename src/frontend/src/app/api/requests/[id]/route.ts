@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { findRequestFile, parseRequestFile, parseAllRequests, getRequestsDir } from "@/lib/request-parser";
+import { getErrorMessage } from "@/lib/error-utils";
 import { OUTPUT_DIR } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
@@ -169,7 +170,7 @@ export async function PUT(
     return NextResponse.json(updated || { ok: true });
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to update" },
+      { error: getErrorMessage(err, "Failed to update") },
       { status: 500 },
     );
   }
@@ -191,7 +192,7 @@ export async function DELETE(
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to delete" },
+      { error: getErrorMessage(err, "Failed to delete") },
       { status: 500 },
     );
   }

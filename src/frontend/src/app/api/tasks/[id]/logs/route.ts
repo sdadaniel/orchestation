@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getErrorMessage } from "@/lib/error-utils";
 import {
   isValidTaskId,
   taskExists,
@@ -45,7 +46,7 @@ export async function GET(
   } catch (err) {
     return NextResponse.json(
       {
-        error: err instanceof Error ? err.message : "Failed to retrieve logs",
+        error: getErrorMessage(err, "Failed to retrieve logs"),
       },
       { status: 500 },
     );

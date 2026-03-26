@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { getErrorMessage } from "@/lib/error-utils";
 import {
   Dialog,
   DialogContent,
@@ -69,7 +70,7 @@ export function SprintCreateDialog({
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "스프린트 생성에 실패했습니다.",
+        getErrorMessage(err, "스프린트 생성에 실패했습니다."),
       );
     } finally {
       setSubmitting(false);

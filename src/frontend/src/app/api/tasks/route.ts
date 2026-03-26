@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { TASKS_DIR } from "@/lib/paths";
 import { generateNextTaskId } from "@/lib/task-id";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -123,7 +124,7 @@ TBD
     return NextResponse.json(
       {
         error:
-          err instanceof Error ? err.message : "Failed to create task",
+          getErrorMessage(err, "Failed to create task"),
       },
       { status: 500 },
     );

@@ -1,11 +1,12 @@
 import { createServer } from "http";
-import fs, { appendFileSync } from "fs";
+import fs, { appendFileSync, watchFile, unwatchFile } from "fs";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
 import os from "os";
-
 import { resolve } from "path";
+import taskRunnerManager from "./src/lib/task-runner-manager";
+import { getErrorMessage } from "./src/lib/error-utils";
 
 const CRASH_LOG = resolve(process.cwd(), "../..", ".orchestration/output/crash.log");
 
@@ -44,15 +45,171 @@ app.prepare().then(() => {
   });
 
   const wss = new WebSocketServer({ noServer: true });
+  const wssTaskLogs = new WebSocketServer({ noServer: true });
 
-  // Only upgrade /ws/terminal — let Next.js HMR handle its own WebSockets
+  // Upgrade handler: route to correct WebSocket server
   server.on("upgrade", (req, socket, head) => {
     if (req.url === "/ws/terminal") {
       wss.handleUpgrade(req, socket, head, (ws) => {
         wss.emit("connection", ws, req);
       });
+    } else if (req.url?.startsWith("/ws/task-logs/")) {
+      wssTaskLogs.handleUpgrade(req, socket, head, (ws) => {
+        wssTaskLogs.emit("connection", ws, req);
+      });
     }
     // Other upgrade requests (e.g. /_next/webpack-hmr) pass through to Next.js
+  });
+
+  // ── Task Logs WebSocket ───────────────────────────────────────
+  const PROJECT_ROOT = resolve(process.cwd(), "../..");
+  const OUTPUT_DIR = resolve(PROJECT_ROOT, "output");
+
+  wssTaskLogs.on("connection", (ws: WebSocket, req) => {
+    const taskId = req.url?.replace("/ws/task-logs/", "") ?? "";
+    if (!/^TASK-\d{3}$/.test(taskId)) {
+      ws.close(4001, "invalid-task-id");
+      return;
+    }
+
+    console.log(`[ws:task-logs] connected for ${taskId}`);
+
+    // ── Source 1: TaskRunnerManager (UI-triggered runs) ──
+    const runState = taskRunnerManager.getState(taskId);
+    if (runState) {
+      // Send existing logs
+      for (const line of runState.logs) {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "log", line }));
+        }
+      }
+      // If already done, send status and close
+      if (runState.status !== "running") {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "status", status: runState.status }));
+        }
+      }
+    }
+
+    // Subscribe to new log lines
+    const onLog = (line: string) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "log", line }));
+      }
+    };
+    const onDone = (status: string) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "status", status }));
+      }
+    };
+
+    taskRunnerManager.events.on(`log:${taskId}`, onLog);
+    taskRunnerManager.events.on(`done:${taskId}`, onDone);
+
+    // ── Source 2: File-based logs (orchestrate.sh pipeline runs) ──
+    // Watch multiple log sources across both output directories
+    const ORCH_OUTPUT_DIR = resolve(PROJECT_ROOT, ".orchestration", "output");
+    const watchedFiles: string[] = [
+      resolve(OUTPUT_DIR, "logs", `${taskId}.log`),
+      resolve(OUTPUT_DIR, `${taskId}-task-conversation.jsonl`),
+      resolve(ORCH_OUTPUT_DIR, "logs", `${taskId}.log`),
+      resolve(ORCH_OUTPUT_DIR, `${taskId}-task-conversation.jsonl`),
+    ];
+    const fileOffsets = new Map<string, number>();
+
+    const sendFileUpdates = (filePath: string) => {
+      try {
+        if (!fs.existsSync(filePath)) return;
+        const stat = fs.statSync(filePath);
+        const offset = fileOffsets.get(filePath) ?? 0;
+        if (stat.size <= offset) return;
+
+        const fd = fs.openSync(filePath, "r");
+        const buf = Buffer.alloc(stat.size - offset);
+        fs.readSync(fd, buf, 0, buf.length, offset);
+        fs.closeSync(fd);
+        fileOffsets.set(filePath, stat.size);
+
+        const rawLines = buf.toString("utf-8").split("\n");
+        for (const raw of rawLines) {
+          const trimmed = raw.trim();
+          if (!trimmed) continue;
+          if (ws.readyState !== WebSocket.OPEN) return;
+
+          // For JSONL conversation files, extract readable content
+          if (filePath.endsWith(".jsonl")) {
+            try {
+              const entry = JSON.parse(trimmed);
+              // stream-json: extract from "type":"assistant" messages
+              if (entry.type === "assistant" && Array.isArray(entry.message?.content)) {
+                for (const block of entry.message.content) {
+                  if (block.type === "text" && block.text) {
+                    ws.send(JSON.stringify({ type: "log", line: `🤖 ${block.text.substring(0, 500)}` }));
+                  } else if (block.type === "tool_use") {
+                    const name = block.name || "tool";
+                    const inputPreview = block.input ? JSON.stringify(block.input).substring(0, 150) : "";
+                    ws.send(JSON.stringify({ type: "log", line: `🔧 ${name}(${inputPreview})` }));
+                  } else if (block.type === "thinking" && block.thinking) {
+                    ws.send(JSON.stringify({ type: "log", line: `💭 ${block.thinking.substring(0, 300)}` }));
+                  }
+                }
+                continue;
+              }
+              // stream-json: user messages (tool results)
+              if (entry.type === "user" && Array.isArray(entry.message?.content)) {
+                for (const block of entry.message.content) {
+                  if (block.type === "tool_result") {
+                    const status = block.is_error ? "❌" : "✅";
+                    const content = typeof block.content === "string" ? block.content.substring(0, 200) : "";
+                    ws.send(JSON.stringify({ type: "log", line: `${status} result: ${content || "(ok)"}` }));
+                  }
+                }
+                continue;
+              }
+              // stream-json: "type":"result" means done
+              if (entry.type === "result") {
+                ws.send(JSON.stringify({ type: "log", line: "━━━ Claude 작업 완료 ━━━" }));
+                continue;
+              }
+            } catch {
+              // Not valid JSON, send raw
+              ws.send(JSON.stringify({ type: "log", line: trimmed }));
+            }
+          } else {
+            ws.send(JSON.stringify({ type: "log", line: trimmed }));
+          }
+        }
+      } catch {
+        // file may not exist yet
+      }
+    };
+
+    // Send existing content and start watching
+    // If task is managed by TaskRunnerManager, skip .log files (already streamed via events)
+    const isManaged = !!taskRunnerManager.getState(taskId);
+    const watchOpts = { interval: 500 };
+    for (const f of watchedFiles) {
+      if (isManaged && f.endsWith(".log")) continue; // avoid duplicate
+      sendFileUpdates(f);
+      watchFile(f, watchOpts, () => sendFileUpdates(f));
+    }
+
+    // ── Cleanup ──
+    const cleanup = () => {
+      taskRunnerManager.events.off(`log:${taskId}`, onLog);
+      taskRunnerManager.events.off(`done:${taskId}`, onDone);
+      for (const f of watchedFiles) unwatchFile(f);
+    };
+
+    ws.on("close", () => {
+      console.log(`[ws:task-logs] disconnected for ${taskId}`);
+      cleanup();
+    });
+
+    ws.on("error", (err: Error) => {
+      console.error(`[ws:task-logs] error for ${taskId}: ${err.message}`);
+      cleanup();
+    });
   });
 
   wss.on("connection", (ws: WebSocket) => {
@@ -91,7 +248,7 @@ app.prepare().then(() => {
         env: cleanEnv,
       });
     } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = getErrorMessage(err, String(err));
       console.error(`[pty] failed to spawn shell="${shell}": ${reason}`);
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "error", message: reason }));

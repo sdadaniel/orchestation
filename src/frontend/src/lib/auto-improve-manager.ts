@@ -2,6 +2,7 @@ import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import fs from "fs";
 import { pipeProcessLogs } from "./process-utils";
+import { getErrorMessage } from "./error-utils";
 
 export type AutoImproveStatus = "idle" | "running" | "stopping" | "completed" | "failed";
 
@@ -78,7 +79,7 @@ class AutoImproveManager {
         stdio: ["ignore", "pipe", "pipe"],
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = getErrorMessage(err, String(err));
       this.appendLog(`[auto-improve] Failed to spawn: ${msg}`);
       this.state.status = "failed";
       this.state.finishedAt = new Date().toISOString();
@@ -127,7 +128,7 @@ class AutoImproveManager {
       fs.writeFileSync(this.getStopFlagPath(), new Date().toISOString(), "utf-8");
       this.appendLog(`[auto-improve] Stop flag created: ${this.getStopFlagPath()}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = getErrorMessage(err, String(err));
       this.appendLog(`[auto-improve] Failed to create stop flag: ${msg}`);
       return { success: false, error: `Failed to create stop flag: ${msg}` };
     }

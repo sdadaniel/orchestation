@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
+import { getErrorMessage } from "@/lib/error-utils";
 import { TASKS_DIR } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
@@ -132,7 +133,7 @@ export async function PUT(
   } catch (err) {
     return NextResponse.json(
       {
-        error: err instanceof Error ? err.message : "Failed to update task",
+        error: getErrorMessage(err, "Failed to update task"),
       },
       { status: 500 },
     );
@@ -189,9 +190,7 @@ export async function DELETE(
         return NextResponse.json(
           {
             error:
-              sprintErr instanceof Error
-                ? sprintErr.message
-                : "Failed to update sprint files",
+              getErrorMessage(sprintErr, "Failed to update sprint files"),
           },
           { status: 500 },
         );
@@ -207,9 +206,7 @@ export async function DELETE(
       return NextResponse.json(
         {
           error:
-            deleteErr instanceof Error
-              ? deleteErr.message
-              : "Failed to delete task file (sprint files already updated, retry is safe)",
+            getErrorMessage(deleteErr, "Failed to delete task file (sprint files already updated, retry is safe)"),
         },
         { status: 500 },
       );
@@ -219,7 +216,7 @@ export async function DELETE(
   } catch (err) {
     return NextResponse.json(
       {
-        error: err instanceof Error ? err.message : "Failed to delete task",
+        error: getErrorMessage(err, "Failed to delete task"),
       },
       { status: 500 },
     );

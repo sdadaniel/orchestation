@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseAllSprints } from "@/lib/sprint-parser";
+import { getErrorMessage } from "@/lib/error-utils";
 import fs from "fs";
 import path from "path";
 
@@ -79,7 +80,7 @@ ${sanitizedGoal ? `- ${sanitizedGoal}` : "- TBD"}
     return NextResponse.json(
       {
         error:
-          err instanceof Error ? err.message : "Failed to create sprint",
+          getErrorMessage(err, "Failed to create sprint"),
       },
       { status: 500 },
     );

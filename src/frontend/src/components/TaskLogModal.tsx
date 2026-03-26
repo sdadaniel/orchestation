@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { getErrorMessage } from "@/lib/error-utils";
 import { X, Terminal, Loader2, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WaterfallTask } from "@/types/waterfall";
@@ -44,7 +45,7 @@ export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
       setLogs(filtered.length > 0 ? filtered : []);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "알 수 없는 오류");
+      setError(getErrorMessage(err, "알 수 없는 오류"));
     } finally {
       setIsLoading(false);
     }

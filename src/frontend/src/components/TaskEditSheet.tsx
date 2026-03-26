@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getErrorMessage } from "@/lib/error-utils";
 import {
   Sheet,
   SheetContent,
@@ -101,7 +102,7 @@ export function TaskEditSheet({
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "태스크 수정에 실패했습니다.",
+        getErrorMessage(err, "태스크 수정에 실패했습니다."),
       );
     } finally {
       setSaving(false);
