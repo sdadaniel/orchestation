@@ -1,7 +1,7 @@
 ---
 id: TASK-156
 title: "API 라우트 TASKS_DIR IIFE 내 require(\"fs\") → import된 fs 사용으로 통일"
-status: in_progress
+status: done
 branch: task/task-156
 worktree: ../repo-wt-task-156
 priority: medium
