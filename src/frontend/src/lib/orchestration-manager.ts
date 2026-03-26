@@ -1,5 +1,6 @@
-import { spawn, ChildProcess } from "child_process";
+import { spawn, ChildProcess, execSync } from "child_process";
 import path from "path";
+import fs from "fs";
 import { appendRunHistory, type RunHistoryEntry } from "./run-history";
 import { parseCostLog } from "./cost-parser";
 import { loadSettings } from "./settings";
@@ -39,6 +40,78 @@ class OrchestrationManager {
     taskResults: [],
     exitCode: null,
   };
+
+  constructor() {
+    this.cleanupZombies();
+  }
+
+  /** 서버 시작 시 좀비 in_progress 태스크 정리 */
+  private cleanupZombies() {
+    try {
+      const projectRoot = path.resolve(process.cwd(), "..", "..");
+      const tasksDir = path.join(projectRoot, ".orchestration", "tasks");
+      if (!fs.existsSync(tasksDir)) return;
+
+      const files = fs.readdirSync(tasksDir).filter((f) => f.endsWith(".md"));
+      let cleaned = 0;
+
+      for (const file of files) {
+        const filePath = path.join(tasksDir, file);
+        const content = fs.readFileSync(filePath, "utf-8");
+        if (!content.includes("status: in_progress")) continue;
+
+        // PID 파일 체크: 워커가 실제로 살아있는지
+        const idMatch = file.match(/^(TASK-\d+)/);
+        if (!idMatch) continue;
+        const taskId = idMatch[1];
+        const pidFile = `/tmp/worker-${taskId}.pid`;
+
+        let alive = false;
+        if (fs.existsSync(pidFile)) {
+          try {
+            const pid = parseInt(fs.readFileSync(pidFile, "utf-8").trim(), 10);
+            if (!isNaN(pid)) {
+              execSync(`kill -0 ${pid}`, { stdio: "ignore" });
+              alive = true;
+            }
+          } catch {
+            // 프로세스 죽음
+            try { fs.unlinkSync(pidFile); } catch { /* ignore */ }
+          }
+        }
+
+        if (!alive) {
+          const updated = content.replace("status: in_progress", "status: pending");
+          fs.writeFileSync(filePath, updated);
+          cleaned++;
+          console.log(`[orchestrate] zombie cleanup: ${taskId} in_progress → pending`);
+        }
+      }
+
+      if (cleaned > 0) {
+        console.log(`[orchestrate] ${cleaned}개 좀비 태스크 정리 완료`);
+      }
+
+      // stale lock 정리
+      const lockDir = "/tmp/orchestrate.lock";
+      if (fs.existsSync(lockDir)) {
+        const pidFile = path.join(lockDir, "pid");
+        if (fs.existsSync(pidFile)) {
+          try {
+            const pid = parseInt(fs.readFileSync(pidFile, "utf-8").trim(), 10);
+            execSync(`kill -0 ${pid}`, { stdio: "ignore" });
+            // 살아있으면 건드리지 않음
+          } catch {
+            // 죽어있으면 lock 제거
+            fs.rmSync(lockDir, { recursive: true, force: true });
+            console.log("[orchestrate] stale lock 제거");
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[orchestrate] zombie cleanup error:", err);
+    }
+  }
 
   getState(): OrchestrationState {
     return { ...this.state, logs: [...this.state.logs], taskResults: [...this.state.taskResults] };
