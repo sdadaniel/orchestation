@@ -1,7 +1,7 @@
 ---
 id: TASK-205
 title: Tasks 목록 UX 흐름 수정 및 E2E 테스트
-status: in_progress
+status: pending
 branch: task/task-205
 worktree: ../repo-wt-task-205
 priority: high
