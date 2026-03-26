@@ -1,7 +1,7 @@
 ---
 id: TASK-164
 title: displayTaskId 노옵 함수 중복 제거
-status: in_progress
+status: done
 branch: task/task-164
 worktree: ../repo-wt-task-164
 priority: medium
