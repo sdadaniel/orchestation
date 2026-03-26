@@ -1,7 +1,7 @@
 ---
 id: TASK-175
 title: orchestration poll 중복 훅 통합 및 폴링 간격 매직넘버 상수화
-status: in_progress
+status: done
 branch: task/task-175
 worktree: ../repo-wt-task-175
 priority: medium
