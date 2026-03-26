@@ -1,7 +1,7 @@
 ---
 id: TASK-167
 title: manager 프로세스 핸들링 중복 코드 공통 유틸 추출
-status: in_progress
+status: failed
 branch: task/task-167
 worktree: ../repo-wt-task-167
 priority: medium
