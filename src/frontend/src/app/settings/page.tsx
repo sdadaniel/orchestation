@@ -4,6 +4,7 @@ import { Settings, Save, Cpu, Loader2, Monitor, Terminal, Key, FolderOpen, Brain
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
 import type { WorkerMode } from "@/lib/settings";
+import { cn } from "@/lib/utils";
 
 interface AppSettings {
   apiKey: string;
@@ -124,11 +125,12 @@ export default function SettingsPage() {
                         <button
                           key={m}
                           onClick={() => setDraft((prev) => ({ ...prev, model: m }))}
-                          className={`px-3 py-1.5 text-[11px] rounded border transition-colors ${
+                          className={cn(
+                            "px-3 py-1.5 text-[11px] rounded border transition-colors",
                             draft.model === m
                               ? "border-primary bg-primary/10 text-primary font-medium"
                               : "border-border text-muted-foreground hover:border-primary/50"
-                          }`}
+                          )}
                         >
                           {label}
                         </button>
@@ -226,11 +228,12 @@ export default function SettingsPage() {
                       <button
                         key={n}
                         onClick={() => setDraft((prev) => ({ ...prev, maxParallel: n }))}
-                        className={`px-2 py-0.5 text-[11px] rounded border transition-colors ${
+                        className={cn(
+                          "px-2 py-0.5 text-[11px] rounded border transition-colors",
                           draft.maxParallel === n
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border text-muted-foreground hover:border-primary/50"
-                        }`}
+                        )}
                       >
                         {n}
                       </button>
@@ -276,22 +279,24 @@ export default function SettingsPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setDraft((prev) => ({ ...prev, workerMode: "background" }))}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded border transition-colors ${
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded border transition-colors",
                         draft.workerMode === "background"
                           ? "border-primary bg-primary/10 text-primary font-medium"
                           : "border-border text-muted-foreground hover:border-primary/50"
-                      }`}
+                      )}
                     >
                       <Monitor className="h-3 w-3" />
                       백그라운드
                     </button>
                     <button
                       onClick={() => setDraft((prev) => ({ ...prev, workerMode: "iterm" }))}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded border transition-colors ${
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded border transition-colors",
                         draft.workerMode === "iterm"
                           ? "border-primary bg-primary/10 text-primary font-medium"
                           : "border-border text-muted-foreground hover:border-primary/50"
-                      }`}
+                      )}
                     >
                       <Terminal className="h-3 w-3" />
                       iTerm

@@ -1,6 +1,7 @@
 "use client";
 
 import type { RunHistoryEntry } from "@/hooks/useRunHistory";
+import { cn } from "@/lib/utils";
 
 interface RunHistoryProps {
   runs: RunHistoryEntry[];
@@ -70,11 +71,12 @@ export function RunHistory({ runs }: RunHistoryProps) {
                 </td>
                 <td>
                   <span
-                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                    className={cn(
+                      "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
                       run.status === "completed"
                         ? "bg-emerald-500/15 text-emerald-400"
                         : "bg-red-500/15 text-red-400"
-                    }`}
+                    )}
                   >
                     {run.status === "completed" ? "Success" : "Failed"}
                   </span>

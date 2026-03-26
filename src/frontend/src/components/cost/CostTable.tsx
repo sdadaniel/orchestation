@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { CostEntry } from "@/lib/cost-parser";
 import { useSortableTable } from "./useSortableTable";
 import { SortIcon } from "./SortIcon";
+import { cn } from "@/lib/utils";
 
 interface CostTableProps {
   entries: CostEntry[];
@@ -55,9 +56,11 @@ export function CostTable({ entries }: CostTableProps) {
     return (
       <th
         key={key}
-        className={`font-medium cursor-pointer select-none hover:text-foreground transition-colors ${
-          align === "right" ? "text-right" : ""
-        } ${isActive ? "text-foreground" : ""}`}
+        className={cn(
+          "font-medium cursor-pointer select-none hover:text-foreground transition-colors",
+          align === "right" && "text-right",
+          isActive && "text-foreground"
+        )}
         onClick={() => toggleSort(key)}
         role="columnheader"
         aria-sort={isActive ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
@@ -91,11 +94,12 @@ export function CostTable({ entries }: CostTableProps) {
             return (
               <tr
                 key={`${entry.taskId}-${entry.phase}-${entry.timestamp}-${idx}`}
-                className={`border-b border-border last:border-b-0 transition-colors ${
+                className={cn(
+                  "border-b border-border last:border-b-0 transition-colors",
                   isHighest
                     ? "bg-amber-500/10 text-amber-300 font-semibold"
                     : "hover:bg-muted/50"
-                }`}
+                )}
               >
                 <td>
                   <span className="font-mono text-[10px] text-muted-foreground whitespace-nowrap">
@@ -109,11 +113,12 @@ export function CostTable({ entries }: CostTableProps) {
                 </td>
                 <td>
                   <span
-                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                    className={cn(
+                      "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
                       entry.phase === "task"
                         ? "bg-blue-500/15 text-blue-400"
                         : "bg-purple-500/15 text-purple-400"
-                    }`}
+                    )}
                   >
                     {entry.phase}
                   </span>
