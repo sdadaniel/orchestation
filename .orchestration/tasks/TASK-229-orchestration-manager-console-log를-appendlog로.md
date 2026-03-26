@@ -1,7 +1,9 @@
 ---
 id: TASK-229
 title: orchestration-manager console.log를 appendLog로 교체
-status: pending
+status: in_progress
+branch: task/task-229
+worktree: ../repo-wt-task-229
 priority: medium
 mode: night
 created: 2026-03-26
