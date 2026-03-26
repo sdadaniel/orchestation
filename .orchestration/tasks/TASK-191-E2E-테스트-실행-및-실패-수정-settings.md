@@ -1,7 +1,7 @@
 ---
 id: TASK-191
 title: E2E 테스트 실행 및 실패 수정 — settings
-status: in_progress
+status: done
 branch: task/task-191
 worktree: ../repo-wt-task-191
 priority: medium
