@@ -1,6 +1,4 @@
-import { spawn } from "child_process";
-import path from "path";
-import { PROJECT_ROOT } from "@/lib/paths";
+import { spawnClaude, CLAUDE_DEFAULT_TIMEOUT_MS, ClaudeChildProcess } from "@/lib/claude-cli";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -33,8 +31,7 @@ export async function POST(request: Request) {
     const recent = history.slice(-10);
     contextMessages = recent
       .map(
-        (m) =>
-          `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`,
+        (m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`,
       )
       .join("\n\n");
     contextMessages = `이전 대화:\n${contextMessages}\n\n`;
@@ -44,29 +41,32 @@ export async function POST(request: Request) {
 
   const stream = new ReadableStream({
     start(controller) {
-      const child = spawn(
-        "claude",
-        ["--print", "--model", "claude-sonnet-4-6", "--output-format", "text"],
-        {
-          cwd: PROJECT_ROOT,
-          env: {
-            ...process.env,
-            PATH: `${process.env.HOME}/.local/bin:${process.env.PATH}`,
-          },
-          stdio: ["pipe", "pipe", "pipe"],
-        },
-      );
+      const child: ClaudeChildProcess = spawnClaude(prompt);
+      let controllerClosed = false;
 
-      // stdin으로 prompt 전달 후 닫기
-      child.stdin.write(prompt);
-      child.stdin.end();
+      function safeEnqueue(data: Uint8Array) {
+        if (!controllerClosed) {
+          try {
+            controller.enqueue(data);
+          } catch {
+            // already closed
+          }
+        }
+      }
+
+      function safeClose() {
+        if (!controllerClosed) {
+          controllerClosed = true;
+          try {
+            controller.close();
+          } catch {
+            // already closed
+          }
+        }
+      }
 
       child.stdout.on("data", (chunk: Buffer) => {
-        try {
-          controller.enqueue(new TextEncoder().encode(chunk.toString()));
-        } catch {
-          // controller already closed
-        }
+        safeEnqueue(new TextEncoder().encode(chunk.toString()));
       });
 
       let stderrData = "";
@@ -74,45 +74,36 @@ export async function POST(request: Request) {
         stderrData += chunk.toString();
       });
 
+      // 타임아웃: SIGTERM은 spawnClaude 내부에서 처리됨.
+      // 여기서는 사용자에게 타임아웃 메시지를 전달한다.
+      let timedOut = false;
+      const timeoutTimer = setTimeout(() => {
+        timedOut = true;
+        safeEnqueue(
+          new TextEncoder().encode("\n[응답 시간이 초과되었습니다]"),
+        );
+        safeClose();
+      }, CLAUDE_DEFAULT_TIMEOUT_MS);
+
       child.on("close", (code) => {
+        clearTimeout(timeoutTimer);
+        if (timedOut) return; // 타임아웃 핸들러가 이미 처리했음
         if (code !== 0 && stderrData) {
           console.error("Claude CLI stderr:", stderrData);
         }
-        try {
-          controller.close();
-        } catch {
-          // already closed
-        }
+        safeClose();
       });
 
       child.on("error", (err) => {
+        clearTimeout(timeoutTimer);
         console.error("Claude CLI spawn error:", err.message);
-        try {
-          controller.enqueue(
-            new TextEncoder().encode(
-              "Claude CLI 호출에 실패했습니다. 잠시 후 다시 시도해주세요.",
-            ),
-          );
-          controller.close();
-        } catch {
-          // already closed
-        }
+        safeEnqueue(
+          new TextEncoder().encode(
+            "Claude CLI 호출에 실패했습니다. 잠시 후 다시 시도해주세요.",
+          ),
+        );
+        safeClose();
       });
-
-      // 90초 타임아웃
-      const timeout = setTimeout(() => {
-        child.kill("SIGTERM");
-        try {
-          controller.enqueue(
-            new TextEncoder().encode("\n[응답 시간이 초과되었습니다]"),
-          );
-          controller.close();
-        } catch {
-          // already closed
-        }
-      }, 90000);
-
-      child.on("close", () => clearTimeout(timeout));
     },
   });
 

@@ -1,6 +1,4 @@
-import { spawn } from "child_process";
-import path from "path";
-import { PROJECT_ROOT } from "@/lib/paths";
+import { spawnClaude, CLAUDE_DEFAULT_TIMEOUT_MS, ClaudeChildProcess } from "@/lib/claude-cli";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -50,21 +48,7 @@ Rules:
 {"tasks":[{"title":"...","description":"...","priority":"medium","criteria":["criterion 1"],"scope":["src/frontend/src/components/**"],"depends_on":[]}]}`;
 
   return new Promise<Response>((resolve) => {
-    const child = spawn(
-      "claude",
-      ["--print", "--model", "claude-sonnet-4-6", "--output-format", "text"],
-      {
-        cwd: PROJECT_ROOT,
-        env: {
-          ...process.env,
-          PATH: `${process.env.HOME}/.local/bin:${process.env.PATH}`,
-        },
-        stdio: ["pipe", "pipe", "pipe"],
-      },
-    );
-
-    child.stdin.write(prompt);
-    child.stdin.end();
+    const child: ClaudeChildProcess = spawnClaude(prompt);
 
     let stdout = "";
     let stderr = "";
@@ -77,7 +61,22 @@ Rules:
       stderr += chunk.toString();
     });
 
+    // 90초 타임아웃: SIGTERM은 spawnClaude 내부에서 처리됨.
+    let timedOut = false;
+    const timeoutTimer = setTimeout(() => {
+      timedOut = true;
+      resolve(
+        new Response(
+          JSON.stringify({ error: "Analysis timed out. Please try again." }),
+          { status: 504, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    }, CLAUDE_DEFAULT_TIMEOUT_MS);
+
     child.on("close", (code) => {
+      clearTimeout(timeoutTimer);
+      if (timedOut) return;
+
       if (code !== 0) {
         console.error("Claude CLI stderr:", stderr);
         resolve(
@@ -157,7 +156,7 @@ Rules:
                   description: description.trim() || title.trim(),
                   priority: "medium",
                   criteria: ["Complete the requested work"],
-                scope: [],
+                  scope: [],
                 },
               ],
             }),
@@ -168,6 +167,7 @@ Rules:
     });
 
     child.on("error", (err) => {
+      clearTimeout(timeoutTimer);
       console.error("Claude CLI spawn error:", err.message);
       resolve(
         new Response(
@@ -176,18 +176,5 @@ Rules:
         ),
       );
     });
-
-    // 90s timeout
-    const timeout = setTimeout(() => {
-      child.kill("SIGTERM");
-      resolve(
-        new Response(
-          JSON.stringify({ error: "Analysis timed out. Please try again." }),
-          { status: 504, headers: { "Content-Type": "application/json" } },
-        ),
-      );
-    }, 90000);
-
-    child.on("close", () => clearTimeout(timeout));
   });
 }

@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { execSync } from "child_process";
-import path from "path";
-import { PROJECT_ROOT } from "@/lib/paths";
+import { runClaudeSync } from "@/lib/claude-cli";
 
 export const dynamic = "force-dynamic";
 
@@ -40,23 +38,19 @@ scope는 관련 파일 경로 배열.
 
 실제 코드를 확인하고, 구체적이고 실행 가능한 개선안만 제안하세요.`;
 
-    const result = execSync(
-      `echo ${JSON.stringify(prompt)} | claude --output-format json --dangerously-skip-permissions`,
-      {
-        cwd: PROJECT_ROOT,
-        encoding: "utf-8",
-        timeout: 120000,
-        maxBuffer: 10 * 1024 * 1024,
-      },
-    );
-
-    const parsed = JSON.parse(result);
-    const text = parsed.result || "";
+    // stdin pipe 방식으로 실행하여 셸 인젝션 위험 제거
+    const text = runClaudeSync(prompt, {
+      timeout: 120_000,
+      extraArgs: ["--dangerously-skip-permissions"],
+    });
 
     // JSON 추출
     const jsonMatch = text.match(/\{[\s\S]*"suggestions"[\s\S]*\}/);
     if (!jsonMatch) {
-      return NextResponse.json({ suggestions: [], error: "추천 결과를 파싱할 수 없습니다." });
+      return NextResponse.json({
+        suggestions: [],
+        error: "추천 결과를 파싱할 수 없습니다.",
+      });
     }
 
     const data = JSON.parse(jsonMatch[0]);
