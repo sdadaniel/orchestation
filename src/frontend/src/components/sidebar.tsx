@@ -460,10 +460,12 @@ export function TaskSidebar({
     setNewRootItemType(null);
   };
 
-  // Show only the 10 most recently updated tasks in the sidebar
-  const recentItems = [...new Map(requestItems.map((r) => [r.id, r])).values()]
-    .sort((a, b) => (b.updated ?? b.created).localeCompare(a.updated ?? a.created))
-    .slice(0, 10);
+  // 사이드바 태스크: in_progress 최상단 → 나머지는 최근 updated 순
+  const uniqueItems = [...new Map(requestItems.map((r) => [r.id, r])).values()];
+  const statusWeight = (s: string) => s === "in_progress" ? 0 : s === "reviewing" ? 1 : s === "pending" ? 2 : s === "stopped" ? 3 : 9;
+  const recentItems = uniqueItems
+    .sort((a, b) => statusWeight(a.status) - statusWeight(b.status) || (b.updated ?? b.created).localeCompare(a.updated ?? a.created))
+    .slice(0, 15);
 
   // Group recent items by status for sidebar display
   const inProgressTasks = recentItems.filter((r) => r.status === "in_progress");
