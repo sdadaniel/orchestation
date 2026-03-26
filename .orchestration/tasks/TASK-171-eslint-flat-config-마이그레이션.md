@@ -1,7 +1,9 @@
 ---
 id: TASK-171
 title: ESLint flat config 마이그레이션 (v10 대응)
-status: pending
+status: in_progress
+branch: task/task-171
+worktree: ../repo-wt-task-171
 priority: medium
 mode: night
 created: 2026-03-25
