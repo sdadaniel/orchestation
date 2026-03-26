@@ -426,6 +426,7 @@ body {
 .global-search.search-open {
   border-radius: 6px 6px 0 0;
   border-color: var(--primary);
+  border-bottom-color: transparent;
 }
 .global-search:focus-within {
   border-color: var(--primary);
@@ -466,7 +467,7 @@ body {
   z-index: 50;
   background: var(--sidebar);
   border: 1px solid var(--primary);
-  border-top: 1px solid var(--border);
+  border-top: none;
   border-radius: 0 0 6px 6px;
   max-height: 320px;
   overflow-y: auto;
