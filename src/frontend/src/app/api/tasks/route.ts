@@ -3,6 +3,7 @@ import { parseAllTasks } from "@/lib/parser";
 import fs from "fs";
 import path from "path";
 import { TASKS_DIR } from "@/lib/paths";
+import { generateNextTaskId } from "@/lib/task-id";
 
 export const dynamic = "force-dynamic";
 
@@ -33,21 +34,7 @@ export async function POST(request: Request) {
     }
 
     // Determine next task ID
-    const existingFiles = fs
-      .readdirSync(TASKS_DIR)
-      .filter((f) => f.startsWith("TASK-") && f.endsWith(".md"));
-
-    let maxNum = 0;
-    for (const f of existingFiles) {
-      const m = f.match(/TASK-(\d+)/);
-      if (m) {
-        const num = parseInt(m[1], 10);
-        if (num > maxNum) maxNum = num;
-      }
-    }
-
-    const nextNum = maxNum + 1;
-    const taskId = `TASK-${String(nextNum).padStart(3, "0")}`;
+    const taskId = generateNextTaskId(TASKS_DIR);
     const sanitizedTitle = title.trim();
     const taskRole =
       role && typeof role === "string" ? role.trim() : "general";

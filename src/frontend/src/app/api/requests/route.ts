@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import { parseAllRequests, getRequestsDir } from "@/lib/request-parser";
+import { generateNextTaskId } from "@/lib/task-id";
 
 export const dynamic = "force-dynamic";
 
@@ -27,21 +28,7 @@ export async function POST(request: Request) {
     }
 
     // Determine next TASK-XXX id
-    const existingFiles = fs
-      .readdirSync(dir)
-      .filter((f) => f.startsWith("TASK-") && f.endsWith(".md"));
-
-    let maxNum = 0;
-    for (const f of existingFiles) {
-      const m = f.match(/TASK-(\d+)/);
-      if (m) {
-        const num = parseInt(m[1], 10);
-        if (num > maxNum) maxNum = num;
-      }
-    }
-
-    const nextNum = maxNum + 1;
-    const taskId = `TASK-${String(nextNum).padStart(3, "0")}`;
+    const taskId = generateNextTaskId(dir);
     const sanitizedTitle = title.trim();
     const bodyContent = (content && typeof content === "string") ? content.trim() : "";
 
