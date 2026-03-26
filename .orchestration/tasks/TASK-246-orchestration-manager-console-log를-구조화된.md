@@ -1,7 +1,7 @@
 ---
 id: TASK-246
 title: orchestration-manager console.log를 구조화된 로거로 교체
-status: in_progress
+status: failed
 branch: task/task-246
 worktree: ../repo-wt-task-246
 priority: medium
