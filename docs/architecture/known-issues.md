@@ -107,6 +107,100 @@
 
 ---
 
+## Stop 동작 정의 (확정)
+
+### Run 페이지 Stop 버튼
+
+**즉시 전체 종료. graceful 없음.**
+
+```
+1. orchestrate.sh kill (SIGTERM → SIGKILL)
+2. 모든 워커 kill (job-task.sh, job-review.sh, claude --dangerously-skip-permissions)
+3. in_progress 태스크 → stopped 상태 변경
+4. signal 파일 / lock 파일 / PID 파일 전부 정리
+5. worktree + 브랜치는 유지 (삭제하지 않음)
+```
+
+**다음 Run 시 동작**:
+- stopped 태스크는 orchestrate.sh가 pending과 동일하게 큐에 넣음 (기존 로직)
+- worktree가 남아있으면 `ensure_worktree()`에서 재사용
+- 브랜치에 이전 커밋이 있으면 이어서 작업 가능
+
+### Task 상세 Stop 버튼
+
+**해당 워커만 즉시 종료.**
+
+```
+1. 해당 태스크의 워커 프로세스만 kill
+2. 해당 태스크 → stopped 상태 변경
+3. orchestrate.sh는 유지 (다른 태스크 계속 진행)
+4. worktree + 브랜치 유지
+```
+
+### 비정상 종료 (crash, OOM, SIGKILL)
+
+```
+1. trap이 잡으면: 워커 kill + in_progress → stopped + 정리
+2. trap이 안 잡히면: 서버 재시작 시 orchestration-manager constructor에서 좀비 정리
+```
+
+---
+
+## 수정 구현 계획
+
+### 1단계: orchestration-manager stop() 재구현
+
+```typescript
+stop() {
+  // 1) orchestrate.sh kill
+  killProcessGracefully(this.process);
+
+  // 2) 모든 워커 kill (pgrep 기반)
+  execSync('pkill -f "job-task.sh|job-review.sh" 2>/dev/null || true');
+  execSync('pkill -f "claude.*--dangerously-skip-permissions" 2>/dev/null || true');
+
+  // 3) in_progress → stopped (파일 시스템 직접 수정)
+  // cleanupZombies()와 유사하지만 stopped로 변경
+
+  // 4) lock/signal/PID 정리
+  execSync('rm -rf /tmp/orchestrate.lock /tmp/orchestrate-retry /tmp/worker-TASK-*.pid');
+
+  // 5) status 즉시 반영
+  this.state.status = "failed";
+  this.state.finishedAt = new Date().toISOString();
+  this.process = null;
+}
+```
+
+### 2단계: orchestration-manager run() 중복 방지 강화
+
+```typescript
+run() {
+  // process 객체 + pgrep 이중 체크
+  if (this.process !== null) return error;
+
+  const existing = execSync('pgrep -f orchestrate.sh 2>/dev/null || true');
+  if (existing.trim()) return error;
+
+  // ... spawn
+}
+```
+
+### 3단계: getStatus() 실시간 동기화
+
+```typescript
+getStatus() {
+  // process 객체가 있는데 실제로 죽어있으면 → 즉시 갱신
+  if (this.process && this.process.exitCode !== null) {
+    this.state.status = "failed";
+    this.process = null;
+  }
+  return this.state.status;
+}
+```
+
+---
+
 ## 우선순위별 수정 순서
 
 | 순위 | 문제 | 의존 관계 | 난이도 |
