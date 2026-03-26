@@ -3,6 +3,7 @@ import type {
   WaterfallTask,
 } from "@/types/waterfall";
 import type { TaskFrontmatter } from "@/lib/parser";
+import type { TaskStatus } from "../../lib/constants";
 
 export type SprintResponse = {
   id: string;
@@ -10,11 +11,13 @@ export type SprintResponse = {
   tasks: string[];
 };
 
-const VALID_STATUSES: Set<string> = new Set([
+const VALID_STATUSES: Set<TaskStatus> = new Set([
   "pending",
+  "stopped",
   "in_progress",
-  "in_review",
+  "reviewing",
   "done",
+  "rejected",
 ]);
 
 const UNASSIGNED_SPRINT = { id: "unassigned", title: "미배정" };

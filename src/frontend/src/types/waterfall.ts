@@ -1,14 +1,5 @@
 import type { TaskStatus, TaskPriority } from "../../lib/constants";
 
-export type WaterfallTaskStatus =
-  | "pending"
-  | "stopped"
-  | "in_progress"
-  | "in_review"
-  | "reviewing"
-  | "done"
-  | "rejected";
-
 export type WaterfallTask = {
   id: string;
   title: string;
