@@ -113,6 +113,13 @@ should_stop() {
 
 # ── 다음 태스크 ID 계산 ────────────────────────────────
 next_task_id() {
+  local lock_file="$REPO_ROOT/.orchestration/task-id.lock"
+  # 간단한 lock으로 동시 접근 방지
+  while ! mkdir "$lock_file" 2>/dev/null; do
+    sleep 1
+  done
+  trap "rmdir '$lock_file' 2>/dev/null" RETURN
+
   local max_num=0
   for f in "$TASK_DIR"/TASK-*.md; do
     [ -f "$f" ] || continue
@@ -122,7 +129,11 @@ next_task_id() {
       max_num="$num"
     fi
   done
-  printf "TASK-%03d" $((max_num + 1))
+  local next_id
+  next_id=$(printf "TASK-%03d" $((max_num + 1)))
+  # 빈 파일 미리 생성하여 ID 예약
+  touch "$TASK_DIR/${next_id}-reserved.md"
+  echo "$next_id"
 }
 
 # ── Claude로 코드 스캔 → 이슈 발견 ───────────────────
@@ -142,36 +153,41 @@ scan_and_create_task() {
   local task_id
   task_id=$(next_task_id)
 
-  local prompt="당신은 Night Worker입니다. 코드베이스를 스캔하여 이슈를 찾고 태스크를 생성합니다.
+  local today
+  today=$(date '+%Y-%m-%d')
+
+  local prompt="코드베이스를 스캔하여 이슈 1개를 찾고 아래 형식으로만 출력하세요.
 
 ${type_prompt}
 ${INSTRUCTIONS:+추가 지시: $INSTRUCTIONS}
 
 규칙:
 - 경미한 수정만 (로직 변경 금지)
-- scope는 관련 파일 경로를 구체적으로 지정
-- 태스크 1개만 생성 (가장 중요한 이슈)
-- 이미 존재하는 태스크와 중복되지 않도록 docs/task/ 의 기존 태스크를 확인
+- scope는 실제 존재하는 파일 경로만
+- 설명이나 인사말 없이 아래 형식만 출력
 
-출력 형식 (마크다운 frontmatter):
+이슈를 찾지 못했으면 NOT_FOUND 한 단어만 출력하세요.
+
+이슈를 찾았으면 반드시 아래 형식 그대로 출력하세요. --- 로 시작하고 --- 로 끝나는 frontmatter 블록이 반드시 있어야 합니다:
+
 ---
 id: ${task_id}
-title: (간결한 제목)
+title: 여기에-제목
 status: pending
 priority: medium
 mode: night
-created: $(date '+%Y-%m-%d')
-updated: $(date '+%Y-%m-%d')
+created: ${today}
+updated: ${today}
 depends_on: []
 scope:
-  - (파일 경로)
+  - 파일/경로
 ---
-(태스크 설명)
+여기에 태스크 설명을 작성합니다.
 
 ## Completion Criteria
-- (완료 조건)
+- 완료 조건
 
-이슈를 찾지 못했으면 NOT_FOUND 라고만 출력하세요."
+위 형식 외의 텍스트는 절대 출력하지 마세요. frontmatter 블록(---)으로 시작해야 합니다."
 
   log "🔍 스캔 시작: $scan_type → 발견 시 ${task_id}로 생성"
   log "   프롬프트 길이: $(echo "$prompt" | wc -c | tr -d ' ')자"
@@ -189,6 +205,7 @@ scope:
 
   if [ -z "$result" ]; then
     log "  ❌ Claude 호출 실패 (${elapsed}초 소요)"
+    rm -f "$TASK_DIR/${task_id}-reserved.md"
     return 1
   fi
 
@@ -206,6 +223,7 @@ scope:
 
   if [ -z "$task_content" ] || echo "$task_content" | grep -q "NOT_FOUND"; then
     log "  ℹ️  이슈 없음 ($scan_type)"
+    rm -f "$TASK_DIR/${task_id}-reserved.md"
     return 1
   fi
 
@@ -232,6 +250,8 @@ scope:
 
   if [ -z "$title" ]; then
     log "  ⚠️  태스크 제목 추출 실패 — 응답 앞부분: $(echo "$task_content" | head -3 | tr '\n' ' ')"
+    # 예약 파일 정리
+    rm -f "$TASK_DIR/${task_id}-reserved.md"
     return 1
   fi
 
@@ -239,6 +259,9 @@ scope:
   slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9가-힣]/-/g' | sed 's/-\+/-/g' | head -c 50 | sed 's/-$//')
   local filename="${task_id}-${slug}.md"
   local filepath="$TASK_DIR/$filename"
+
+  # 예약 파일 제거
+  rm -f "$TASK_DIR/${task_id}-reserved.md"
 
   # frontmatter가 없으면 직접 생성
   if echo "$task_content" | head -1 | grep -q '^---$'; then
