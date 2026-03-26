@@ -1,7 +1,9 @@
 ---
 id: TASK-165
 title: task-log-parser JSON.parse any 타입 제거
-status: pending
+status: in_progress
+branch: task/task-165
+worktree: ../repo-wt-task-165
 priority: medium
 mode: night
 created: 2026-03-25
