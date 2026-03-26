@@ -1,7 +1,9 @@
 ---
 id: TASK-193
 title: E2E 테스트 실행 및 실패 수정 — current-tab
-status: pending
+status: in_progress
+branch: task/task-193
+worktree: ../repo-wt-task-193
 priority: medium
 created: 2026-03-26
 updated: 2026-03-26
