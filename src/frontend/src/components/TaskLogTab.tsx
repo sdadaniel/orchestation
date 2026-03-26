@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Loader2, AlertCircle, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export interface LogEntry {
   timestamp: string;
@@ -57,7 +58,7 @@ export function TaskLogTab({ taskId, taskStatus }: TaskLogTabProps) {
       setLogs(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "알 수 없는 오류");
+      setError(getErrorMessage(err, "알 수 없는 오류"));
     } finally {
       setIsLoading(false);
     }

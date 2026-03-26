@@ -6,6 +6,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Loader2, Pencil, Check, X, Plus, Trash2, GitMerge, Sparkles, CheckSquare, Square as SquareIcon } from "lucide-react";
 import { DependsOnSelector, type TaskOption } from "@/components/DependsOnSelector";
+import { getErrorMessage } from "@/lib/error-utils";
 
 interface AnalyzedTask {
   title: string;

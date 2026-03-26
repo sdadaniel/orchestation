@@ -123,8 +123,7 @@ TBD
   } catch (err) {
     return NextResponse.json(
       {
-        error:
-          getErrorMessage(err, "Failed to create task"),
+        error: getErrorMessage(err, "Failed to create task"),
       },
       { status: 500 },
     );

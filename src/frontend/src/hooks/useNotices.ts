@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export interface NoticeItem {
   id: string;
@@ -102,7 +103,7 @@ export function useNotices() {
   return {
     notices,
     isLoading,
-    error: error ? (error instanceof Error ? error.message : "오류 발생") : null,
+    error: error ? getErrorMessage(error, "오류 발생") : null,
     unreadCount,
     createNotice: (title: string, content: string, type: string) =>
       createMutation.mutateAsync({ title, content, type }),

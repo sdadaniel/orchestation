@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import { appendRunHistory, type RunHistoryEntry } from "./run-history";
 import { parseCostLog } from "./cost-parser";
+import { getErrorMessage } from "./error-utils";
 import { loadSettings } from "./settings";
 import { pipeProcessLogs, killProcessGracefully } from "./process-utils";
 import { getErrorMessage } from "./error-utils";

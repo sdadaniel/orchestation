@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CostData } from "@/lib/cost-parser";
 import { queryKeys } from "@/lib/query-keys";
+import { getErrorMessage } from "@/lib/error-utils";
 
 type UseCostsResult = {
   data: CostData | null;
@@ -30,7 +31,7 @@ export function useCosts(): UseCostsResult {
   return {
     data,
     isLoading,
-    error: error ? (error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.") : null,
+    error: error ? getErrorMessage(error) : null,
     refetch: () => queryClient.invalidateQueries({ queryKey: queryKeys.costs.all }),
   };
 }

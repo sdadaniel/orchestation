@@ -69,9 +69,7 @@ export function SprintCreateDialog({
       onCreated();
       onClose();
     } catch (err) {
-      setError(
-        getErrorMessage(err, "스프린트 생성에 실패했습니다."),
-      );
+      setError(getErrorMessage(err, "스프린트 생성에 실패했습니다."));
     } finally {
       setSubmitting(false);
     }

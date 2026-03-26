@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { ArrowLeft, Loader2, FileText, Terminal, ClipboardCheck, Play, Square, CheckCircle2, GitBranch, Check, DollarSign, Trash2 } from "lucide-react";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { HorseRunningIndicator } from "@/components/HorseRunningIndicator";
+import { getErrorMessage } from "@/lib/error-utils";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 
 interface CostEntry {

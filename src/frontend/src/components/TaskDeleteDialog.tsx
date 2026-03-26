@@ -42,9 +42,7 @@ export function TaskDeleteDialog({
       onDeleted();
       onClose();
     } catch (err) {
-      setError(
-        getErrorMessage(err, "태스크 삭제에 실패했습니다."),
-      );
+      setError(getErrorMessage(err, "태스크 삭제에 실패했습니다."));
     } finally {
       setDeleting(false);
     }

@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { TaskFrontmatter } from "@/lib/parser";
+import { getErrorMessage } from "@/lib/error-utils";
 import type { SprintResponse } from "@/lib/waterfall";
 import { buildWaterfallGroups } from "@/lib/waterfall";
 import type { WaterfallGroup } from "@/types/waterfall";

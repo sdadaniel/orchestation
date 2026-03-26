@@ -188,10 +188,7 @@ export async function DELETE(
           }
         }
         return NextResponse.json(
-          {
-            error:
-              getErrorMessage(sprintErr, "Failed to update sprint files"),
-          },
+          { error: getErrorMessage(sprintErr, "Failed to update sprint files") },
           { status: 500 },
         );
       }
@@ -204,10 +201,7 @@ export async function DELETE(
       fs.unlinkSync(filePath);
     } catch (deleteErr) {
       return NextResponse.json(
-        {
-          error:
-            getErrorMessage(deleteErr, "Failed to delete task file (sprint files already updated, retry is safe)"),
-        },
+        { error: getErrorMessage(deleteErr, "Failed to delete task file (sprint files already updated, retry is safe)") },
         { status: 500 },
       );
     }

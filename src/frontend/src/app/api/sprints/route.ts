@@ -79,8 +79,7 @@ ${sanitizedGoal ? `- ${sanitizedGoal}` : "- TBD"}
   } catch (err) {
     return NextResponse.json(
       {
-        error:
-          getErrorMessage(err, "Failed to create sprint"),
+        error: getErrorMessage(err, "Failed to create sprint"),
       },
       { status: 500 },
     );

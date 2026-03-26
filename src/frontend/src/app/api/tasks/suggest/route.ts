@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runClaudeSync } from "@/lib/claude-cli";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ scope는 관련 파일 경로 배열.
     const data = JSON.parse(jsonMatch[0]);
     return NextResponse.json(data);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = getErrorMessage(err, String(err));
     return NextResponse.json({ suggestions: [], error: msg }, { status: 500 });
   }
 }

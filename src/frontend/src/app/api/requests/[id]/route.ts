@@ -4,6 +4,7 @@ import path from "path";
 import { findRequestFile, parseRequestFile, parseAllRequests, getRequestsDir } from "@/lib/request-parser";
 import { getErrorMessage } from "@/lib/error-utils";
 import { OUTPUT_DIR } from "@/lib/paths";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export const dynamic = "force-dynamic";
 
