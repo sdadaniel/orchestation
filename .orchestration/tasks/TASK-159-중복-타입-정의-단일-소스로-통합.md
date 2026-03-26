@@ -1,7 +1,9 @@
 ---
 id: TASK-159
 title: 중복 타입 정의 단일 소스로 통합
-status: pending
+status: in_progress
+branch: task/task-159
+worktree: ../repo-wt-task-159
 priority: medium
 mode: night
 created: 2026-03-25
