@@ -1,7 +1,7 @@
 ---
 id: TASK-235
 title: frontmatter 파싱 로직 중복 제거 — 공통 유틸리티 추출
-status: in_progress
+status: failed
 branch: task/task-235
 worktree: ../repo-wt-task-235
 priority: medium
