@@ -73,7 +73,7 @@ const GRAPH_TASKS_WITH_DEP = [
   },
 ];
 
-test.describe("Graph Tab (/tasks?tab=current)", () => {
+test.describe("Graph Tab (/tasks?tab=stack)", () => {
   // ── DAG 노드 렌더링 ────────────────────────────────────────────────────────
 
   test("DAG 노드 렌더링 확인", async ({ page }) => {
@@ -81,7 +81,7 @@ test.describe("Graph Tab (/tasks?tab=current)", () => {
       requests: GRAPH_REQUESTS,
       tasks: GRAPH_TASKS_WITH_DEP,
     });
-    await page.goto("/tasks?tab=current");
+    await page.goto("/tasks?tab=stack");
 
     // Wait for DAG canvas SVG to appear
     const dagCanvas = page.locator("svg.dag-canvas");
@@ -99,7 +99,7 @@ test.describe("Graph Tab (/tasks?tab=current)", () => {
 
   test("DAG에 태스크가 없을 때 'No tasks yet.' 표시", async ({ page }) => {
     await setupTaskListMocks(page, { requests: [], tasks: [] });
-    await page.goto("/tasks?tab=current");
+    await page.goto("/tasks?tab=stack");
 
     await expect(
       page.locator(".content-container").getByText("No tasks yet."),
@@ -115,7 +115,7 @@ test.describe("Graph Tab (/tasks?tab=current)", () => {
       requests: GRAPH_REQUESTS,
       tasks: GRAPH_TASKS_WITH_DEP,
     });
-    await page.goto("/tasks?tab=current");
+    await page.goto("/tasks?tab=stack");
 
     const dagCanvas = page.locator("svg.dag-canvas");
     await expect(dagCanvas).toBeVisible({ timeout: 10_000 });
@@ -126,16 +126,16 @@ test.describe("Graph Tab (/tasks?tab=current)", () => {
     expect(edgeCount).toBeGreaterThan(0);
   });
 
-  test("Current 탭 버튼이 violet active 스타일 유지", async ({ page }) => {
+  test("Graph 탭 버튼이 violet active 스타일 유지", async ({ page }) => {
     await setupTaskListMocks(page, {
       requests: GRAPH_REQUESTS,
       tasks: GRAPH_TASKS_WITH_DEP,
     });
-    await page.goto("/tasks?tab=current");
+    await page.goto("/tasks?tab=stack");
 
     const content = page.locator(".content-container");
-    const currentTab = content.getByRole("button", { name: /Current/ });
-    await expect(currentTab).toHaveClass(/border-violet-400/);
-    await expect(currentTab).toHaveClass(/text-violet-400/);
+    const graphTab = content.getByRole("button", { name: /Graph/ });
+    await expect(graphTab).toHaveClass(/border-violet-400/);
+    await expect(graphTab).toHaveClass(/text-violet-400/);
   });
 });

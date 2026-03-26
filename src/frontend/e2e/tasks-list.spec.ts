@@ -1,4 +1,4 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import {
   setupTaskListMocks,
   CHAIN_REQUESTS,
@@ -6,7 +6,7 @@ import {
 } from "./helpers/mock";
 
 /** Scope assertions to the main content area, excluding the sidebar */
-const main = (page: Page) =>
+const main = (page: Parameters<typeof page.locator>[0] extends never ? never : any) =>
   page.locator(".content-container");
 
 test.describe("Tasks List Page", () => {
@@ -18,9 +18,9 @@ test.describe("Tasks List Page", () => {
 
     const content = page.locator(".content-container");
 
-    // Default tab is 'current' (Current)
-    const currentTab = content.getByRole("button", { name: /Current/ });
-    await expect(currentTab).toHaveClass(/border-violet-400/);
+    // Default tab is 'stack' (Graph)
+    const graphTab = content.getByRole("button", { name: /Graph/ });
+    await expect(graphTab).toHaveClass(/border-violet-400/);
 
     // Click 'pending' tab
     const pendingTab = content.getByRole("button", { name: /Pending/ });
@@ -30,8 +30,8 @@ test.describe("Tasks List Page", () => {
     await expect(pendingTab).toHaveClass(/text-primary/);
     await expect(pendingTab).not.toHaveClass(/text-muted-foreground/);
 
-    // Current tab should no longer be active
-    await expect(currentTab).not.toHaveClass(/text-violet-400/);
+    // Graph tab should no longer be active
+    await expect(graphTab).not.toHaveClass(/text-violet-400/);
 
     // Click 'in_progress' tab
     const inProgressTab = content.getByRole("button", { name: /In Progress/ });
