@@ -1,7 +1,7 @@
 ---
 id: TASK-199
 title: Notice 목록에 날짜+시간 표시
-status: in_progress
+status: done
 branch: task/task-199
 worktree: ../repo-wt-task-199
 priority: medium
