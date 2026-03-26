@@ -16,6 +16,7 @@ export interface RequestItem {
     | "in_progress"
     | "reviewing"
     | "done"
+    | "failed"
     | "rejected";
   priority: "high" | "medium" | "low";
   created: string;

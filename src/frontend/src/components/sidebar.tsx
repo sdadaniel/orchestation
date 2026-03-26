@@ -31,7 +31,8 @@ import {
   type TaskStatus,
 } from "../../lib/constants";
 import type { DocNode } from "@/hooks/useDocTree";
-import type { RequestItem } from "@/hooks/useRequests";
+import { useTasksStore, type RequestItem } from "@/store/tasksStore";
+import { useNotices } from "@/hooks/useNotices";
 import type { NoticeItem } from "@/hooks/useNotices";
 
 /* ── Types ── */
@@ -419,11 +420,21 @@ export function TaskSidebar({
   onDocRename,
   onDocReorder,
   onDocReorderError,
-  requestItems = [],
+  requestItems: requestItemsProp,
   onStopTask,
-  noticeItems = [],
-  currentPath = "/",
+  noticeItems: noticeItemsProp,
+  currentPath: currentPathProp,
 }: TaskSidebarProps) {
+  // store에서 직접 구독 (props fallback)
+  const storeRequests = useTasksStore((s) => s.requests);
+  const storeStopTask = useTasksStore((s) => s.stopTask);
+  const { notices: storeNotices } = useNotices();
+  const pathname = usePathname();
+
+  const requestItems = requestItemsProp ?? storeRequests ?? [];
+  const noticeItems = noticeItemsProp ?? storeNotices ?? [];
+  const currentPath = currentPathProp ?? pathname ?? "/";
+  const handleStopTask = onStopTask ?? storeStopTask;
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [docsExpanded, setDocsExpanded] = useState(false);
   const [newRootItemType, setNewRootItemType] = useState<"doc" | "folder" | null>(null);
@@ -592,7 +603,7 @@ export function TaskSidebar({
                   <span className="w-3 h-3 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                   <span className="truncate flex-1 text-xs">{taskDisplayId} {task.title}</span>
                 </button>
-                {onStopTask && (
+                {handleStopTask && (
                   stoppingTaskId === task.id ? (
                     <span className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-red-400">
                       <Loader2 className="h-2.5 w-2.5 animate-spin" />
@@ -604,7 +615,7 @@ export function TaskSidebar({
                       onClick={async (e) => {
                         e.stopPropagation();
                         setStoppingTaskId(task.id);
-                        try { await onStopTask(task.id); } finally { setStoppingTaskId(null); }
+                        try { await handleStopTask(task.id); } finally { setStoppingTaskId(null); }
                       }}
                       className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-red-500/15 text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                     >

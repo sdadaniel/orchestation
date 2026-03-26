@@ -2,10 +2,9 @@
 
 import { useState, useMemo, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useRequests, type RequestItem } from "@/hooks/useRequests";
+import { useTasksStore, type RequestItem } from "@/store/tasksStore";
 import { cn } from "@/lib/utils";
 import { Plus, Layers, Search, ArrowUpDown, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X, Link2 } from "lucide-react";
-import { useTasks } from "@/hooks/useTasks";
 import AutoImproveControl from "@/components/AutoImproveControl";
 import DAGCanvas from "@/components/DAGCanvas";
 import { RequestCard } from "@/components/RequestCard";
@@ -54,8 +53,13 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 type SortKey = "newest" | "oldest" | "priority" | "id";
 
 function TasksPageInner() {
-  const { requests, isLoading, error, updateRequest, deleteRequest, reorderRequest } = useRequests();
-  const { groups } = useTasks();
+  const requests = useTasksStore((s) => s.requests);
+  const isLoading = useTasksStore((s) => s.isRequestsLoading);
+  const error = useTasksStore((s) => s.requestsError);
+  const updateRequest = useTasksStore((s) => s.updateRequest);
+  const deleteRequest = useTasksStore((s) => s.deleteRequest);
+  const reorderRequest = useTasksStore((s) => s.reorderRequest);
+  const groups = useTasksStore((s) => s.groups);
   const allWaterfallTasks = groups.flatMap((g) => g.tasks);
   const router = useRouter();
   const searchParams = useSearchParams();
