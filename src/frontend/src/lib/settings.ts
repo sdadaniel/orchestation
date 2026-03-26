@@ -37,28 +37,9 @@ const DEFAULTS: Settings = {
   },
 };
 
-function getProjectRoot(): string {
-  return path.resolve(process.cwd(), "..", "..");
-}
-
 function getConfigPath(): string {
-  return path.join(getProjectRoot(), ".orchestration", "config.json");
-}
-
-export function getOrchestrationDir(): string {
-  return path.join(getProjectRoot(), ".orchestration");
-}
-
-export function getTasksDir(): string {
-  return path.join(getOrchestrationDir(), "tasks");
-}
-
-export function getNoticesDir(): string {
-  return path.join(getOrchestrationDir(), "notices");
-}
-
-export function getOutputDir(): string {
-  return path.join(getOrchestrationDir(), "output");
+  const projectRoot = path.resolve(process.cwd(), "..", "..");
+  return path.join(projectRoot, ".orchestration", "config.json");
 }
 
 export function loadSettings(): Settings {
