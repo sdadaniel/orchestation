@@ -1,9 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import { execSync } from "child_process";
 import fs from "fs";
+import path from "path";
 import taskRunnerManager from "@/lib/task-runner-manager";
 import orchestrationManager from "@/lib/orchestration-manager";
 import { parseAllRequests, findRequestFile, parseRequestFile } from "@/lib/request-parser";
+import { PROJECT_ROOT } from "@/lib/paths";
+
+const SIGNAL_DIR = path.join(PROJECT_ROOT, ".orchestration", "signals");
+const TASK_ID_PATTERN = /^TASK-\d{3}$/;
+
+function isValidTaskId(id: string): boolean {
+  return TASK_ID_PATTERN.test(id);
+}
+
+/** task 파일의 status를 stopped로 업데이트 */
+function markTaskAsStopped(taskId: string): void {
+  const taskFile = findRequestFile(taskId);
+  if (!taskFile) return;
+  try {
+    const raw = fs.readFileSync(taskFile, "utf-8");
+    const updated = raw.replace(/^status:\s*.+$/m, "status: stopped");
+    fs.writeFileSync(taskFile, updated, "utf-8");
+  } catch {
+    // best-effort
+  }
+}
+
+/** stop-request 시그널 파일 생성 (orchestrate.sh 워커가 killed-by-user 인지 구분) */
+function createStopRequest(taskId: string): void {
+  try {
+    fs.mkdirSync(SIGNAL_DIR, { recursive: true });
+    const target = path.join(SIGNAL_DIR, `${taskId}-stop-request`);
+    const tmp = `${target}.tmp.${process.pid}`;
+    fs.writeFileSync(tmp, String(process.pid));
+    fs.renameSync(tmp, target);
+  } catch {
+    // best-effort
+  }
+}
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +126,13 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
+  if (!id || typeof id !== "string" || !isValidTaskId(id)) {
+    return NextResponse.json({ error: "Invalid task ID format" }, { status: 400 });
+  }
+
+  // stop-request 시그널 파일 생성 → run-worker.sh EXIT trap이 "failed" 대신 "stopped" 처리하도록
+  createStopRequest(id);
+
   // 1) TaskRunnerManager로 관리되는 프로세스 중지 시도
   const result = taskRunnerManager.stop(id);
 
@@ -104,6 +146,8 @@ export async function DELETE(
       ).trim();
 
       if (!pids) {
+        // 프로세스가 없어도 파일 상태는 stopped로 업데이트
+        markTaskAsStopped(id);
         return NextResponse.json(
           { error: `${id}에 대한 실행 중인 프로세스를 찾을 수 없습니다.` },
           { status: 409 },
@@ -125,9 +169,9 @@ export async function DELETE(
           }
         }
       }
-
-      return NextResponse.json({ message: `Task ${id} stop requested (via process kill)` });
     } catch {
+      // kill 실패해도 파일 상태는 stopped로 업데이트
+      markTaskAsStopped(id);
       return NextResponse.json(
         { error: `${id} 중지 실패` },
         { status: 500 },
@@ -135,5 +179,8 @@ export async function DELETE(
     }
   }
 
-  return NextResponse.json({ message: `Task ${id} stop requested` });
+  // 프로세스 종료 후 task 파일 상태 → stopped
+  markTaskAsStopped(id);
+
+  return NextResponse.json({ message: `Task ${id} stopped`, status: "stopped" });
 }

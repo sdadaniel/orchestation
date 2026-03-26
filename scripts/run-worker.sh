@@ -30,7 +30,16 @@ source "$REPO_ROOT/scripts/lib/model-selector.sh"
 # _worker_signal_sent=true이면 이미 signal을 보냈으므로 중복 생성 방지
 _worker_exit_code=0
 _worker_signal_sent=false
-trap '_worker_exit_code=$?; if [ "$_worker_exit_code" -ne 0 ] && [ -n "$SIGNAL_DIR" ] && [ "$_worker_signal_sent" = false ]; then signal_create "$SIGNAL_DIR" "$TASK_ID" "failed"; fi' EXIT
+trap '_worker_exit_code=$?
+  if [ "$_worker_signal_sent" = false ] && [ -n "$SIGNAL_DIR" ]; then
+    # stop-request 파일이 있으면 사용자 요청에 의한 중지 → stopped 시그널
+    if [ -f "${SIGNAL_DIR}/${TASK_ID}-stop-request" ]; then
+      rm -f "${SIGNAL_DIR}/${TASK_ID}-stop-request"
+      signal_create "$SIGNAL_DIR" "$TASK_ID" "stopped"
+    elif [ "$_worker_exit_code" -ne 0 ]; then
+      signal_create "$SIGNAL_DIR" "$TASK_ID" "failed"
+    fi
+  fi' EXIT
 
 if [ -d "$REPO_ROOT/.orchestration/tasks" ]; then
   TASK_DIR="$REPO_ROOT/.orchestration/tasks"

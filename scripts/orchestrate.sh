@@ -354,6 +354,23 @@ EOF
 process_done_task() {
   local task_id="$1"
 
+  # 사용자 요청에 의한 중지 감지 (stop-request → stopped 시그널)
+  if [ -f "${SIGNAL_DIR}/${task_id}-stopped" ]; then
+    echo "  🛑 ${task_id} 중지됨 (사용자 요청)"
+    rm -f "${SIGNAL_DIR}/${task_id}-stopped"
+    rm -f "/tmp/worker-${task_id}.pid"
+
+    local stopped_task_file
+    stopped_task_file=$(find_file "$task_id")
+    if [ -n "$stopped_task_file" ]; then
+      sed_inplace "s/^status: .*/status: stopped/" "$stopped_task_file"
+      git -C "$REPO_ROOT" add "$stopped_task_file"
+      git -C "$REPO_ROOT" commit --only "$stopped_task_file" \
+        -m "chore(${task_id}): status → stopped (사용자 요청)" || true
+    fi
+    return 3  # RUNNING에서 제거 (실패 카운트는 안 늘림 - stopped는 실패 아님)
+  fi
+
   if [ -f "${SIGNAL_DIR}/${task_id}-done" ]; then
     echo "  ✅ ${task_id} 완료"
 
@@ -472,6 +489,9 @@ while true; do
       elif [ "$rc" -eq 1 ]; then
         # 실패
         FAILED_COUNT=$((FAILED_COUNT + 1))
+      elif [ "$rc" -eq 3 ]; then
+        # 사용자 요청에 의한 중지 → 실패 카운트 미증가, RUNNING에서 제거
+        echo "  ⏹️  ${task_id}: 중지됨 (사용자 요청)"
       fi
       # rc=0 (성공)이면 RUNNING에서 제거됨
     done

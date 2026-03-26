@@ -297,9 +297,26 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
   const handleStop = async () => {
     try {
-      await fetch(`/api/tasks/${id}/run`, { method: "DELETE" });
+      const res = await fetch(`/api/tasks/${id}/run`, { method: "DELETE" });
+      // 응답 성공 여부와 관계없이 UI 즉시 반영
+      setRunStatus("idle");
+      setTask((prev) => prev ? { ...prev, status: "stopped" } : null);
+      // 파일 상태도 반영된 최신 데이터로 refetch
+      setTimeout(async () => {
+        const taskRes = await fetch(`/api/requests/${id}`);
+        if (taskRes.ok) setTask(await taskRes.json());
+      }, 500);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        // 409는 이미 멈춘 경우 → 무시, 그 외에만 알림
+        if (res.status !== 409) {
+          console.warn("Stop failed:", data.error);
+        }
+      }
     } catch {
-      // ignore
+      // 네트워크 오류도 UI는 즉시 반영
+      setRunStatus("idle");
+      setTask((prev) => prev ? { ...prev, status: "stopped" } : null);
     }
   };
 

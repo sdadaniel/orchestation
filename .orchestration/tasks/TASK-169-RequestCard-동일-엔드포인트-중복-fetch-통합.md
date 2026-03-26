@@ -1,7 +1,7 @@
 ---
 id: TASK-169
 title: RequestCard 동일 엔드포인트 중복 fetch 통합
-status: done
+status: in_progress
 branch: task/task-169
 worktree: ../repo-wt-task-169
 priority: medium
