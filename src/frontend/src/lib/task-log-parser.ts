@@ -7,6 +7,30 @@ export interface TaskLogEntry {
   message: string;
 }
 
+/**
+ * Interface for conversation log entries (JSONL format)
+ */
+interface ConversationLogEntry {
+  timestamp?: string;
+  created_at?: string;
+  role?: string;
+  content?: string | unknown;
+  [key: string]: unknown;
+}
+
+/**
+ * Interface for task result data (JSON format)
+ */
+interface TaskResultData {
+  timestamp?: string;
+  created_at?: string;
+  result?: unknown;
+  is_error?: boolean;
+  num_turns?: number;
+  cost_usd?: number;
+  [key: string]: unknown;
+}
+
 const OUTPUT_DIR = path.join(process.cwd(), "../../output");
 const TOKEN_LOG = path.join(OUTPUT_DIR, "token-usage.log");
 
@@ -106,7 +130,7 @@ function parseConversationLogs(taskId: string): TaskLogEntry[] {
       if (!trimmed) continue;
 
       try {
-        const entry = JSON.parse(trimmed);
+        const entry: ConversationLogEntry = JSON.parse(trimmed);
         const timestamp =
           entry.timestamp ||
           entry.created_at ||
@@ -144,7 +168,7 @@ function parseResultLogs(taskId: string): TaskLogEntry[] {
 
     try {
       const content = fs.readFileSync(filePath, "utf-8");
-      const data = JSON.parse(content);
+      const data: TaskResultData = JSON.parse(content);
       const phase = suffix.includes("task") ? "task" : "review";
       const timestamp =
         data.timestamp ||
