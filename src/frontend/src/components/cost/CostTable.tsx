@@ -13,7 +13,7 @@ interface CostTableProps {
   entries: CostEntry[];
 }
 
-type SortColumn = "timestamp" | "cost" | "time" | "tokens";
+type SortColumn = "taskId" | "phase" | "model" | "cost" | "time" | "turns" | "tokens" | "timestamp";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
@@ -37,10 +37,14 @@ function getTotalTokens(entry: CostEntry): number {
 }
 
 const COMPARATORS: Record<SortColumn, (a: CostEntry, b: CostEntry) => number> = {
-  timestamp: (a, b) => a.timestamp.localeCompare(b.timestamp),
+  taskId: (a, b) => a.taskId.localeCompare(b.taskId, undefined, { numeric: true }),
+  phase: (a, b) => a.phase.localeCompare(b.phase),
+  model: (a, b) => a.model.localeCompare(b.model),
   cost: (a, b) => a.costUsd - b.costUsd,
   time: (a, b) => a.durationMs - b.durationMs,
+  turns: (a, b) => a.turns - b.turns,
   tokens: (a, b) => getTotalTokens(a) - getTotalTokens(b),
+  timestamp: (a, b) => a.timestamp.localeCompare(b.timestamp),
 };
 
 export function CostTable({ entries }: CostTableProps) {
@@ -100,12 +104,12 @@ export function CostTable({ entries }: CostTableProps) {
           </colgroup>
           <thead>
             <tr className="border-b border-border text-left text-[10px] text-muted-foreground uppercase tracking-wider">
-              <th className="font-medium">Task ID</th>
-              <th className="font-medium">Phase</th>
-              <th className="font-medium">Model</th>
+              {renderSortableHeader("taskId", "Task ID")}
+              {renderSortableHeader("phase", "Phase")}
+              {renderSortableHeader("model", "Model")}
               {renderSortableHeader("cost", "Cost", "right")}
               {renderSortableHeader("time", "Time", "right")}
-              <th className="font-medium text-right">Turns</th>
+              {renderSortableHeader("turns", "Turns", "right")}
               {renderSortableHeader("tokens", "Tokens", "right")}
               {renderSortableHeader("timestamp", "시각", "right")}
             </tr>
