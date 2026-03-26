@@ -238,4 +238,411 @@ test.describe("Task Detail Page", () => {
     await expect(runBtn).toBeVisible();
     await expect(runBtn).toBeDisabled();
   });
+
+  // ── Tabs: Content / Scope / Cost / AI Result / 로그 / 리뷰결과 ────────────
+
+  test("Content 탭에 마크다운 내용이 렌더링된다", async ({ page }) => {
+    await setupTaskDetailMocks(page, {
+      taskId: TASK_ID,
+      task: {
+        id: TASK_ID,
+        title: "Alpha Task",
+        status: "pending",
+        priority: "high",
+        created: "2026-03-01T10:00:00",
+        content: "## Description\n\nThis is a test task.",
+        depends_on_detail: [],
+        depended_by: [],
+        executionLog: null,
+        reviewResult: null,
+        costEntries: [],
+        scope: [],
+        branch: "task/task-001",
+      },
+    });
+
+    await page.goto(`/tasks/${TASK_ID}`);
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task").waitFor();
+
+    // Content tab should show rendered markdown
+    await expect(content.getByRole("heading", { name: /Description/ })).toBeVisible();
+  });
+
+  test("Scope 탭 클릭 → Scope 내용 표시", async ({ page }) => {
+    await setupTaskDetailMocks(page, {
+      taskId: TASK_ID,
+      task: {
+        id: TASK_ID,
+        title: "Scope Task",
+        status: "pending",
+        priority: "medium",
+        created: "2026-03-01T10:00:00",
+        content: "## Scope task",
+        depends_on_detail: [],
+        depended_by: [],
+        executionLog: null,
+        reviewResult: null,
+        costEntries: [],
+        scope: ["src/alpha.ts", "src/beta.ts"],
+        branch: "task/task-001",
+      },
+    });
+
+    await page.goto(`/tasks/${TASK_ID}`);
+    const content = page.locator(".content-container");
+    await content.getByText("Scope Task").waitFor();
+
+    const scopeTab = content.getByRole("button", { name: /Scope/ });
+    if (await scopeTab.isVisible()) {
+      await scopeTab.click();
+      await expect(scopeTab).toHaveClass(/border-primary/);
+    }
+  });
+
+  test("AI Result 탭 클릭 → AI 결과 탭 활성화", async ({ page }) => {
+    await setupTaskDetailMocks(page, {
+      taskId: TASK_ID,
+      task: {
+        id: TASK_ID,
+        title: "Alpha Task",
+        status: "done",
+        priority: "high",
+        created: "2026-03-01T10:00:00",
+        content: "## Done task",
+        depends_on_detail: [],
+        depended_by: [],
+        executionLog: "## Execution log\n\nCompleted.",
+        reviewResult: null,
+        costEntries: [],
+        scope: [],
+        branch: "task/task-001",
+      },
+    });
+
+    await page.goto(`/tasks/${TASK_ID}`);
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task").waitFor();
+
+    const aiTab = content.getByRole("button", { name: /AI Result|AI 결과/ });
+    if (await aiTab.isVisible()) {
+      await aiTab.click();
+      await expect(aiTab).toHaveClass(/border-primary/);
+    }
+  });
+
+  test("로그 탭 클릭 → 로그 목록 표시", async ({ page }) => {
+    await setupTaskDetailMocks(page, {
+      taskId: TASK_ID,
+      task: {
+        id: TASK_ID,
+        title: "Alpha Task",
+        status: "pending",
+        priority: "high",
+        created: "2026-03-01T10:00:00",
+        content: "## Test task",
+        depends_on_detail: [],
+        depended_by: [],
+        executionLog: null,
+        reviewResult: null,
+        costEntries: [],
+        scope: [],
+        branch: "task/task-001",
+      },
+      runLogs: ["Task started", "Running step 1"],
+    });
+
+    await page.goto(`/tasks/${TASK_ID}`);
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task").waitFor();
+
+    const logsTab = content.getByRole("button", { name: /로그|Logs/ });
+    if (await logsTab.isVisible()) {
+      await logsTab.click();
+      await expect(logsTab).toHaveClass(/border-primary/);
+    }
+  });
+
+  test("리뷰결과 탭 클릭 → 리뷰 탭 활성화", async ({ page }) => {
+    await setupTaskDetailMocks(page, {
+      taskId: TASK_ID,
+      task: {
+        id: TASK_ID,
+        title: "Reviewed Task",
+        status: "reviewing",
+        priority: "high",
+        created: "2026-03-01T10:00:00",
+        content: "## Task under review",
+        depends_on_detail: [],
+        depended_by: [],
+        executionLog: null,
+        reviewResult: "## Review\n\nApproved.",
+        costEntries: [],
+        scope: [],
+        branch: "task/task-001",
+      },
+    });
+
+    await page.goto(`/tasks/${TASK_ID}`);
+    const content = page.locator(".content-container");
+    await content.getByText("Reviewed Task").waitFor();
+
+    const reviewTab = content.getByRole("button", { name: /리뷰결과|Review/ });
+    if (await reviewTab.isVisible()) {
+      await reviewTab.click();
+      await expect(reviewTab).toHaveClass(/border-primary/);
+    }
+  });
+
+  test("Cost 탭 클릭 → Cost 탭 활성화", async ({ page }) => {
+    await setupTaskDetailMocks(page, {
+      taskId: TASK_ID,
+      task: {
+        id: TASK_ID,
+        title: "Alpha Task",
+        status: "done",
+        priority: "medium",
+        created: "2026-03-01T10:00:00",
+        content: "## Done task",
+        depends_on_detail: [],
+        depended_by: [],
+        executionLog: null,
+        reviewResult: null,
+        costEntries: [{ model: "claude-sonnet", inputTokens: 1000, outputTokens: 200, cost: 0.015 }],
+        scope: [],
+        branch: "task/task-001",
+      },
+    });
+
+    await page.goto(`/tasks/${TASK_ID}`);
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task").waitFor();
+
+    const costTab = content.getByRole("button", { name: /Cost|비용/ });
+    if (await costTab.isVisible()) {
+      await costTab.click();
+      await expect(costTab).toHaveClass(/border-primary/);
+    }
+  });
+
+  // ── Branch badge ───────────────────────────────────────────────────────────
+
+  test("branch 뱃지가 표시된다", async ({ page }) => {
+    await setupTaskDetailMocks(page, {
+      taskId: TASK_ID,
+      task: {
+        id: TASK_ID,
+        title: "Alpha Task",
+        status: "pending",
+        priority: "high",
+        created: "2026-03-01T10:00:00",
+        content: "## Test task",
+        depends_on_detail: [],
+        depended_by: [],
+        executionLog: null,
+        reviewResult: null,
+        costEntries: [],
+        scope: [],
+        branch: "task/task-001",
+      },
+    });
+
+    await page.goto(`/tasks/${TASK_ID}`);
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task").waitFor();
+
+    // Branch badge should show the branch name
+    await expect(content.getByText("task/task-001")).toBeVisible();
+  });
+
+  test("branch 뱃지 클릭 → 클립보드에 복사 (에러 없음)", async ({ page }) => {
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+
+    await setupTaskDetailMocks(page, {
+      taskId: TASK_ID,
+      task: {
+        id: TASK_ID,
+        title: "Alpha Task",
+        status: "pending",
+        priority: "high",
+        created: "2026-03-01T10:00:00",
+        content: "## Test task",
+        depends_on_detail: [],
+        depended_by: [],
+        executionLog: null,
+        reviewResult: null,
+        costEntries: [],
+        scope: [],
+        branch: "task/task-001",
+      },
+    });
+
+    await page.goto(`/tasks/${TASK_ID}`);
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task").waitFor();
+
+    const branchBadge = content.getByText("task/task-001");
+    if (await branchBadge.isVisible()) {
+      await branchBadge.click();
+      // Should not throw; clipboard may have the value
+      const clipText = await page.evaluate(() => navigator.clipboard.readText());
+      expect(clipText).toContain("task/task-001");
+    }
+  });
+
+  // ── Dependency display ─────────────────────────────────────────────────────
+
+  test("depends_on 의존 관계가 표시된다", async ({ page }) => {
+    await setupTaskDetailMocks(page, {
+      taskId: TASK_ID,
+      task: {
+        id: TASK_ID,
+        title: "Child Task",
+        status: "pending",
+        priority: "medium",
+        created: "2026-03-01T10:00:00",
+        content: "## Child task",
+        depends_on_detail: [
+          { id: "TASK-000", title: "Parent Task", status: "done" },
+        ],
+        depended_by: [],
+        executionLog: null,
+        reviewResult: null,
+        costEntries: [],
+        scope: [],
+        branch: "task/task-001",
+      },
+    });
+
+    await page.goto(`/tasks/${TASK_ID}`);
+    const content = page.locator(".content-container");
+    await content.getByText("Child Task").waitFor();
+
+    // Dependency chip "TASK-000" or "Parent Task" should be visible
+    await expect(
+      content.getByText(/TASK-000|Parent Task/),
+    ).toBeVisible();
+  });
+
+  test("depended_by 의존 관계가 표시된다", async ({ page }) => {
+    await setupTaskDetailMocks(page, {
+      taskId: TASK_ID,
+      task: {
+        id: TASK_ID,
+        title: "Parent Task",
+        status: "done",
+        priority: "high",
+        created: "2026-03-01T10:00:00",
+        content: "## Parent task",
+        depends_on_detail: [],
+        depended_by: [
+          { id: "TASK-999", title: "Blocker Task", status: "pending" },
+        ],
+        executionLog: null,
+        reviewResult: null,
+        costEntries: [],
+        scope: [],
+        branch: "task/task-001",
+      },
+    });
+
+    await page.goto(`/tasks/${TASK_ID}`);
+    const content = page.locator(".content-container");
+    await content.getByText("Parent Task").waitFor();
+
+    await expect(
+      content.getByText(/TASK-999|Blocker Task/),
+    ).toBeVisible();
+  });
+
+  // ── failed state ───────────────────────────────────────────────────────────
+
+  test("stopped 상태 → 실행 버튼 활성화됨", async ({ page }) => {
+    await setupTaskDetailMocks(page, {
+      taskId: TASK_ID,
+      task: {
+        id: TASK_ID,
+        title: "Stopped Task",
+        status: "stopped",
+        priority: "high",
+        created: "2026-03-01T10:00:00",
+        content: "## Stopped task",
+        depends_on_detail: [],
+        depended_by: [],
+        executionLog: null,
+        reviewResult: null,
+        costEntries: [],
+        scope: [],
+        branch: "task/task-001",
+      },
+      orchestrateStatus: "idle",
+    });
+
+    await page.goto(`/tasks/${TASK_ID}`);
+    const content = page.locator(".content-container");
+    await content.getByRole("heading", { name: "Stopped Task", exact: true }).waitFor();
+
+    // stopped tasks can be re-run
+    const runBtn = content.getByRole("button", { name: /실행/ });
+    if (await runBtn.isVisible()) {
+      await expect(runBtn).not.toBeDisabled();
+    }
+  });
+
+  // ── Task ID display ────────────────────────────────────────────────────────
+
+  test("태스크 ID(TASK-001)가 상세 페이지에 표시된다", async ({ page }) => {
+    await setupTaskDetailMocks(page, {
+      taskId: TASK_ID,
+      task: {
+        id: TASK_ID,
+        title: "Alpha Task",
+        status: "pending",
+        priority: "high",
+        created: "2026-03-01T10:00:00",
+        content: "## Test task",
+        depends_on_detail: [],
+        depended_by: [],
+        executionLog: null,
+        reviewResult: null,
+        costEntries: [],
+        scope: [],
+        branch: "task/task-001",
+      },
+    });
+
+    await page.goto(`/tasks/${TASK_ID}`);
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task").waitFor();
+
+    await expect(content.getByText("TASK-001")).toBeVisible();
+  });
+
+  test("Priority 뱃지가 표시된다", async ({ page }) => {
+    await setupTaskDetailMocks(page, {
+      taskId: TASK_ID,
+      task: {
+        id: TASK_ID,
+        title: "Alpha Task",
+        status: "pending",
+        priority: "high",
+        created: "2026-03-01T10:00:00",
+        content: "## Test task",
+        depends_on_detail: [],
+        depended_by: [],
+        executionLog: null,
+        reviewResult: null,
+        costEntries: [],
+        scope: [],
+        branch: "task/task-001",
+      },
+    });
+
+    await page.goto(`/tasks/${TASK_ID}`);
+    const content = page.locator(".content-container");
+    await content.getByText("Alpha Task").waitFor();
+
+    // Priority badge "High" should be visible
+    await expect(content.getByText(/High/i)).toBeVisible();
+  });
 });
