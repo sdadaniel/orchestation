@@ -15,6 +15,7 @@ import { ChatBot } from "@/components/ChatBot";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useNotices } from "@/hooks/useNotices";
 import { RunningIndicator } from "@/components/RunningIndicator";
+import AutoImproveControl from "@/components/AutoImproveControl";
 import type { WaterfallTask } from "@/types/waterfall";
 import type { RequestItem } from "@/store/tasksStore";
 import { useState } from "react";
@@ -279,6 +280,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Global header */}
         <div className="global-header">
           <RunningIndicator requestItems={requestItems} />
+          <AutoImproveControl />
           <GlobalSearch requestItems={requestItems} docTree={docTree} />
         </div>
 
