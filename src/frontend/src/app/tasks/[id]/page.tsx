@@ -74,8 +74,6 @@ const PRIORITY_COLORS: Record<string, string> = {
   low: "bg-green-500/15 text-green-500 border-green-500/30",
 };
 
-const displayTaskId = (id: string) => id;
-
 interface LogEntry {
   timestamp: string;
   level: string;
@@ -344,7 +342,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <span className="font-mono text-xs text-muted-foreground">{displayTaskId(task.id)}</span>
+        <span className="font-mono text-xs text-muted-foreground">{task.id}</span>
         <h1 className="text-lg font-semibold flex-1">{task.title}</h1>
       </div>
 
@@ -388,7 +386,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
             <button
               type="button"
               onClick={async () => {
-                if (!confirm(`${displayTaskId(task.id)} 삭제하시겠습니까?`)) return;
+                if (!confirm(`${task.id} 삭제하시겠습니까?`)) return;
                 const res = await fetch(`/api/requests/${id}`, { method: "DELETE" });
                 if (res.ok) router.push("/tasks");
               }}
@@ -419,7 +417,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                     ? "이미 실행 중인 태스크입니다"
                     : task.status === "done" || task.status === "rejected"
                       ? "완료된 태스크입니다"
-                      : `${displayTaskId(task.id)} 실행`
+                      : `${task.id} 실행`
               }
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md transition-colors",

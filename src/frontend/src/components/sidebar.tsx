@@ -475,9 +475,6 @@ export function TaskSidebar({
   const doneTasks = recentItems.filter((r) => r.status === "done");
   const rejectedTasks = recentItems.filter((r) => r.status === "rejected");
 
-  // Display task ID as TASK-XXX in UI
-  const displayTaskId = (id: string) => id;
-
   return (
     <div className="ide-sidebar flex flex-col h-full">
       {/* Header */}
@@ -592,7 +589,7 @@ export function TaskSidebar({
 
           {/* In Progress tasks */}
           {inProgressTasks.map((task) => {
-            const taskDisplayId = displayTaskId(task.id);
+            const taskDisplayId = task.id;
             const isExpanded = expandedTaskId === task.id;
             return (
               <div key={task.id} className="group relative">
@@ -645,7 +642,7 @@ export function TaskSidebar({
 
           {/* Stopped tasks */}
           {stoppedTasks.map((task) => {
-            const taskDisplayId = displayTaskId(task.id);
+            const taskDisplayId = task.id;
             const isExpanded = expandedTaskId === task.id;
             return (
               <div key={task.id}>
@@ -678,7 +675,7 @@ export function TaskSidebar({
 
           {/* Pending tasks */}
           {pendingTasks.map((task) => {
-            const taskDisplayId = displayTaskId(task.id);
+            const taskDisplayId = task.id;
             const isExpanded = expandedTaskId === task.id;
             return (
               <div key={task.id}>
@@ -711,7 +708,7 @@ export function TaskSidebar({
 
           {/* Reviewing tasks */}
           {reviewingTasks.map((task) => {
-            const taskDisplayId = displayTaskId(task.id);
+            const taskDisplayId = task.id;
             const isExpanded = expandedTaskId === task.id;
             return (
               <div key={task.id}>
@@ -744,7 +741,7 @@ export function TaskSidebar({
 
           {/* Rejected tasks */}
           {rejectedTasks.map((task) => {
-            const taskDisplayId = displayTaskId(task.id);
+            const taskDisplayId = task.id;
             const isExpanded = expandedTaskId === task.id;
             return (
               <div key={task.id}>
@@ -793,7 +790,7 @@ export function TaskSidebar({
                 </span>
               </button>
               {showCompleted && doneTasks.map((task) => {
-                const taskDisplayId = displayTaskId(task.id);
+                const taskDisplayId = task.id;
                 const isExpanded = expandedTaskId === task.id;
                 return (
                   <div key={task.id}>

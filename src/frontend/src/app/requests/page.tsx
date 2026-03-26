@@ -30,8 +30,6 @@ const STATUS_LABEL: Record<string, string> = {
 
 const STATUS_ORDER = ["pending", "reviewing", "in_progress", "rejected", "done"];
 
-const displayTaskId = (id: string) => id.replace(/^REQ-/, "TASK-");
-
 function RequestCard({
   req,
   onUpdate,
@@ -54,7 +52,7 @@ function RequestCard({
   };
 
   const handleDelete = async () => {
-    if (confirm(`${displayTaskId(req.id)} 를 삭제하시겠습니까?`)) {
+    if (confirm(`${req.id} 를 삭제하시겠습니까?`)) {
       await onDelete(req.id);
     }
   };
@@ -75,7 +73,7 @@ function RequestCard({
         ) : (
           <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[req.status])} />
         )}
-        <span className="font-mono text-[11px] text-muted-foreground shrink-0">{displayTaskId(req.id)}</span>
+        <span className="font-mono text-[11px] text-muted-foreground shrink-0">{req.id}</span>
         <span className="text-sm flex-1 truncate">{req.title}</span>
         <span className={cn(
           "text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0",
