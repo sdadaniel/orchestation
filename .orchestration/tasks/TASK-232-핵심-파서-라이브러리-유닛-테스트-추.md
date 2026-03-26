@@ -1,7 +1,7 @@
 ---
 id: TASK-232
 title: 핵심 파서 라이브러리 유닛 테스트 추가
-status: in_progress
+status: failed
 branch: task/task-232
 worktree: ../repo-wt-task-232
 priority: medium
