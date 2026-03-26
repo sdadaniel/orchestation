@@ -1,7 +1,7 @@
 ---
 id: TASK-162
 title: hooks isMountedRef 안티패턴 제거
-status: in_progress
+status: done
 branch: task/task-162
 worktree: ../repo-wt-task-162
 priority: medium
