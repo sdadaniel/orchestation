@@ -1,7 +1,7 @@
 ---
 id: TASK-243
 title: 핵심 파서 유닛 테스트 작성 (cost-parser, notice-parser, parser)
-status: in_progress
+status: failed
 branch: task/task-243
 worktree: ../repo-wt-task-243
 priority: medium
@@ -16,7 +16,7 @@ scope: []
 ---
 id: TASK-243
 title: 핵심 파서 유닛 테스트 작성 (cost-parser, notice-parser, parser)
-status: in_progress
+status: failed
 branch: task/task-243
 worktree: ../repo-wt-task-243
 priority: medium
