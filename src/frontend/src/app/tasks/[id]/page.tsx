@@ -71,8 +71,14 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
     setIsPipelineRunning(isPipelineRunningFromStore);
   }, [isPipelineRunningFromStore]);
 
-  // Check if task is already running on page load
+  // Check if task is already running on page load (task 로드 후에만)
   useEffect(() => {
+    if (!task) return;
+    // pending/stopped면 이전 run 결과 무시
+    if (task.status === "pending" || task.status === "stopped") {
+      setRunStatus("idle");
+      return;
+    }
     async function checkRunStatus() {
       try {
         const res = await fetch(`/api/tasks/${id}/run`);
@@ -81,8 +87,6 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         if (data.status === "running") {
           setRunStatus("running");
         } else if (data.status === "completed" || data.status === "failed") {
-          // pending/stopped 상태인데 이전 run 결과가 남아있으면 무시
-          if (task && (task.status === "pending" || task.status === "stopped")) return;
           setRunStatus(data.status);
         }
       } catch {
