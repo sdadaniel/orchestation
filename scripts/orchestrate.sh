@@ -55,25 +55,19 @@ fi
 [ -z "${BASE_BRANCH:-}" ] && BASE_BRANCH="main"
 echo "⚙️  Base Branch: ${BASE_BRANCH}"
 
-# ── 중복 실행 방지 (lock + stale 감지) ─────────────────
-LOCK_DIR="/tmp/orchestrate.lock"
-if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-  # stale lock 감지: PID 파일이 있고 해당 프로세스가 죽어있으면 lock 제거
-  if [ -f "$LOCK_DIR/pid" ]; then
-    old_pid=$(cat "$LOCK_DIR/pid" 2>/dev/null)
-    if [ -n "$old_pid" ] && ! kill -0 "$old_pid" 2>/dev/null; then
-      echo "⚠️  이전 orchestrate (PID=${old_pid}) 비정상 종료 감지 → lock 정리"
-      rm -rf "$LOCK_DIR"
-      mkdir "$LOCK_DIR" 2>/dev/null || { echo "❌ lock 획득 실패"; exit 1; }
-    else
-      echo "⚠️  orchestrate.sh가 이미 실행 중입니다 (PID=${old_pid}). 중복 실행 방지."
-      exit 0
-    fi
-  else
-    echo "⚠️  orchestrate.sh가 이미 실행 중입니다. 중복 실행 방지."
-    exit 0
-  fi
+# ── 중복 실행 방지 (기존 인스턴스 kill + lock) ─────────────────
+# 1단계: 기존 orchestrate.sh 프로세스가 있으면 강제 종료
+_existing_pids=$(pgrep -f "orchestrate.sh" 2>/dev/null | grep -v "$$" || true)
+if [ -n "$_existing_pids" ]; then
+  echo "⚠️  기존 orchestrate.sh 인스턴스 종료: $_existing_pids"
+  echo "$_existing_pids" | xargs kill 2>/dev/null || true
+  sleep 1
 fi
+
+# 2단계: lock 획득
+LOCK_DIR="/tmp/orchestrate.lock"
+rm -rf "$LOCK_DIR" 2>/dev/null  # stale lock 정리 (기존 프로세스는 위에서 이미 kill)
+mkdir "$LOCK_DIR" 2>/dev/null || { echo "❌ lock 획득 실패"; exit 1; }
 echo $$ > "$LOCK_DIR/pid"
 
 cleanup_lock() {
