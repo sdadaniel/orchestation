@@ -1,7 +1,7 @@
 ---
 id: TASK-265
 title: "request-parser: unsafe as 캐스팅을 타입 가드로 교체"
-status: in_progress
+status: done
 branch: task/task-265
 worktree: ../repo-wt-task-265
 priority: medium
@@ -17,7 +17,7 @@ The unsafe `as` casts in `request-parser.ts` are the clearest strict-mode type s
 ---
 id: TASK-265
 title: "request-parser: unsafe as 캐스팅을 타입 가드로 교체"
-status: in_progress
+status: done
 branch: task/task-265
 worktree: ../repo-wt-task-265
 priority: medium
