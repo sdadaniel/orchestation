@@ -83,23 +83,33 @@ parse_frontmatter() {
   WORKTREE_PATH="$REPO_ROOT/$WORKTREE_REL"
   ROLE=$(grep '^role:' "$TASK_FILE" | sed 's/role: *//' || true)
   SCOPE=""
-  local in_frontmatter=false in_scope=false
+  CONTEXT=""
+  local in_frontmatter=false in_scope=false in_context=false
   while IFS= read -r line; do
     if [[ "$line" == "---" ]]; then
       if $in_frontmatter; then break; fi
       in_frontmatter=true; continue
     fi
     if ! $in_frontmatter; then continue; fi
-    if [[ "$line" == "scope:" ]]; then in_scope=true; continue; fi
+    if [[ "$line" == "scope:" ]]; then in_scope=true; in_context=false; continue; fi
+    if [[ "$line" == "context:" ]]; then in_context=true; in_scope=false; continue; fi
     if $in_scope; then
       if echo "$line" | grep -qE '^[[:space:]]*-[[:space:]]'; then
         SCOPE="${SCOPE}$(echo "$line" | sed 's/^[[:space:]]*-[[:space:]]*//')"$'\n'
       else
-        break
+        in_scope=false
+      fi
+    fi
+    if $in_context; then
+      if echo "$line" | grep -qE '^[[:space:]]*-[[:space:]]'; then
+        CONTEXT="${CONTEXT}$(echo "$line" | sed 's/^[[:space:]]*-[[:space:]]*//')"$'\n'
+      else
+        in_context=false
       fi
     fi
   done < "$TASK_FILE"
   SCOPE=$(echo "$SCOPE" | sed '/^$/d')
+  CONTEXT=$(echo "$CONTEXT" | sed '/^$/d')
 
   if [ -z "$BRANCH" ] || [ -z "$WORKTREE_REL" ]; then
     echo "❌ Task 파일에 branch 또는 worktree가 정의되지 않았습니다" >&2
@@ -168,7 +178,7 @@ load_role_prompt "$ROLE" "general"
 setup_context_filter "$WORKTREE_PATH" "$REPO_ROOT"
 
 # 프롬프트 생성
-prompt=$(build_task_prompt "$TASK_FILE" "$TASK_FILENAME" "$SCOPE" "$FEEDBACK_FILE")
+prompt=$(build_task_prompt "$TASK_FILE" "$TASK_FILENAME" "$SCOPE" "$FEEDBACK_FILE" "$CONTEXT")
 if [ -n "$FEEDBACK_FILE" ] && [ -f "$FEEDBACK_FILE" ]; then
   echo "📝 이전 리뷰 피드백 포함"
 fi

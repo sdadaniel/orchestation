@@ -85,11 +85,12 @@ build_task_prompt() {
   local task_filename="$2"
   local scope="$3"
   local feedback_file="${4:-}"
+  local context="${5:-}"
 
   local task_content
   task_content=$(embed_task_content "$task_file")
 
-  # scope 섹션 빌드 (계층형 context)
+  # scope 섹션 빌드 (수정할 파일)
   local scope_section=""
   if [ -n "$scope" ]; then
     local scope_list=""
@@ -100,13 +101,31 @@ build_task_prompt() {
     local layered_content
     layered_content=$(build_layered_context "$scope")
     scope_section="
-## 작업 범위 가이드
-아래 파일들을 우선적으로 확인하고 이 범위 안에서 작업을 완료해라:${scope_list}
+## 작업 범위 (수정할 파일)
+아래 파일들을 수정해라:${scope_list}
 
-scope 외 파일은 수정하지 마라. 읽기는 허용하되 수정은 scope 내에서만 해라.
+scope 외 파일은 수정하지 마라.
 
 ## 작업 대상 파일 내용
 ${layered_content}
+"
+  fi
+
+  # context 섹션 빌드 (참조할 파일 — 읽기 전용)
+  if [ -n "$context" ]; then
+    local context_list=""
+    while IFS= read -r f; do
+      [ -n "$f" ] && context_list="${context_list}
+- ${f}"
+    done <<< "$context"
+    local context_content
+    context_content=$(build_layered_context "$context")
+    scope_section="${scope_section}
+## 참조 파일 (읽기 전용 — 수정 금지)
+아래 파일들을 반드시 읽고 참조해라. 단, 수정하지 마라:${context_list}
+
+## 참조 파일 내용
+${context_content}
 "
   fi
 

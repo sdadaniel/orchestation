@@ -13,6 +13,7 @@ interface AnalyzedTask {
   priority: "high" | "medium" | "low";
   criteria: string[];
   scope: string[];
+  context: string[];
   depends_on: number[];
   role: string;
 }
@@ -114,6 +115,7 @@ export async function POST(request: Request) {
                 priority: "medium",
                 criteria: ["Complete the requested work"],
                 scope: [],
+                context: [],
                 depends_on: [],
                 role: "general",
               },
@@ -147,6 +149,9 @@ export async function POST(request: Request) {
             scope: Array.isArray(t.scope)
               ? t.scope.filter((s: unknown) => typeof s === "string")
               : [],
+            context: Array.isArray(t.context)
+              ? t.context.filter((s: unknown) => typeof s === "string")
+              : [],
             depends_on: Array.isArray(t.depends_on)
               ? t.depends_on.filter((d: unknown) => typeof d === "number")
               : [],
@@ -174,6 +179,7 @@ export async function POST(request: Request) {
                   priority: "medium",
                   criteria: ["Complete the requested work"],
                   scope: [],
+                  context: [],
                   role: "general",
                 },
               ],

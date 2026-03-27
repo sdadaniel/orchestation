@@ -6,6 +6,8 @@ export interface AnalyzedTask {
   priority: "high" | "medium" | "low";
   criteria: string[];
   scope?: string[];
+  /** Reference files (read-only, not modified) */
+  context?: string[];
   /** Within-batch dependency indices (0-based) */
   depends_on?: number[];
   /** Pre-existing TASK-XXX IDs this task depends on */

@@ -16,7 +16,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, content, priority, scope, depends_on, role } = body;
+    const { title, content, priority, scope, context, depends_on, role } = body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0) {
       return NextResponse.json({ error: "title is required" }, { status: 400 });
@@ -41,6 +41,9 @@ export async function POST(request: Request) {
     const scopeLines = Array.isArray(scope) && scope.length > 0
       ? `scope:\n${scope.map((s: string) => `  - ${s}`).join("\n")}\n`
       : "";
+    const contextLines = Array.isArray(context) && context.length > 0
+      ? `context:\n${context.map((s: string) => `  - ${s}`).join("\n")}\n`
+      : "";
     const dependsOnLines = Array.isArray(depends_on) && depends_on.length > 0
       ? `depends_on: [${depends_on.join(", ")}]\n`
       : "";
@@ -61,7 +64,7 @@ id: ${taskId}
 title: ${sanitizedTitle}
 status: pending
 priority: ${taskPriority}
-${roleLine}${scopeLines}${dependsOnLines}created: ${today}
+${roleLine}${scopeLines}${contextLines}${dependsOnLines}created: ${today}
 updated: ${today}
 ---
 ${bodyContent}
