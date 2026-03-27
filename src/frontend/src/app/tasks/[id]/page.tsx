@@ -18,7 +18,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"detail" | "scope" | "cost" | "ai-result" | "logs">("detail");
-  const [aiResult, setAiResult] = useState<{ status: string; result: string } | null>(null);
+  const [aiResult, setAiResult] = useState<{ status: string; result: string } | null | "empty">(null);
   const [aiResultLoading, setAiResultLoading] = useState(false);
   const [runStatus, setRunStatus] = useState<"idle" | "running" | "completed" | "failed">("idle");
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
@@ -52,8 +52,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       setAiResultLoading(true);
       fetch(`/api/tasks/${id}/result`)
         .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-        .then((data) => setAiResult(data.status ? data : null))
-        .catch(() => setAiResult(null))
+        .then((data) => setAiResult(data.status ? data : "empty"))
+        .catch(() => setAiResult("empty"))
         .finally(() => setAiResultLoading(false));
     }
   }, [activeTab, aiResult, aiResultLoading, id]);
@@ -239,7 +239,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       {/* Tab Content */}
       {activeTab === "detail" && <DetailTab task={task} />}
       {activeTab === "scope" && <ScopeTab scope={task.scope} />}
-      {activeTab === "ai-result" && <AiResultTab aiResult={aiResult} aiResultLoading={aiResultLoading} taskStatus={task.status} />}
+      {activeTab === "ai-result" && <AiResultTab aiResult={aiResult === "empty" ? null : aiResult} aiResultLoading={aiResultLoading} taskStatus={task.status} />}
       {activeTab === "cost" && <CostTab task={task} />}
       {activeTab === "logs" && (
         <LogsTab
