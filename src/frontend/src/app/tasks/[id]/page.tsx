@@ -223,8 +223,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           { key: "detail" as const, label: "Content", icon: FileText },
           { key: "scope" as const, label: "Scope", icon: FileText },
           { key: "cost" as const, label: "Cost", icon: DollarSign },
-          { key: "ai-result" as const, label: "AI Result", icon: CheckCircle2 },
           { key: "logs" as const, label: "로그", icon: Terminal },
+          { key: "ai-result" as const, label: "AI Result", icon: CheckCircle2 },
         ]).map((tab) => (
           <button
             key={tab.key}
