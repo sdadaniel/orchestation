@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { getErrorMessage } from "@/lib/error-utils";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Loader2, FileText, Terminal, ClipboardCheck, CheckCircle2, DollarSign } from "lucide-react";
+import { ArrowLeft, Loader2, FileText, Terminal, CheckCircle2, DollarSign } from "lucide-react";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 import { TaskDetail } from "./types";
 import { TaskMetadata } from "./TaskMetadata";
 import { DependencyFlow } from "./DependencyFlow";
-import { DetailTab, ScopeTab, AiResultTab, CostTab, ReviewTab, LogsTab } from "./TaskTabContent";
+import { DetailTab, ScopeTab, AiResultTab, CostTab, LogsTab } from "./TaskTabContent";
 
 export default function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -17,8 +17,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"detail" | "scope" | "cost" | "ai-result" | "review" | "logs">("detail");
-  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"detail" | "scope" | "cost" | "ai-result" | "logs">("detail");
+  const [aiResult, setAiResult] = useState<{ status: string; result: string } | null>(null);
   const [aiResultLoading, setAiResultLoading] = useState(false);
   const [runStatus, setRunStatus] = useState<"idle" | "running" | "completed" | "failed">("idle");
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
@@ -52,8 +52,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       setAiResultLoading(true);
       fetch(`/api/tasks/${id}/result`)
         .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-        .then((data) => setAiResult(data.result ?? ""))
-        .catch(() => setAiResult(""))
+        .then((data) => setAiResult(data.status ? data : null))
+        .catch(() => setAiResult(null))
         .finally(() => setAiResultLoading(false));
     }
   }, [activeTab, aiResult, aiResultLoading, id]);
@@ -218,7 +218,6 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           { key: "cost" as const, label: "Cost", icon: DollarSign },
           { key: "ai-result" as const, label: "AI Result", icon: CheckCircle2 },
           { key: "logs" as const, label: "로그", icon: Terminal },
-          { key: "review" as const, label: "리뷰 결과", icon: ClipboardCheck },
         ]).map((tab) => (
           <button
             key={tab.key}
@@ -240,9 +239,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       {/* Tab Content */}
       {activeTab === "detail" && <DetailTab task={task} />}
       {activeTab === "scope" && <ScopeTab scope={task.scope} />}
-      {activeTab === "ai-result" && <AiResultTab aiResult={aiResult} aiResultLoading={aiResultLoading} />}
+      {activeTab === "ai-result" && <AiResultTab aiResult={aiResult} aiResultLoading={aiResultLoading} taskStatus={task.status} />}
       {activeTab === "cost" && <CostTab task={task} />}
-      {activeTab === "review" && <ReviewTab task={task} />}
       {activeTab === "logs" && (
         <LogsTab
           taskId={id}

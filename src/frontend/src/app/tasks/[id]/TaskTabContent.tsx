@@ -53,22 +53,40 @@ export function ScopeTab({ scope }: ScopeTabProps) {
 /* ── AI Result Tab ── */
 
 interface AiResultTabProps {
-  aiResult: string | null;
+  aiResult: { status: string; result: string } | null;
   aiResultLoading: boolean;
+  taskStatus: string;
 }
 
-export function AiResultTab({ aiResult, aiResultLoading }: AiResultTabProps) {
+export function AiResultTab({ aiResult, aiResultLoading, taskStatus }: AiResultTabProps) {
+  if (taskStatus === "stopped") {
+    return <p className="text-sm text-muted-foreground">태스크가 중지되었습니다.</p>;
+  }
+
+  if (aiResultLoading) {
+    return (
+      <div className="flex items-center gap-2 py-8 justify-center text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading...
+      </div>
+    );
+  }
+
+  if (!aiResult) {
+    return <p className="text-sm text-muted-foreground">아직 AI 결과가 없습니다.</p>;
+  }
+
+  const statusLabel = aiResult.status === "rejected" ? "REJECTED" : "DONE";
+  const statusColor = aiResult.status === "rejected" ? "text-red-500" : "text-emerald-500";
+
   return (
-    <div>
-      {aiResultLoading ? (
-        <div className="flex items-center gap-2 py-8 justify-center text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading...
-        </div>
-      ) : aiResult ? (
-        <MarkdownContent>{aiResult}</MarkdownContent>
-      ) : (
-        <p className="text-sm text-muted-foreground">아직 AI 결과가 없습니다.</p>
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Status:</span>
+        <span className={cn("text-xs font-semibold", statusColor)}>{statusLabel}</span>
+      </div>
+      {aiResult.result && (
+        <MarkdownContent>{aiResult.result}</MarkdownContent>
       )}
     </div>
   );
@@ -112,41 +130,6 @@ export function CostTab({ task }: CostTabProps) {
       {task.status === "in_progress" ? "태스크 완료 후 비용 정보가 표시됩니다." : "비용 정보가 없습니다."}
     </div>
   );
-}
-
-/* ── Review Tab ── */
-
-interface ReviewTabProps {
-  task: TaskDetail;
-}
-
-export function ReviewTab({ task }: ReviewTabProps) {
-  if (task.reviewResult) {
-    return (
-      <div className="space-y-3">
-        <div className="text-xs space-y-1">
-          {task.reviewResult.subtype && (
-            <div className="flex gap-2">
-              <span className="text-muted-foreground w-20 shrink-0">Result:</span>
-              <span className={cn(
-                "font-medium",
-                task.reviewResult.subtype === "success" ? "text-emerald-500" : "text-red-500",
-              )}>
-                {task.reviewResult.subtype === "success" ? "Approved" : String(task.reviewResult.subtype)}
-              </span>
-            </div>
-          )}
-        </div>
-        {task.reviewResult.result && (
-          <div className="p-3 bg-muted rounded max-h-[60vh] overflow-y-auto">
-            <MarkdownContent>{String(task.reviewResult.result)}</MarkdownContent>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return <p className="text-sm text-muted-foreground">아직 리뷰 결과가 없습니다.</p>;
 }
 
 /* ── Logs Tab ── */
