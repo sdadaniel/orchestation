@@ -438,7 +438,7 @@ export function TaskSidebar({
   const [tasksExpanded, setTasksExpanded] = useState(true);
   const [newRootItemType, setNewRootItemType] = useState<"doc" | "folder" | null>(null);
   const [showNewMenu, setShowNewMenu] = useState(false);
-  const [showCompleted, setShowCompleted] = useState(false);
+  // showCompleted 제거됨 — 단일 리스트에서 done 포함 표시
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [stoppingTaskId, setStoppingTaskId] = useState<string | null>(null);
   // showNewTaskForm, newTaskTitle, newTaskContent removed - now using /tasks/new page
@@ -459,20 +459,11 @@ export function TaskSidebar({
     setNewRootItemType(null);
   };
 
-  // 사이드바 태스크: in_progress 최상단 → 나머지는 최근 updated 순
+  // 사이드바 태스크: updated 내림차순으로 최근 10개
   const uniqueItems = [...new Map(requestItems.map((r) => [r.id, r])).values()];
-  const statusWeight = (s: string) => s === "in_progress" ? 0 : s === "reviewing" ? 1 : s === "pending" ? 2 : s === "stopped" ? 3 : 9;
   const recentItems = uniqueItems
-    .sort((a, b) => statusWeight(a.status) - statusWeight(b.status) || (b.updated ?? b.created).localeCompare(a.updated ?? a.created))
-    .slice(0, 15);
-
-  // Group recent items by status for sidebar display
-  const inProgressTasks = recentItems.filter((r) => r.status === "in_progress");
-  const stoppedTasks = recentItems.filter((r) => r.status === "stopped");
-  const pendingTasks = recentItems.filter((r) => r.status === "pending");
-  const reviewingTasks = recentItems.filter((r) => r.status === "reviewing");
-  const doneTasks = recentItems.filter((r) => r.status === "done");
-  const rejectedTasks = recentItems.filter((r) => r.status === "rejected");
+    .sort((a, b) => (b.updated ?? b.created).localeCompare(a.updated ?? a.created))
+    .slice(0, 10);
 
   return (
     <div className="ide-sidebar flex flex-col h-full">
@@ -601,22 +592,41 @@ export function TaskSidebar({
           <div className={cn("sidebar-collapsible", tasksExpanded && "sidebar-collapsible-open")}>
           <div className="sidebar-collapsible-inner">
 
-          {/* In Progress tasks */}
-          {inProgressTasks.map((task) => {
+          {/* 최근 업데이트 순 10개 태스크 */}
+          {recentItems.map((task) => {
             const taskDisplayId = task.id;
             const isExpanded = expandedTaskId === task.id;
+            const isDone = task.status === "done";
+            const isInProgress = task.status === "in_progress";
+            const statusIndicator = isInProgress
+              ? <span className="w-3 h-3 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              : isDone
+              ? <span className="text-emerald-500 text-xs shrink-0">&#10003;</span>
+              : task.status === "reviewing"
+              ? <span className="w-2 h-2 rounded-full shrink-0 bg-orange-500" />
+              : task.status === "pending"
+              ? <span className="w-2 h-2 rounded-full shrink-0 bg-yellow-500" />
+              : task.status === "stopped"
+              ? <span className="w-2 h-2 rounded-full shrink-0 bg-violet-500" />
+              : <span className="w-2 h-2 rounded-full shrink-0 bg-red-500" />;
             return (
               <div key={task.id} className="group relative">
                 <button
                   type="button"
                   onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
-                  className={cn("tree-item w-full text-left pr-7", currentPath === `/tasks/${taskDisplayId}` && "active")}
+                  className={cn(
+                    "tree-item w-full text-left",
+                    isInProgress && "pr-7",
+                    currentPath === `/tasks/${taskDisplayId}` && "active"
+                  )}
                 >
                   {isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
-                  <span className="w-3 h-3 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  <span className="truncate flex-1 text-xs">{taskDisplayId} {task.title}</span>
+                  {statusIndicator}
+                  <span className={cn("truncate flex-1 text-xs", isDone && "text-muted-foreground line-through")}>
+                    {taskDisplayId} {task.title}
+                  </span>
                 </button>
-                {handleStopTask && (
+                {isInProgress && handleStopTask && (
                   stoppingTaskId === task.id ? (
                     <span className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-red-400">
                       <Loader2 className="h-2.5 w-2.5 animate-spin" />
@@ -639,200 +649,23 @@ export function TaskSidebar({
                 {isExpanded && (
                   <Link
                     href={`/tasks/${taskDisplayId}`}
-                    className="block ml-6 mr-1 my-0.5 px-2 py-1.5 rounded text-[11px] text-muted-foreground bg-sidebar-accent/50 hover:bg-sidebar-accent hover:text-foreground no-underline transition-colors"
-                  >
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className={cn("px-1 py-0 rounded text-[9px] font-medium", STATUS_STYLES[task.status as TaskStatus]?.bg || "bg-muted", "text-white")}>
-                        {task.status}
-                      </span>
-                    </div>
-                    <p className="truncate">{task.title}</p>
-                    <span className="text-[10px] text-muted-foreground/70">Click to open detail →</span>
-                  </Link>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Stopped tasks */}
-          {stoppedTasks.map((task) => {
-            const taskDisplayId = task.id;
-            const isExpanded = expandedTaskId === task.id;
-            return (
-              <div key={task.id}>
-                <button
-                  type="button"
-                  onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
-                  className={cn("tree-item w-full text-left", currentPath === `/tasks/${taskDisplayId}` && "active")}
-                >
-                  {isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
-                  <span className="w-2 h-2 rounded-full shrink-0 bg-violet-500" />
-                  <span className="truncate flex-1 text-xs">{taskDisplayId} {task.title}</span>
-                </button>
-                {isExpanded && (
-                  <Link
-                    href={`/tasks/${taskDisplayId}`}
-                    className="block ml-6 mr-1 my-0.5 px-2 py-1.5 rounded text-[11px] text-muted-foreground bg-sidebar-accent/50 hover:bg-sidebar-accent hover:text-foreground no-underline transition-colors"
-                  >
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className={cn("px-1 py-0 rounded text-[9px] font-medium", STATUS_STYLES[task.status as TaskStatus]?.bg || "bg-muted", "text-white text-[9px]")}>
-                        {task.status}
-                      </span>
-                    </div>
-                    <p className="truncate">{task.title}</p>
-                    <span className="text-[10px] text-muted-foreground/70">Click to open detail →</span>
-                  </Link>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Pending tasks */}
-          {pendingTasks.map((task) => {
-            const taskDisplayId = task.id;
-            const isExpanded = expandedTaskId === task.id;
-            return (
-              <div key={task.id}>
-                <button
-                  type="button"
-                  onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
-                  className={cn("tree-item w-full text-left", currentPath === `/tasks/${taskDisplayId}` && "active")}
-                >
-                  {isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
-                  <span className="w-2 h-2 rounded-full shrink-0 bg-yellow-500" />
-                  <span className="truncate flex-1 text-xs">{taskDisplayId} {task.title}</span>
-                </button>
-                {isExpanded && (
-                  <Link
-                    href={`/tasks/${taskDisplayId}`}
-                    className="block ml-6 mr-1 my-0.5 px-2 py-1.5 rounded text-[11px] text-muted-foreground bg-sidebar-accent/50 hover:bg-sidebar-accent hover:text-foreground no-underline transition-colors"
-                  >
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className={cn("px-1 py-0 rounded text-[9px] font-medium", STATUS_STYLES[task.status as TaskStatus]?.bg || "bg-muted", "text-white")}>
-                        {task.status}
-                      </span>
-                    </div>
-                    <p className="truncate">{task.title}</p>
-                    <span className="text-[10px] text-muted-foreground/70">Click to open detail →</span>
-                  </Link>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Reviewing tasks */}
-          {reviewingTasks.map((task) => {
-            const taskDisplayId = task.id;
-            const isExpanded = expandedTaskId === task.id;
-            return (
-              <div key={task.id}>
-                <button
-                  type="button"
-                  onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
-                  className={cn("tree-item w-full text-left", currentPath === `/tasks/${taskDisplayId}` && "active")}
-                >
-                  {isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
-                  <span className="w-2 h-2 rounded-full shrink-0 bg-orange-500" />
-                  <span className="truncate flex-1 text-xs">{taskDisplayId} {task.title}</span>
-                </button>
-                {isExpanded && (
-                  <Link
-                    href={`/tasks/${taskDisplayId}`}
-                    className="block ml-6 mr-1 my-0.5 px-2 py-1.5 rounded text-[11px] text-muted-foreground bg-sidebar-accent/50 hover:bg-sidebar-accent hover:text-foreground no-underline transition-colors"
-                  >
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className={cn("px-1 py-0 rounded text-[9px] font-medium", STATUS_STYLES[task.status as TaskStatus]?.bg || "bg-muted", "text-white text-[9px]")}>
-                        {task.status}
-                      </span>
-                    </div>
-                    <p className="truncate">{task.title}</p>
-                    <span className="text-[10px] text-muted-foreground/70">Click to open detail →</span>
-                  </Link>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Rejected tasks */}
-          {rejectedTasks.map((task) => {
-            const taskDisplayId = task.id;
-            const isExpanded = expandedTaskId === task.id;
-            return (
-              <div key={task.id}>
-                <button
-                  type="button"
-                  onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
-                  className={cn("tree-item w-full text-left", currentPath === `/tasks/${taskDisplayId}` && "active")}
-                >
-                  {isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
-                  <span className="w-2 h-2 rounded-full shrink-0 bg-red-500" />
-                  <span className="truncate flex-1 text-xs">{taskDisplayId} {task.title}</span>
-                </button>
-                {isExpanded && (
-                  <Link
-                    href={`/tasks/${taskDisplayId}`}
-                    className="block ml-6 mr-1 my-0.5 px-2 py-1.5 rounded text-[11px] text-muted-foreground bg-sidebar-accent/50 hover:bg-sidebar-accent hover:text-foreground no-underline transition-colors"
-                  >
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className={cn("px-1 py-0 rounded text-[9px] font-medium", STATUS_STYLES[task.status as TaskStatus]?.bg || "bg-muted", "text-white")}>
-                        {task.status}
-                      </span>
-                    </div>
-                    <p className="truncate">{task.title}</p>
-                    <span className="text-[10px] text-muted-foreground/70">Click to open detail →</span>
-                  </Link>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Done tasks - collapsed by default */}
-          {doneTasks.length > 0 && (
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowCompleted(!showCompleted)}
-                className="tree-item w-full text-left"
-              >
-                {showCompleted ? (
-                  <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
-                ) : (
-                  <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                )}
-                <span className="text-[11px] text-muted-foreground flex-1">
-                  Show completed ({doneTasks.length})
-                </span>
-              </button>
-              {showCompleted && doneTasks.map((task) => {
-                const taskDisplayId = task.id;
-                const isExpanded = expandedTaskId === task.id;
-                return (
-                  <div key={task.id}>
-                    <button
-                      type="button"
-                      onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
-                      className={cn("tree-item w-full text-left ml-3", currentPath === `/tasks/${taskDisplayId}` && "active")}
-                    >
-                      {isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
-                      <span className="text-emerald-500 text-xs shrink-0">&#10003;</span>
-                      <span className="truncate flex-1 text-xs text-muted-foreground line-through">
-                        {taskDisplayId} {task.title}
-                      </span>
-                    </button>
-                    {isExpanded && (
-                      <Link
-                        href={`/tasks/${taskDisplayId}`}
-                        className="block ml-9 mr-1 my-0.5 px-2 py-1.5 rounded text-[11px] text-muted-foreground bg-sidebar-accent/50 hover:bg-sidebar-accent hover:text-foreground no-underline transition-colors"
-                      >
-                        <p className="truncate">{task.title}</p>
-                        <span className="text-[10px] text-muted-foreground/70">Click to open detail →</span>
-                      </Link>
+                    className={cn(
+                      "block mr-1 my-0.5 px-2 py-1.5 rounded text-[11px] text-muted-foreground bg-sidebar-accent/50 hover:bg-sidebar-accent hover:text-foreground no-underline transition-colors",
+                      isDone ? "ml-9" : "ml-6"
                     )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  >
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className={cn("px-1 py-0 rounded text-[9px] font-medium", STATUS_STYLES[task.status as TaskStatus]?.bg || "bg-muted", "text-white")}>
+                        {task.status}
+                      </span>
+                    </div>
+                    <p className="truncate">{task.title}</p>
+                    <span className="text-[10px] text-muted-foreground/70">Click to open detail →</span>
+                  </Link>
+                )}
+              </div>
+            );
+          })}
 
           {/* + New Task button */}
           <Link
