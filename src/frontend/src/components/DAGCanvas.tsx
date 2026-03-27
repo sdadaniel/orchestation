@@ -9,13 +9,13 @@ import { PRIORITY_COLORS, STATUS_DOT, NODE_W, NODE_H, ROW_GAP, CANVAS_PAD, SECTI
 
 // ── Types ────────────────────────────────────────────
 
-type NodeLayout = { id: string; x: number; y: number; req: RequestItem; isNextUp: boolean };
-type EdgeLayout = { fromId: string; toId: string; x1: number; y1: number; x2: number; y2: number };
-type SectionLayout = { key: string; label: string; x: number; y: number; w: number; h: number; color: string; extra: number };
+export type NodeLayout = { id: string; x: number; y: number; req: RequestItem; isNextUp: boolean };
+export type EdgeLayout = { fromId: string; toId: string; x1: number; y1: number; x2: number; y2: number };
+export type SectionLayout = { key: string; label: string; x: number; y: number; w: number; h: number; color: string; extra: number };
 
 // ── Layout computation ───────────────────────────────
 
-function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxParallel = 3) {
+export function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[], maxParallel = 3) {
   const reqMap = new Map(requests.map((r) => [r.id, r]));
   const taskMap = new Map(tasks.map((t) => [t.id, t]));
 

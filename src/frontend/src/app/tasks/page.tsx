@@ -6,6 +6,7 @@ import { useTasksStore, type RequestItem } from "@/store/tasksStore";
 import { cn } from "@/lib/utils";
 import { Plus, Layers, Search, ArrowUpDown, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X, Link2 } from "lucide-react";
 import DAGCanvas from "@/components/DAGCanvas";
+import DAGCanvasDiv from "@/components/DAGCanvasDiv";
 import { RequestCard } from "@/components/RequestCard";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -72,6 +73,7 @@ function TasksPageInner() {
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(20);
+  const [canvasMode, setCanvasMode] = useState<"svg" | "div">("svg");
   const setActiveTab = (tab: string) => { router.push(`/tasks?tab=${tab}`, { scroll: false }); setPage(1); };
 
   // Reset page when filters change
@@ -354,7 +356,23 @@ function TasksPageInner() {
                 </div>
               </div>
             )}
-            <DAGCanvas requests={filtered} tasks={allWaterfallTasks} onClickItem={(req) => router.push(`/tasks/${req.id}`)} />
+            {/* Canvas mode toggle */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCanvasMode("svg")}
+                className={cn("filter-pill text-[11px]", canvasMode === "svg" && "active")}
+              >SVG</button>
+              <button
+                type="button"
+                onClick={() => setCanvasMode("div")}
+                className={cn("filter-pill text-[11px]", canvasMode === "div" && "active")}
+              >HTML/CSS</button>
+            </div>
+            {canvasMode === "svg"
+              ? <DAGCanvas requests={filtered} tasks={allWaterfallTasks} onClickItem={(req) => router.push(`/tasks/${req.id}`)} />
+              : <DAGCanvasDiv requests={filtered} tasks={allWaterfallTasks} onClickItem={(req) => router.push(`/tasks/${req.id}`)} />
+            }
           </>
         );
       })()}
