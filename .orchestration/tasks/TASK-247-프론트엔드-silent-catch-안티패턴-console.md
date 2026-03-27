@@ -1,7 +1,7 @@
 ---
 id: TASK-247
 title: 프론트엔드 silent catch 안티패턴 console.error 추가
-status: in_progress
+status: done
 branch: task/task-247
 worktree: ../repo-wt-task-247
 priority: medium
