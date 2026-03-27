@@ -1,7 +1,7 @@
 ---
 id: TASK-260
 title: docs/errors 에러 문서 검토 및 통합 요약 작성
-status: in_progress
+status: done
 branch: task/task-260
 worktree: ../repo-wt-task-260
 priority: medium
