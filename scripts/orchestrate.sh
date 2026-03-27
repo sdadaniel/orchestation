@@ -503,17 +503,32 @@ process_signals_for_task() {
     return 3  # RUNNING에서 제거
   fi
 
-  # 2) task-done → review 시작 (hard limit 체크)
+  # 2) task-done → review 시작 또는 스킵
   if [ -f "${SIGNAL_DIR}/${task_id}-task-done" ]; then
     rm -f "/tmp/worker-${task_id}.pid"
+    rm -f "${SIGNAL_DIR}/${task_id}-task-done"
+
+    # review 스킵 판단: role 기반
+    local task_file_for_review
+    task_file_for_review=$(find_file "$task_id")
+    local task_role=""
+    [ -n "$task_file_for_review" ] && task_role=$(get_field "$task_file_for_review" "role")
+
+    if should_skip_review "$task_role"; then
+      echo "  ✅ ${task_id} task 완료 → review 스킵 (role: ${task_role}) → 바로 머지"
+      _merge_and_done "$task_id"
+      return $?
+    fi
+
     local claude_count
     claude_count=$(count_claude_procs)
     if [ "$claude_count" -ge "$MAX_CLAUDE_PROCS" ]; then
+      # signal 파일 재생성 → 다음 루프에서 재시도
+      signal_create "$SIGNAL_DIR" "$task_id" "task-done"
       echo "  ⏸️ ${task_id} task 완료, review 대기 (claude ${claude_count}/${MAX_CLAUDE_PROCS})"
-      return 2  # signal 파일은 남겨둠 → 다음 루프에서 재시도
+      return 2
     fi
     echo "  ✅ ${task_id} task 완료 → review 시작"
-    rm -f "${SIGNAL_DIR}/${task_id}-task-done"
     start_review "$task_id"
     return 2  # 아직 진행 중 (review 대기)
   fi
@@ -587,6 +602,19 @@ process_signals_for_task() {
   fi
 
   return 2  # 아직 진행 중
+}
+
+# ── review 스킵 판단 ─────────────────────────────────────
+# 코드를 수정하지 않는 role은 리뷰 불필요
+SKIP_REVIEW_ROLES="prd-architect tech-writer"
+
+should_skip_review() {
+  local role="$1"
+  [ -z "$role" ] && return 1  # role 없으면 리뷰 수행
+  for skip_role in $SKIP_REVIEW_ROLES; do
+    [ "$role" = "$skip_role" ] && return 0
+  done
+  return 1
 }
 
 # ── 머지 + done 처리 ─────────────────────────────────────

@@ -61,6 +61,29 @@ export function updateTaskFileStatus(taskId: string, status: string): void {
   }
 }
 
+/** 태스크 파일에서 role 필드 읽기 */
+export function getTaskRole(taskId: string): string {
+  try {
+    const tasksDir = path.join(PROJECT_ROOT, ".orchestration", "tasks");
+    const files = fs.readdirSync(tasksDir);
+    const taskFile = files.find((f) => f.startsWith(`${taskId}-`) && f.endsWith(".md"));
+    if (!taskFile) return "";
+    const raw = fs.readFileSync(path.join(tasksDir, taskFile), "utf-8");
+    const match = raw.match(/^role:\s*(.+)$/m);
+    return match ? match[1].trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+/** 코드를 수정하지 않는 role은 review 스킵 */
+const SKIP_REVIEW_ROLES = ["prd-architect", "tech-writer"];
+
+export function shouldSkipReview(taskId: string): boolean {
+  const role = getTaskRole(taskId);
+  return SKIP_REVIEW_ROLES.includes(role);
+}
+
 /** 해당 태스크의 signal 파일 잔여물 정리 */
 export function cleanupSignals(taskId: string): void {
   try {

@@ -12,6 +12,7 @@ import {
   cleanupSignals,
   killItermTask,
   spawnJobProcess,
+  shouldSkipReview,
 } from "./task-runner-utils";
 import {
   ItermWatcherManager,
@@ -106,7 +107,14 @@ class TaskRunnerManager {
           this.events.emit(`log:${taskId}`, rejectLine);
           this.events.emit(`done:${taskId}`, "completed");
         } else if (code === 0) {
-          this.startReview(taskId, state);
+          if (shouldSkipReview(taskId)) {
+            const skipLine = `[task-runner] ${taskId} review 스킵 (role 기반) → 바로 merge`;
+            state.logs.push(skipLine);
+            this.events.emit(`log:${taskId}`, skipLine);
+            this.startMerge(taskId, state);
+          } else {
+            this.startReview(taskId, state);
+          }
         } else {
           state.status = "failed";
           state.finishedAt = new Date().toISOString();
@@ -153,6 +161,7 @@ class TaskRunnerManager {
       taskId, state, logFile, signalDir, dummy,
       this.events, this.watcherMgr,
       (tid, st, sd) => this.handleStartReviewIterm(tid, st, sd),
+      (tid, st) => this.startMerge(tid, st),
     );
 
     return { success: true };

@@ -8,6 +8,7 @@ import {
   runInIterm,
   updateTaskFileStatus,
   cleanupSignals,
+  shouldSkipReview,
 } from "./task-runner-utils";
 
 /**
@@ -87,6 +88,7 @@ export function watchItermCompletion(
   events: EventEmitter,
   watcherMgr: ItermWatcherManager,
   startReviewIterm: (taskId: string, state: TaskRunState, signalDir: string) => void,
+  startMergeCallback: (taskId: string, state: TaskRunState) => void,
 ): void {
   // 기존 watcher 정리
   watcherMgr.closeWatchers(taskId);
@@ -111,11 +113,17 @@ export function watchItermCompletion(
         try { fs.unlinkSync(doneSignal); } catch { /* ignore */ }
         try { dummy.kill(); } catch { /* ignore */ }
 
-        const doneLine = `[task-runner] ${taskId} task 완료 (iTerm) → review 시작`;
-        state.logs.push(doneLine);
-        events.emit(`log:${taskId}`, doneLine);
-
-        startReviewIterm(taskId, state, signalDir);
+        if (shouldSkipReview(taskId)) {
+          const skipLine = `[task-runner] ${taskId} review 스킵 (role 기반) → 바로 merge`;
+          state.logs.push(skipLine);
+          events.emit(`log:${taskId}`, skipLine);
+          startMergeCallback(taskId, state);
+        } else {
+          const doneLine = `[task-runner] ${taskId} task 완료 (iTerm) → review 시작`;
+          state.logs.push(doneLine);
+          events.emit(`log:${taskId}`, doneLine);
+          startReviewIterm(taskId, state, signalDir);
+        }
 
       } else if (filename === `${taskId}-task-rejected` && fs.existsSync(rejectedSignal)) {
         watcherMgr.closeWatchers(taskId);
