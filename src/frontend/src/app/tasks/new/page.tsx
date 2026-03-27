@@ -41,7 +41,7 @@ export default function NewTaskPage() {
     fetch("/api/tasks")
       .then((r) => r.json())
       .then((data: TaskOption[]) => { if (Array.isArray(data)) setExistingTasks(data); })
-      .catch(() => {});
+      .catch((err) => { console.error("[NewTask] existingTasks fetch error:", err); });
   }, []);
 
   const createFromSuggestions = async () => {

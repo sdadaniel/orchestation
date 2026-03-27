@@ -52,7 +52,7 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
   useEffect(() => {
     if (expanded && aiResult === null && !aiResultLoading) {
       setAiResultLoading(true);
-      fetch(`/api/tasks/${req.id}/result`).then((r) => { if (!r.ok) throw new Error("fetch failed"); return r.json(); }).then((data) => setAiResult(data.result ?? "")).catch(() => setAiResult("")).finally(() => setAiResultLoading(false));
+      fetch(`/api/tasks/${req.id}/result`).then((r) => { if (!r.ok) throw new Error("fetch failed"); return r.json(); }).then((data) => setAiResult(data.result ?? "")).catch((err) => { console.error("[RequestCard] fetch result error:", err); setAiResult(""); }).finally(() => setAiResultLoading(false));
     }
   }, [expanded, aiResult, aiResultLoading, req.id]);
 
@@ -69,7 +69,8 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
           setExecLog(data.executionLog ?? null);
           setReviewResult(data.reviewResult ?? null);
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error("[RequestCard] fetch execLog/review error:", err);
           setExecLog(null);
           setReviewResult(null);
         })
