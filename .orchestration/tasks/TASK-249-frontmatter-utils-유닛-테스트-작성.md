@@ -1,7 +1,7 @@
 ---
 id: TASK-249
 title: frontmatter-utils 유닛 테스트 작성
-status: in_progress
+status: done
 branch: task/task-249
 worktree: ../repo-wt-task-249
 priority: medium
@@ -16,7 +16,7 @@ TASK-249 is empty/reserved. TASK-243 covered parser/cost-parser/notice-parser bu
 ---
 id: TASK-249
 title: frontmatter-utils 유닛 테스트 작성
-status: failed
+status: done
 branch: task/task-249
 worktree: ../repo-wt-task-249
 priority: medium
