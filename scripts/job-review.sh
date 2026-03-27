@@ -125,8 +125,12 @@ echo "📊 토큰: in=${input_tokens} out=${output_tokens} | model=${model} | co
 
 _signal_sent=true
 
+# result에서 JSON 추출 (텍스트가 섞여있을 수 있음)
+result_json=$(echo "$result" | grep -o '{.*}' | tail -1)
+[ -z "$result_json" ] && result_json="$result"
+
 # JSON verdict 파싱 시도, 실패 시 레거시 키워드 파싱
-verdict=$(echo "$result" | jq -r '.verdict // empty' 2>/dev/null)
+verdict=$(echo "$result_json" | jq -r '.verdict // empty' 2>/dev/null)
 
 if [ "$verdict" = "승인" ]; then
   approved=true
