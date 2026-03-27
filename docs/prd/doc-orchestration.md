@@ -5,35 +5,35 @@
 ```
 orchestrate.sh
 │
-├── 1. Task 수집: docs/task/*.md에서 status=backlog인 Task 수집
+├── 1. Task 수집: docs/task/*.md에서 status=pending인 Task 수집
 ├── 2. 의존 관계 분석: depends_on 기반으로 배치(batch) 구성
 ├── 3. 배치별 병렬 실행:
-│   ├── Task A ──→ run-worker.sh ──→ iTerm 패널
-│   └── Task B ──→ run-worker.sh ──→ iTerm 패널
+│   ├── Task A ──→ job-task.sh ──→ job-review.sh ──→ iTerm 패널
+│   └── Task B ──→ job-task.sh ──→ job-review.sh ──→ iTerm 패널
 ├── 4. 배치 완료 대기
 ├── 5. 다음 배치 실행
 └── 6. 전체 완료 → main 머지
 ```
 
-## run-worker.sh 내부
+## job-task.sh 및 job-review.sh 실행 흐름
 
 ```
-run-worker.sh TASK-XXX
+orchestrate.sh TASK-XXX 호출 순서:
 │
-├── 1. run-task.sh TASK-XXX
+├── 1. job-task.sh TASK-XXX
 │   ├── worktree 생성
 │   ├── 역할 프롬프트 로드 (--system-prompt)
 │   ├── Claude CLI 실행 (에이전트 모드)
 │   └── 결과 저장 (output/TASK-XXX-task.json)
 │
-├── 2. run-review.sh TASK-XXX
+├── 2. job-review.sh TASK-XXX
 │   ├── 리뷰어 프롬프트 로드
 │   ├── Claude CLI 실행
 │   └── 승인/수정요청 판정
 │
-├── 3. 수정요청 시:
+├── 3. 수정요청(reject) 시:
 │   ├── 피드백 파일 생성
-│   └── run-task.sh TASK-XXX FEEDBACK → 재실행
+│   └── job-task.sh TASK-XXX FEEDBACK → 재실행
 │
 └── 4. 최대 재시도: 10회
 ```
