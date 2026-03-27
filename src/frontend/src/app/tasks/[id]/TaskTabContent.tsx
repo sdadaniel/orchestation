@@ -63,6 +63,10 @@ export function AiResultTab({ aiResult, aiResultLoading, taskStatus }: AiResultT
     return <p className="text-sm text-muted-foreground">태스크가 중지되었습니다.</p>;
   }
 
+  if (taskStatus === "in_progress") {
+    return <p className="text-sm text-muted-foreground">태스크 실행 중입니다. 완료 후 결과가 표시됩니다.</p>;
+  }
+
   if (aiResultLoading) {
     return (
       <div className="flex items-center gap-2 py-8 justify-center text-sm text-muted-foreground">

@@ -161,6 +161,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Track previous task statuses for change detection
   const prevTaskStatusRef = useRef<Map<string, string>>(new Map());
+  const toastedRef = useRef<Set<string>>(new Set());
 
   // Detect task status changes and show toasts
   useEffect(() => {
@@ -170,17 +171,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     // 초기 로드가 아닌 경우에만 토스트 (prevMap이 비어있으면 초기 로드)
     if (prevMap.size > 0) {
-      // status가 실제로 변경된 태스크만 필터
-      const changed = allTasks.filter((task) => {
+      for (const task of allTasks) {
         const prev = prevMap.get(task.id);
-        return prev !== undefined && prev !== task.status;
-      });
+        if (prev === undefined || prev === task.status) continue;
 
-      for (const task of changed) {
-        const prevStatus = prevMap.get(task.id)!;
+        // 동일 task+status 조합에 대해 중복 토스트 방지
+        const toastKey = `${task.id}:${task.status}`;
+        if (toastedRef.current.has(toastKey)) continue;
+        toastedRef.current.add(toastKey);
+
         if (task.status === "done") {
           addToast(`${task.id}: "${task.title}" 완료됨`, "success");
-        } else if (task.status === "in_progress" && prevStatus === "pending") {
+        } else if (task.status === "in_progress" && prev === "pending") {
           addToast(`${task.id}: "${task.title}" 시작됨`, "info");
         } else if (task.status === "reviewing") {
           addToast(`${task.id}: "${task.title}" 리뷰 중`, "info");

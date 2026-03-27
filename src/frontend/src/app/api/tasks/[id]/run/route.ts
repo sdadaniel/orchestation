@@ -5,7 +5,7 @@ import path from "path";
 import taskRunnerManager from "@/lib/task-runner-manager";
 import orchestrationManager from "@/lib/orchestration-manager";
 import { parseAllRequests, findRequestFile, parseRequestFile } from "@/lib/request-parser";
-import { PROJECT_ROOT } from "@/lib/paths";
+import { PROJECT_ROOT, OUTPUT_DIR } from "@/lib/paths";
 
 const SIGNAL_DIR = path.join(PROJECT_ROOT, ".orchestration", "signals");
 const TASK_ID_PATTERN = /^TASK-\d{3}$/;
@@ -87,6 +87,14 @@ export async function POST(
       );
       fs.writeFileSync(taskFile, updated, "utf-8");
     }
+  }
+
+  // 이전 실행 결과 파일 삭제 (재실행 시 이전 결과가 표시되는 것 방지)
+  const prevResultPath = path.join(OUTPUT_DIR, `${id}-task.json`);
+  const prevConvPath = path.join(OUTPUT_DIR, `${id}-task-conversation.jsonl`);
+  const prevRejectionPath = path.join(OUTPUT_DIR, `${id}-rejection-reason.txt`);
+  for (const p of [prevResultPath, prevConvPath, prevRejectionPath]) {
+    try { fs.unlinkSync(p); } catch { /* not exists */ }
   }
 
   const result = taskRunnerManager.run(id);

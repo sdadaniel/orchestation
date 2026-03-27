@@ -1,7 +1,7 @@
 ---
 id: TASK-258
 title: PRD 문서 현행화
-status: failed
+status: done
 branch: task/task-258
 worktree: ../repo-wt-task-258
 priority: high
