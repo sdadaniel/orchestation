@@ -906,7 +906,7 @@ export function TaskSidebar({
         </Link>
         <Link href="/night-worker" className={cn("tree-item text-sidebar-foreground no-underline", currentPath === "/night-worker" && "active")}>
           <Moon className="h-3.5 w-3.5" />
-          <span>Night Worker</span>
+          <span className="text-xs">Night Worker</span>
         </Link>
         <Link href="/settings" className={cn("tree-item text-sidebar-foreground no-underline", currentPath === "/settings" && "active")}>
           <Settings className="h-3.5 w-3.5 shrink-0" />
