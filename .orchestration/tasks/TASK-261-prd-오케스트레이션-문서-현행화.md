@@ -1,7 +1,7 @@
 ---
 id: TASK-261
 title: PRD 오케스트레이션 문서 현행화
-status: in_progress
+status: done
 branch: task/task-261
 worktree: ../repo-wt-task-261
 priority: medium
