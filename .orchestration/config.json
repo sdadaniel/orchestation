@@ -5,9 +5,12 @@
   ],
   "model": "claude-sonnet-4-6",
   "baseBranch": "main",
-  "maxParallel": 2,
+  "maxParallel": {
+    "task": 2,
+    "review": 2
+  },
   "maxReviewRetry": 2,
-  "workerMode": "background",
+  "workerMode": "iterm",
   "nightWorker": {
     "until": "07:00",
     "budget": null,

@@ -17,8 +17,9 @@ else
 fi
 REQ_DIR="$REPO_ROOT/docs/requests"
 MAX_REVIEW_RETRY="${MAX_REVIEW_RETRY:-2}"
-MAX_PARALLEL="${MAX_PARALLEL:-3}"
-MAX_CLAUDE_PROCS="${MAX_CLAUDE_PROCS:-${MAX_PARALLEL}}"
+MAX_PARALLEL_TASK="${MAX_PARALLEL_TASK:-2}"
+MAX_PARALLEL_REVIEW="${MAX_PARALLEL_REVIEW:-2}"
+MAX_CLAUDE_PROCS="${MAX_CLAUDE_PROCS:-4}"
 SIGNAL_DIR="$REPO_ROOT/.orchestration/signals"
 mkdir -p "$SIGNAL_DIR"
 LAST_DISPATCH_TIME=0
@@ -713,14 +714,19 @@ RUNNING=()   # 현재 실행 중인 태스크 ID 목록
 FAILED_COUNT=0
 
 while true; do
-  # ── config.json에서 MAX_PARALLEL 핫 리로드 ──
+  # ── config.json에서 maxParallel 핫 리로드 ──
   if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
-    _new_mp=$(jq -r '.maxParallel // 3' "$CONFIG_FILE" 2>/dev/null || echo "")
-    if [ -n "$_new_mp" ] && [ "$_new_mp" != "$MAX_PARALLEL" ]; then
-      echo "  ⚙️  MAX_PARALLEL 변경: ${MAX_PARALLEL} → ${_new_mp}"
-      MAX_PARALLEL="$_new_mp"
-      MAX_CLAUDE_PROCS="$MAX_PARALLEL"
+    _new_task=$(jq -r '.maxParallel.task // 2' "$CONFIG_FILE" 2>/dev/null || echo "")
+    _new_review=$(jq -r '.maxParallel.review // 2' "$CONFIG_FILE" 2>/dev/null || echo "")
+    if [ -n "$_new_task" ] && [ "$_new_task" != "$MAX_PARALLEL_TASK" ]; then
+      echo "  ⚙️  MAX_PARALLEL_TASK 변경: ${MAX_PARALLEL_TASK} → ${_new_task}"
+      MAX_PARALLEL_TASK="$_new_task"
     fi
+    if [ -n "$_new_review" ] && [ "$_new_review" != "$MAX_PARALLEL_REVIEW" ]; then
+      echo "  ⚙️  MAX_PARALLEL_REVIEW 변경: ${MAX_PARALLEL_REVIEW} → ${_new_review}"
+      MAX_PARALLEL_REVIEW="$_new_review"
+    fi
+    MAX_CLAUDE_PROCS=$(( MAX_PARALLEL_TASK + MAX_PARALLEL_REVIEW ))
   fi
 
   # ── 실행 중인 태스크 완료 여부 체크 (슬롯 투입 전에 먼저 갱신) ──
@@ -774,8 +780,8 @@ while true; do
 
   # ── 빈 슬롯에 새 태스크 투입 ──
   qi=0
-  echo "  🔍 슬롯 체크: RUNNING=${#RUNNING[@]}/${MAX_PARALLEL}, QUEUE=${#QUEUE[@]}"
-  while [ "${#RUNNING[@]}" -lt "$MAX_PARALLEL" ] && [ "$qi" -lt "${#QUEUE[@]}" ]; do
+  echo "  🔍 슬롯 체크: RUNNING=${#RUNNING[@]}/${MAX_PARALLEL_TASK}, QUEUE=${#QUEUE[@]}"
+  while [ "${#RUNNING[@]}" -lt "$MAX_PARALLEL_TASK" ] && [ "$qi" -lt "${#QUEUE[@]}" ]; do
     next_task="${QUEUE[$qi]}"
     qi=$((qi + 1))
 
@@ -801,7 +807,7 @@ while true; do
 
     start_task "$next_task"
     RUNNING+=("$next_task")
-    echo "  📊 슬롯: ${#RUNNING[@]}/${MAX_PARALLEL} (대기: $((${#QUEUE[@]} - qi)))"
+    echo "  📊 슬롯: ${#RUNNING[@]}/${MAX_PARALLEL_TASK} (대기: $((${#QUEUE[@]} - qi)))"
   done
 
   # fswatch 기반 이벤트 대기 (또는 fallback polling 2초)
