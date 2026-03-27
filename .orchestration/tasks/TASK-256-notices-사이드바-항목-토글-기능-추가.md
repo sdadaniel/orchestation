@@ -1,7 +1,7 @@
 ---
 id: TASK-256
 title: Notices 사이드바 항목 토글 기능 추가
-status: pending
+status: rejected
 branch: task/task-256
 worktree: ../repo-wt-task-256
 priority: medium
