@@ -6,6 +6,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Loader2, Pencil, Check, X, Plus, Trash2, GitMerge, Sparkles, CheckSquare, Square as SquareIcon } from "lucide-react";
 import { DependsOnSelector, type TaskOption } from "@/components/DependsOnSelector";
+import { useSuggestStore } from "@/store/suggestStore";
 
 interface AnalyzedTask {
   title: string;
@@ -26,15 +27,6 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 type Step = "input" | "preview";
-
-interface Suggestion {
-  title: string;
-  description: string;
-  category: string;
-  priority: "high" | "medium" | "low";
-  scope: string[];
-  effort: "small" | "medium" | "large";
-}
 
 const CATEGORY_ICON: Record<string, string> = {
   bug: "🐛", refactor: "🔄", performance: "⚡", test: "🧪",
@@ -57,38 +49,13 @@ export default function NewTaskPage() {
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [confirming, setConfirming] = useState(false);
 
-  // Suggest tab state
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [suggestLoading, setSuggestLoading] = useState(false);
-  const [suggestError, setSuggestError] = useState<string | null>(null);
-  const [selectedSuggestions, setSelectedSuggestions] = useState<Set<number>>(new Set());
+  // Suggest tab state (전역 store — 페이지 이동해도 유지)
+  const suggestions = useSuggestStore((s) => s.suggestions);
+  const suggestLoading = useSuggestStore((s) => s.isLoading);
+  const suggestError = useSuggestStore((s) => s.error);
+  const selectedSuggestions = useSuggestStore((s) => s.selectedIndices);
+  const { fetchSuggestions: handleSuggest, toggleSelection: toggleSuggestion, selectAll, deselectAll } = useSuggestStore();
   const [creatingSuggestions, setCreatingSuggestions] = useState(false);
-
-  const handleSuggest = async () => {
-    setSuggestLoading(true);
-    setSuggestError(null);
-    setSuggestions([]);
-    setSelectedSuggestions(new Set());
-    try {
-      const res = await fetch("/api/tasks/suggest", { method: "POST" });
-      const data = await res.json();
-      if (data.error) setSuggestError(data.error);
-      if (data.suggestions) setSuggestions(data.suggestions);
-    } catch {
-      setSuggestError("추천 요청 실패");
-    } finally {
-      setSuggestLoading(false);
-    }
-  };
-
-  const toggleSuggestion = (idx: number) => {
-    setSelectedSuggestions((prev) => {
-      const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
-      return next;
-    });
-  };
 
   const createFromSuggestions = async () => {
     setCreatingSuggestions(true);
@@ -117,9 +84,10 @@ export default function NewTaskPage() {
           }),
         });
       }
+      useSuggestStore.getState().clear();
       router.push("/tasks");
     } catch {
-      setSuggestError("태스크 생성 실패");
+      useSuggestStore.setState({ error: "태스크 생성 실패" });
     } finally {
       setCreatingSuggestions(false);
     }
@@ -311,8 +279,8 @@ export default function NewTaskPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (selectedSuggestions.size === suggestions.length) setSelectedSuggestions(new Set());
-                    else setSelectedSuggestions(new Set(suggestions.map((_, i) => i)));
+                    if (selectedSuggestions.size === suggestions.length) deselectAll();
+                    else selectAll();
                   }}
                   className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                 >
