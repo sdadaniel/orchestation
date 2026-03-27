@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
+import path from "path";
 import { parseAllRequests, getRequestsDir } from "@/lib/request-parser";
 import { generateNextTaskId } from "@/lib/task-id";
 import { getErrorMessage } from "@/lib/error-utils";
+import { PROJECT_ROOT } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +16,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, content, priority, scope, depends_on } = body;
+    const { title, content, priority, scope, depends_on, role } = body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0) {
       return NextResponse.json({ error: "title is required" }, { status: 400 });
@@ -33,7 +35,8 @@ export async function POST(request: Request) {
     const sanitizedTitle = title.trim();
     const bodyContent = (content && typeof content === "string") ? content.trim() : "";
 
-    const today = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
 
     const scopeLines = Array.isArray(scope) && scope.length > 0
       ? `scope:\n${scope.map((s: string) => `  - ${s}`).join("\n")}\n`
@@ -41,13 +44,24 @@ export async function POST(request: Request) {
     const dependsOnLines = Array.isArray(depends_on) && depends_on.length > 0
       ? `depends_on: [${depends_on.join(", ")}]\n`
       : "";
+    let validRoles: string[];
+    try {
+      const rolesDir = path.join(PROJECT_ROOT, "docs", "roles");
+      validRoles = fs.readdirSync(rolesDir)
+        .filter((f) => f.endsWith(".md") && !f.startsWith("reviewer-") && f !== "README.md")
+        .map((f) => f.replace(".md", ""));
+    } catch {
+      validRoles = ["general"];
+    }
+    const taskRole = typeof role === "string" && validRoles.includes(role) ? role : "";
+    const roleLine = taskRole && taskRole !== "general" ? `role: ${taskRole}\n` : "";
 
     const fileContent = `---
 id: ${taskId}
 title: ${sanitizedTitle}
 status: pending
 priority: ${taskPriority}
-${scopeLines}${dependsOnLines}created: ${today}
+${roleLine}${scopeLines}${dependsOnLines}created: ${today}
 updated: ${today}
 ---
 ${bodyContent}

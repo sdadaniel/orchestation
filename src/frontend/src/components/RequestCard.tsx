@@ -3,7 +3,7 @@
 import { useState, useEffect, memo } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight, ChevronUp, Pencil, Trash2, Square, Bot, Terminal, ClipboardCheck, FileText, FolderOpen } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Pencil, Trash2, Square, Bot, Terminal, FileText, FolderOpen } from "lucide-react";
 import { type RequestItem } from "@/hooks/useRequests";
 import { PRIORITY_COLORS, STATUS_DOT } from "@/app/tasks/constants";
 import { MarkdownContent } from "@/components/MarkdownContent";
@@ -11,20 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 
-interface ExecutionLog {
-  subtype?: string;
-  num_turns?: number;
-  duration_ms?: number;
-  total_cost_usd?: number;
-  result?: string;
-}
-
-interface ReviewResult {
-  subtype?: string;
-  result?: string;
-}
-
-type CardTab = "content" | "scope" | "ai-result" | "logs" | "review";
+type CardTab = "content" | "scope" | "ai-result" | "logs";
 
 export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, onReorder, isFirst, isLast }: {
   req: RequestItem;
@@ -39,54 +26,42 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
   const [editTitle, setEditTitle] = useState(req.title);
   const [editContent, setEditContent] = useState(req.content);
   const [editPriority, setEditPriority] = useState(req.priority);
-  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<{ status: string; result: string } | null | "empty">(null);
   const [aiResultLoading, setAiResultLoading] = useState(false);
-  const [execLog, setExecLog] = useState<ExecutionLog | null>(null);
-  const [execLogLoading, setExecLogLoading] = useState(false);
-  const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null);
-  const [reviewLoading, setReviewLoading] = useState(false);
+  const [logContent, setLogContent] = useState<string | null | "empty">(null);
+  const [logLoading, setLogLoading] = useState(false);
   const [cardTab, setCardTab] = useState<CardTab>("content");
   const isReadOnly = req.status === "done";
 
   // Lazy-load AI result
   useEffect(() => {
-    if (expanded && aiResult === null && !aiResultLoading) {
+    if (cardTab === "ai-result" && aiResult === null && !aiResultLoading) {
       setAiResultLoading(true);
-      fetch(`/api/tasks/${req.id}/result`).then((r) => { if (!r.ok) throw new Error("fetch failed"); return r.json(); }).then((data) => setAiResult(data.result ?? "")).catch((err) => { console.error("[RequestCard] fetch result error:", err); setAiResult(""); }).finally(() => setAiResultLoading(false));
+      fetch(`/api/tasks/${req.id}/result`)
+        .then((r) => { if (!r.ok) throw new Error("fetch failed"); return r.json(); })
+        .then((data) => setAiResult(data.status ? data : "empty"))
+        .catch(() => setAiResult("empty"))
+        .finally(() => setAiResultLoading(false));
     }
-  }, [expanded, aiResult, aiResultLoading, req.id]);
+  }, [cardTab, aiResult, aiResultLoading, req.id]);
 
-  // Lazy-load execution log + review when switching tabs (single fetch for both)
+  // Lazy-load execution log
   useEffect(() => {
-    const needsLog = cardTab === "logs" && execLog === null && !execLogLoading;
-    const needsReview = cardTab === "review" && reviewResult === null && !reviewLoading;
-    if (needsLog || needsReview) {
-      if (needsLog) setExecLogLoading(true);
-      if (needsReview) setReviewLoading(true);
-      fetch(`/api/requests/${req.id}`)
-        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-        .then((data) => {
-          setExecLog(data.executionLog ?? null);
-          setReviewResult(data.reviewResult ?? null);
-        })
-        .catch((err) => {
-          console.error("[RequestCard] fetch execLog/review error:", err);
-          setExecLog(null);
-          setReviewResult(null);
-        })
-        .finally(() => {
-          setExecLogLoading(false);
-          setReviewLoading(false);
-        });
+    if (cardTab === "logs" && logContent === null && !logLoading) {
+      setLogLoading(true);
+      fetch(`/api/tasks/${req.id}/log`)
+        .then((r) => { if (!r.ok) throw new Error("fetch failed"); return r.text(); })
+        .then((text) => setLogContent(text || "empty"))
+        .catch(() => setLogContent("empty"))
+        .finally(() => setLogLoading(false));
     }
-  }, [cardTab, execLog, execLogLoading, reviewResult, reviewLoading, req.id]);
+  }, [cardTab, logContent, logLoading, req.id]);
 
   const tabs: { key: CardTab; label: string; icon: typeof FileText }[] = [
     { key: "content", label: "Content", icon: FileText },
     { key: "scope", label: "Scope", icon: FolderOpen },
     { key: "ai-result", label: "AI Result", icon: Bot },
     { key: "logs", label: "로그", icon: Terminal },
-    { key: "review", label: "리뷰 결과", icon: ClipboardCheck },
   ];
 
   const statusAccent = {
@@ -192,78 +167,33 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
           {/* AI Result Tab */}
           {cardTab === "ai-result" && (
             <div style={{ maxHeight: 260, scrollbarWidth: "none" }} className="overflow-y-auto px-1">
-              {aiResultLoading ? <p className="text-xs text-muted-foreground">Loading...</p> : aiResult ? <MarkdownContent>{aiResult}</MarkdownContent> : <p className="text-xs text-muted-foreground">아직 AI 결과가 없습니다.</p>}
+              {aiResultLoading ? (
+                <p className="text-xs text-muted-foreground">Loading...</p>
+              ) : aiResult && aiResult !== "empty" ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground">Status:</span>
+                    <span className={cn("text-[10px] font-semibold", aiResult.status === "rejected" ? "text-red-500" : "text-emerald-500")}>
+                      {aiResult.status === "rejected" ? "REJECTED" : "DONE"}
+                    </span>
+                  </div>
+                  {aiResult.result && <MarkdownContent>{aiResult.result}</MarkdownContent>}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">아직 AI 결과가 없습니다.</p>
+              )}
             </div>
           )}
 
           {/* Logs Tab */}
           {cardTab === "logs" && (
             <div style={{ maxHeight: 260, scrollbarWidth: "none" }} className="overflow-y-auto px-1">
-              {execLogLoading ? (
+              {logLoading ? (
                 <p className="text-xs text-muted-foreground">Loading...</p>
-              ) : execLog ? (
-                <div className="space-y-3">
-                  <div className="text-xs space-y-1">
-                    {execLog.subtype && (
-                      <div className="flex gap-2">
-                        <span className="text-muted-foreground w-20 shrink-0">Result:</span>
-                        <span className={cn("font-medium", execLog.subtype === "success" ? "text-emerald-500" : "text-red-500")}>{String(execLog.subtype)}</span>
-                      </div>
-                    )}
-                    {execLog.num_turns !== undefined && (
-                      <div className="flex gap-2">
-                        <span className="text-muted-foreground w-20 shrink-0">Turns:</span>
-                        <span>{String(execLog.num_turns)}</span>
-                      </div>
-                    )}
-                    {execLog.duration_ms !== undefined && (
-                      <div className="flex gap-2">
-                        <span className="text-muted-foreground w-20 shrink-0">Duration:</span>
-                        <span>{(Number(execLog.duration_ms) / 1000).toFixed(1)}s</span>
-                      </div>
-                    )}
-                    {execLog.total_cost_usd !== undefined && (
-                      <div className="flex gap-2">
-                        <span className="text-muted-foreground w-20 shrink-0">Cost:</span>
-                        <span>${Number(execLog.total_cost_usd).toFixed(4)}</span>
-                      </div>
-                    )}
-                  </div>
-                  {execLog.result && (
-                    <div className="p-3 bg-muted rounded max-h-60 overflow-y-auto">
-                      <MarkdownContent>{String(execLog.result)}</MarkdownContent>
-                    </div>
-                  )}
-                </div>
+              ) : logContent && logContent !== "empty" ? (
+                <pre className="text-[11px] font-mono text-muted-foreground whitespace-pre-wrap leading-relaxed">{logContent}</pre>
               ) : (
                 <p className="text-xs text-muted-foreground">아직 실행 로그가 없습니다.</p>
-              )}
-            </div>
-          )}
-
-          {/* Review Tab */}
-          {cardTab === "review" && (
-            <div style={{ maxHeight: 260, scrollbarWidth: "none" }} className="overflow-y-auto px-1">
-              {reviewLoading ? (
-                <p className="text-xs text-muted-foreground">Loading...</p>
-              ) : reviewResult ? (
-                <div className="space-y-3">
-                  {reviewResult.subtype && (
-                    <div className="text-xs flex gap-2">
-                      <span className="text-muted-foreground w-20 shrink-0">Result:</span>
-                      <span className={cn("font-medium", reviewResult.subtype === "success" ? "text-emerald-500" : "text-red-500")}>
-                        {reviewResult.subtype === "success" ? "Approved" : String(reviewResult.subtype)}
-                      </span>
-                    </div>
-                  )}
-                  {reviewResult.result && (
-                    <div className="p-3 bg-muted rounded max-h-60 overflow-y-auto">
-                      <MarkdownContent>{String(reviewResult.result)}</MarkdownContent>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">아직 리뷰 결과가 없습니다.</p>
               )}
             </div>
           )}

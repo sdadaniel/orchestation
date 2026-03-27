@@ -113,7 +113,7 @@ export default function NewTaskPage() {
         const res = await fetch("/api/requests", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: task.title, content, priority: task.priority, scope: task.scope ?? [], depends_on: dependsOn }),
+          body: JSON.stringify({ title: task.title, content, priority: task.priority, scope: task.scope ?? [], depends_on: dependsOn, role: (task as unknown as Record<string, unknown>).role ?? "general" }),
         });
         if (!res.ok) throw new Error("Failed to create task");
         const created = await res.json();

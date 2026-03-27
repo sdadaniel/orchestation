@@ -1,5 +1,8 @@
+import fs from "fs";
+import path from "path";
 import { spawnClaude, CLAUDE_DEFAULT_TIMEOUT_MS, ClaudeChildProcess } from "@/lib/claude-cli";
 import { renderTemplate } from "@/lib/template";
+import { PROJECT_ROOT } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -11,6 +14,19 @@ interface AnalyzedTask {
   criteria: string[];
   scope: string[];
   depends_on: number[];
+  role: string;
+}
+
+/** docs/roles/ 폴더에서 role 목록을 동적으로 읽기 (reviewer-* 제외) */
+function getAvailableRoles(): string[] {
+  try {
+    const rolesDir = path.join(PROJECT_ROOT, "docs", "roles");
+    return fs.readdirSync(rolesDir)
+      .filter((f) => f.endsWith(".md") && !f.startsWith("reviewer-") && f !== "README.md")
+      .map((f) => f.replace(".md", ""));
+  } catch {
+    return ["general"];
+  }
 }
 
 export async function POST(request: Request) {
@@ -95,6 +111,7 @@ export async function POST(request: Request) {
                 criteria: ["Complete the requested work"],
                 scope: [],
                 depends_on: [],
+                role: "general",
               },
             ],
           };
@@ -129,6 +146,9 @@ export async function POST(request: Request) {
             depends_on: Array.isArray(t.depends_on)
               ? t.depends_on.filter((d: unknown) => typeof d === "number")
               : [],
+            role: typeof t.role === "string" && getAvailableRoles().includes(t.role)
+              ? t.role
+              : "general",
           }),
         );
 
@@ -150,6 +170,7 @@ export async function POST(request: Request) {
                   priority: "medium",
                   criteria: ["Complete the requested work"],
                   scope: [],
+                  role: "general",
                 },
               ],
             }),

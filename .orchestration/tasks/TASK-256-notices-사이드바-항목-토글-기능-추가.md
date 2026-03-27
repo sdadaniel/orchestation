@@ -1,14 +1,14 @@
 ---
 id: TASK-256
 title: Notices 사이드바 항목 토글 기능 추가
-status: rejected
+status: done
 branch: task/task-256
 worktree: ../repo-wt-task-256
 priority: medium
 scope:
   - src/frontend/src/components/**
 created: 2026-03-27
-updated: 2026-03-27
+updated: 2026-03-27 06:28:57
 ---
 사이드바의 Notices 항목에 Docs/Tasks처럼 펼치기/접기(expand/collapse) 토글 기능을 추가한다. ChevronDown 아이콘 회전, noticesExpanded 상태 관리, sidebar-collapsible 클래스 적용 패턴을 동일하게 따른다.
 

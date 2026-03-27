@@ -30,9 +30,11 @@ export function TaskListSection({
   const [stoppingTaskId, setStoppingTaskId] = useState<string | null>(null);
 
   // 사이드바 태스크: updated 내림차순으로 최근 10개
+  // 날짜만 있으면(2026-03-27) 시간을 붙여서 정렬 일관성 확보
+  const padDate = (d: string) => d.length === 10 ? `${d} 99:99:99` : d;
   const uniqueItems = [...new Map(requestItems.map((r) => [r.id, r])).values()];
   const recentItems = uniqueItems
-    .sort((a, b) => (b.updated ?? b.created).localeCompare(a.updated ?? a.created))
+    .sort((a, b) => padDate(b.updated ?? b.created).localeCompare(padDate(a.updated ?? a.created)))
     .slice(0, 10);
 
   return (
