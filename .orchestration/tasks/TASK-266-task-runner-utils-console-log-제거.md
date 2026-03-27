@@ -1,7 +1,7 @@
 ---
 id: TASK-266
 title: task-runner-utils console.log/error를 구조화된 로거로 교체
-status: in_progress
+status: failed
 branch: task/task-266
 worktree: ../repo-wt-task-266
 priority: medium
