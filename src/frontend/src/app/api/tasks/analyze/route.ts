@@ -51,9 +51,13 @@ export async function POST(request: Request) {
     });
   }
 
+  const roles = getAvailableRoles();
+  const rolesDescription = roles.map((r) => `  - ${r}`).join("\n");
+
   const prompt = renderTemplate("prompt/task-analyze.md", {
     title: title.trim(),
     description_line: description.trim() ? `Description: ${description.trim()}` : "",
+    available_roles: rolesDescription,
   });
 
   return new Promise<Response>((resolve) => {

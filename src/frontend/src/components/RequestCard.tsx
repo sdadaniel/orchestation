@@ -64,19 +64,8 @@ export const RequestCard = memo(function RequestCard({ req, onUpdate, onDelete, 
     { key: "logs", label: "로그", icon: Terminal },
   ];
 
-  const statusAccent = {
-    in_progress: "#3b82f6",
-    reviewing: "#f97316",
-    done: "#22c55e",
-    rejected: "#ef4444",
-    stopped: "#8b5cf6",
-  } as Record<string, string>;
-
   return (
-    <div
-      className="board-card"
-      style={statusAccent[req.status] ? { borderLeftWidth: "2px", borderLeftColor: statusAccent[req.status] } : undefined}
-    >
+    <div className="board-card">
       <div className="flex items-center gap-2 h-10 cursor-pointer" onClick={() => setExpanded(!expanded)}>
         {expanded ? <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
         {req.status === "in_progress" ? (
