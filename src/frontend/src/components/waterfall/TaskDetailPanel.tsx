@@ -111,10 +111,6 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                 <span className="text-sm">{task.role || "-"}</span>
               </DetailSection>
 
-              <DetailSection label="Sprint">
-                <span className="text-sm">{task.sprint || "-"}</span>
-              </DetailSection>
-
               <DetailSection label="Depends On">
                 <TaskIdList ids={task.depends_on} />
               </DetailSection>

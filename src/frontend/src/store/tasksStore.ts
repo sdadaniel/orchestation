@@ -4,7 +4,6 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { TaskFrontmatter } from "@/lib/parser";
 import { getErrorMessage } from "@/lib/error-utils";
-import type { SprintResponse } from "@/lib/waterfall";
 import { buildWaterfallGroups } from "@/lib/waterfall";
 import type { WaterfallGroup } from "@/types/waterfall";
 
@@ -72,16 +71,12 @@ export const useTasksStore = create<TasksState>()(
       fetchTasks: async () => {
         try {
           set({ isTasksLoading: true }, false, "tasks/fetchTasks/start");
-          const [tasksRes, sprintsRes] = await Promise.all([
-            fetch("/api/tasks"),
-            fetch("/api/sprints"),
-          ]);
-          if (!tasksRes.ok || !sprintsRes.ok)
+          const tasksRes = await fetch("/api/tasks");
+          if (!tasksRes.ok)
             throw new Error("데이터를 불러오는데 실패했습니다.");
           const tasks: TaskFrontmatter[] = await tasksRes.json();
-          const sprints: SprintResponse[] = await sprintsRes.json();
           set(
-            { groups: buildWaterfallGroups(tasks, sprints), tasksError: null },
+            { groups: buildWaterfallGroups(tasks), tasksError: null },
             false,
             "tasks/fetchTasks/done",
           );

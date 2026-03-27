@@ -40,7 +40,6 @@ import type { NoticeItem } from "@/hooks/useNotices";
 export type SidebarFilter =
   | { type: "all" }
   | { type: "prd"; prdId: string }
-  | { type: "sprint"; sprintId: string }
   | { type: "status"; status: TaskStatus };
 
 type NavItem = {
@@ -62,7 +61,6 @@ export interface PrdInfo {
   id: string;
   title: string;
   status: string;
-  sprints: string[];
 }
 
 type TaskSidebarProps = {

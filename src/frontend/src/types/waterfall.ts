@@ -10,11 +10,9 @@ export type WaterfallTask = {
   blocks: string[];
   parallel_with: string[];
   affected_files: string[];
-  sprint: string;
 };
 
 export type WaterfallGroup = {
-  sprint: { id: string; title: string };
   tasks: WaterfallTask[];
   progress: { done: number; total: number };
 };

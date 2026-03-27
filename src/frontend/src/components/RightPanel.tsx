@@ -54,16 +54,6 @@ export function RightPanel({ task, prd }: RightPanelProps) {
           </span>
         </Section>
 
-        <Section label="Sprints">
-          {prd.sprints.length > 0 ? (
-            <div className="flex flex-wrap">
-              {prd.sprints.map((s) => <IdChip key={s} id={s} />)}
-            </div>
-          ) : (
-            <span className="text-xs text-muted-foreground">-</span>
-          )}
-        </Section>
-
         <Section label="Document">
           <div className="text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap max-h-[60vh] overflow-y-auto">
             {prd.content || "내용 없음"}
@@ -103,11 +93,6 @@ export function RightPanel({ task, prd }: RightPanelProps) {
       {/* Role */}
       <Section label="Role">
         <span className="text-sm">{task.role || "-"}</span>
-      </Section>
-
-      {/* Sprint */}
-      <Section label="Sprint">
-        <span className="text-sm">{task.sprint || "-"}</span>
       </Section>
 
       {/* Dependencies */}

@@ -7,7 +7,6 @@ export interface Prd {
   id: string;
   title: string;
   status: string;
-  sprints: string[];
   content: string;
 }
 

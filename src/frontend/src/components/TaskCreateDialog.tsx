@@ -17,7 +17,6 @@ type TaskCreateDialogProps = {
   open: boolean;
   onClose: () => void;
   onCreated: () => void;
-  sprintId?: string;
   existingTaskIds?: string[];
 };
 
@@ -25,7 +24,6 @@ export function TaskCreateDialog({
   open,
   onClose,
   onCreated,
-  sprintId,
   existingTaskIds = [],
 }: TaskCreateDialogProps) {
   const [title, setTitle] = useState("");
@@ -73,7 +71,6 @@ export function TaskCreateDialog({
           priority,
           role,
           depends_on: dependsOn,
-          sprint: sprintId || "",
         }),
       });
 
@@ -96,7 +93,7 @@ export function TaskCreateDialog({
       <DialogContent showCloseButton>
         <DialogHeader>
           <DialogTitle>
-            New Task{sprintId ? ` (${sprintId})` : ""}
+            New Task
           </DialogTitle>
         </DialogHeader>
 

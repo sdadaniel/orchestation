@@ -156,52 +156,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    // Step 1: Remove task from sprint files FIRST (before deleting the task file)
-    // This ensures that if sprint modification fails, the task file remains intact.
-    const sprintsDir = path.join(process.cwd(), "../../docs/sprint");
-    if (fs.existsSync(sprintsDir)) {
-      const sprintFiles = fs
-        .readdirSync(sprintsDir)
-        .filter((f) => f.startsWith("SPRINT-") && f.endsWith(".md"));
-
-      const modifiedSprints: { path: string; original: string }[] = [];
-      try {
-        for (const sf of sprintFiles) {
-          const sfPath = path.join(sprintsDir, sf);
-          const content = fs.readFileSync(sfPath, "utf-8");
-          const regex = new RegExp(`^- ${id}[:\\s].*$`, "gm");
-          if (regex.test(content)) {
-            modifiedSprints.push({ path: sfPath, original: content });
-            const updated = content
-              .replace(regex, "")
-              .replace(/\n{3,}/g, "\n\n");
-            fs.writeFileSync(sfPath, updated, "utf-8");
-          }
-        }
-      } catch (sprintErr) {
-        // Rollback any sprint files that were already modified
-        for (const modified of modifiedSprints) {
-          try {
-            fs.writeFileSync(modified.path, modified.original, "utf-8");
-          } catch {
-            // Best-effort rollback
-          }
-        }
-        return NextResponse.json(
-          { error: getErrorMessage(sprintErr, "Failed to update sprint files") },
-          { status: 500 },
-        );
-      }
-    }
-
-    // Step 2: Delete the task file after sprint files are updated successfully.
-    // If this fails, sprint files are already updated (task reference removed),
-    // which is a safe state — the caller can retry the delete.
     try {
       fs.unlinkSync(filePath);
     } catch (deleteErr) {
       return NextResponse.json(
-        { error: getErrorMessage(deleteErr, "Failed to delete task file (sprint files already updated, retry is safe)") },
+        { error: getErrorMessage(deleteErr, "Failed to delete task file") },
         { status: 500 },
       );
     }

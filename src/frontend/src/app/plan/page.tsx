@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState, useMemo } from "react";
 import { AlertCircle } from "lucide-react";
 import { usePlanTree } from "@/hooks/usePlanTree";
 import { PlanTreeContainer } from "@/components/plan/PlanTreeContainer";
@@ -45,17 +45,6 @@ export default function PlanPage() {
   const { data, allTasks, loading, error } = usePlanTree();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  const taskSprintMap = useMemo(() => {
-    if (!data) return new Map<string, string>();
-    const map = new Map<string, string>();
-    for (const sprint of data.sprints) {
-      for (const task of sprint.tasks) {
-        map.set(task.id, sprint.id);
-      }
-    }
-    return map;
-  }, [data]);
-
   const selectedTask: WaterfallTask | null = useMemo(() => {
     if (!selectedTaskId) return null;
     const task = allTasks.find((t) => t.id === selectedTaskId);
@@ -70,9 +59,8 @@ export default function PlanPage() {
       blocks: task.blocks,
       parallel_with: task.parallel_with,
       affected_files: task.affected_files,
-      sprint: taskSprintMap.get(task.id) ?? "",
     };
-  }, [selectedTaskId, allTasks, taskSprintMap]);
+  }, [selectedTaskId, allTasks]);
 
   if (loading) {
     return <LoadingSkeleton />;

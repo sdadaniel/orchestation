@@ -2,7 +2,6 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { TaskFrontmatter } from "@/lib/parser";
-import type { SprintResponse } from "@/lib/waterfall";
 import { buildWaterfallGroups } from "@/lib/waterfall";
 import type { WaterfallGroup } from "@/types/waterfall";
 import { queryKeys } from "@/lib/query-keys";
@@ -15,20 +14,13 @@ type UseTasksResult = {
   refetch: () => void;
 };
 
-async function fetchTasksAndSprints(): Promise<WaterfallGroup[]> {
-  const [tasksRes, sprintsRes] = await Promise.all([
-    fetch("/api/tasks"),
-    fetch("/api/sprints"),
-  ]);
-
-  if (!tasksRes.ok || !sprintsRes.ok) {
+async function fetchTasks(): Promise<WaterfallGroup[]> {
+  const res = await fetch("/api/tasks");
+  if (!res.ok) {
     throw new Error("데이터를 불러오는데 실패했습니다.");
   }
-
-  const tasks: TaskFrontmatter[] = await tasksRes.json();
-  const sprints: SprintResponse[] = await sprintsRes.json();
-
-  return buildWaterfallGroups(tasks, sprints);
+  const tasks: TaskFrontmatter[] = await res.json();
+  return buildWaterfallGroups(tasks);
 }
 
 export function useTasks(): UseTasksResult {
@@ -36,7 +28,7 @@ export function useTasks(): UseTasksResult {
 
   const { data: groups = [], isLoading, error } = useQuery({
     queryKey: queryKeys.tasks.list(),
-    queryFn: fetchTasksAndSprints,
+    queryFn: fetchTasks,
     staleTime: 5_000,
   });
 

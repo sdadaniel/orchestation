@@ -9,18 +9,11 @@ export type PlanTaskNode = {
   priority: TaskPriority;
 };
 
-export type PlanSprintNode = {
-  id: string;
-  title: string;
-  tasks: PlanTaskNode[];
-  progress: { done: number; total: number };
-};
-
 export type PlanTreeData = {
   plan: {
     id: string;
     title: string;
     status: PlanStatus;
   };
-  sprints: PlanSprintNode[];
+  tasks: PlanTaskNode[];
 };

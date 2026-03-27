@@ -1,12 +1,11 @@
 import fs from "fs";
 import path from "path";
-import { parseFrontmatter, getString, getStringArray } from "./frontmatter-utils";
+import { parseFrontmatter, getString } from "./frontmatter-utils";
 
 export interface PrdData {
   id: string;
   title: string;
   status: string;
-  sprints: string[];
   content: string;
 }
 
@@ -25,10 +24,7 @@ export function parsePrdFile(filePath: string): PrdData | null {
     const title = getString(data, "title");
     const status = getString(data, "status") || "draft";
 
-    // sprints 리스트 파싱 (gray-matter가 YAML 배열로 자동 파싱)
-    const sprints = getStringArray(data, "sprints");
-
-    return { id, title, status, sprints, content };
+    return { id, title, status, content };
   } catch {
     return null;
   }

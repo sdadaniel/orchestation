@@ -70,13 +70,6 @@ export const queryKeys = {
     byId: (id: string) => [...queryKeys.taskLogs.all, id] as const,
   },
 
-  // 스프린트
-  sprints: {
-    all: ["sprints"] as const,
-    list: () => [...queryKeys.sprints.all, "list"] as const,
-    detail: (id: string) => [...queryKeys.sprints.all, id] as const,
-  },
-
   // 플랜
   plans: {
     all: ["plans"] as const,

@@ -212,7 +212,6 @@ export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
               <InfoRow label="상태" value={statusLabel[task.status] ?? task.status} />
               <InfoRow label="우선순위" value={task.priority} />
               <InfoRow label="역할" value={task.role || "-"} />
-              <InfoRow label="스프린트" value={task.sprint || "-"} />
               {task.depends_on.length > 0 && (
                 <InfoRow label="의존성" value={task.depends_on.join(", ")} />
               )}

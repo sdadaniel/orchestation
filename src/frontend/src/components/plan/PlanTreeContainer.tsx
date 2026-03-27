@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import type { PlanTreeData, PlanTaskNode } from "@/types/plan";
-import { SprintProgress } from "@/components/waterfall/SprintProgress";
 import { cn } from "@/lib/utils";
 import {
   STATUS_STYLES,
@@ -59,8 +58,6 @@ function PlanTaskBar({
 }
 
 export function PlanTreeContainer({ data, onTaskClick }: PlanTreeContainerProps) {
-  const router = useRouter();
-
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2 pb-2 border-b border-border mb-1">
@@ -70,37 +67,21 @@ export function PlanTreeContainer({ data, onTaskClick }: PlanTreeContainerProps)
         </span>
       </div>
 
-      {data.sprints.map((sprint) => (
-        <SprintProgress
-          key={sprint.id}
-          title={sprint.title}
-          done={sprint.progress.done}
-          total={sprint.progress.total}
-        >
-          <div className="flex flex-col py-0.5">
-            <button
-              type="button"
-              onClick={() => router.push("/")}
-              className="mb-1 self-start px-2 text-[10px] text-muted-foreground underline-offset-4 hover:underline"
-            >
-              Waterfall view &rarr;
-            </button>
-            {sprint.tasks.length > 0 ? (
-              sprint.tasks.map((task) => (
-                <PlanTaskBar
-                  key={task.id}
-                  task={task}
-                  onClick={onTaskClick}
-                />
-              ))
-            ) : (
-              <p className="py-1 px-2 text-xs text-muted-foreground">
-                No tasks
-              </p>
-            )}
-          </div>
-        </SprintProgress>
-      ))}
+      <div className="flex flex-col py-0.5">
+        {data.tasks.length > 0 ? (
+          data.tasks.map((task) => (
+            <PlanTaskBar
+              key={task.id}
+              task={task}
+              onClick={onTaskClick}
+            />
+          ))
+        ) : (
+          <p className="py-1 px-2 text-xs text-muted-foreground">
+            No tasks
+          </p>
+        )}
+      </div>
     </div>
   );
 }

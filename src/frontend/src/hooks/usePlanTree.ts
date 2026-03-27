@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { PlanFrontmatter } from "@/lib/plan-parser";
-import type { SprintData } from "@/lib/sprint-parser";
 import type { TaskFrontmatter } from "@/lib/parser";
 import { buildPlanTree } from "@/lib/plan-tree";
 import type { PlanTreeData } from "@/types/plan";
@@ -21,22 +20,20 @@ type UsePlanTreeResult = {
 };
 
 async function fetchPlanTree(): Promise<PlanTreeResult> {
-  const [plansRes, sprintsRes, tasksRes] = await Promise.all([
+  const [plansRes, tasksRes] = await Promise.all([
     fetch("/api/plans"),
-    fetch("/api/sprints"),
     fetch("/api/tasks"),
   ]);
 
-  if (!plansRes.ok || !sprintsRes.ok || !tasksRes.ok) {
+  if (!plansRes.ok || !tasksRes.ok) {
     throw new Error("데이터를 불러오는데 실패했습니다.");
   }
 
   const plans: PlanFrontmatter[] = await plansRes.json();
-  const sprints: SprintData[] = await sprintsRes.json();
   const tasks: TaskFrontmatter[] = await tasksRes.json();
 
   return {
-    data: plans.length === 0 ? null : buildPlanTree(plans[0], sprints, tasks),
+    data: plans.length === 0 ? null : buildPlanTree(plans[0], tasks),
     allTasks: tasks,
   };
 }

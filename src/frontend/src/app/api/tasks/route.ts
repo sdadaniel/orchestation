@@ -16,7 +16,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, priority, role, depends_on, sprint, scope } = body;
+    const { title, priority, role, depends_on, scope } = body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0) {
       return NextResponse.json(
@@ -39,8 +39,6 @@ export async function POST(request: Request) {
     const sanitizedTitle = title.trim();
     const taskRole =
       role && typeof role === "string" ? role.trim() : "general";
-    const taskSprint =
-      sprint && typeof sprint === "string" ? sprint.trim() : "";
 
     const depsArray = Array.isArray(depends_on)
       ? depends_on.filter(
@@ -68,7 +66,6 @@ id: ${taskId}
 title: ${sanitizedTitle}
 status: pending
 priority: ${taskPriority}
-sprint: ${taskSprint}
 depends_on:${depsYaml}
 role: ${taskRole}${scopeYaml}
 ---
@@ -86,30 +83,6 @@ TBD
 
     const filePath = path.join(TASKS_DIR, `${taskId}-${sanitizedTitle.toLowerCase().replace(/[^a-z0-9가-힣]+/g, "-").replace(/-+$/, "")}.md`);
     fs.writeFileSync(filePath, content, "utf-8");
-
-    // If sprint is specified, add task to sprint file
-    if (taskSprint) {
-      const sprintFile = path.join(
-        process.cwd(),
-        "../../docs/sprint",
-        `${taskSprint}.md`,
-      );
-      if (fs.existsSync(sprintFile)) {
-        let sprintContent = fs.readFileSync(sprintFile, "utf-8");
-        // Find the last batch section and append the task
-        const lastBatchMatch = sprintContent.match(/### .+(?![\s\S]*###)/);
-        if (lastBatchMatch && lastBatchMatch.index !== undefined) {
-          sprintContent =
-            sprintContent.trimEnd() +
-            `\n- ${taskId}: ${sanitizedTitle}\n`;
-        } else {
-          sprintContent =
-            sprintContent.trimEnd() +
-            `\n\n### 배치 0\n- ${taskId}: ${sanitizedTitle}\n`;
-        }
-        fs.writeFileSync(sprintFile, sprintContent, "utf-8");
-      }
-    }
 
     return NextResponse.json(
       {

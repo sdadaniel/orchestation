@@ -70,8 +70,7 @@ export function TaskDeleteDialog({
             삭제하시겠습니까?
           </p>
           <p className="text-xs text-muted-foreground">
-            이 작업은 되돌릴 수 없습니다. Task 파일이 삭제되고 관련
-            Sprint에서도 제거됩니다.
+            이 작업은 되돌릴 수 없습니다. Task 파일이 삭제됩니다.
           </p>
 
           <div className="flex justify-end gap-2 pt-2">

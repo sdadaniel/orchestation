@@ -6,7 +6,6 @@ export interface PlanFrontmatter {
   id: string;
   title: string;
   status: string;
-  sprints: string[];
 }
 
 const PLANS_DIR = path.join(process.cwd(), "../../docs/plan");
@@ -24,7 +23,6 @@ export function parsePlanFile(filePath: string): PlanFrontmatter | null {
       id: data.id,
       title: data.title,
       status: data.status ?? "draft",
-      sprints: toStringArray(data.sprints),
     };
   } catch {
     return null;
@@ -47,11 +45,4 @@ export function parseAllPlans(): PlanFrontmatter[] {
   }
 
   return plans;
-}
-
-function toStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.map(String);
-  }
-  return [];
 }
