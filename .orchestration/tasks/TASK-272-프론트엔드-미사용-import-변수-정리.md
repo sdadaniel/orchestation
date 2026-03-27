@@ -1,7 +1,7 @@
 ---
 id: TASK-272
 title: 프론트엔드 미사용 import/변수 정리
-status: in_progress
+status: done
 branch: task/task-272
 worktree: ../repo-wt-task-272
 priority: medium
@@ -17,7 +17,7 @@ Now I have the info I need. The issue: unused imports and variables across multi
 ---
 id: TASK-272
 title: 프론트엔드 미사용 import/변수 정리
-status: in_progress
+status: done
 branch: task/task-272
 worktree: ../repo-wt-task-272
 priority: medium
