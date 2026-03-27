@@ -89,8 +89,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         } else if (data.status === "completed" || data.status === "failed") {
           setRunStatus(data.status);
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        console.error("[TaskDetail] checkRunStatus error:", err);
       }
     }
     checkRunStatus();
@@ -103,7 +103,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       try {
         const taskRes = await fetch(`/api/requests/${id}`);
         if (taskRes.ok) setTask(await taskRes.json());
-      } catch { /* ignore */ }
+      } catch (err) { console.error("[TaskDetail] handleRunStatusChange refetch error:", err); }
     }
   }, [id]);
 
@@ -151,7 +151,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           console.warn("Stop failed:", data.error);
         }
       }
-    } catch {
+    } catch (err) {
+      console.error("[TaskDetail] handleStop error:", err);
       // 네트워크 오류도 UI는 즉시 반영
       setRunStatus("idle");
       setTask((prev) => prev ? { ...prev, status: "stopped" } : null);
