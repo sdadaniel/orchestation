@@ -17,6 +17,17 @@ export interface RequestData {
   branch: string;
 }
 
+const VALID_STATUSES = ["pending", "stopped", "in_progress", "reviewing", "done", "rejected"] as const;
+const VALID_PRIORITIES = ["high", "medium", "low"] as const;
+
+function isValidStatus(value: string): value is RequestData["status"] {
+  return VALID_STATUSES.includes(value as any);
+}
+
+function isValidPriority(value: string): value is RequestData["priority"] {
+  return VALID_PRIORITIES.includes(value as any);
+}
+
 
 export function parseRequestFile(filePath: string): RequestData | null {
   try {
@@ -27,8 +38,10 @@ export function parseRequestFile(filePath: string): RequestData | null {
 
     const id = getString(data, "id") || path.basename(filePath, ".md");
     const title = getString(data, "title");
-    const status = (getString(data, "status") || "pending") as RequestData["status"];
-    const priority = (getString(data, "priority") || "medium") as RequestData["priority"];
+    const statusStr = getString(data, "status") || "pending";
+    const status = isValidStatus(statusStr) ? statusStr : "pending";
+    const priorityStr = getString(data, "priority") || "medium";
+    const priority = isValidPriority(priorityStr) ? priorityStr : "medium";
     const sort_order = getInt(data, "sort_order", 0);
     const branch = getString(data, "branch");
 

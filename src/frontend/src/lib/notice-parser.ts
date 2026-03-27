@@ -15,6 +15,12 @@ export interface NoticeData {
   content: string;
 }
 
+const VALID_NOTICE_TYPES = ["info", "warning", "error", "request"] as const;
+
+function isValidNoticeType(value: string): value is NoticeType {
+  return VALID_NOTICE_TYPES.includes(value as any);
+}
+
 const ORCH_NOTICES_DIR = path.join(PROJECT_ROOT, ".orchestration", "notices");
 const LEGACY_NOTICES_DIR = path.join(PROJECT_ROOT, "docs", "notice");
 const NOTICES_DIR = fs.existsSync(ORCH_NOTICES_DIR) ? ORCH_NOTICES_DIR : LEGACY_NOTICES_DIR;
@@ -28,7 +34,8 @@ export function parseNoticeFile(filePath: string): NoticeData | null {
 
     const id = getString(data, "id") || path.basename(filePath, ".md");
     const title = getString(data, "title");
-    const type = (getString(data, "type") || "info") as NoticeType;
+    const typeStr = getString(data, "type") || "info";
+    const type = isValidNoticeType(typeStr) ? typeStr : "info";
     const read = getBool(data, "read");
     const created = getString(data, "created");
     const updated = getString(data, "updated") || created;
