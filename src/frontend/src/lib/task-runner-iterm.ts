@@ -104,6 +104,7 @@ export function watchItermCompletion(
 
       const doneSignal = path.join(signalDir, `${taskId}-task-done`);
       const failedSignal = path.join(signalDir, `${taskId}-task-failed`);
+      const rejectedSignal = path.join(signalDir, `${taskId}-task-rejected`);
 
       if (filename === `${taskId}-task-done` && fs.existsSync(doneSignal)) {
         watcherMgr.closeWatchers(taskId);
@@ -115,6 +116,20 @@ export function watchItermCompletion(
         events.emit(`log:${taskId}`, doneLine);
 
         startReviewIterm(taskId, state, signalDir);
+
+      } else if (filename === `${taskId}-task-rejected` && fs.existsSync(rejectedSignal)) {
+        watcherMgr.closeWatchers(taskId);
+        try { fs.unlinkSync(rejectedSignal); } catch { /* ignore */ }
+        try { dummy.kill(); } catch { /* ignore */ }
+
+        state.status = "completed";
+        state.phase = "done";
+        state.finishedAt = new Date().toISOString();
+        cleanupSignals(taskId);
+        const rejectLine = `[task-runner] ${taskId} 거절됨 (iTerm) → 완료 처리 (review 스킵)`;
+        state.logs.push(rejectLine);
+        events.emit(`log:${taskId}`, rejectLine);
+        events.emit(`done:${taskId}`, "completed");
 
       } else if (filename === `${taskId}-task-failed` && fs.existsSync(failedSignal)) {
         watcherMgr.closeWatchers(taskId);
