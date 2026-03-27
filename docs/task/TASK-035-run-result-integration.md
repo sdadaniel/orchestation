@@ -21,7 +21,7 @@ reviewer_role: reviewer-general
 
 ## 완료 조건
 
-- [ ] 실행 완료 시 Task 상태가 자동으로 갱신됨 (backlog → done 등)
+- [ ] 실행 완료 시 Task 상태가 자동으로 갱신됨 (pending → done 등)
 - [ ] 홈 대시보드의 Overview 카드가 실시간 반영
 - [ ] Sprint 진행률이 자동 업데이트
 - [ ] Cost 페이지에 새 실행 비용이 즉시 반영

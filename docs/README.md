@@ -199,7 +199,7 @@ docs/task/
 id: TASK-XXX
 title: 작업 제목
 sprint: SPRINT-001       # 소속 Sprint
-status: backlog          # backlog → in_progress → in_review → done
+status: pending          # pending → in_progress → in_review → done
 priority: critical       # critical / high / medium / low
 depends_on:              # 이 Task가 시작되려면 완료되어야 하는 Task
   - TASK-001
@@ -225,7 +225,7 @@ affected_files:          # 이 Task가 수정하는 파일/디렉토리
 |------|------|
 | `id` | 고유 식별자. 전체 프로젝트에서 순차 증가 |
 | `sprint` | 소속 Sprint ID |
-| `status` | `backlog` → `in_progress` → `in_review` → `done` |
+| `status` | `pending` → `in_progress` → `in_review` → `done` |
 | `depends_on` | 선행 Task 목록. 모두 `done`이어야 시작 가능 |
 | `blocks` | 이 Task가 완료되어야 해제되는 후행 Task 목록 |
 | `parallel_with` | 동시 실행 가능한 Task. `affected_files`가 겹치지 않아야 함 |
@@ -244,7 +244,7 @@ affected_files:          # 이 Task가 수정하는 파일/디렉토리
 
 | 전환 | 권한 |
 |------|------|
-| `backlog` → `in_progress` | 감독 |
+| `pending` → `in_progress` | 감독 |
 | `in_progress` → `in_review` | 작업자 |
 | `in_review` → `done` | Reviewer |
 | `in_review` → `in_progress` | Reviewer (수정 요청 시) |
