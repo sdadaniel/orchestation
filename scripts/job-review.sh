@@ -125,19 +125,27 @@ echo "📊 토큰: in=${input_tokens} out=${output_tokens} | model=${model} | co
 
 _signal_sent=true
 
-if echo "$result" | grep -q "승인"; then
-  if ! echo "$result" | grep -q "수정요청"; then
-    _signal_sent=true
-    if [ "${SKIP_SIGNAL:-}" != "1" ]; then
-      signal_create "$SIGNAL_DIR" "$TASK_ID" "review-approved"
-    fi
-    echo "✅ [job-review] ${TASK_ID} 승인 → review-approved signal"
-    exit 0
+# JSON verdict 파싱 시도, 실패 시 레거시 키워드 파싱
+verdict=$(echo "$result" | jq -r '.verdict // empty' 2>/dev/null)
+
+if [ "$verdict" = "승인" ]; then
+  approved=true
+elif [ -z "$verdict" ] && echo "$result" | grep -q "승인" && ! echo "$result" | grep -q "수정요청"; then
+  # 레거시 키워드 파싱 fallback
+  approved=true
+else
+  approved=false
+fi
+
+if [ "$approved" = true ]; then
+  if [ "${SKIP_SIGNAL:-}" != "1" ]; then
+    signal_create "$SIGNAL_DIR" "$TASK_ID" "review-approved"
   fi
+  echo "✅ [job-review] ${TASK_ID} 승인 → review-approved signal"
+  exit 0
 fi
 
 # 수정요청 또는 판단 불가 → rejected
-_signal_sent=true
 if [ "${SKIP_SIGNAL:-}" != "1" ]; then
   signal_create "$SIGNAL_DIR" "$TASK_ID" "review-rejected"
 fi

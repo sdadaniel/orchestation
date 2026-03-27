@@ -218,10 +218,15 @@ RESULT=$(echo "$JSON_OUTPUT" | jq -r '.result // empty' 2>/dev/null)
 echo "$JSON_OUTPUT" | jq . > "$OUTPUT_DIR/${TASK_ID}-task.json" 2>/dev/null
 log_tokens "task"
 
-# 거절 감지: 결과 첫 줄이 "거절:" 으로 시작하면 task-rejected signal
-if echo "$RESULT" | head -1 | grep -q "^거절:"; then
+# 거절 감지: JSON status=rejected 또는 레거시 "거절:" 키워드
+TASK_STATUS=$(echo "$RESULT" | jq -r '.status // empty' 2>/dev/null)
+if [ "$TASK_STATUS" = "rejected" ] || echo "$RESULT" | head -1 | grep -q "^거절:"; then
   _signal_sent=true
-  echo "$RESULT" > "$OUTPUT_DIR/${TASK_ID}-rejection-reason.txt"
+  # JSON이면 reason 추출, 아니면 전체 텍스트
+  local reject_reason
+  reject_reason=$(echo "$RESULT" | jq -r '.reason // empty' 2>/dev/null)
+  [ -z "$reject_reason" ] && reject_reason="$RESULT"
+  echo "$reject_reason" > "$OUTPUT_DIR/${TASK_ID}-rejection-reason.txt"
   if [ "${SKIP_SIGNAL:-}" != "1" ]; then
     signal_create "$SIGNAL_DIR" "$TASK_ID" "task-rejected"
   fi
