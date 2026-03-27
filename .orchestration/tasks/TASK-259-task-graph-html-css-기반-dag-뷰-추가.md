@@ -1,7 +1,7 @@
 ---
 id: TASK-259
 title: Task Graph - HTML/CSS 기반 DAG 뷰 추가
-status: in_progress
+status: done
 branch: task/task-259
 worktree: ../repo-wt-task-259
 priority: medium
