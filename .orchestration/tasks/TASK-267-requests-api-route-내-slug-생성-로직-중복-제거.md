@@ -1,7 +1,7 @@
 ---
 id: TASK-267
 title: requests API route 내 slug 생성 로직 중복 제거
-status: in_progress
+status: rejected
 branch: task/task-267
 worktree: ../repo-wt-task-267
 priority: medium
