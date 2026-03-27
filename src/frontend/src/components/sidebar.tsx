@@ -98,6 +98,7 @@ export function TaskSidebar({
   const handleStopTask = onStopTask ?? storeStopTask;
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [docsExpanded, setDocsExpanded] = useState(false);
+  const [noticesExpanded, setNoticesExpanded] = useState(true);
   const [newRootItemType, setNewRootItemType] = useState<"doc" | "folder" | null>(null);
   const [showNewMenu, setShowNewMenu] = useState(false);
 
@@ -224,12 +225,23 @@ export function TaskSidebar({
         <div className="mb-2">
           <div className="sidebar-section-sep" />
           <div className="px-2 mb-1.5 flex items-center justify-between">
-            <Link
-              href="/notices"
-              className={cn("sidebar-section-link", currentPath === "/notices" && "active")}
+            <button
+              type="button"
+              className="flex items-center gap-1 sidebar-section-link bg-transparent border-none p-0 cursor-pointer"
+              onClick={() => setNoticesExpanded((v) => !v)}
             >
-              Notices
-            </Link>
+              <ChevronDown
+                className="h-3 w-3 transition-transform duration-200"
+                style={{ transform: noticesExpanded ? "rotate(0deg)" : "rotate(-90deg)" }}
+              />
+              <Link
+                href="/notices"
+                className={cn("sidebar-section-link", currentPath === "/notices" && "active")}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Notices
+              </Link>
+            </button>
             {noticeItems.filter((n) => !n.read).length > 0 ? (
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold leading-tight">
                 {noticeItems.filter((n) => !n.read).length}
@@ -238,22 +250,28 @@ export function TaskSidebar({
               <span className="text-[10px] text-muted-foreground">{noticeItems.length}</span>
             )}
           </div>
-          {noticeItems.filter((n) => !n.read).slice(0, 5).map((notice) => (
-            <Link
-              key={notice.id}
-              href="/notices"
-              className={cn("tree-item w-full text-left no-underline text-sidebar-foreground")}
-            >
-              <Bell className="h-3 w-3 shrink-0 text-primary" />
-              <span className="truncate flex-1 text-xs font-medium">{notice.title}</span>
-            </Link>
-          ))}
-          {noticeItems.filter((n) => !n.read).length === 0 && noticeItems.length > 0 && (
-            <div className="px-2 py-1 text-[11px] text-muted-foreground">All read</div>
-          )}
-          {noticeItems.length === 0 && (
-            <div className="px-2 py-1 text-[11px] text-muted-foreground">No notices</div>
-          )}
+
+          {/* Collapsible notices content */}
+          <div className={cn("sidebar-collapsible", noticesExpanded && "sidebar-collapsible-open")}>
+            <div className="sidebar-collapsible-inner">
+              {noticeItems.filter((n) => !n.read).slice(0, 5).map((notice) => (
+                <Link
+                  key={notice.id}
+                  href="/notices"
+                  className={cn("tree-item w-full text-left no-underline text-sidebar-foreground")}
+                >
+                  <Bell className="h-3 w-3 shrink-0 text-primary" />
+                  <span className="truncate flex-1 text-xs font-medium">{notice.title}</span>
+                </Link>
+              ))}
+              {noticeItems.filter((n) => !n.read).length === 0 && noticeItems.length > 0 && (
+                <div className="px-2 py-1 text-[11px] text-muted-foreground">All read</div>
+              )}
+              {noticeItems.length === 0 && (
+                <div className="px-2 py-1 text-[11px] text-muted-foreground">No notices</div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
