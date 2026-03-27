@@ -10,6 +10,8 @@ export interface AnalyzedTask {
   depends_on?: number[];
   /** Pre-existing TASK-XXX IDs this task depends on */
   external_depends_on?: string[];
+  /** Worker role assignment */
+  role?: string;
 }
 
 export const PRIORITY_COLORS: Record<string, string> = {

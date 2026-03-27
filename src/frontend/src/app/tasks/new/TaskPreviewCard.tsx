@@ -17,6 +17,7 @@ export interface TaskPreviewCardProps {
   onRemove: () => void;
   totalTasks: number;
   existingTasks: TaskOption[];
+  availableRoles?: string[];
 }
 
 export function TaskPreviewCard({
@@ -28,6 +29,7 @@ export function TaskPreviewCard({
   onRemove,
   totalTasks,
   existingTasks,
+  availableRoles,
 }: TaskPreviewCardProps) {
   // Within-batch deps labels: "Step N"
   const batchDepLabels = (task.depends_on ?? []).map((i) => `Step ${i + 1}`);
@@ -49,6 +51,11 @@ export function TaskPreviewCard({
         >
           {task.priority}
         </span>
+        {task.role && task.role !== "general" && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-medium">
+            {task.role}
+          </span>
+        )}
         <div className="flex-1" />
         <button
           type="button"
@@ -85,17 +92,28 @@ export function TaskPreviewCard({
             placeholder="Description..."
             rows={3}
           />
-          <Select
-            size="inline"
-            value={task.priority}
-            onChange={(e) =>
-              onUpdate({ priority: e.target.value as AnalyzedTask["priority"] })
-            }
-          >
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </Select>
+          <div className="flex gap-2">
+            <Select
+              size="inline"
+              value={task.priority}
+              onChange={(e) =>
+                onUpdate({ priority: e.target.value as AnalyzedTask["priority"] })
+              }
+            >
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </Select>
+            <Select
+              size="inline"
+              value={task.role ?? "general"}
+              onChange={(e) => onUpdate({ role: e.target.value })}
+            >
+              {(availableRoles ?? ["general"]).map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </Select>
+          </div>
 
           {/* Depends On (external) - edit */}
           <div>

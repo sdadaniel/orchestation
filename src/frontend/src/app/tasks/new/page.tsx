@@ -30,6 +30,7 @@ export default function NewTaskPage() {
   const [creatingSuggestions, setCreatingSuggestions] = useState(false);
   const [existingTasks, setExistingTasks] = useState<TaskOption[]>([]);
   const [inputExternalDeps, setInputExternalDeps] = useState<string[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<string[]>(["general"]);
 
   const suggestions = useSuggestStore((s) => s.suggestions);
   const suggestLoading = useSuggestStore((s) => s.isLoading);
@@ -42,6 +43,10 @@ export default function NewTaskPage() {
       .then((r) => r.json())
       .then((data: TaskOption[]) => { if (Array.isArray(data)) setExistingTasks(data); })
       .catch((err) => { console.error("[NewTask] existingTasks fetch error:", err); });
+    fetch("/api/roles")
+      .then((r) => r.json())
+      .then((data: string[]) => { if (Array.isArray(data)) setAvailableRoles(data); })
+      .catch(() => {});
   }, []);
 
   const createFromSuggestions = async () => {
@@ -208,7 +213,7 @@ export default function NewTaskPage() {
               onEdit={() => setEditingIdx(editingIdx === idx ? null : idx)}
               onUpdate={(updates) => updateTask(idx, updates)}
               onRemove={() => removeTask(idx)}
-              totalTasks={tasks.length} existingTasks={existingTasks}
+              totalTasks={tasks.length} existingTasks={existingTasks} availableRoles={availableRoles}
             />
           ))}
           <button type="button" onClick={addTask} className="w-full rounded-lg border border-dashed border-border bg-card/50 p-3 text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors flex items-center justify-center gap-1.5">
