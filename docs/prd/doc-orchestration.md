@@ -3,71 +3,51 @@
 ## 실행 흐름
 
 ```
-orchestrate.sh (전체 오케스트레이션 관리)
+orchestrate.sh
 │
-├── 1. Task 수집: .orchestration/tasks/*.md에서 status=pending인 Task 수집
-├── 2. 의존 관계 분석: dependencies 기반으로 배치(batch) 구성
+├── 1. Task 수집: docs/task/*.md에서 status=backlog인 Task 수집
+├── 2. 의존 관계 분석: depends_on 기반으로 배치(batch) 구성
 ├── 3. 배치별 병렬 실행:
-│   ├── Task A ──→ job-task.sh ──→ 실행
-│   └── Task B ──→ job-task.sh ──→ 실행
-├── 4. 배치 완료 대기 (신호 파일 기반)
+│   ├── Task A ──→ run-worker.sh ──→ iTerm 패널
+│   └── Task B ──→ run-worker.sh ──→ iTerm 패널
+├── 4. 배치 완료 대기
 ├── 5. 다음 배치 실행
 └── 6. 전체 완료 → main 머지
 ```
 
-## Task 실행 파이프라인 (job-task.sh → job-review.sh → merge-task.sh)
+## run-worker.sh 내부
 
 ```
-job-task.sh TASK-XXX
+run-worker.sh TASK-XXX
 │
-├── 1. Task 실행 (worktree에서 Claude 에이전트 실행)
-│   ├── worktree 생성 (task/TASK-XXX)
-│   ├── 역할 프롬프트 로드 (ROLE 기반)
+├── 1. run-task.sh TASK-XXX
+│   ├── worktree 생성
+│   ├── 역할 프롬프트 로드 (--system-prompt)
 │   ├── Claude CLI 실행 (에이전트 모드)
-│   ├── 결과 저장 및 커밋
-│   └── 신호 파일: .orchestration/signals/TASK-XXX.task_done
+│   └── 결과 저장 (output/TASK-XXX-task.json)
 │
-├── 2. job-review.sh TASK-XXX (task 완료 후 자동)
+├── 2. run-review.sh TASK-XXX
 │   ├── 리뷰어 프롬프트 로드
-│   ├── Claude CLI로 코드 리뷰 수행
-│   ├── 승인(exit 0) 또는 수정요청(exit 1)
-│   └── 신호 파일: .orchestration/signals/TASK-XXX.review_done
+│   ├── Claude CLI 실행
+│   └── 승인/수정요청 판정
 │
 ├── 3. 수정요청 시:
-│   ├── 피드백 파일 생성 (.orchestration/feedback/TASK-XXX.md)
-│   └── job-task.sh TASK-XXX → 재실행
+│   ├── 피드백 파일 생성
+│   └── run-task.sh TASK-XXX FEEDBACK → 재실행
 │
-├── 4. 최대 재시도: 3회
-│
-└── 5. merge-task.sh TASK-XXX (리뷰 승인 후)
-    └── 워크트리 머지 및 main 브랜치 업데이트
+└── 4. 최대 재시도: 10회
 ```
 
 ## Claude CLI 호출 방식
 
-### Task 실행 (job-task.sh)
 ```bash
-# 에이전트 모드 (코드 작성/실행/검증 루프 지원)
-claude \
+# 에이전트 모드 (검증 루프 허용)
+echo "$PROMPT" | claude --output-format json \
   --dangerously-skip-permissions \
-  --system-prompt "$ROLE_PROMPT" \
-  <<< "$TASK_PROMPT"
+  --system-prompt "$ROLE_PROMPT"
 
-# 역할: ROLE 파일의 프롬프트 → 기능별 전문 에이전트로 동작
-# 작업: Task 정의의 prompt 필드 → stdin으로 전달
-# 실행: 워크트리에서 직접 코드 작성/테스트/커밋
-```
-
-### Review (job-review.sh)
-```bash
-# 리뷰어 프롬프트로 코드 검토
-claude \
-  --dangerously-skip-permissions \
-  --system-prompt "리뷰어 프롬프트" \
-  <<< "$REVIEW_PROMPT"
-
-# exit 0: 승인 → merge 진행
-# exit 1: 수정요청 → 피드백 파일 생성 후 task 재실행
+# 역할은 --system-prompt, 작업 지시는 stdin으로 전달
+# -p (print 모드) 대신 에이전트 모드 사용 → 코드 작성/실행/검증 가능
 ```
 
 ## 비용 로그
