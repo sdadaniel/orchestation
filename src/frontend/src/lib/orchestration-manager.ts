@@ -365,7 +365,7 @@ class OrchestrationManager {
             const taskRunnerManager = (globalThis as Record<string, unknown>)["__taskRunnerManager__"] as { isRunning?: (id: string) => boolean } | undefined;
             if (taskRunnerManager?.isRunning?.(taskId)) {
               alive = true;
-              console.log(`[orchestrate] ${taskId}: TaskRunnerManager가 관리 중 → in_progress 유지`);
+              this.appendLog(`[orchestrate] ${taskId}: TaskRunnerManager가 관리 중 → in_progress 유지`);
             }
           } catch { /* ignore */ }
         }
@@ -376,7 +376,7 @@ class OrchestrationManager {
             const result = execSync(`pgrep -f "job-task.sh ${taskId}|job-review.sh ${taskId}" 2>/dev/null || true`, { encoding: "utf-8" }).trim();
             if (result) {
               alive = true;
-              console.log(`[orchestrate] ${taskId}: PID 파일 없으나 프로세스 생존 → in_progress 유지`);
+              this.appendLog(`[orchestrate] ${taskId}: PID 파일 없으나 프로세스 생존 → in_progress 유지`);
             }
           } catch { /* ignore */ }
         }
@@ -384,11 +384,11 @@ class OrchestrationManager {
         if (!alive) {
           fs.writeFileSync(filePath, content.replace("status: in_progress", "status: stopped"));
           cleaned++;
-          console.log(`[orchestrate] zombie cleanup: ${taskId} in_progress → stopped`);
+          this.appendLog(`[orchestrate] zombie cleanup: ${taskId} in_progress → stopped`);
         }
       }
 
-      if (cleaned > 0) console.log(`[orchestrate] ${cleaned}개 좀비 태스크 정리 완료`);
+      if (cleaned > 0) this.appendLog(`[orchestrate] ${cleaned}개 좀비 태스크 정리 완료`);
 
       // stale lock 정리
       const lockDir = "/tmp/orchestrate.lock";
@@ -400,12 +400,12 @@ class OrchestrationManager {
             process.kill(lockPid, 0);
           } catch {
             fs.rmSync(lockDir, { recursive: true, force: true });
-            console.log("[orchestrate] stale lock 제거");
+            this.appendLog("[orchestrate] stale lock 제거");
           }
         }
       }
     } catch (err) {
-      console.warn("[orchestrate] zombie cleanup error:", err);
+      console.error("[orchestrate] zombie cleanup error:", err);
     }
   }
 
