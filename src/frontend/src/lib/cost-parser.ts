@@ -45,7 +45,7 @@ const LOG_LINE_REGEX_LEGACY =
 const PROJECT_ROOT = path.join(process.cwd(), "../..");
 const LOG_FILE = path.join(PROJECT_ROOT, ".orchestration/output/token-usage.log");
 
-export function parseCostLogLine(line: string): CostEntry | null {
+function parseCostLogLine(line: string): CostEntry | null {
   const trimmed = line.trim();
   if (!trimmed) return null;
 
