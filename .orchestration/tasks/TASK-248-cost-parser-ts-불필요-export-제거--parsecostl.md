@@ -1,7 +1,7 @@
 ---
 id: TASK-248
 title: cost-parser.ts 불필요 export 제거 (parseCostLogLine)
-status: pending
+status: in_progress
 branch: task/task-248
 worktree: ../repo-wt-task-248
 priority: medium
