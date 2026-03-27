@@ -1,7 +1,7 @@
 ---
 id: TASK-257
 title: Task 상세페이지 로그탭 최신 로그 역순 표시 및 스크롤바 숨김 CSS 수정
-status: in_progress
+status: done
 branch: task/task-257
 worktree: ../repo-wt-task-257
 priority: medium
