@@ -4,16 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   ChevronDown,
-  ChevronRight,
   Plus,
   Square,
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  STATUS_STYLES,
-  type TaskStatus,
-} from "../../../lib/constants";
 import type { RequestItem } from "@/store/tasksStore";
 
 /* ── Props ── */
@@ -32,7 +27,6 @@ export function TaskListSection({
   onStopTask,
 }: TaskListSectionProps) {
   const [tasksExpanded, setTasksExpanded] = useState(true);
-  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [stoppingTaskId, setStoppingTaskId] = useState<string | null>(null);
 
   // 사이드바 태스크: updated 내림차순으로 최근 10개
@@ -74,7 +68,6 @@ export function TaskListSection({
       {/* 최근 업데이트 순 10개 태스크 */}
       {recentItems.map((task) => {
         const taskDisplayId = task.id;
-        const isExpanded = expandedTaskId === task.id;
         const isDone = task.status === "done";
         const isInProgress = task.status === "in_progress";
         const statusIndicator = isInProgress
@@ -90,21 +83,19 @@ export function TaskListSection({
           : <span className="w-2 h-2 rounded-full shrink-0 bg-red-500" />;
         return (
           <div key={task.id} className="group relative">
-            <button
-              type="button"
-              onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
+            <Link
+              href={`/tasks/${taskDisplayId}`}
               className={cn(
-                "tree-item w-full text-left",
+                "tree-item w-full text-left no-underline",
                 isInProgress && "pr-7",
                 currentPath === `/tasks/${taskDisplayId}` && "active"
               )}
             >
-              {isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
               {statusIndicator}
               <span className={cn("truncate flex-1 text-xs", isDone && "text-muted-foreground line-through")}>
                 {taskDisplayId} {task.title}
               </span>
-            </button>
+            </Link>
             {isInProgress && onStopTask && (
               stoppingTaskId === task.id ? (
                 <span className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-red-400">
@@ -115,6 +106,7 @@ export function TaskListSection({
                   type="button"
                   title="중지"
                   onClick={async (e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     setStoppingTaskId(task.id);
                     try { await onStopTask(task.id); } finally { setStoppingTaskId(null); }
@@ -124,23 +116,6 @@ export function TaskListSection({
                   <Square className="h-2.5 w-2.5" />
                 </button>
               )
-            )}
-            {isExpanded && (
-              <Link
-                href={`/tasks/${taskDisplayId}`}
-                className={cn(
-                  "block mr-1 my-0.5 px-2 py-1.5 rounded text-[11px] text-muted-foreground bg-sidebar-accent/50 hover:bg-sidebar-accent hover:text-foreground no-underline transition-colors",
-                  isDone ? "ml-9" : "ml-6"
-                )}
-              >
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className={cn("px-1 py-0 rounded text-[9px] font-medium", STATUS_STYLES[task.status as TaskStatus]?.bg || "bg-muted", "text-white")}>
-                    {task.status}
-                  </span>
-                </div>
-                <p className="truncate">{task.title}</p>
-                <span className="text-[10px] text-muted-foreground/70">Click to open detail →</span>
-              </Link>
             )}
           </div>
         );
