@@ -199,18 +199,7 @@ scan_and_create_task() {
   local task_content
   task_content=$(echo "$result" | jq -r '.result // empty' 2>/dev/null) || true
 
-  # JSON 파싱 시도
-  local found=""
-  found=$(echo "$task_content" | jq -r '.found // empty' 2>/dev/null)
-
-  if [ "$found" = "false" ]; then
-    log "  ℹ️  이슈 없음 ($scan_type) [JSON]"
-    rm -f "$TASK_DIR/${task_id}-reserved.md"
-    return 1
-  fi
-
-  # 레거시 NOT_FOUND fallback
-  if [ -z "$found" ] && { [ -z "$task_content" ] || echo "$task_content" | grep -q "NOT_FOUND"; }; then
+  if [ -z "$task_content" ] || echo "$task_content" | grep -q "NOT_FOUND"; then
     log "  ℹ️  이슈 없음 ($scan_type)"
     rm -f "$TASK_DIR/${task_id}-reserved.md"
     return 1
@@ -218,27 +207,23 @@ scan_and_create_task() {
 
   log "  📄 응답 미리보기: $(echo "$task_content" | head -1 | cut -c1-80)"
 
-  local title="" priority="" scope_json="" description="" criteria_text=""
+  # frontmatter가 포함된 응답에서 태스크 파일 생성
+  # Claude 응답에서 --- 블록 찾기
+  local title=""
 
-  # JSON 형식으로 파싱 시도
-  if [ "$found" = "true" ]; then
-    title=$(echo "$task_content" | jq -r '.task.title // empty' 2>/dev/null)
-    priority=$(echo "$task_content" | jq -r '.task.priority // "medium"' 2>/dev/null)
-    scope_json=$(echo "$task_content" | jq -r '.task.scope // [] | map("  - " + .) | join("\n")' 2>/dev/null)
-    description=$(echo "$task_content" | jq -r '.task.description // empty' 2>/dev/null)
-    criteria_text=$(echo "$task_content" | jq -r '.task.criteria // [] | map("- " + .) | join("\n")' 2>/dev/null)
+  # 방법1: frontmatter 안의 title
+  if echo "$task_content" | grep -q '^---'; then
+    title=$(echo "$task_content" | sed -n '/^---$/,/^---$/p' | grep '^title:' | head -1 | sed 's/^title: *//')
   fi
 
-  # JSON 파싱 실패 시 레거시 파싱
+  # 방법2: 그냥 title: 로 시작하는 줄
   if [ -z "$title" ]; then
-    # 방법1: frontmatter 안의 title
-    if echo "$task_content" | grep -q '^---'; then
-      title=$(echo "$task_content" | sed -n '/^---$/,/^---$/p' | grep '^title:' | head -1 | sed 's/^title: *//')
-    fi
-    # 방법2: title: 줄
-    [ -z "$title" ] && title=$(echo "$task_content" | grep -i '^title:' | head -1 | sed 's/^[Tt]itle: *//')
-    # 방법3: # 헤딩
-    [ -z "$title" ] && title=$(echo "$task_content" | grep '^# ' | head -1 | sed 's/^# *//')
+    title=$(echo "$task_content" | grep -i '^title:' | head -1 | sed 's/^[Tt]itle: *//')
+  fi
+
+  # 방법3: 첫 번째 # 헤딩
+  if [ -z "$title" ]; then
+    title=$(echo "$task_content" | grep '^# ' | head -1 | sed 's/^# *//')
   fi
 
   if [ -z "$title" ]; then
@@ -254,30 +239,8 @@ scan_and_create_task() {
 
   rm -f "$TASK_DIR/${task_id}-reserved.md"
 
-  # JSON 파싱 성공 시 직접 생성
-  if [ -n "$description" ]; then
-    local today
-    today=$(date '+%Y-%m-%d')
-    cat > "$filepath" <<TASKEOF
----
-id: ${task_id}
-title: ${title}
-status: pending
-priority: ${priority}
-mode: night
-created: ${today}
-updated: ${today}
-depends_on: []
-scope:
-${scope_json}
----
-${description}
-
-## Completion Criteria
-${criteria_text}
-TASKEOF
-  # 레거시: frontmatter가 있으면 id 교체
-  elif echo "$task_content" | head -1 | grep -q '^---$'; then
+  # frontmatter가 없으면 직접 생성
+  if echo "$task_content" | head -1 | grep -q '^---$'; then
     echo "$task_content" | sed "s/^id: .*/id: ${task_id}/" > "$filepath"
   else
     render_template "entity/task-night.md" \
