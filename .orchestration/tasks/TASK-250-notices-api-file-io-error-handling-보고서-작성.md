@@ -1,7 +1,7 @@
 ---
 id: TASK-250
 title: notices-api-file-io-error-handling-보고서-작성
-status: in_progress
+status: rejected
 branch: task/task-250
 worktree: ../repo-wt-task-250
 priority: medium
