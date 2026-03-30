@@ -1,7 +1,7 @@
 ---
 id: TASK-285
 title: context-builder.sh local 선언에 잘못 배치된 에러 핸들링 정리
-status: in_progress
+status: done
 branch: task/task-285
 worktree: ../repo-wt-task-285
 priority: medium
