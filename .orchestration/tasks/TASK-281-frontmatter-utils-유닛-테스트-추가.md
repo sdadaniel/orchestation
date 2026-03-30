@@ -1,7 +1,9 @@
 ---
 id: TASK-281
 title: frontmatter-utils 유닛 테스트 추가
-status: pending
+status: in_progress
+branch: task/task-281
+worktree: ../repo-wt-task-281
 priority: medium
 mode: night
 created: 2026-03-28
