@@ -1,7 +1,9 @@
 ---
 id: TASK-286
 title: frontend lib/ 순수 함수 유닛 테스트 추가
-status: pending
+status: in_progress
+branch: task/task-286
+worktree: ../repo-wt-task-286
 priority: medium
 mode: night
 created: 2026-03-28
@@ -15,7 +17,9 @@ TASK-286은 이미 예약되어 있으므로 TASK-287로 생성합니다.
 ---
 id: TASK-287
 title: frontend lib/ 순수 함수 유닛 테스트 추가
-status: pending
+status: in_progress
+branch: task/task-286
+worktree: ../repo-wt-task-286
 priority: medium
 mode: night
 created: 2026-03-28
