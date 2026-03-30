@@ -1,7 +1,9 @@
 ---
 id: TASK-274
 title: 미사용 컴포넌트·훅·스토어 데드 파일 삭제
-status: pending
+status: in_progress
+branch: task/task-274
+worktree: ../repo-wt-task-274
 priority: medium
 mode: night
 created: 2026-03-27
@@ -15,7 +17,9 @@ All confirmed — these are only defined in their own files, never imported. The
 ---
 id: TASK-274
 title: 미사용 컴포넌트·훅·스토어 데드 파일 삭제
-status: pending
+status: in_progress
+branch: task/task-274
+worktree: ../repo-wt-task-274
 priority: medium
 mode: night
 created: 2026-03-27
