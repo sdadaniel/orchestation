@@ -14,6 +14,14 @@ const dirname =
 export default defineConfig({
   test: {
     projects: [
+      // Unit tests for pure parser/utility modules (Node environment, no browser)
+      {
+        test: {
+          name: 'unit',
+          environment: 'node',
+          include: ['src/**/*.test.ts'],
+        },
+      },
       {
         extends: true,
         plugins: [
