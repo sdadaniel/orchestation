@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { PROJECT_ROOT } from "./paths";
 
 export interface CostEntry {
   timestamp: string;
@@ -42,7 +43,6 @@ const LOG_LINE_REGEX_WITH_MODEL =
 const LOG_LINE_REGEX_LEGACY =
   /^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+([\w-]+)\s+\|\s+phase=(\w+)\s+\|\s+input=(\d+)\s+cache_create=(\d+)\s+cache_read=(\d+)\s+output=(\d+)\s+\|\s+turns=(\d+)\s+\|\s+duration=(\d+)ms\s+\|\s+cost=\$([\d.]+)/;
 
-const PROJECT_ROOT = path.join(process.cwd(), "../..");
 const LOG_FILE = path.join(PROJECT_ROOT, ".orchestration/output/token-usage.log");
 
 function parseCostLogLine(line: string): CostEntry | null {
