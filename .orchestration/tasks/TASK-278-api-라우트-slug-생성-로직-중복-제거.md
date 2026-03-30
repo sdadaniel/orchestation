@@ -1,7 +1,7 @@
 ---
 id: TASK-278
 title: API 라우트 slug 생성 로직 중복 제거
-status: in_progress
+status: done
 branch: task/task-278
 worktree: ../repo-wt-task-278
 priority: medium
@@ -17,7 +17,7 @@ TASK-278은 이미 reserved 상태이므로 TASK-279로 생성합니다.
 ---
 id: TASK-279
 title: API 라우트 slug 생성 로직 중복 제거
-status: in_progress
+status: done
 branch: task/task-278
 worktree: ../repo-wt-task-278
 priority: medium
