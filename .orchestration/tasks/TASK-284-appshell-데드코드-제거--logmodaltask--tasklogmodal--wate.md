@@ -1,7 +1,9 @@
 ---
 id: TASK-284
 title: AppShell 데드코드 제거 (logModalTask, TaskLogModal, WaterfallTask)
-status: pending
+status: in_progress
+branch: task/task-284
+worktree: ../repo-wt-task-284
 priority: medium
 mode: night
 created: 2026-03-28
@@ -15,7 +17,9 @@ TASK-284는 이미 reserved 파일이 있으므로 TASK-285를 사용하겠습�
 ---
 id: TASK-285
 title: AppShell 데드코드 제거 (logModalTask, TaskLogModal, WaterfallTask)
-status: pending
+status: in_progress
+branch: task/task-284
+worktree: ../repo-wt-task-284
 priority: medium
 mode: night
 created: 2026-03-28
