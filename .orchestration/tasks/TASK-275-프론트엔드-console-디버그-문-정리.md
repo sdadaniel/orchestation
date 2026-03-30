@@ -1,7 +1,7 @@
 ---
 id: TASK-275
 title: 프론트엔드 console 디버그 문 정리
-status: in_progress
+status: failed
 branch: task/task-275
 worktree: ../repo-wt-task-275
 priority: medium
