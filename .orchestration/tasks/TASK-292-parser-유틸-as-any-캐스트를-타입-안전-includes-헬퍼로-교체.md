@@ -1,7 +1,9 @@
 ---
 id: TASK-292
 title: parser 유틸 as-any 캐스트를 타입 안전 includes 헬퍼로 교체
-status: pending
+status: in_progress
+branch: task/task-292
+worktree: ../repo-wt-task-292
 priority: medium
 mode: night
 created: 2026-03-28
