@@ -1,7 +1,7 @@
 ---
 id: TASK-290
 title: cost-parser.ts 중복 PROJECT_ROOT 선언을 공용 paths 모듈로 교체
-status: in_progress
+status: done
 branch: task/task-290
 worktree: ../repo-wt-task-290
 priority: medium
