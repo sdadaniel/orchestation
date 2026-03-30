@@ -175,6 +175,14 @@ wait_for_signal() {
 
 # ── 헬퍼 함수 ─────────────────────────────────────────
 
+get_output_dir() {
+  if [ -d "$REPO_ROOT/.orchestration/output" ]; then
+    echo "$REPO_ROOT/.orchestration/output"
+  else
+    echo "$REPO_ROOT/output"
+  fi
+}
+
 read_api_key() {
   local _api_key=""
   if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
@@ -647,11 +655,7 @@ process_signals_for_task() {
     rm -f "/tmp/worker-${task_id}.pid"
     local reject_reason=""
     local output_dir
-    if [ -d "$REPO_ROOT/.orchestration/output" ]; then
-      output_dir="$REPO_ROOT/.orchestration/output"
-    else
-      output_dir="$REPO_ROOT/output"
-    fi
+    output_dir=$(get_output_dir)
     if [ -f "$output_dir/${task_id}-rejection-reason.txt" ]; then
       reject_reason=$(head -1 "$output_dir/${task_id}-rejection-reason.txt")
     fi
@@ -694,11 +698,7 @@ process_signals_for_task() {
       increment_retry "$task_id"
       echo "  🔄 ${task_id} review 수정요청 → retry ($((rc + 1))/${MAX_REVIEW_RETRY})"
       local output_dir
-      if [ -d "$REPO_ROOT/.orchestration/output" ]; then
-        output_dir="$REPO_ROOT/.orchestration/output"
-      else
-        output_dir="$REPO_ROOT/output"
-      fi
+      output_dir=$(get_output_dir)
       local feedback_file="$output_dir/${task_id}-review-feedback.txt"
       start_task "$task_id" "$feedback_file"
       return 2  # 아직 진행 중 (retry)
