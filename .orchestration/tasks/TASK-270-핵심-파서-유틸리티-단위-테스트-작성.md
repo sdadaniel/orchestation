@@ -1,7 +1,7 @@
 ---
 id: TASK-270
 title: 핵심 파서 유틸리티 단위 테스트 작성
-status: in_progress
+status: done
 branch: task/task-270
 worktree: ../repo-wt-task-270
 priority: medium
