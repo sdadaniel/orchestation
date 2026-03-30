@@ -1,7 +1,7 @@
 ---
 id: TASK-287
 title: 프론트엔드 console.log/warn/error 문 정리
-status: in_progress
+status: done
 branch: task/task-287
 worktree: ../repo-wt-task-287
 priority: medium
