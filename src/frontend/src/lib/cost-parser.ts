@@ -45,7 +45,7 @@ const LOG_LINE_REGEX_LEGACY =
 
 const LOG_FILE = path.join(PROJECT_ROOT, ".orchestration/output/token-usage.log");
 
-function parseCostLogLine(line: string): CostEntry | null {
+export function parseCostLogLine(line: string): CostEntry | null {
   const trimmed = line.trim();
   if (!trimmed) return null;
 
@@ -111,7 +111,7 @@ export function parseCostLog(): CostData {
   return { entries, summaryByTask };
 }
 
-function aggregateByTask(entries: CostEntry[]): TaskCostSummary[] {
+export function aggregateByTask(entries: CostEntry[]): TaskCostSummary[] {
   const map = new Map<string, TaskCostSummary>();
   const modelsMap = new Map<string, Set<string>>();
 

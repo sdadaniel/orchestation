@@ -20,17 +20,11 @@ export interface ModelCostSummary {
 export function shortenModelName(model: string): string {
   if (!model || model === "unknown") return "Unknown";
 
-  const lower = model.toLowerCase();
+  // Strip trailing 8-digit date suffix before matching (e.g. "-20250514")
+  const stripped = model.replace(/-\d{8,}$/, "");
+  const lower = stripped.toLowerCase();
 
-  // Match patterns like "opus-4-1", "sonnet-4", "haiku-3-5"
-  const familyMatch = lower.match(/(opus|sonnet|haiku)[-_](\d+(?:[-_.]\d+)?)/);
-  if (familyMatch) {
-    const family = familyMatch[1].charAt(0).toUpperCase() + familyMatch[1].slice(1);
-    const version = familyMatch[2].replace(/[-_]/g, ".");
-    return `${family} ${version}`;
-  }
-
-  // Match "claude-3-5-haiku" style
+  // Match "claude-3-5-haiku" style first (version before family)
   const altMatch = lower.match(/claude[-_](\d+(?:[-_.]\d+)?)[-_](opus|sonnet|haiku)/);
   if (altMatch) {
     const version = altMatch[1].replace(/[-_]/g, ".");
@@ -38,8 +32,16 @@ export function shortenModelName(model: string): string {
     return `${family} ${version}`;
   }
 
+  // Match patterns like "opus-4-1", "sonnet-4", "haiku-3" (family before version)
+  const familyMatch = lower.match(/(opus|sonnet|haiku)[-_](\d+(?:[-_.]\d{1,2})?)/);
+  if (familyMatch) {
+    const family = familyMatch[1].charAt(0).toUpperCase() + familyMatch[1].slice(1);
+    const version = familyMatch[2].replace(/[-_]/g, ".");
+    return `${family} ${version}`;
+  }
+
   // Fallback: just capitalize and trim date suffix
-  return model.replace(/-\d{8,}$/, "").replace(/^claude-?/i, "").trim() || model;
+  return stripped.replace(/^claude-?/i, "").trim() || model;
 }
 
 /**
