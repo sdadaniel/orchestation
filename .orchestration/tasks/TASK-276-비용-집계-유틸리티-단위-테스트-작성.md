@@ -1,7 +1,7 @@
 ---
 id: TASK-276
 title: 비용-집계-유틸리티-단위-테스트-작성
-status: in_progress
+status: done
 branch: task/task-276
 worktree: ../repo-wt-task-276
 priority: medium
@@ -17,7 +17,7 @@ TASK-270은 파서 모듈 5개를 커버합니다. 비용 집계 모듈(`cost-ag
 ---
 id: TASK-276
 title: 비용-집계-유틸리티-단위-테스트-작성
-status: in_progress
+status: done
 branch: task/task-276
 worktree: ../repo-wt-task-276
 priority: medium
