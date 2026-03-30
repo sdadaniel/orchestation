@@ -1,7 +1,7 @@
 ---
 id: TASK-280
 title: auto-improve.sh declare -A bash 3.x 호환성 위반 수정
-status: in_progress
+status: done
 branch: task/task-280
 worktree: ../repo-wt-task-280
 priority: medium
