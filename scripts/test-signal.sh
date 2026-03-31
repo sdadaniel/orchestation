@@ -4,8 +4,8 @@ set -euo pipefail
 # Test script for signal.sh - validates atomic signal operations
 # Tests: create, check, consume, wait_all, and parallel race condition safety
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-source "$REPO_ROOT/scripts/lib/signal.sh"
+PACKAGE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+source "$PACKAGE_DIR/scripts/lib/signal.sh"
 
 TEST_DIR=$(mktemp -d /tmp/test-signal-XXXXXX)
 trap 'rm -rf "$TEST_DIR"' EXIT
@@ -94,7 +94,7 @@ RACE_DIR=$(mktemp -d /tmp/test-signal-race-XXXXXX)
 # Launch 20 parallel workers creating signals simultaneously
 for i in $(seq 1 20); do
   (
-    source "$REPO_ROOT/scripts/lib/signal.sh"
+    source "$PACKAGE_DIR/scripts/lib/signal.sh"
     signal_create "$RACE_DIR" "TASK-R$(printf '%03d' $i)" "done"
   ) &
 done
@@ -116,7 +116,7 @@ signal_create "$RACE_DIR" "TASK-RACE" "done"
 CONSUME_RESULTS="$RACE_DIR/consume-results"
 for i in $(seq 1 10); do
   (
-    source "$REPO_ROOT/scripts/lib/signal.sh"
+    source "$PACKAGE_DIR/scripts/lib/signal.sh"
     if signal_consume "$RACE_DIR" "TASK-RACE"; then
       echo "consumed" >> "$CONSUME_RESULTS"
     fi

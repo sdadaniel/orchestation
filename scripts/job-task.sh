@@ -9,13 +9,46 @@ TASK_ID="${1:?Usage: ./scripts/job-task.sh TASK-XXX SIGNAL_DIR [FEEDBACK_FILE]}"
 SIGNAL_DIR="${2:?SIGNAL_DIR is required}"
 FEEDBACK_FILE="${3:-}"
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export PATH="$HOME/.local/bin:$PATH"
+PACKAGE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
+REPO_ROOT="$PROJECT_ROOT"  # backward compat alias
+export PACKAGE_DIR PROJECT_ROOT PATH="$HOME/.local/bin:$PATH"
 
-source "$REPO_ROOT/scripts/lib/signal.sh"
-source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
-source "$REPO_ROOT/scripts/lib/context-builder.sh"
-source "$REPO_ROOT/scripts/lib/model-selector.sh"
+# ── srcPaths 읽기 (환경변수 > config.json > 기본값) ──
+if [ -z "${SRC_PATHS:-}" ]; then
+  _cfg=""
+  if [ -f "$PROJECT_ROOT/.orchestration/config.json" ]; then
+    _cfg="$PROJECT_ROOT/.orchestration/config.json"
+  elif [ -f "$PROJECT_ROOT/config.json" ]; then
+    _cfg="$PROJECT_ROOT/config.json"
+  fi
+  if [ -n "$_cfg" ] && command -v jq &>/dev/null; then
+    SRC_PATHS=$(jq -r '.srcPaths // ["src/"] | join(",")' "$_cfg" 2>/dev/null || echo "src/")
+  else
+    SRC_PATHS="src/"
+  fi
+  export SRC_PATHS
+fi
+
+# ── BASE_BRANCH 읽기 (환경변수 > config.json > 기본값 main) ──
+if [ -z "${BASE_BRANCH:-}" ]; then
+  _bcfg=""
+  if [ -f "$REPO_ROOT/.orchestration/config.json" ]; then
+    _bcfg="$REPO_ROOT/.orchestration/config.json"
+  elif [ -f "$REPO_ROOT/config.json" ]; then
+    _bcfg="$REPO_ROOT/config.json"
+  fi
+  if [ -n "$_bcfg" ] && command -v jq &>/dev/null; then
+    BASE_BRANCH=$(jq -r '.baseBranch // "main"' "$_bcfg" 2>/dev/null || echo "main")
+  else
+    BASE_BRANCH="main"
+  fi
+fi
+
+source "$PACKAGE_DIR/scripts/lib/signal.sh"
+source "$PACKAGE_DIR/scripts/lib/sed-inplace.sh"
+source "$PACKAGE_DIR/scripts/lib/context-builder.sh"
+source "$PACKAGE_DIR/scripts/lib/model-selector.sh"
 
 # ─── 시작 시간 기록 + 타임아웃 (10분) ─────────────────────
 JOB_TIMEOUT="${JOB_TIMEOUT:-600}"  # 기본 10분
@@ -132,7 +165,9 @@ ensure_worktree() {
 
 load_role_prompt() {
   local role_name="$1" default_name="$2"
-  local role_dir="$REPO_ROOT/docs/roles"
+  # 사용자 프로젝트 roles 우선, 없으면 패키지 내장 roles fallback
+  local role_dir="$PROJECT_ROOT/docs/roles"
+  [ ! -d "$role_dir" ] && role_dir="$PACKAGE_DIR/docs/roles"
   ROLE_PROMPT=""
   if [ -n "$role_name" ] && [ -f "$role_dir/${role_name}.md" ]; then
     ROLE_PROMPT=$(cat "$role_dir/${role_name}.md")
@@ -195,7 +230,11 @@ model_args=()
 CONV_FILE="$OUTPUT_DIR/${TASK_ID}-task-conversation.jsonl"
 
 # stream-json: claude → CONV_FILE에 전체 저장 + stdout에 도구 호출 로그 출력
-echo "$prompt" | claude --output-format stream-json --verbose --dangerously-skip-permissions "${model_args[@]}" --system-prompt "$ROLE_PROMPT" \
+# claude exit code를 파일로 추출 (파이프라인에서 PIPESTATUS가 tee를 캡처하는 문제 회피)
+CLAUDE_EXIT_FILE=$(mktemp)
+echo "1" > "$CLAUDE_EXIT_FILE"  # 기본값: 실패
+
+(echo "$prompt" | claude --output-format stream-json --verbose --dangerously-skip-permissions "${model_args[@]}" --system-prompt "$ROLE_PROMPT"; echo $? > "$CLAUDE_EXIT_FILE") \
   | tee "$CONV_FILE" | while IFS= read -r line; do
       type=$(echo "$line" | jq -r '.type // empty' 2>/dev/null)
       case "$type" in
@@ -211,8 +250,9 @@ echo "$prompt" | claude --output-format stream-json --verbose --dangerously-skip
       esac
     done
 
-# 파이프 exit code: PIPESTATUS[0]이 claude의 exit code
-CLAUDE_EXIT=${PIPESTATUS[0]:-0}
+# claude의 실제 exit code 읽기
+CLAUDE_EXIT=$(cat "$CLAUDE_EXIT_FILE" 2>/dev/null || echo "1")
+rm -f "$CLAUDE_EXIT_FILE"
 if [ "$CLAUDE_EXIT" -ne 0 ]; then
   echo "❌ Claude 호출 실패 (exit=$CLAUDE_EXIT)" >&2
   exit 1
@@ -245,6 +285,41 @@ if echo "$RESULT" | head -1 | grep -q "^거절:"; then
   fi
   echo "🚫 [job-task] ${TASK_ID} 거절됨 → task-rejected signal"
   exit 2  # 거절: exit 2 (성공 0, 실패 1과 구분)
+fi
+
+# ── scope 위반 사후 검증: scope 밖 변경 원복 ──
+if [ -n "$SCOPE" ] && [ -d "$WORKTREE_PATH" ]; then
+  _oos_files=""
+  while IFS= read -r _changed; do
+    [ -z "$_changed" ] && continue
+    _in_scope=false
+    while IFS= read -r _sp; do
+      [ -z "$_sp" ] && continue
+      # glob 패턴이면 패턴 매칭, 아니면 prefix 매칭
+      if echo "$_sp" | grep -q '\*'; then
+        # glob → 디렉토리 prefix 비교
+        _sp_dir=$(echo "$_sp" | sed 's/\*\*.*//')
+        if echo "$_changed" | grep -q "^${_sp_dir}"; then
+          _in_scope=true; break
+        fi
+      else
+        if [ "$_changed" = "$_sp" ] || echo "$_changed" | grep -q "^${_sp}/"; then
+          _in_scope=true; break
+        fi
+      fi
+    done <<< "$SCOPE"
+    if [ "$_in_scope" = false ]; then
+      _oos_files="${_oos_files} ${_changed}"
+    fi
+  done < <(cd "$WORKTREE_PATH" && git diff --name-only "${BASE_BRANCH:-main}...HEAD" 2>/dev/null || git diff --name-only HEAD~1 2>/dev/null || true)
+
+  if [ -n "$_oos_files" ]; then
+    echo "⚠️ [job-task] ${TASK_ID}: scope 밖 변경 감지 → 원복: $_oos_files"
+    for _oosf in $_oos_files; do
+      (cd "$WORKTREE_PATH" && git checkout "${BASE_BRANCH:-main}" -- "$_oosf" 2>/dev/null || git checkout HEAD~1 -- "$_oosf" 2>/dev/null || true)
+    done
+    (cd "$WORKTREE_PATH" && git add -A && git commit -m "chore: scope 밖 변경 원복" 2>/dev/null || true)
+  fi
 fi
 
 # 성공 signal

@@ -22,6 +22,7 @@ const VALID_STATUSES: readonly TaskStatus[] = [
   "in_progress",
   "reviewing",
   "done",
+  "failed",
   "rejected",
 ];
 

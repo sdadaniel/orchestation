@@ -5,28 +5,67 @@ set -euo pipefail
 # 의존 관계에 따라 태스크를 배치로 수집하고,
 # 병렬 태스크는 각각 별도 iTerm 패널에서 실행
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-source "$REPO_ROOT/scripts/lib/common.sh"
-source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
-source "$REPO_ROOT/scripts/lib/merge-resolver.sh"
+PACKAGE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
+REPO_ROOT="$PROJECT_ROOT"  # backward compat alias
+export PACKAGE_DIR PROJECT_ROOT
+
+source "$PACKAGE_DIR/scripts/lib/common.sh"
+source "$PACKAGE_DIR/scripts/lib/sed-inplace.sh"
+source "$PACKAGE_DIR/scripts/lib/merge-resolver.sh"
 # .orchestration/tasks를 우선, 없으면 docs/task fallback
-if [ -d "$REPO_ROOT/.orchestration/tasks" ]; then
-  TASK_DIR="$REPO_ROOT/.orchestration/tasks"
+if [ -d "$PROJECT_ROOT/.orchestration/tasks" ]; then
+  TASK_DIR="$PROJECT_ROOT/.orchestration/tasks"
 else
-  TASK_DIR="$REPO_ROOT/docs/task"
+  TASK_DIR="$PROJECT_ROOT/docs/task"
 fi
-REQ_DIR="$REPO_ROOT/docs/requests"
-MAX_REVIEW_RETRY="${MAX_REVIEW_RETRY:-2}"
-MAX_PARALLEL_TASK="${MAX_PARALLEL_TASK:-2}"
-MAX_PARALLEL_REVIEW="${MAX_PARALLEL_REVIEW:-2}"
-MAX_CLAUDE_PROCS="${MAX_CLAUDE_PROCS:-4}"
+REQ_DIR="$PROJECT_ROOT/docs/requests"
+
+# ── config.json 경로 결정 (.orchestration/ 우선, 루트 fallback) ──
+if [ -f "$REPO_ROOT/.orchestration/config.json" ]; then
+  CONFIG_FILE="$REPO_ROOT/.orchestration/config.json"
+elif [ -f "$REPO_ROOT/config.json" ]; then
+  CONFIG_FILE="$REPO_ROOT/config.json"
+else
+  CONFIG_FILE="$REPO_ROOT/config.json"
+fi
+
+# ── 실행 설정 (환경변수 > config.json > 기본값) ──
+# config.json에서 초기값 로딩 (핫 리로드는 메인 루프에서 별도 처리)
+if [ -z "${MAX_REVIEW_RETRY:-}" ] && [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
+  MAX_REVIEW_RETRY=$(jq -r '.maxReviewRetry // 3' "$CONFIG_FILE" 2>/dev/null || echo "3")
+else
+  MAX_REVIEW_RETRY="${MAX_REVIEW_RETRY:-3}"
+fi
+MAX_TASK_COST="${MAX_TASK_COST:-5.0}"  # 태스크당 누적 비용 상한 ($)
+if [ -z "${MAX_PARALLEL_TASK:-}" ] && [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
+  MAX_PARALLEL_TASK=$(jq -r '.maxParallel.task // 2' "$CONFIG_FILE" 2>/dev/null || echo "2")
+else
+  MAX_PARALLEL_TASK="${MAX_PARALLEL_TASK:-2}"
+fi
+if [ -z "${MAX_PARALLEL_REVIEW:-}" ] && [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
+  MAX_PARALLEL_REVIEW=$(jq -r '.maxParallel.review // 2' "$CONFIG_FILE" 2>/dev/null || echo "2")
+else
+  MAX_PARALLEL_REVIEW="${MAX_PARALLEL_REVIEW:-2}"
+fi
+MAX_CLAUDE_PROCS=$(( MAX_PARALLEL_TASK + MAX_PARALLEL_REVIEW ))
+echo "⚙️  Parallel: task=${MAX_PARALLEL_TASK}, review=${MAX_PARALLEL_REVIEW}, max_procs=${MAX_CLAUDE_PROCS}"
+echo "⚙️  Review Retry: ${MAX_REVIEW_RETRY}"
 SIGNAL_DIR="$REPO_ROOT/.orchestration/signals"
 mkdir -p "$SIGNAL_DIR"
 LAST_DISPATCH_TIME=0
 # 이전 실행의 남은 시그널 정리하지 않음 — 재시작 시 이전 done/failed 시그널 처리 가능
 
+# ── srcPaths 읽기 (config.json → 기본값 "src/") ──
+if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
+  SRC_PATHS=$(jq -r '.srcPaths // ["src/"] | join(",")' "$CONFIG_FILE" 2>/dev/null || echo "src/")
+else
+  SRC_PATHS="src/"
+fi
+export SRC_PATHS
+echo "⚙️  Source Paths: ${SRC_PATHS}"
+
 # ── workerMode 결정 (환경변수 > config.json > 기본값 background) ──
-CONFIG_FILE="$REPO_ROOT/config.json"
 if [ -z "${WORKER_MODE:-}" ]; then
   if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
     WORKER_MODE=$(jq -r '.workerMode // "background"' "$CONFIG_FILE" 2>/dev/null || echo "background")
@@ -64,9 +103,18 @@ if [ -n "$_existing_pids" ]; then
   sleep 1
 fi
 
-# 2단계: lock 획득
+# 2단계: lock 획득 (PID 기반 stale lock 검증)
 LOCK_DIR="/tmp/orchestrate.lock"
-rm -rf "$LOCK_DIR" 2>/dev/null  # stale lock 정리 (기존 프로세스는 위에서 이미 kill)
+if [ -d "$LOCK_DIR" ]; then
+  _lock_holder=$(cat "$LOCK_DIR/pid" 2>/dev/null || echo "")
+  if [ -n "$_lock_holder" ] && kill -0 "$_lock_holder" 2>/dev/null; then
+    # lock holder가 살아있는데 pgrep으로 안 잡힌 경우 (symlink 호출 등)
+    echo "❌ lock 보유 프로세스 생존 중 (PID $_lock_holder) — 종료"
+    exit 1
+  fi
+  # holder가 죽었으면 stale lock 정리
+  rm -rf "$LOCK_DIR" 2>/dev/null
+fi
 mkdir "$LOCK_DIR" 2>/dev/null || { echo "❌ lock 획득 실패"; exit 1; }
 echo $$ > "$LOCK_DIR/pid"
 
@@ -83,6 +131,7 @@ cleanup_lock() {
     for _tid in "${RUNNING[@]+"${RUNNING[@]}"}"; do
       [ -z "$_tid" ] && continue
       _stop_worker "$_tid"
+      _running_unmark "$_tid"
     done
   fi
 
@@ -92,11 +141,12 @@ cleanup_lock() {
     local _tf
     _tf=$(find_file "$_tid" 2>/dev/null)
     if [ -n "$_tf" ] && grep -q 'status: in_progress' "$_tf" 2>/dev/null; then
-      sed_inplace "s/^status: in_progress/status: stopped/" "$_tf"
+      _set_status "$_tf" "stopped"
       echo "  ⏹️  ${_tid}: in_progress → stopped"
     fi
   done
-  rm -rf "$SIGNAL_DIR" "$LOCK_DIR" "$RETRY_DIR"
+  rm -f "$SIGNAL_DIR"/* 2>/dev/null || true   # 디렉토리 유지, 내부 파일만 정리
+  rm -rf "$LOCK_DIR" "$RETRY_DIR"
 }
 trap cleanup_lock EXIT INT TERM
 
@@ -142,8 +192,8 @@ can_dispatch() {
   else
     local avail_mb
     avail_mb=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 9999)
-    if [ "${avail_mb}" -lt 512 ]; then
-      echo "  🚨 가용 메모리 ${avail_mb}MB < 512MB → 대기"
+    if [ "${avail_mb}" -lt 2048 ]; then
+      echo "  🚨 가용 메모리 ${avail_mb}MB < 2048MB → 대기"
       return 1
     fi
   fi
@@ -154,26 +204,41 @@ can_dispatch() {
 # ── Signal 대기 (fswatch 우선, fallback polling) ─────
 
 wait_for_signal() {
+  # 먼저 이미 도착한 시그널이 있는지 즉시 체크
+  for sf in "$SIGNAL_DIR"/*-task-done "$SIGNAL_DIR"/*-task-failed "$SIGNAL_DIR"/*-review-approved "$SIGNAL_DIR"/*-review-rejected "$SIGNAL_DIR"/*-stopped; do
+    [ -f "$sf" ] && return 0
+  done
+
   if command -v fswatch &>/dev/null; then
-    fswatch -1 --event Created "$SIGNAL_DIR" --latency 0.5 2>/dev/null &
+    # fswatch 이벤트를 직접 수신 (polling 루프 제거)
+    fswatch -1 --event Created --event Updated "$SIGNAL_DIR" --latency 0.3 2>/dev/null &
     local fspid=$!
-    # 최대 10초 대기, signal 오면 즉시 깨어남
+    # fswatch가 이벤트를 감지하거나 10초 경과 중 먼저 발생하는 것
     local waited=0
     while kill -0 "$fspid" 2>/dev/null && [ "$waited" -lt 10 ]; do
-      sleep 1
+      sleep 0.3
       waited=$((waited + 1))
-      # signal 파일이 이미 있으면 즉시 리턴
+      # 빠른 시그널 체크 (0.3초 간격)
       for sf in "$SIGNAL_DIR"/*-task-done "$SIGNAL_DIR"/*-task-failed "$SIGNAL_DIR"/*-review-approved "$SIGNAL_DIR"/*-review-rejected "$SIGNAL_DIR"/*-stopped; do
         [ -f "$sf" ] && kill "$fspid" 2>/dev/null && return 0
       done
     done
     kill "$fspid" 2>/dev/null || true
   else
-    sleep 2
+    sleep 1
   fi
 }
 
 # ── 헬퍼 함수 ─────────────────────────────────────────
+
+# status 변경 + updated 타임스탬프 갱신
+_set_status() {
+  local file="$1" new_status="$2"
+  local today
+  today=$(date '+%Y-%m-%d %H:%M')
+  sed_inplace "s/^status: .*/status: ${new_status}/" "$file"
+  sed_inplace "s/^updated: .*/updated: ${today}/" "$file"
+}
 
 get_output_dir() {
   if [ -d "$REPO_ROOT/.orchestration/output" ]; then
@@ -226,16 +291,52 @@ get_task_ids() {
   done | sort -k1,1n -k2,2n -k3,3n -k4,4 | awk '{print $4}'
 }
 
-# docs/task/ 또는 docs/requests/ 에서 파일 찾기
+# ── 태스크 파일 캐시 (find 호출 최소화) ──────────────────────
+# bash 3.x: declare -A 불가 → 파일 기반 캐시
+_FIND_CACHE_DIR="/tmp/orchestrate-filecache"
+mkdir -p "$_FIND_CACHE_DIR" 2>/dev/null || true
+_FIND_CACHE_EPOCH=0
+
+_rebuild_find_cache() {
+  rm -f "$_FIND_CACHE_DIR"/* 2>/dev/null || true
+  local f id
+  for f in "$TASK_DIR"/*.md "$REQ_DIR"/*.md; do
+    [ -f "$f" ] || continue
+    id=$(basename "$f" | grep -oE '^(TASK|REQ)-[0-9]+' || true)
+    [ -n "$id" ] && echo "$f" > "$_FIND_CACHE_DIR/$id"
+  done
+  _FIND_CACHE_EPOCH=$(date +%s)
+}
+
+# 60초마다 캐시 갱신
+_maybe_refresh_cache() {
+  local now
+  now=$(date +%s)
+  if [ $((now - _FIND_CACHE_EPOCH)) -gt 60 ]; then
+    _rebuild_find_cache
+  fi
+}
+
+# docs/task/ 또는 docs/requests/ 에서 파일 찾기 (캐시 우선)
 find_file() {
   local id="$1"
+  _maybe_refresh_cache
+  if [ -f "$_FIND_CACHE_DIR/$id" ]; then
+    cat "$_FIND_CACHE_DIR/$id"
+    return
+  fi
+  # 캐시 미스 → 직접 찾고 캐시에 저장
   local f=""
   f=$(find "$TASK_DIR" -name "${id}-*.md" 2>/dev/null | head -1)
   if [ -z "$f" ]; then
     f=$(find "$REQ_DIR" -name "${id}-*.md" 2>/dev/null | head -1)
   fi
+  [ -n "$f" ] && echo "$f" > "$_FIND_CACHE_DIR/$id"
   echo "$f"
 }
+
+# 초기 캐시 구축
+_rebuild_find_cache
 
 get_status() {
   local task_id="$1"
@@ -352,7 +453,7 @@ stop_dependents() {
     deps=$(get_list "$tf" "depends_on")
     if echo "$deps" | grep -q "$failed_id"; then
       echo "  ⏸️  ${tid}: 의존 태스크 ${failed_id} 실패 → stopped"
-      sed_inplace "s/^status: .*/status: stopped/" "$tf"
+      _set_status "$tf" "stopped"
       git -C "$REPO_ROOT" add "$tf"
       git -C "$REPO_ROOT" commit --only "$tf" \
         -m "chore(${tid}): status → stopped (dependency ${failed_id} failed)" || true
@@ -498,9 +599,9 @@ start_task() {
 
   # status → in_progress
   if [ -n "$tf" ]; then
-    sed_inplace_E "s/^status: (pending|stopped)/status: in_progress/" "$tf"
+    _set_status "$tf" "in_progress"
     git -C "$REPO_ROOT" add "$tf"
-    git -C "$REPO_ROOT" commit --only "$tf" -m "chore(${task_id}): status → in_progress" || true
+    # commit은 메인 루프 끝에서 배치로 처리
   fi
 
   mkdir -p "$REPO_ROOT/output/logs"
@@ -517,19 +618,21 @@ start_task() {
   local _env_prefix=""
   [ -n "$_api_key" ] && _env_prefix="ANTHROPIC_API_KEY='${_api_key}' "
 
-  local _job_cmd="${_env_prefix}bash '${REPO_ROOT}/scripts/job-task.sh' '${task_id}' '${SIGNAL_DIR}' '${feedback_arg}'"
+  local _job_cmd="${_env_prefix}bash '${PACKAGE_DIR}/scripts/job-task.sh' '${task_id}' '${SIGNAL_DIR}' '${feedback_arg}'"
 
   if [ "$WORKER_MODE" = "iterm" ]; then
-    # iTerm 탭에서 실행 (로그는 탭에서 직접 확인)
-    bash "${REPO_ROOT}/scripts/lib/iterm-run.sh" "🔧 ${task_id}" "${_job_cmd} 2>&1 | tee '${log_file}'; bash '${REPO_ROOT}/scripts/lib/close-iterm-session.sh'"
+    # iTerm 탭에서 실행 — PID를 기록하여 health check가 즉시 kill하지 않도록 함
+    # iTerm 탭 프로세스의 PID를 파일에 기록하는 래퍼 추가
+    local _iterm_cmd="echo \$\$ > /tmp/worker-${task_id}.pid; ${_job_cmd} 2>&1 | tee '${log_file}'; rm -f /tmp/worker-${task_id}.pid; bash '${PACKAGE_DIR}/scripts/lib/close-iterm-session.sh'"
+    bash "${PACKAGE_DIR}/scripts/lib/iterm-run.sh" "🔧 ${task_id}" "$_iterm_cmd"
     echo "  🔄 ${task_id}: iTerm 탭에서 실행 중 (로그: output/logs/${task_id}.log)"
   else
     # 백그라운드 실행
     if [ -n "$_api_key" ]; then
-      ANTHROPIC_API_KEY="${_api_key}" nohup bash "${REPO_ROOT}/scripts/job-task.sh" "${task_id}" "${SIGNAL_DIR}" "${feedback_arg}" \
+      ANTHROPIC_API_KEY="${_api_key}" nohup bash "${PACKAGE_DIR}/scripts/job-task.sh" "${task_id}" "${SIGNAL_DIR}" "${feedback_arg}" \
         > "${log_file}" 2>&1 &
     else
-      nohup bash "${REPO_ROOT}/scripts/job-task.sh" "${task_id}" "${SIGNAL_DIR}" "${feedback_arg}" \
+      nohup bash "${PACKAGE_DIR}/scripts/job-task.sh" "${task_id}" "${SIGNAL_DIR}" "${feedback_arg}" \
         > "${log_file}" 2>&1 &
     fi
     local pid=$!
@@ -537,15 +640,15 @@ start_task() {
     echo "  🔄 ${task_id}: job-task 실행 중 (PID=${pid}, 로그: output/logs/${task_id}.log)"
 
     # ── dispatch 후 프로세스 시작 검증 ──
-    sleep 2
+    sleep 0.3
     if ! kill -0 "$pid" 2>/dev/null; then
       echo "  ❌ ${task_id}: job-task.sh 시작 실패 (PID $pid 즉시 종료) → pending 원복"
       _write_crashlog "$task_id" "dispatch 직후 프로세스 사망 (2초 이내 종료)" "$pid"
       rm -f "/tmp/worker-${task_id}.pid"
       if [ -n "$tf" ]; then
-        sed_inplace_E "s/^status: in_progress/status: pending/" "$tf"
+        _set_status "$tf" "pending"
         git -C "$REPO_ROOT" add "$tf"
-        git -C "$REPO_ROOT" commit --only "$tf" -m "chore(${task_id}): status → pending (dispatch 실패)" || true
+        # commit은 메인 루프 끝에서 배치로 처리
       fi
       return 1
     fi
@@ -565,17 +668,18 @@ start_review() {
   local _env_prefix=""
   [ -n "$_api_key" ] && _env_prefix="ANTHROPIC_API_KEY='${_api_key}' "
 
-  local _review_cmd="${_env_prefix}bash '${REPO_ROOT}/scripts/job-review.sh' '${task_id}' '${SIGNAL_DIR}'"
+  local _review_cmd="${_env_prefix}bash '${PACKAGE_DIR}/scripts/job-review.sh' '${task_id}' '${SIGNAL_DIR}'"
 
   if [ "$WORKER_MODE" = "iterm" ]; then
-    bash "${REPO_ROOT}/scripts/lib/iterm-run.sh" "🔍 ${task_id} review" "${_review_cmd} 2>&1 | tee '${log_file}'; bash '${REPO_ROOT}/scripts/lib/close-iterm-session.sh'"
+    local _iterm_review_cmd="echo \$\$ > /tmp/worker-${task_id}.pid; ${_review_cmd} 2>&1 | tee '${log_file}'; rm -f /tmp/worker-${task_id}.pid; bash '${PACKAGE_DIR}/scripts/lib/close-iterm-session.sh'"
+    bash "${PACKAGE_DIR}/scripts/lib/iterm-run.sh" "🔍 ${task_id} review" "$_iterm_review_cmd"
     echo "  🔄 ${task_id}: iTerm 탭에서 review 실행 중"
   else
     if [ -n "$_api_key" ]; then
-      ANTHROPIC_API_KEY="${_api_key}" nohup bash "${REPO_ROOT}/scripts/job-review.sh" "${task_id}" "${SIGNAL_DIR}" \
+      ANTHROPIC_API_KEY="${_api_key}" nohup bash "${PACKAGE_DIR}/scripts/job-review.sh" "${task_id}" "${SIGNAL_DIR}" \
         > "${log_file}" 2>&1 &
     else
-      nohup bash "${REPO_ROOT}/scripts/job-review.sh" "${task_id}" "${SIGNAL_DIR}" \
+      nohup bash "${PACKAGE_DIR}/scripts/job-review.sh" "${task_id}" "${SIGNAL_DIR}" \
         > "${log_file}" 2>&1 &
     fi
     local pid=$!
@@ -611,10 +715,9 @@ process_signals_for_task() {
     local stopped_tf
     stopped_tf=$(find_file "$task_id")
     if [ -n "$stopped_tf" ]; then
-      sed_inplace "s/^status: .*/status: stopped/" "$stopped_tf"
+      _set_status "$stopped_tf" "stopped"
       git -C "$REPO_ROOT" add "$stopped_tf"
-      git -C "$REPO_ROOT" commit --only "$stopped_tf" \
-        -m "chore(${task_id}): status → stopped (사용자 요청)" || true
+      # commit은 메인 루프 끝에서 배치로 처리
     fi
     return 3  # RUNNING에서 제거
   fi
@@ -682,9 +785,27 @@ process_signals_for_task() {
     return $?
   fi
 
-  # 5) review-rejected → retry 또는 failed (hard limit 체크)
+  # 5) review-rejected → retry 또는 failed (hard limit + cost circuit breaker)
   if [ -f "${SIGNAL_DIR}/${task_id}-review-rejected" ]; then
     rm -f "/tmp/worker-${task_id}.pid"
+
+    # ── circuit breaker: 태스크 누적 비용 체크 ──
+    local task_total_cost=0
+    local output_dir_cb
+    output_dir_cb=$(get_output_dir)
+    local token_log_cb="$output_dir_cb/token-usage.log"
+    if [ -f "$token_log_cb" ]; then
+      task_total_cost=$(grep "${task_id}" "$token_log_cb" | grep -oE 'cost=\$[0-9.]+' | sed 's/cost=\$//' | awk '{s+=$1} END {printf "%.2f", s+0}')
+    fi
+    if [ -n "$task_total_cost" ] && command -v bc &>/dev/null; then
+      if [ "$(echo "$task_total_cost > $MAX_TASK_COST" | bc -l 2>/dev/null)" = "1" ]; then
+        echo "  🚨 ${task_id} 비용 상한 초과 (\$${task_total_cost} > \$${MAX_TASK_COST}) → failed 처리"
+        rm -f "${SIGNAL_DIR}/${task_id}-review-rejected"
+        _mark_task_failed "$task_id" "비용 상한 초과 (\$${task_total_cost})"
+        return 1
+      fi
+    fi
+
     local rc
     rc=$(get_retry_count "$task_id")
     if [ "$rc" -lt "$MAX_REVIEW_RETRY" ]; then
@@ -710,16 +831,31 @@ process_signals_for_task() {
   fi
 
   # ── PID liveness 체크: 시그널 파일 없이 프로세스가 죽었으면 failed 처리 ──
+  # PID 재사용 방지: kill -0 + 프로세스 명령어 검증
   local pidfile="/tmp/worker-${task_id}.pid"
   if [ -f "$pidfile" ]; then
     local wpid
     wpid=$(cat "$pidfile" 2>/dev/null || true)
-    if [ -n "$wpid" ] && ! kill -0 "$wpid" 2>/dev/null; then
-      echo "  ⚠️  ${task_id}: 워커 프로세스(PID $wpid) 사망 감지 → failed 처리"
-      _write_crashlog "$task_id" "워커 프로세스 비정상 종료 (시그널 파일 미생성)" "$wpid"
-      rm -f "$pidfile"
-      _mark_task_failed "$task_id" "워커 프로세스 비정상 종료 (PID $wpid, 시그널 파일 없음)"
-      return 1
+    if [ -n "$wpid" ]; then
+      local pid_alive=true
+      if ! kill -0 "$wpid" 2>/dev/null; then
+        pid_alive=false
+      else
+        # PID 재사용 검증: 프로세스가 우리 워커인지 확인
+        local proc_cmd
+        proc_cmd=$(ps -p "$wpid" -o command= 2>/dev/null || echo "")
+        if ! echo "$proc_cmd" | grep -qE "(job-task|job-review|claude)"; then
+          echo "  ⚠️  ${task_id}: PID $wpid 재사용 감지 (실제: ${proc_cmd:0:50})"
+          pid_alive=false
+        fi
+      fi
+      if [ "$pid_alive" = false ]; then
+        echo "  ⚠️  ${task_id}: 워커 프로세스(PID $wpid) 사망 감지 → failed 처리"
+        _write_crashlog "$task_id" "워커 프로세스 비정상 종료 (시그널 파일 미생성)" "$wpid"
+        rm -f "$pidfile"
+        _mark_task_failed "$task_id" "워커 프로세스 비정상 종료 (PID $wpid, 시그널 파일 없음)"
+        return 1
+      fi
     fi
   else
     # PID 파일 자체가 없는데 in_progress → 비정상 상태
@@ -752,13 +888,15 @@ should_skip_review() {
 }
 
 # ── 머지 + done 처리 ─────────────────────────────────────
+MERGE_LOCK_DIR="/tmp/orchestrate-merge.lock"
+
 _merge_and_done() {
   local task_id="$1"
   local local_task_file
   local_task_file=$(find_file "$task_id")
 
   if [ -n "$local_task_file" ]; then
-    sed_inplace "s/^status: .*/status: done/" "$local_task_file"
+    _set_status "$local_task_file" "done"
   fi
 
   local wt_path
@@ -769,16 +907,51 @@ _merge_and_done() {
   if [ -n "$branch" ]; then
     if git -C "$REPO_ROOT" log --oneline "${BASE_BRANCH}..$branch" 2>/dev/null | grep -q .; then
       echo "  🔀 ${task_id}: $branch → ${BASE_BRANCH} 머지"
+
+      # ── merge 직렬화: lock 획득 (동시 머지 방지) ──
+      local _merge_lock_acquired=false
+      local _merge_wait=0
+      while ! mkdir "$MERGE_LOCK_DIR" 2>/dev/null; do
+        if [ "$_merge_wait" -ge 60 ]; then
+          echo "  ⚠️  ${task_id}: merge lock 획득 타임아웃 (60초) → 강제 해제"
+          rm -rf "$MERGE_LOCK_DIR" 2>/dev/null
+          continue
+        fi
+        sleep 2
+        _merge_wait=$((_merge_wait + 2))
+      done
+      _merge_lock_acquired=true
+      echo "$task_id" > "$MERGE_LOCK_DIR/owner"
+
+      # 로컬 변경 보호 (stash)
+      local _stashed=false
+      if ! git -C "$REPO_ROOT" diff --quiet 2>/dev/null || ! git -C "$REPO_ROOT" diff --cached --quiet 2>/dev/null; then
+        git -C "$REPO_ROOT" stash push -m "merge-${task_id}" --include-untracked 2>/dev/null && _stashed=true
+      fi
+      local _merge_failed=false
       if ! git -C "$REPO_ROOT" merge "$branch" --no-ff --no-edit; then
         if ! resolve_merge_conflict "$REPO_ROOT" "$task_id" "$branch" "$BASE_BRANCH"; then
-          sed_inplace "s/^status: .*/status: failed/" "$local_task_file"
-          git -C "$REPO_ROOT" add "$local_task_file"
-          git -C "$REPO_ROOT" commit --only "$local_task_file" \
-            -m "chore(${task_id}): status → failed (merge conflict)" || true
-          git -C "$REPO_ROOT" branch -d "$branch" 2>/dev/null || true
-          stop_dependents "$task_id"
-          return 1
+          _merge_failed=true
         fi
+      fi
+      # stash 복원
+      if [ "$_stashed" = true ]; then
+        git -C "$REPO_ROOT" stash pop 2>/dev/null || true
+      fi
+
+      # ── merge lock 해제 ──
+      if [ "$_merge_lock_acquired" = true ]; then
+        rm -rf "$MERGE_LOCK_DIR" 2>/dev/null
+      fi
+
+      if [ "$_merge_failed" = true ]; then
+        _set_status "$local_task_file" "failed"
+        git -C "$REPO_ROOT" add "$local_task_file"
+        git -C "$REPO_ROOT" commit --only "$local_task_file" \
+          -m "chore(${task_id}): status → failed (merge conflict)" || true
+        git -C "$REPO_ROOT" branch -d "$branch" 2>/dev/null || true
+        stop_dependents "$task_id"
+        return 1
       fi
     fi
     git -C "$REPO_ROOT" branch -d "$branch" 2>/dev/null || true
@@ -790,7 +963,7 @@ _merge_and_done() {
 
   if [ -n "$local_task_file" ]; then
     git -C "$REPO_ROOT" add "$local_task_file"
-    git -C "$REPO_ROOT" commit --only "$local_task_file" -m "chore(${task_id}): status → done" || true
+    # commit은 메인 루프 끝에서 배치로 처리
   fi
 
   local task_title
@@ -811,9 +984,9 @@ _mark_task_failed() {
   local tf
   tf=$(find_file "$task_id")
   if [ -n "$tf" ]; then
-    sed_inplace "s/^status: .*/status: failed/" "$tf"
+    _set_status "$tf" "failed"
     git -C "$REPO_ROOT" add "$tf"
-    git -C "$REPO_ROOT" commit --only "$tf" -m "chore(${task_id}): status → failed (${reason})" || true
+    # commit은 메인 루프 끝에서 배치로 처리
   fi
 
   local wt_path
@@ -843,9 +1016,9 @@ _mark_task_rejected() {
   local tf
   tf=$(find_file "$task_id")
   if [ -n "$tf" ]; then
-    sed_inplace "s/^status: .*/status: rejected/" "$tf"
+    _set_status "$tf" "rejected"
     git -C "$REPO_ROOT" add "$tf"
-    git -C "$REPO_ROOT" commit --only "$tf" -m "chore(${task_id}): status → rejected (${reason})" || true
+    # commit은 메인 루프 끝에서 배치로 처리
   fi
 
   # worktree + 브랜치 정리
@@ -872,7 +1045,42 @@ _mark_task_rejected() {
 echo "🚀 Pipeline 시작"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-RUNNING=()   # 현재 실행 중인 태스크 ID 목록
+# ── RUNNING 상태 관리 (배열 + 파일 하이브리드) ──────────────
+# 배열은 메인 루프 성능용, 파일은 재시작 복구용
+_RUNNING_STATE_DIR="/tmp/orchestrate-running"
+mkdir -p "$_RUNNING_STATE_DIR" 2>/dev/null || true
+
+_running_mark() { touch "$_RUNNING_STATE_DIR/$1" 2>/dev/null || true; }
+_running_unmark() { rm -f "$_RUNNING_STATE_DIR/$1" 2>/dev/null || true; }
+_running_is_marked() { [ -f "$_RUNNING_STATE_DIR/$1" ]; }
+
+# 재시작 시 파일에서 RUNNING 복구
+RUNNING=()
+for _rf in "$_RUNNING_STATE_DIR"/*; do
+  [ -f "$_rf" ] || continue
+  _rtid=$(basename "$_rf")
+  # 실제로 in_progress인지 확인
+  _rtf=$(find_file "$_rtid" 2>/dev/null)
+  if [ -n "$_rtf" ] && grep -q 'status: in_progress' "$_rtf" 2>/dev/null; then
+    # PID 파일이 있고 프로세스가 살아있으면 복구
+    if [ -f "/tmp/worker-${_rtid}.pid" ]; then
+      _rpid=$(cat "/tmp/worker-${_rtid}.pid" 2>/dev/null || true)
+      if [ -n "$_rpid" ] && kill -0 "$_rpid" 2>/dev/null; then
+        RUNNING+=("$_rtid")
+        echo "  🔄 재시작 복구: ${_rtid} (PID ${_rpid})"
+        continue
+      fi
+    fi
+    # 프로세스 죽었으면 파일 정리
+    _running_unmark "$_rtid"
+  else
+    _running_unmark "$_rtid"
+  fi
+done
+if [ "${#RUNNING[@]}" -gt 0 ]; then
+  echo "  📋 복구된 실행 중 태스크: ${#RUNNING[@]}개"
+fi
+
 FAILED_COUNT=0
 LOOP_COUNT=0
 
@@ -904,13 +1112,17 @@ while true; do
         # 아직 진행 중
         NEW_RUNNING+=("$task_id")
       elif [ "$rc" -eq 1 ]; then
-        # 실패
+        # 실패 → 파일 상태도 정리
         FAILED_COUNT=$((FAILED_COUNT + 1))
+        _running_unmark "$task_id"
       elif [ "$rc" -eq 3 ]; then
         # 사용자 요청에 의한 중지 → 실패 카운트 미증가, RUNNING에서 제거
         echo "  ⏹️  ${task_id}: 중지됨 (사용자 요청)"
+        _running_unmark "$task_id"
+      else
+        # rc=0 (성공) → RUNNING에서 제거
+        _running_unmark "$task_id"
       fi
-      # rc=0 (성공)이면 RUNNING에서 제거됨
     done
     # 빈 배열 안전 처리 (bash 3.2 호환)
     if [ "${#NEW_RUNNING[@]}" -gt 0 ]; then
@@ -937,8 +1149,8 @@ while true; do
       echo "  ⚠️  실패한 태스크: ${FAILED_COUNT}개"
       FAILED_COUNT=0
     fi
-    echo "  ⏳ 새 태스크 대기 중... (30초마다 스캔)"
-    sleep 30
+    echo "  ⏳ 새 태스크 대기 중... (5초마다 스캔)"
+    sleep 5
     continue
   fi
 
@@ -971,6 +1183,7 @@ while true; do
 
     start_task "$next_task"
     RUNNING+=("$next_task")
+    _running_mark "$next_task"
     echo "  📊 슬롯: ${#RUNNING[@]}/${MAX_PARALLEL_TASK} (대기: $((${#QUEUE[@]} - qi)))"
   done
 
@@ -988,6 +1201,16 @@ while true; do
     done
   fi
 
-  # fswatch 기반 이벤트 대기 (또는 fallback polling 2초)
+  # ── 배치 git commit: staged된 태스크 상태 변경을 한 번에 커밋 ──
+  if git -C "$REPO_ROOT" diff --cached --quiet 2>/dev/null; then
+    : # staged 변경 없음
+  else
+    _staged_files=$(git -C "$REPO_ROOT" diff --cached --name-only 2>/dev/null | grep -c '\.md$' | tr -d '[:space:]' || echo 0)
+    if [ -n "$_staged_files" ] && [ "$_staged_files" -gt 0 ] 2>/dev/null; then
+      git -C "$REPO_ROOT" commit -m "chore: 태스크 상태 일괄 업데이트 (${_staged_files}건)" || true
+    fi
+  fi
+
+  # fswatch 기반 이벤트 대기 (또는 fallback polling)
   wait_for_signal
 done

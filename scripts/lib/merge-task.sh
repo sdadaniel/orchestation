@@ -6,14 +6,17 @@ set -euo pipefail
 # Exit: 0=성공, 1=실패
 
 TASK_ID="${1:?Usage: merge-task.sh TASK-XXX}"
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+PACKAGE_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
+REPO_ROOT="$PROJECT_ROOT"  # backward compat alias
+export PACKAGE_DIR PROJECT_ROOT
 
-source "$REPO_ROOT/scripts/lib/common.sh"
-source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
-source "$REPO_ROOT/scripts/lib/merge-resolver.sh"
+source "$PACKAGE_DIR/scripts/lib/common.sh"
+source "$PACKAGE_DIR/scripts/lib/sed-inplace.sh"
+source "$PACKAGE_DIR/scripts/lib/merge-resolver.sh"
 
 # ── BASE_BRANCH 결정 ──
-CONFIG_FILE="$REPO_ROOT/.orchestration/config.json"
+CONFIG_FILE="$PROJECT_ROOT/.orchestration/config.json"
 if [ -z "${BASE_BRANCH:-}" ]; then
   if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
     BASE_BRANCH=$(jq -r '.baseBranch // "main"' "$CONFIG_FILE" 2>/dev/null || echo "main")
@@ -68,17 +71,35 @@ if [ "$CURRENT_BRANCH" != "$BASE_BRANCH" ]; then
   git -C "$REPO_ROOT" checkout "$BASE_BRANCH"
 fi
 
+# ── 로컬 변경 보호 (stash) ──
+_stashed=false
+if ! git -C "$REPO_ROOT" diff --quiet 2>/dev/null || ! git -C "$REPO_ROOT" diff --cached --quiet 2>/dev/null; then
+  git -C "$REPO_ROOT" stash push -m "merge-task-${TASK_ID}" --include-untracked 2>/dev/null && _stashed=true
+  echo "  📦 로컬 변경 stash 완료"
+fi
+
 # ── 머지 ──
+_merge_ok=true
 if git -C "$REPO_ROOT" log --oneline "${BASE_BRANCH}..$BRANCH" 2>/dev/null | grep -q .; then
   echo "  🔀 ${TASK_ID}: $BRANCH → ${BASE_BRANCH} 머지"
   if ! git -C "$REPO_ROOT" merge "$BRANCH" --no-ff --no-edit; then
     if ! resolve_merge_conflict "$REPO_ROOT" "$TASK_ID" "$BRANCH" "$BASE_BRANCH"; then
       echo "  ❌ 머지 실패 (충돌 해결 불가)" >&2
-      exit 1
+      _merge_ok=false
     fi
   fi
 else
   echo "  ℹ️  머지할 커밋 없음"
+fi
+
+# ── stash 복원 ──
+if [ "$_stashed" = true ]; then
+  git -C "$REPO_ROOT" stash pop 2>/dev/null || true
+  echo "  📦 stash 복원 완료"
+fi
+
+if [ "$_merge_ok" = false ]; then
+  exit 1
 fi
 
 # ── 브랜치 정리 ──

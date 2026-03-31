@@ -29,12 +29,24 @@ export function TaskListSection({
   const [tasksExpanded, setTasksExpanded] = useState(true);
   const [stoppingTaskId, setStoppingTaskId] = useState<string | null>(null);
 
-  // 사이드바 태스크: updated 내림차순으로 최근 10개
-  // 날짜만 있으면(2026-03-27) 시간을 붙여서 정렬 일관성 확보
+  // 사이드바 태스크: 활성 태스크 우선, 그 안에서 updated 내림차순으로 최근 10개
   const padDate = (d: string) => d.length === 10 ? `${d} 99:99:99` : d;
+  const statusWeight = (s: string) => {
+    switch (s) {
+      case "in_progress": return 0;
+      case "reviewing": return 1;
+      case "pending": return 2;
+      case "stopped": return 3;
+      default: return 4; // done, failed, rejected
+    }
+  };
   const uniqueItems = [...new Map(requestItems.map((r) => [r.id, r])).values()];
   const recentItems = uniqueItems
-    .sort((a, b) => padDate(b.updated ?? b.created).localeCompare(padDate(a.updated ?? a.created)))
+    .sort((a, b) => {
+      const sw = statusWeight(a.status) - statusWeight(b.status);
+      if (sw !== 0) return sw;
+      return padDate(b.updated ?? b.created).localeCompare(padDate(a.updated ?? a.created));
+    })
     .slice(0, 10);
 
   return (

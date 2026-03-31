@@ -1,5 +1,7 @@
 코드베이스를 스캔하여 이슈 1개를 찾고 아래 형식으로만 출력하세요.
 
+{{src_paths}}
+
 {{type_prompt}}
 {{instructions}}
 

@@ -55,7 +55,14 @@ export function SseProvider({ children }: { children: React.ReactNode }) {
             if (data.priority) patch.priority = data.priority;
             if (data.title) patch.title = data.title;
 
-            useTasksStore.getState().patchRequest(data.taskId, patch);
+            const store = useTasksStore.getState();
+            const exists = store.requests.some((r) => r.id === data.taskId);
+            if (exists) {
+              store.patchRequest(data.taskId, patch);
+            } else {
+              // 새 태스크 — store에 없으면 전체 refetch
+              store.fetchAll();
+            }
 
             // React Query 캐시도 갱신 (다른 컴포넌트에서 useQuery로 읽는 경우)
             queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });

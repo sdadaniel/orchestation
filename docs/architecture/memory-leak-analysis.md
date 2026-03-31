@@ -169,3 +169,41 @@ intervalId = setInterval(sendLogs, 500);  // 0.5초
 | 6 | 파일 파싱 캐싱 | 디스크 I/O 감소 | 중간 |
 
 **1~3번만 수정해도 서비스 안정화 가능.** 특히 1번(useMonitor)이 가장 치명적 — 다른 이슈 없이도 이것만으로 OOM 발생 가능.
+
+---
+
+## 현재 수정 상태 (2026-03-31)
+
+| # | 상태 | 변경 사항 |
+|---|------|----------|
+| 1 | ✅ 완화됨 | `refetchInterval` 1초→10초, `isVisible` 가드 추가, `staleTime: 5000` (분당 300회→6회, 탭 비활성 시 0회) |
+| 2 | ✅ 수정됨 | 모듈 자동시작 제거 완료. SseProvider가 SSE 이벤트로 상태 업데이트 처리 |
+| 3 | ⚠️ 부분 수정 | 중복 interval 3개 → 제거됨. orchestration 상태는 store 구독으로 전환. 단, `tasks/[id]/page.tsx` L44-48에서 별도 EventSource를 열어 SseProvider와 **SSE 이중 연결** 발생 중 |
+| 4 | 미수정 | SseProvider `RECONNECT_DELAY` 고정 3초, exponential backoff 미적용 |
+| 5 | ✅ 수정됨 | 5분 idle timeout 추가 (`server.ts` L287-302), `ptyProcess.onExit` 시 WebSocket 종료 처리 완료 |
+| 6 | ✅ 수정됨 | `parser.ts`에 TTL 캐시 3초 적용 (`_tasksCache` + `CACHE_TTL_MS`), `invalidateTasksCache()` 무효화 함수 제공 |
+
+---
+
+## 근본 원인 — Node.js의 구조적 한계 (execSync)
+
+`execSync`로 프로세스 정보를 조회하는 것 자체가 근본 문제.
+
+**왜 execSync가 비싼가:**
+```
+Node.js execSync("ps aux"):
+  → OS fork() → /bin/sh 프로세스 생성
+    → sh가 ps 프로세스 생성
+    → ps가 stdout에 결과 출력
+  → Node.js가 Buffer로 복사 (힙 할당)
+  → 프로세스 종료, Buffer는 GC 대기
+```
+
+OS 네이티브(Go/Rust)라면:
+```
+syscall(KERN_PROC) → 커널이 직접 프로세스 목록 반환 → 끝
+```
+
+Node.js는 OS syscall을 직접 호출할 수 없어서, **셸 프로세스를 spawn → 명령 실행 → stdout 파싱**이라는 우회 경로를 강제당함. 이 우회가 fork 비용 + Buffer 메모리 + GC 압력을 만들어냄.
+
+**장기 해결**: Monitor API를 Go/Rust 사이드카 바이너리로 분리하면 execSync 완전 제거 가능. improvement-plan.md Phase 4 참조.

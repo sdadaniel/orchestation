@@ -24,6 +24,7 @@ function HomeDashboard({ requestItems }: { requestItems: RequestItem[] }) {
     (t) => t.status === "pending" || t.status === "reviewing",
   );
   const done = requestItems.filter((t) => t.status === "done");
+  const failed = requestItems.filter((t) => t.status === "failed");
   const rejected = requestItems.filter((t) => t.status === "rejected");
 
   return (
@@ -31,7 +32,7 @@ function HomeDashboard({ requestItems }: { requestItems: RequestItem[] }) {
       {/* 상태 요약 */}
       <div>
         <h2 className="text-sm font-semibold mb-3">Overview</h2>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-5 gap-3">
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-xs text-muted-foreground mb-1">In Progress</div>
             <div className="text-2xl font-bold text-blue-500">
@@ -51,8 +52,14 @@ function HomeDashboard({ requestItems }: { requestItems: RequestItem[] }) {
             </div>
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
-            <div className="text-xs text-muted-foreground mb-1">Rejected</div>
+            <div className="text-xs text-muted-foreground mb-1">Failed</div>
             <div className="text-2xl font-bold text-red-500">
+              {failed.length}
+            </div>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-xs text-muted-foreground mb-1">Rejected</div>
+            <div className="text-2xl font-bold text-red-400">
               {rejected.length}
             </div>
           </div>

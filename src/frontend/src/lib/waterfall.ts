@@ -11,6 +11,7 @@ const VALID_STATUSES: Set<TaskStatus> = new Set([
   "in_progress",
   "reviewing",
   "done",
+  "failed",
   "rejected",
 ]);
 

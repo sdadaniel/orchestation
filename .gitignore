@@ -2,3 +2,5 @@ output/
 *.DS_Store
 test*.json
 src/frontend/package-lock.json
+.claude/worktrees/
+.playwright-mcp/

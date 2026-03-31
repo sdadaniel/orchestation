@@ -7,11 +7,23 @@ set -euo pipefail
 #   - retry 상한 초과 → failed (피드백 기록 + worktree 정리)
 #   - 로그 없거나 중간에 끊김 → stopped (worktree 유지, 재시작 가능)
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
+PACKAGE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
+REPO_ROOT="$PROJECT_ROOT"  # backward compat alias
+export PACKAGE_DIR PROJECT_ROOT
+
+source "$PACKAGE_DIR/scripts/lib/sed-inplace.sh"
+
+# ── config.json 경로 결정 (.orchestration/ 우선, 루트 fallback) ──
+if [ -f "$REPO_ROOT/.orchestration/config.json" ]; then
+  CONFIG_FILE="$REPO_ROOT/.orchestration/config.json"
+elif [ -f "$REPO_ROOT/config.json" ]; then
+  CONFIG_FILE="$REPO_ROOT/config.json"
+else
+  CONFIG_FILE="$REPO_ROOT/config.json"
+fi
 
 # ── BASE_BRANCH 결정 (환경변수 > config.json > 기본값 main) ──
-CONFIG_FILE="$REPO_ROOT/config.json"
 if [ -z "${BASE_BRANCH:-}" ]; then
   if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
     BASE_BRANCH=$(jq -r '.baseBranch // "main"' "$CONFIG_FILE" 2>/dev/null || echo "main")

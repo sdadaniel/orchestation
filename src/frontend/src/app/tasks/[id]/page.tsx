@@ -4,12 +4,14 @@ import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { getErrorMessage } from "@/lib/error-utils";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Loader2, FileText, Terminal, CheckCircle2, DollarSign } from "lucide-react";
+import { ArrowLeft, Loader2, FileText, Terminal, Monitor, CheckCircle2, DollarSign } from "lucide-react";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
+import { useTasksStore } from "@/store/tasksStore";
 import { TaskDetail } from "./types";
 import { TaskMetadata } from "./TaskMetadata";
 import { DependencyFlow } from "./DependencyFlow";
 import { DetailTab, ScopeTab, AiResultTab, CostTab, LogsTab } from "./TaskTabContent";
+import { LiveTerminalPanel } from "@/components/task-detail/LiveTerminalPanel";
 
 export default function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -17,7 +19,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"detail" | "scope" | "cost" | "ai-result" | "logs">("detail");
+  const [activeTab, setActiveTab] = useState<"detail" | "scope" | "cost" | "ai-result" | "logs" | "terminal">("detail");
   const [aiResult, setAiResult] = useState<{ status: string; result: string } | null | "empty">(null);
   const [aiResultLoading, setAiResultLoading] = useState(false);
   const [runStatus, setRunStatus] = useState<"idle" | "running" | "completed" | "failed">("idle");
@@ -39,12 +41,14 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   // 초기 로드
   useEffect(() => { fetchTask(); }, [fetchTask]);
 
-  // SSE task-changed 이벤트 시 자동 refetch
+  // SseProvider가 store를 업데이트하면 자동 refetch (중복 EventSource 방지)
+  const storeRequests = useTasksStore((s) => s.requests);
   useEffect(() => {
-    const es = new EventSource("/api/tasks/watch");
-    es.addEventListener("task-changed", () => { fetchTask(); });
-    return () => es.close();
-  }, [fetchTask]);
+    const match = storeRequests.find((r) => r.id === id);
+    if (match && task && match.status !== task.status) {
+      fetchTask();
+    }
+  }, [storeRequests, id, task, fetchTask]);
 
   // Lazy-load AI result
   useEffect(() => {
@@ -223,6 +227,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           { key: "scope" as const, label: "Scope", icon: FileText },
           { key: "cost" as const, label: "Cost", icon: DollarSign },
           { key: "logs" as const, label: "로그", icon: Terminal },
+          { key: "terminal" as const, label: "Terminal", icon: Monitor },
           { key: "ai-result" as const, label: "AI Result", icon: CheckCircle2 },
         ]).map((tab) => (
           <button
@@ -255,6 +260,9 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           hasExecutionLog={!!task.executionLog}
           onStatusChange={handleRunStatusChange}
         />
+      )}
+      {activeTab === "terminal" && (
+        <LiveTerminalPanel taskId={id} />
       )}
     </div>
   );

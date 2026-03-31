@@ -11,10 +11,14 @@ set -euo pipefail
 #   --types type1,type2  태스크 유형 (typecheck,lint,unused,docs,test,review)
 #   --instructions "..." 추가 지시
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-source "$REPO_ROOT/scripts/lib/common.sh"
-source "$REPO_ROOT/scripts/lib/sed-inplace.sh"
-source "$REPO_ROOT/scripts/lib/merge-resolver.sh"
+PACKAGE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
+REPO_ROOT="$PROJECT_ROOT"  # backward compat alias
+export PACKAGE_DIR PROJECT_ROOT
+
+source "$PACKAGE_DIR/scripts/lib/common.sh"
+source "$PACKAGE_DIR/scripts/lib/sed-inplace.sh"
+source "$PACKAGE_DIR/scripts/lib/merge-resolver.sh"
 
 if [ -d "$REPO_ROOT/.orchestration/tasks" ]; then
   TASK_DIR="$REPO_ROOT/.orchestration/tasks"
@@ -29,6 +33,24 @@ fi
 mkdir -p "$LOG_DIR"
 
 NOTICE_API="http://localhost:3000/api/notices"
+
+# ── config.json 경로 결정 ──
+if [ -f "$REPO_ROOT/.orchestration/config.json" ]; then
+  CONFIG_FILE="$REPO_ROOT/.orchestration/config.json"
+elif [ -f "$REPO_ROOT/config.json" ]; then
+  CONFIG_FILE="$REPO_ROOT/config.json"
+else
+  CONFIG_FILE="$REPO_ROOT/config.json"
+fi
+
+# ── srcPaths 읽기 (환경변수 > config.json > 기본값) ──
+if [ -z "${SRC_PATHS:-}" ]; then
+  if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
+    SRC_PATHS=$(jq -r '.srcPaths // ["src/"] | join(",")' "$CONFIG_FILE" 2>/dev/null || echo "src/")
+  else
+    SRC_PATHS="src/"
+  fi
+fi
 
 # ── 인자 파싱 ──────────────────────────────────────────
 UNTIL_TIME="07:00"
@@ -160,10 +182,14 @@ scan_and_create_task() {
   local instructions_line=""
   [ -n "${INSTRUCTIONS:-}" ] && instructions_line="추가 지시: $INSTRUCTIONS"
 
+  # srcPaths를 스캔 대상 경로로 전달
+  local src_paths_line="스캔 대상 경로: ${SRC_PATHS} (이 경로 내에서만 이슈를 찾으세요)"
+
   local prompt
   prompt=$(render_template "prompt/night-scan.md" \
     "type_prompt=${type_prompt}" \
     "instructions=${instructions_line}" \
+    "src_paths=${src_paths_line}" \
     "task_id=${task_id}" \
     "date=${today}")
 
@@ -241,9 +267,12 @@ scan_and_create_task() {
 
   rm -f "$TASK_DIR/${task_id}-reserved.md"
 
+  # atomic 태스크 생성: temp 파일에 먼저 작성 → 성공 시 rename
+  local tmp_filepath="${filepath}.tmp.$$"
+
   # frontmatter가 없으면 직접 생성
   if echo "$task_content" | head -1 | grep -q '^---$'; then
-    echo "$task_content" | sed "s/^id: .*/id: ${task_id}/" > "$filepath"
+    echo "$task_content" | sed "s/^id: .*/id: ${task_id}/" > "$tmp_filepath"
   else
     render_template "entity/task-night.md" \
       "task_id=${task_id}" \
@@ -251,8 +280,17 @@ scan_and_create_task() {
       "date=$(date '+%Y-%m-%d')" \
       "scope= []" \
       "content=${task_content}" \
-      "criteria=" > "$filepath"
+      "criteria=" > "$tmp_filepath"
   fi
+
+  # 내용 검증 후 atomic rename
+  if [ ! -s "$tmp_filepath" ]; then
+    log "  ❌ 태스크 생성 실패: 빈 파일 (${task_id})"
+    rm -f "$tmp_filepath"
+    return 1
+  fi
+  mv -f "$tmp_filepath" "$filepath"
+
   log "  ✅ 태스크 생성: $task_id - $title"
   log "     파일: $filename"
 

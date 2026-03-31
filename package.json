@@ -10,6 +10,11 @@
     "start": "node cli.js run",
     "night": "node cli.js night"
   },
+  "files": ["cli.js", "scripts/", "template/", "docs/roles/", "config.json"],
+  "engines": {
+    "node": ">=18"
+  },
+  "os": ["darwin", "linux"],
   "keywords": ["ai", "orchestration", "claude", "automation"],
   "license": "MIT"
 }

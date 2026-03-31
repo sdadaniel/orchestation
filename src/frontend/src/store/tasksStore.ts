@@ -215,10 +215,11 @@ export const useTasksStore = create<TasksState>()(
       },
 
       patchRequest: (id, patch) => {
+        const now = new Date().toISOString().slice(0, 19).replace("T", " ");
         set(
           (state) => ({
             requests: state.requests.map((r) =>
-              r.id === id ? { ...r, ...patch } : r,
+              r.id === id ? { ...r, ...patch, updated: now } : r,
             ),
           }),
           false,

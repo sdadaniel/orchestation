@@ -96,8 +96,26 @@ determine_complexity() {
     return
   fi
 
-  # complex 키워드 → complex
-  if $has_complex_keyword && ! $has_simple_keyword; then
+  # complex 키워드 카운트 (단일 키워드만으로 complex 판정하지 않음)
+  local complex_keyword_count=0
+  if $has_complex_keyword; then
+    complex_keyword_count=$(echo "$title" | grep -oiE "$complex_keywords" | wc -l | tr -d ' ')
+  fi
+
+  # scope ≤ 1 + complex 키워드 1개 이하 → simple (키워드 튜닝: 단일 키워드로 과분류 방지)
+  if [ "$scope_count" -le 1 ] && [ "$complex_keyword_count" -le 1 ]; then
+    echo "simple"
+    return
+  fi
+
+  # complex 키워드 2개 이상 → complex (확실한 복잡 태스크)
+  if [ "$complex_keyword_count" -ge 2 ]; then
+    echo "complex"
+    return
+  fi
+
+  # complex 키워드 1개 + scope ≥ 3 → complex
+  if $has_complex_keyword && [ "$scope_count" -ge 3 ]; then
     echo "complex"
     return
   fi
@@ -108,8 +126,8 @@ determine_complexity() {
     return
   fi
 
-  # scope ≤ 1 + no complex keyword → simple
-  if [ "$scope_count" -le 1 ] && ! $has_complex_keyword; then
+  # scope ≤ 2 + no complex keyword → simple
+  if [ "$scope_count" -le 2 ] && ! $has_complex_keyword; then
     echo "simple"
     return
   fi

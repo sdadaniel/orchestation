@@ -17,7 +17,7 @@ export interface RequestData {
   branch: string;
 }
 
-const VALID_STATUSES = ["pending", "stopped", "in_progress", "reviewing", "done", "rejected"] as const;
+const VALID_STATUSES = ["pending", "stopped", "in_progress", "reviewing", "done", "failed", "rejected"] as const;
 const VALID_PRIORITIES = ["high", "medium", "low"] as const;
 
 function isValidStatus(value: string): value is RequestData["status"] {

@@ -1,0 +1,10 @@
+.orchestration/
+src/frontend/
+tests/
+docs/
+output/
+swagger/
+.claude/
+.playwright-mcp/
+*.DS_Store
+repo-wt-*

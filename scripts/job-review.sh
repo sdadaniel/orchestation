@@ -8,12 +8,30 @@ set -euo pipefail
 TASK_ID="${1:?Usage: ./scripts/job-review.sh TASK-XXX SIGNAL_DIR}"
 SIGNAL_DIR="${2:?SIGNAL_DIR is required}"
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export PATH="$HOME/.local/bin:$PATH"
+PACKAGE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
+REPO_ROOT="$PROJECT_ROOT"  # backward compat alias
+export PACKAGE_DIR PROJECT_ROOT PATH="$HOME/.local/bin:$PATH"
 
-source "$REPO_ROOT/scripts/lib/signal.sh"
-source "$REPO_ROOT/scripts/lib/context-builder.sh"
-source "$REPO_ROOT/scripts/lib/model-selector.sh"
+# ── srcPaths 읽기 (환경변수 > config.json > 기본값) ──
+if [ -z "${SRC_PATHS:-}" ]; then
+  _cfg=""
+  if [ -f "$PROJECT_ROOT/.orchestration/config.json" ]; then
+    _cfg="$PROJECT_ROOT/.orchestration/config.json"
+  elif [ -f "$PROJECT_ROOT/config.json" ]; then
+    _cfg="$PROJECT_ROOT/config.json"
+  fi
+  if [ -n "$_cfg" ] && command -v jq &>/dev/null; then
+    SRC_PATHS=$(jq -r '.srcPaths // ["src/"] | join(",")' "$_cfg" 2>/dev/null || echo "src/")
+  else
+    SRC_PATHS="src/"
+  fi
+  export SRC_PATHS
+fi
+
+source "$PACKAGE_DIR/scripts/lib/signal.sh"
+source "$PACKAGE_DIR/scripts/lib/context-builder.sh"
+source "$PACKAGE_DIR/scripts/lib/model-selector.sh"
 
 # ─── Signal 안전장치 ──────────────────────────────────────────
 _signal_sent=false
@@ -66,7 +84,9 @@ fi
 # ─── Role prompt ───────────────────────────────────────────────
 
 ROLE_PROMPT=""
-ROLE_DIR="$REPO_ROOT/docs/roles"
+# 사용자 프로젝트 roles 우선, 없으면 패키지 내장 roles fallback
+ROLE_DIR="$PROJECT_ROOT/docs/roles"
+[ ! -d "$ROLE_DIR" ] && ROLE_DIR="$PACKAGE_DIR/docs/roles"
 if [ -n "$REVIEWER_ROLE" ] && [ -f "$ROLE_DIR/${REVIEWER_ROLE}.md" ]; then
   ROLE_PROMPT=$(cat "$ROLE_DIR/${REVIEWER_ROLE}.md")
   echo "🎭 Review Role: $REVIEWER_ROLE"
@@ -125,18 +145,26 @@ echo "📊 토큰: in=${input_tokens} out=${output_tokens} | model=${model} | co
 
 _signal_sent=true
 
-if echo "$result" | grep -q "승인"; then
+# 새 형식: "**Decision**: APPROVE" 먼저 체크, 없으면 기존 "승인" 폴백
+if echo "$result" | grep -qiE '\*\*Decision\*\*:\s*APPROVE'; then
+  _signal_sent=true
+  if [ "${SKIP_SIGNAL:-}" != "1" ]; then
+    signal_create "$SIGNAL_DIR" "$TASK_ID" "review-approved"
+  fi
+  echo "✅ [job-review] ${TASK_ID} 승인 (Decision: APPROVE) → review-approved signal"
+  exit 0
+elif echo "$result" | grep -q "승인"; then
   if ! echo "$result" | grep -q "수정요청"; then
     _signal_sent=true
     if [ "${SKIP_SIGNAL:-}" != "1" ]; then
       signal_create "$SIGNAL_DIR" "$TASK_ID" "review-approved"
     fi
-    echo "✅ [job-review] ${TASK_ID} 승인 → review-approved signal"
+    echo "✅ [job-review] ${TASK_ID} 승인 (레거시 매칭) → review-approved signal"
     exit 0
   fi
 fi
 
-# 수정요청 또는 판단 불가 → rejected
+# 수정요청, REJECT, 또는 판단 불가 → rejected
 _signal_sent=true
 if [ "${SKIP_SIGNAL:-}" != "1" ]; then
   signal_create "$SIGNAL_DIR" "$TASK_ID" "review-rejected"

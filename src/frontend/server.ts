@@ -46,12 +46,17 @@ app.prepare().then(() => {
 
   const wss = new WebSocketServer({ noServer: true });
   const wssTaskLogs = new WebSocketServer({ noServer: true });
+  const wssTaskTerminal = new WebSocketServer({ noServer: true });
 
   // Upgrade handler: route to correct WebSocket server
   server.on("upgrade", (req, socket, head) => {
     if (req.url === "/ws/terminal") {
       wss.handleUpgrade(req, socket, head, (ws) => {
         wss.emit("connection", ws, req);
+      });
+    } else if (req.url?.startsWith("/ws/task-terminal/")) {
+      wssTaskTerminal.handleUpgrade(req, socket, head, (ws) => {
+        wssTaskTerminal.emit("connection", ws, req);
       });
     } else if (req.url?.startsWith("/ws/task-logs/")) {
       wssTaskLogs.handleUpgrade(req, socket, head, (ws) => {
@@ -61,13 +66,76 @@ app.prepare().then(() => {
     // Other upgrade requests (e.g. /_next/webpack-hmr) pass through to Next.js
   });
 
-  // ── Task Logs WebSocket ───────────────────────────────────────
   const PROJECT_ROOT = resolve(process.cwd(), "../..");
   const OUTPUT_DIR = resolve(PROJECT_ROOT, "output");
 
+  // ── Task Terminal WebSocket (JSONL conversation stream) ──────
+  wssTaskTerminal.on("connection", (ws: WebSocket, req) => {
+    const taskId = req.url?.replace("/ws/task-terminal/", "") ?? "";
+    if (!/^TASK-\d+$/.test(taskId)) {
+      ws.close(4001, "invalid-task-id");
+      return;
+    }
+
+    console.log(`[ws:task-terminal] connected for ${taskId}`);
+
+    const ORCH_OUTPUT_DIR = resolve(PROJECT_ROOT, ".orchestration", "output");
+    const jsonlFiles = [
+      resolve(OUTPUT_DIR, `${taskId}-task-conversation.jsonl`),
+      resolve(ORCH_OUTPUT_DIR, `${taskId}-task-conversation.jsonl`),
+    ];
+    const fileOffsets = new Map<string, number>();
+
+    const sendJsonlUpdates = (filePath: string) => {
+      try {
+        if (!fs.existsSync(filePath)) return;
+        const stat = fs.statSync(filePath);
+        const offset = fileOffsets.get(filePath) ?? 0;
+        if (stat.size <= offset) return;
+
+        const fd = fs.openSync(filePath, "r");
+        const buf = Buffer.alloc(stat.size - offset);
+        fs.readSync(fd, buf, 0, buf.length, offset);
+        fs.closeSync(fd);
+        fileOffsets.set(filePath, stat.size);
+
+        const rawLines = buf.toString("utf-8").split("\n");
+        const validLines = rawLines.map((l) => l.trim()).filter((l) => l);
+        if (validLines.length > 0 && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "batch", lines: validLines }));
+        }
+      } catch {
+        // file may not exist yet
+      }
+    };
+
+    // Send existing content
+    for (const f of jsonlFiles) sendJsonlUpdates(f);
+
+    // Watch for new content
+    const watchOpts = { interval: 500 };
+    for (const f of jsonlFiles) {
+      watchFile(f, watchOpts, () => sendJsonlUpdates(f));
+    }
+
+    const cleanup = () => {
+      for (const f of jsonlFiles) unwatchFile(f);
+    };
+
+    ws.on("close", () => {
+      console.log(`[ws:task-terminal] disconnected for ${taskId}`);
+      cleanup();
+    });
+    ws.on("error", (err: Error) => {
+      console.error(`[ws:task-terminal] error for ${taskId}: ${err.message}`);
+      cleanup();
+    });
+  });
+
+  // ── Task Logs WebSocket ───────────────────────────────────────
   wssTaskLogs.on("connection", (ws: WebSocket, req) => {
     const taskId = req.url?.replace("/ws/task-logs/", "") ?? "";
-    if (!/^TASK-\d{3}$/.test(taskId)) {
+    if (!/^TASK-\d+$/.test(taskId)) {
       ws.close(4001, "invalid-task-id");
       return;
     }
