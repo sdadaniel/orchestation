@@ -1,6 +1,6 @@
 {
   "name": "@orchestration/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI Development Orchestration — 태스크 자동 실행, 리뷰, 머지 파이프라인",
   "bin": {
     "orchestrate": "./cli.js"
@@ -10,7 +10,8 @@
     "start": "node cli.js run",
     "night": "node cli.js night"
   },
-  "files": ["cli.js", "scripts/", "template/", "docs/roles/", "config.json"],
+  "files": ["cli.js", "scripts/", "template/", "docs/roles/", "config.json", "src/frontend/"],
+  "bundledDependencies": false,
   "engines": {
     "node": ">=18"
   },

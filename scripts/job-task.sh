@@ -50,6 +50,9 @@ source "$PACKAGE_DIR/scripts/lib/sed-inplace.sh"
 source "$PACKAGE_DIR/scripts/lib/context-builder.sh"
 source "$PACKAGE_DIR/scripts/lib/model-selector.sh"
 
+# ── SQLite DB (dual-write) ──
+DB_FILE="${PROJECT_ROOT:-.}/.orchestration/orchestration.db"
+
 # ─── 시작 시간 기록 + 타임아웃 (10분) ─────────────────────
 JOB_TIMEOUT="${JOB_TIMEOUT:-600}"  # 기본 10분
 date +%s > "${SIGNAL_DIR}/${TASK_ID}-start"
@@ -268,6 +271,18 @@ RESULT=$(echo "$JSON_OUTPUT" | jq -r '.result // empty' 2>/dev/null)
 echo "$JSON_OUTPUT" | jq . > "$OUTPUT_DIR/${TASK_ID}-task.json" 2>/dev/null
 log_tokens "task"
 
+# ── SQLite: token_usage 기록 ──
+if [ -f "$DB_FILE" ]; then
+  _db_input=$(echo "$JSON_OUTPUT" | jq '.usage.input_tokens // 0' 2>/dev/null || echo 0)
+  _db_output=$(echo "$JSON_OUTPUT" | jq '.usage.output_tokens // 0' 2>/dev/null || echo 0)
+  _db_cache_create=$(echo "$JSON_OUTPUT" | jq '.usage.cache_creation_input_tokens // .usage.cache_creation.ephemeral_1h_input_tokens // 0' 2>/dev/null || echo 0)
+  _db_cache_read=$(echo "$JSON_OUTPUT" | jq '.usage.cache_read_input_tokens // 0' 2>/dev/null || echo 0)
+  _db_cost=$(echo "$JSON_OUTPUT" | jq '.total_cost_usd // 0' 2>/dev/null || echo 0)
+  _db_duration=$(echo "$JSON_OUTPUT" | jq '.duration_ms // 0' 2>/dev/null || echo 0)
+  _db_model=$(echo "$JSON_OUTPUT" | jq -r '(.modelUsage // {} | keys | first) // "unknown"' 2>/dev/null || echo "unknown")
+  sqlite3 "$DB_FILE" "INSERT INTO token_usage(task_id,phase,model,input_tokens,output_tokens,cache_creation_tokens,cache_read_tokens,cost_usd,duration_ms) VALUES('${TASK_ID}','task','${_db_model}',${_db_input},${_db_output},${_db_cache_create},${_db_cache_read},${_db_cost},${_db_duration});" 2>/dev/null || true
+fi
+
 # 거절 감지: 결과 첫 줄이 "거절:" 으로 시작하면 task-rejected signal
 if echo "$RESULT" | head -1 | grep -q "^거절:"; then
   _signal_sent=true
@@ -276,6 +291,10 @@ if echo "$RESULT" | head -1 | grep -q "^거절:"; then
     signal_create "$SIGNAL_DIR" "$TASK_ID" "task-rejected"
   fi
   # task 파일 status를 rejected로 직접 변경 (개별 실행 시 orchestrate.sh가 없으므로)
+  if [ -f "$DB_FILE" ]; then
+    sqlite3 "$DB_FILE" "UPDATE tasks SET status='rejected', updated=datetime('now','localtime') WHERE id='${TASK_ID}';" 2>/dev/null || true
+    sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,to_status) VALUES('${TASK_ID}','task_rejected','rejected');" 2>/dev/null || true
+  fi
   task_file=$(find "$REPO_ROOT/.orchestration/tasks" -name "${TASK_ID}-*" -type f 2>/dev/null | head -1)
   if [ -n "$task_file" ]; then
     sed_inplace "s/^status: .*/status: rejected/" "$task_file"

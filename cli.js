@@ -122,6 +122,7 @@ function printHelp() {
   console.log(`orchestrate v${pkg.version} — AI Development Orchestration CLI\n`);
   console.log("Usage:  orchestrate <command> [options]\n");
   console.log("Commands:");
+  console.log("  start [-p PORT]  Init + install deps + launch dashboard (default: 3000)");
   console.log("  init        Initialize project (creates .orchestration/)");
   console.log("  run         Run the orchestration pipeline");
   console.log("  night       Start Night Worker (autonomous overnight runs)");
@@ -156,6 +157,94 @@ if (command === "--version" || command === "-v") {
 }
 
 switch (command) {
+  case "start": {
+    // init (if needed) + install frontend deps (if needed) + launch dashboard
+    const orchExists = fs.existsSync(ORCH_DIR);
+    if (!orchExists) {
+      console.log("Initializing orchestration...\n");
+      if (!checkDependencies()) {
+        process.exit(1);
+      }
+      ensureOrchDir();
+      ensureConfig();
+      ensureGitignore();
+      console.log("  Initialization complete.\n");
+    }
+
+    const frontendPkg = path.join(FRONTEND_DIR, "package.json");
+    if (!fs.existsSync(frontendPkg)) {
+      console.error("Error: Frontend source not found at", FRONTEND_DIR);
+      console.error("Make sure the package was installed correctly.");
+      process.exit(1);
+    }
+
+    // Install frontend dependencies if node_modules missing
+    const frontendNodeModules = path.join(FRONTEND_DIR, "node_modules");
+    if (!fs.existsSync(frontendNodeModules)) {
+      console.log("Installing dashboard dependencies (first run)...");
+      try {
+        execSync("npm install --production=false", {
+          cwd: FRONTEND_DIR,
+          stdio: "inherit",
+        });
+        console.log("  Dependencies installed.\n");
+      } catch (err) {
+        console.error("Failed to install dashboard dependencies.");
+        process.exit(1);
+      }
+    }
+
+    // Port: -p flag > find available port starting from 3000
+    const net = require("net");
+    let requestedPort = 3000;
+    const pIdx = args.indexOf("-p");
+    if (pIdx !== -1 && args[pIdx + 1]) {
+      requestedPort = parseInt(args[pIdx + 1], 10);
+      if (isNaN(requestedPort)) {
+        console.error("Error: Invalid port number:", args[pIdx + 1]);
+        process.exit(1);
+      }
+    }
+
+    function isPortFree(port) {
+      return new Promise((resolve) => {
+        const srv = net.createServer();
+        srv.once("error", () => resolve(false));
+        srv.once("listening", () => { srv.close(); resolve(true); });
+        srv.listen(port);
+      });
+    }
+
+    async function findPort(start) {
+      for (let p = start; p < start + 20; p++) {
+        if (await isPortFree(p)) return p;
+      }
+      return null;
+    }
+
+    findPort(requestedPort).then((port) => {
+      if (!port) {
+        console.error(`Error: No available port found (tried ${requestedPort}-${requestedPort + 19})`);
+        process.exit(1);
+      }
+      if (port !== requestedPort && pIdx === -1) {
+        console.log(`Port ${requestedPort} in use, using ${port} instead.`);
+      }
+      console.log(`Starting dashboard on http://localhost:${port} ...\n`);
+      const startProc = spawn("npm", ["run", "dev"], {
+        cwd: FRONTEND_DIR,
+        stdio: "inherit",
+        env: { ...process.env, PROJECT_ROOT: process.cwd(), PORT: String(port) },
+      });
+      startProc.on("error", (err) => {
+        console.error("Failed to start dashboard:", err.message);
+        process.exit(1);
+      });
+      startProc.on("close", (code) => process.exit(code || 0));
+    });
+    break;
+  }
+
   case "init": {
     console.log("Initializing orchestration...\n");
 

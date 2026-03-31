@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-export const PROJECT_ROOT = path.resolve(process.cwd(), "..", "..");
+export const PROJECT_ROOT = process.env.PROJECT_ROOT || path.resolve(process.cwd(), "..", "..");
 
 export const TASKS_DIR = (() => {
   const o = path.join(PROJECT_ROOT, ".orchestration", "tasks");

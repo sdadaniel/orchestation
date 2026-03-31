@@ -1,12 +1,54 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import { parseAllNotices, getNoticesDir } from "@/lib/notice-parser";
+import type { NoticeData, NoticeType } from "@/lib/notice-parser";
 import { getErrorMessage } from "@/lib/error-utils";
 import { generateSlug } from "@/lib/slug-utils";
+import { getDb, isDbAvailable } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+interface NoticeRow {
+  notice_id: string | null;
+  title: string | null;
+  content: string | null;
+  type: string | null;
+  created: string | null;
+}
+
+const VALID_NOTICE_TYPES = ["info", "warning", "error", "request"] as const;
+
+function toNoticeType(value: string | null): NoticeType {
+  if (value && (VALID_NOTICE_TYPES as readonly string[]).includes(value)) {
+    return value as NoticeType;
+  }
+  return "info";
+}
+
 export async function GET() {
+  if (isDbAvailable()) {
+    const db = getDb()!;
+    try {
+      const rows = db.prepare(
+        "SELECT notice_id, title, content, type, created FROM notices ORDER BY notice_id DESC"
+      ).all() as NoticeRow[];
+
+      const notices: NoticeData[] = rows.map((row) => ({
+        id: row.notice_id ?? "",
+        title: row.title ?? "",
+        type: toNoticeType(row.type),
+        read: false,
+        created: row.created ?? "",
+        updated: row.created ?? "",
+        content: row.content ?? "",
+      }));
+
+      return NextResponse.json(notices);
+    } catch {
+      // Fall through to file-based
+    }
+  }
+
   const notices = parseAllNotices();
   return NextResponse.json(notices);
 }

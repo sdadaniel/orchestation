@@ -2,14 +2,70 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { parseAllRequests, getRequestsDir } from "@/lib/request-parser";
+import type { RequestData } from "@/lib/request-parser";
 import { generateNextTaskId } from "@/lib/task-id";
 import { getErrorMessage } from "@/lib/error-utils";
 import { PROJECT_ROOT } from "@/lib/paths";
 import { generateSlug } from "@/lib/slug-utils";
+import { getDb, isDbAvailable } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+interface RequestRow {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  created: string | null;
+  updated: string | null;
+  content: string | null;
+  depends_on: string | null;
+  scope: string | null;
+  sort_order: number;
+  branch: string | null;
+}
+
+function parseJsonArray(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function GET() {
+  if (isDbAvailable()) {
+    const db = getDb()!;
+    const rows = db.prepare(
+      "SELECT id, title, status, priority, created, updated, content, depends_on, scope, sort_order, branch FROM tasks ORDER BY id"
+    ).all() as RequestRow[];
+
+    const statusOrder: Record<string, number> = { pending: 0, reviewing: 1, in_progress: 2, rejected: 3, done: 4 };
+    const requests: RequestData[] = rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      status: row.status as RequestData["status"],
+      priority: row.priority as RequestData["priority"],
+      created: row.created ?? "",
+      updated: row.updated ?? "",
+      content: row.content ?? "",
+      depends_on: parseJsonArray(row.depends_on),
+      scope: parseJsonArray(row.scope),
+      sort_order: row.sort_order ?? 0,
+      branch: row.branch ?? "",
+    }));
+
+    requests.sort((a, b) => {
+      const so = (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99);
+      if (so !== 0) return so;
+      return a.id.localeCompare(b.id);
+    });
+
+    return NextResponse.json(requests);
+  }
+
   const requests = parseAllRequests();
   return NextResponse.json(requests);
 }

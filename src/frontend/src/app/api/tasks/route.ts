@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseAllTasks } from "@/lib/parser";
+import type { TaskFrontmatter } from "@/lib/parser";
 import fs from "fs";
 import path from "path";
 import { TASKS_DIR } from "@/lib/paths";
@@ -7,10 +8,48 @@ import { generateNextTaskId } from "@/lib/task-id";
 import { getErrorMessage } from "@/lib/error-utils";
 import { renderTemplate } from "@/lib/template";
 import { generateSlug } from "@/lib/slug-utils";
+import { getDb, isDbAvailable } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+interface TaskRow {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  depends_on: string | null;
+  role: string | null;
+  scope: string | null;
+}
+
+function parseJsonArray(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function GET() {
+  if (isDbAvailable()) {
+    const db = getDb()!;
+    const rows = db.prepare("SELECT id, title, status, priority, depends_on, role, scope FROM tasks ORDER BY id").all() as TaskRow[];
+    const tasks: TaskFrontmatter[] = rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      status: row.status as TaskFrontmatter["status"],
+      priority: row.priority as TaskFrontmatter["priority"],
+      depends_on: parseJsonArray(row.depends_on),
+      blocks: [],
+      parallel_with: [],
+      role: row.role ?? "",
+      affected_files: parseJsonArray(row.scope),
+    }));
+    return NextResponse.json(tasks);
+  }
+
   const tasks = parseAllTasks();
   return NextResponse.json(tasks);
 }

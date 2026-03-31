@@ -70,10 +70,15 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# ── 프로젝트별 임시 경로 격리 ──────────────────────────
+_proj_hash=$(echo "$REPO_ROOT" | cksum | awk '{print $1}')
+NW_TMP_PREFIX="/tmp/orchestrate-${_proj_hash}"
+mkdir -p "$NW_TMP_PREFIX"
+
 # ── 상태 파일 ──────────────────────────────────────────
-STATE_FILE="/tmp/night-worker.state"
+STATE_FILE="${NW_TMP_PREFIX}/night-worker.state"
 LOG_FILE="$LOG_DIR/night-worker.log"
-PID_FILE="/tmp/night-worker.pid"
+PID_FILE="${NW_TMP_PREFIX}/night-worker.pid"
 
 echo $$ > "$PID_FILE"
 

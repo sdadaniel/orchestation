@@ -4,3 +4,8 @@ test*.json
 src/frontend/package-lock.json
 .claude/worktrees/
 .playwright-mcp/
+
+# Dashboard build output
+src/frontend/.next/
+*.tgz
+.orchestration/orchestration.db

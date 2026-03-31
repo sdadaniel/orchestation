@@ -8,7 +8,8 @@ import { resolve } from "path";
 import taskRunnerManager from "./src/lib/task-runner-manager";
 import { getErrorMessage } from "./src/lib/error-utils";
 
-const CRASH_LOG = resolve(process.cwd(), "../..", ".orchestration/output/crash.log");
+const _PROJECT_ROOT = process.env.PROJECT_ROOT || resolve(process.cwd(), "../..");
+const CRASH_LOG = resolve(_PROJECT_ROOT, ".orchestration/output/crash.log");
 
 function logCrash(type: string, err: Error | unknown) {
   const ts = new Date().toISOString();
@@ -66,7 +67,7 @@ app.prepare().then(() => {
     // Other upgrade requests (e.g. /_next/webpack-hmr) pass through to Next.js
   });
 
-  const PROJECT_ROOT = resolve(process.cwd(), "../..");
+  const PROJECT_ROOT = _PROJECT_ROOT;
   const OUTPUT_DIR = resolve(PROJECT_ROOT, "output");
 
   // ── Task Terminal WebSocket (JSONL conversation stream) ──────

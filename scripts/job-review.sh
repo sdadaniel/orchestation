@@ -33,6 +33,9 @@ source "$PACKAGE_DIR/scripts/lib/signal.sh"
 source "$PACKAGE_DIR/scripts/lib/context-builder.sh"
 source "$PACKAGE_DIR/scripts/lib/model-selector.sh"
 
+# ── SQLite DB (dual-write) ──
+DB_FILE="${PROJECT_ROOT:-.}/.orchestration/orchestration.db"
+
 # ─── Signal 안전장치 ──────────────────────────────────────────
 _signal_sent=false
 trap '_ec=$?
@@ -141,6 +144,11 @@ model=$(echo "$JSON_OUTPUT" | jq -r '(.modelUsage // {} | keys | first) // "unkn
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] ${TASK_ID} | phase=review | model=${model} | input=${input_tokens} cache_create=${cache_create} cache_read=${cache_read} output=${output_tokens} | turns=${num_turns} | duration=${duration}ms | cost=\$${cost}" >> "$TOKEN_LOG"
 echo "📊 토큰: in=${input_tokens} out=${output_tokens} | model=${model} | cost=\$${cost}"
 
+# ── SQLite: token_usage 기록 ──
+if [ -f "$DB_FILE" ]; then
+  sqlite3 "$DB_FILE" "INSERT INTO token_usage(task_id,phase,model,input_tokens,output_tokens,cache_creation_tokens,cache_read_tokens,cost_usd,duration_ms) VALUES('${TASK_ID}','review','${model}',${input_tokens},${output_tokens},${cache_create},${cache_read},${cost},${duration});" 2>/dev/null || true
+fi
+
 # ─── 승인/수정요청 판단 ────────────────────────────────────────
 
 _signal_sent=true
@@ -151,6 +159,9 @@ if echo "$result" | grep -qiE '\*\*Decision\*\*:\s*APPROVE'; then
   if [ "${SKIP_SIGNAL:-}" != "1" ]; then
     signal_create "$SIGNAL_DIR" "$TASK_ID" "review-approved"
   fi
+  if [ -f "$DB_FILE" ]; then
+    sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,to_status) VALUES('${TASK_ID}','review_approved','done');" 2>/dev/null || true
+  fi
   echo "✅ [job-review] ${TASK_ID} 승인 (Decision: APPROVE) → review-approved signal"
   exit 0
 elif echo "$result" | grep -q "승인"; then
@@ -158,6 +169,9 @@ elif echo "$result" | grep -q "승인"; then
     _signal_sent=true
     if [ "${SKIP_SIGNAL:-}" != "1" ]; then
       signal_create "$SIGNAL_DIR" "$TASK_ID" "review-approved"
+    fi
+    if [ -f "$DB_FILE" ]; then
+      sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,to_status) VALUES('${TASK_ID}','review_approved','done');" 2>/dev/null || true
     fi
     echo "✅ [job-review] ${TASK_ID} 승인 (레거시 매칭) → review-approved signal"
     exit 0
@@ -168,6 +182,9 @@ fi
 _signal_sent=true
 if [ "${SKIP_SIGNAL:-}" != "1" ]; then
   signal_create "$SIGNAL_DIR" "$TASK_ID" "review-rejected"
+fi
+if [ -f "$DB_FILE" ]; then
+  sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,to_status) VALUES('${TASK_ID}','review_rejected','reviewing');" 2>/dev/null || true
 fi
 echo "🔄 [job-review] ${TASK_ID} 수정요청 → review-rejected signal"
 exit 1

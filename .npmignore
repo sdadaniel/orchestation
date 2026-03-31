@@ -1,10 +1,28 @@
+# 프로젝트 내부 (패키지에 불필요)
 .orchestration/
-src/frontend/
-tests/
-docs/
-output/
-swagger/
 .claude/
 .playwright-mcp/
-*.DS_Store
+output/
+swagger/
+tests/
 repo-wt-*
+*.DS_Store
+
+# docs 중 roles만 포함 (나머지 제외)
+docs/architecture/
+docs/errors/
+docs/notice/
+docs/plan/
+docs/prd/
+docs/requests/
+docs/task/
+docs/todo/
+docs/README.md
+
+# 프론트엔드: 소스만 포함, 빌드/런타임 산출물 제외
+src/frontend/node_modules/
+src/frontend/.next/
+src/frontend/test-results/
+src/frontend/playwright-report/
+src/frontend/e2e/
+src/frontend/tsconfig.tsbuildinfo
