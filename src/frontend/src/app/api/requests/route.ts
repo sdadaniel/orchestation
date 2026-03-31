@@ -5,7 +5,7 @@ import { parseAllRequests, getRequestsDir } from "@/lib/request-parser";
 import type { RequestData } from "@/lib/request-parser";
 import { generateNextTaskId } from "@/lib/task-id";
 import { getErrorMessage } from "@/lib/error-utils";
-import { PROJECT_ROOT } from "@/lib/paths";
+import { PROJECT_ROOT, ROLES_DIR } from "@/lib/paths";
 import { generateSlug } from "@/lib/slug-utils";
 import { getDb, isDbAvailable } from "@/lib/db";
 
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
       : "";
     let validRoles: string[];
     try {
-      const rolesDir = path.join(PROJECT_ROOT, "docs", "roles");
+      const rolesDir = ROLES_DIR;
       validRoles = fs.readdirSync(rolesDir)
         .filter((f) => f.endsWith(".md") && !f.startsWith("reviewer-") && f !== "README.md")
         .map((f) => f.replace(".md", ""));

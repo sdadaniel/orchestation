@@ -234,7 +234,7 @@ switch (command) {
       const startProc = spawn("npm", ["run", "dev"], {
         cwd: FRONTEND_DIR,
         stdio: "inherit",
-        env: { ...process.env, PROJECT_ROOT: process.cwd(), PORT: String(port) },
+        env: { ...process.env, PACKAGE_DIR: __dirname, PROJECT_ROOT: process.cwd(), PORT: String(port) },
       });
       startProc.on("error", (err) => {
         console.error("Failed to start dashboard:", err.message);

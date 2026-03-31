@@ -8,6 +8,17 @@ import { getErrorMessage } from "./error-utils";
 import { loadSettings } from "./settings";
 import { pipeProcessLogs, killProcessGracefully } from "./process-utils";
 
+/** 프로젝트별 /tmp/ 경로 prefix (orchestrate.sh와 동일한 해시 사용) */
+function getTmpPrefix(): string {
+  const projRoot = process.env.PROJECT_ROOT || path.resolve(process.cwd(), "..", "..");
+  try {
+    const hash = execSync(`echo "${projRoot}" | cksum | awk '{print $1}'`).toString().trim();
+    return `/tmp/orchestrate-${hash}`;
+  } catch {
+    return "/tmp/orchestrate-default";
+  }
+}
+
 export type OrchestrationStatus = "idle" | "running" | "completed" | "failed";
 
 export interface OrchestrationStatusData {
@@ -145,7 +156,7 @@ class OrchestrationManager {
     }
 
     // lock 파일 + PID 생존으로 중복 체크
-    const lockPidFile = "/tmp/orchestrate.lock/pid";
+    const lockPidFile = `${getTmpPrefix()}/lock/pid`;
     if (fs.existsSync(lockPidFile)) {
       try {
         const lockPid = parseInt(fs.readFileSync(lockPidFile, "utf-8").trim(), 10);
@@ -155,15 +166,16 @@ class OrchestrationManager {
         }
       } catch {
         // 죽어있음 → lock 제거
-        fs.rmSync("/tmp/orchestrate.lock", { recursive: true, force: true });
+        fs.rmSync(`${getTmpPrefix()}/lock`, { recursive: true, force: true });
       }
     }
 
     this.launching = true;
     const runId = ++this.currentRunId;
 
-    const projectRoot = path.resolve(process.cwd(), "..", "..");
-    const scriptPath = path.join(projectRoot, "scripts", "orchestrate.sh");
+    const projectRoot = process.env.PROJECT_ROOT || path.resolve(process.cwd(), "..", "..");
+    const packageDir = process.env.PACKAGE_DIR || projectRoot;
+    const scriptPath = path.join(packageDir, "scripts", "orchestrate.sh");
 
     // 상태 리셋
     this.state = {
@@ -186,6 +198,8 @@ class OrchestrationManager {
         cwd: projectRoot,
         env: {
           ...process.env,
+          PACKAGE_DIR: packageDir,
+          PROJECT_ROOT: projectRoot,
           MAX_PARALLEL: String(settings.maxParallel),
           BASE_BRANCH: settings.baseBranch,
         },
@@ -256,7 +270,7 @@ class OrchestrationManager {
       setTimeout(() => { try { process.kill(killPid, "SIGKILL"); } catch { /* ignore */ } }, 2000);
     }
     // lock PID로도 kill
-    const lockPidFile = "/tmp/orchestrate.lock/pid";
+    const lockPidFile = `${getTmpPrefix()}/lock/pid`;
     if (fs.existsSync(lockPidFile)) {
       try {
         const lockPid = parseInt(fs.readFileSync(lockPidFile, "utf-8").trim(), 10);
@@ -284,8 +298,9 @@ class OrchestrationManager {
     this.markAllInProgressAsStopped();
 
     // 4) lock/signal/PID 정리
-    try { fs.rmSync("/tmp/orchestrate.lock", { recursive: true, force: true }); } catch { /* ignore */ }
-    try { fs.rmSync("/tmp/orchestrate-retry", { recursive: true, force: true }); } catch { /* ignore */ }
+    const _tmpPfx = getTmpPrefix();
+    try { fs.rmSync(`${_tmpPfx}/lock`, { recursive: true, force: true }); } catch { /* ignore */ }
+    try { fs.rmSync(`${_tmpPfx}/retry`, { recursive: true, force: true }); } catch { /* ignore */ }
 
     // 5) 상태 즉시 반영
     this.state.status = "failed";
@@ -391,7 +406,7 @@ class OrchestrationManager {
       if (cleaned > 0) this.appendLog(`[orchestrate] ${cleaned}개 좀비 태스크 정리 완료`);
 
       // stale lock 정리
-      const lockDir = "/tmp/orchestrate.lock";
+      const lockDir = `${getTmpPrefix()}/lock`;
       if (fs.existsSync(lockDir)) {
         const pidFile = path.join(lockDir, "pid");
         if (fs.existsSync(pidFile)) {

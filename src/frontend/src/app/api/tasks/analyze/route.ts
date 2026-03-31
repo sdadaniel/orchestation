@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { spawnClaude, CLAUDE_DEFAULT_TIMEOUT_MS, ClaudeChildProcess } from "@/lib/claude-cli";
 import { renderTemplate } from "@/lib/template";
-import { PROJECT_ROOT } from "@/lib/paths";
+import { PROJECT_ROOT, ROLES_DIR } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -21,7 +21,7 @@ interface AnalyzedTask {
 /** docs/roles/ 폴더에서 role 목록을 동적으로 읽기 (reviewer-* 제외) */
 function getAvailableRoles(): string[] {
   try {
-    const rolesDir = path.join(PROJECT_ROOT, "docs", "roles");
+    const rolesDir = ROLES_DIR;
     return fs.readdirSync(rolesDir)
       .filter((f) => f.endsWith(".md") && !f.startsWith("reviewer-") && f !== "README.md")
       .map((f) => f.replace(".md", ""));
