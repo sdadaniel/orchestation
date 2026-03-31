@@ -80,7 +80,7 @@ export default function SettingsPage() {
   const isDirty = settings !== null && JSON.stringify(draft) !== JSON.stringify(settings);
 
   return (
-    <PageLayout>
+    <PageLayout className="max-w-2xl mx-auto">
       <PageHeader title="Settings">
         <button
           onClick={handleSave}
