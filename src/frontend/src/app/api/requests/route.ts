@@ -8,6 +8,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { PROJECT_ROOT, ROLES_DIR } from "@/lib/paths";
 import { generateSlug } from "@/lib/slug-utils";
 import { getDb, isDbAvailable } from "@/lib/db";
+import { syncAllTaskFilesToDb, syncTaskFileToDb } from "@/lib/task-db-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ function parseJsonArray(value: string | null): string[] {
 }
 
 export async function GET() {
+  syncAllTaskFilesToDb();
   if (isDbAvailable()) {
     const db = getDb()!;
     const rows = db.prepare(
@@ -139,6 +141,8 @@ ${bodyContent}
     }
     const filePath = `${dir}/${fileName}`;
     fs.writeFileSync(filePath, fileContent, "utf-8");
+
+    syncTaskFileToDb(filePath);
 
     return NextResponse.json(
       { id: taskId, title: sanitizedTitle, status: "pending", priority: taskPriority, created: today, updated: today, content: bodyContent },

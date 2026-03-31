@@ -5,6 +5,7 @@ import { findRequestFile, parseRequestFile, parseAllRequests, getRequestsDir } f
 import { getErrorMessage } from "@/lib/error-utils";
 import { OUTPUT_DIR } from "@/lib/paths";
 import { generateSlug } from "@/lib/slug-utils";
+import { deleteTaskFromDb, syncTaskFileToDb } from "@/lib/task-db-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -159,8 +160,10 @@ export async function PUT(
       if (newPath !== filePath) {
         fs.unlinkSync(filePath);
       }
+      syncTaskFileToDb(newPath);
     } else {
       fs.writeFileSync(filePath, fileContent, "utf-8");
+      syncTaskFileToDb(filePath);
     }
 
     // Return updated data
@@ -190,6 +193,7 @@ export async function DELETE(
 
   try {
     fs.unlinkSync(filePath);
+    deleteTaskFromDb(id);
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json(

@@ -193,7 +193,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   return (
-    <div className="space-y-5 max-w-3xl mx-auto">
+    <div className="space-y-5 max-w-3xl mx-auto pb-[500px]">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button

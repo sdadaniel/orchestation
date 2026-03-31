@@ -4,6 +4,7 @@ import path from "path";
 import matter from "gray-matter";
 import { getErrorMessage } from "@/lib/error-utils";
 import { TASKS_DIR } from "@/lib/paths";
+import { deleteTaskFromDb, syncTaskContentToDb } from "@/lib/task-db-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,7 @@ export async function PUT(
     const content = fs.readFileSync(filePath, "utf-8");
     const { data, content: markdownBody } = matter(content);
 
-    const validStatuses = ["pending", "in_progress", "in_review", "done"];
+    const validStatuses = ["pending", "stopped", "in_progress", "reviewing", "done", "failed", "rejected"];
     const validPriorities = ["critical", "high", "medium", "low"];
 
     if (body.status !== undefined) {
@@ -121,6 +122,7 @@ export async function PUT(
 
     const updated = matter.stringify(markdownBody, data);
     fs.writeFileSync(filePath, updated, "utf-8");
+    syncTaskContentToDb(filePath, updated);
 
     return NextResponse.json({
       id: data.id,
@@ -158,6 +160,7 @@ export async function DELETE(
 
     try {
       fs.unlinkSync(filePath);
+      deleteTaskFromDb(id);
     } catch (deleteErr) {
       return NextResponse.json(
         { error: getErrorMessage(deleteErr, "Failed to delete task file") },

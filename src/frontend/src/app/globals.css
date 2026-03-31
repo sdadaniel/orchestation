@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* 스크롤바 숨기기 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* 다크모드 input 배경 강제 */
 input, textarea, select {
   color-scheme: dark;

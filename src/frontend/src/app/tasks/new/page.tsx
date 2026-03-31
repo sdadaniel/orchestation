@@ -156,7 +156,7 @@ export default function NewTaskPage() {
   const canConfirm = !confirming && tasks.length > 0 && tasks.every((t) => t.title.trim());
 
   return (
-    <div className="space-y-4 max-w-3xl mx-auto">
+    <div className="space-y-4 max-w-3xl mx-auto pb-[500px]">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button

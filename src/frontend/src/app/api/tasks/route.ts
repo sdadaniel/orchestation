@@ -9,6 +9,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { renderTemplate } from "@/lib/template";
 import { generateSlug } from "@/lib/slug-utils";
 import { getDb, isDbAvailable } from "@/lib/db";
+import { syncAllTaskFilesToDb, syncTaskFileToDb } from "@/lib/task-db-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ function parseJsonArray(value: string | null): string[] {
 }
 
 export async function GET() {
+  syncAllTaskFilesToDb();
   if (isDbAvailable()) {
     const db = getDb()!;
     const rows = db.prepare("SELECT id, title, status, priority, depends_on, role, scope FROM tasks ORDER BY id").all() as TaskRow[];
@@ -114,6 +116,7 @@ export async function POST(request: Request) {
     const slug = generateSlug(sanitizedTitle);
     const filePath = path.join(TASKS_DIR, `${taskId}-${slug}.md`);
     fs.writeFileSync(filePath, content, "utf-8");
+    syncTaskFileToDb(filePath);
 
     return NextResponse.json(
       {

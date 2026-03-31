@@ -80,11 +80,32 @@ get_field() {
 # ── YAML frontmatter 리스트 필드 읽기 ──────────────────
 # 인자: $1=파일경로, $2=필드명
 # 출력: 리스트 항목을 한 줄씩 출력
+# 지원 형식:
+#   depends_on: [TASK-001, TASK-002]   (인라인 배열)
+#   depends_on:                         (YAML 리스트)
+#     - TASK-001
+#     - TASK-002
 get_list() {
   awk -v key="$2" '
     NR==1 && /^---$/ { in_fm=1; next }
     in_fm && /^---$/ { exit }
-    in_fm && $0 ~ "^"key":" { in_list=1; next }
+    in_fm && $0 ~ "^"key":" {
+      # 인라인 배열 체크: depends_on: [TASK-001, TASK-002]
+      if ($0 ~ /\[.+\]/) {
+        val = $0
+        sub(/.*\[/, "", val)
+        sub(/\].*/, "", val)
+        n = split(val, items, ",")
+        for (i = 1; i <= n; i++) {
+          gsub(/^[ ]+|[ ]+$/, "", items[i])
+          if (items[i] != "") print items[i]
+        }
+        exit
+      }
+      # 인라인 빈 배열: depends_on: []
+      if ($0 ~ /\[\]/) exit
+      in_list=1; next
+    }
     in_list && /^ +- / { sub(/^ +- /, ""); print; next }
     in_list && /^[^ ]/ { exit }
   ' "$1"

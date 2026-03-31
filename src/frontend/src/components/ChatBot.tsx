@@ -331,7 +331,7 @@ export function ChatBot() {
               </div>
 
               {/* 메시지 */}
-              <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+              <div className="flex-1 overflow-y-auto scrollbar-hide px-3 py-2 space-y-3">
                 {(!activeSession || activeSession.messages.length === 0) && (
                   <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
                     메시지를 입력하세요

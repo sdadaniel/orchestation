@@ -5,19 +5,30 @@ import fs from "fs";
 const PROJECT_ROOT = resolve(process.cwd(), "../..");
 const DB_PATH = resolve(PROJECT_ROOT, ".orchestration", "orchestration.db");
 
-let _db: Database.Database | null = null;
+let _readonlyDb: Database.Database | null = null;
+let _writableDb: Database.Database | null = null;
 
 export function getDb(): Database.Database | null {
   if (!fs.existsSync(DB_PATH)) return null;
-  if (!_db) {
-    _db = new Database(DB_PATH, { readonly: true });
+  if (!_readonlyDb) {
+    _readonlyDb = new Database(DB_PATH, { readonly: true });
   }
-  return _db;
+  return _readonlyDb;
+}
+
+export function getWritableDb(): Database.Database | null {
+  if (!fs.existsSync(DB_PATH)) return null;
+  if (!_writableDb) {
+    _writableDb = new Database(DB_PATH);
+  }
+  return _writableDb;
 }
 
 export function closeDb() {
-  _db?.close();
-  _db = null;
+  _readonlyDb?.close();
+  _readonlyDb = null;
+  _writableDb?.close();
+  _writableDb = null;
 }
 
 // Helper: check if SQLite DB exists and has data

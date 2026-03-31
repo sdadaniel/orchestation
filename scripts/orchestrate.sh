@@ -499,7 +499,7 @@ stop_dependents() {
       _set_status "$tf" "stopped"
       _db_set_status "$tid" "stopped"
       _db_insert_event "$tid" "status_change" "stopped"
-      git -C "$REPO_ROOT" add "$tf"
+      git -C "$REPO_ROOT" add -f "$tf"
       git -C "$REPO_ROOT" commit --only "$tf" \
         -m "chore(${tid}): status → stopped (dependency ${failed_id} failed)" || true
       # 재귀: 이 태스크에 의존하는 것도 중단
@@ -647,7 +647,7 @@ start_task() {
     _set_status "$tf" "in_progress"
     _db_set_status "$task_id" "in_progress"
     _db_insert_event "$task_id" "status_change" "in_progress"
-    git -C "$REPO_ROOT" add "$tf"
+    git -C "$REPO_ROOT" add -f "$tf"
     # commit은 메인 루프 끝에서 배치로 처리
   fi
 
@@ -696,7 +696,7 @@ start_task() {
         _set_status "$tf" "pending"
         _db_set_status "$task_id" "pending"
         _db_insert_event "$task_id" "status_change" "pending"
-        git -C "$REPO_ROOT" add "$tf"
+        git -C "$REPO_ROOT" add -f "$tf"
         # commit은 메인 루프 끝에서 배치로 처리
       fi
       return 1
@@ -1046,7 +1046,7 @@ _mark_task_failed() {
     _set_status "$tf" "failed"
     _db_set_status "$task_id" "failed"
     _db_insert_event "$task_id" "status_change" "failed"
-    git -C "$REPO_ROOT" add "$tf"
+    git -C "$REPO_ROOT" add -f "$tf"
     # commit은 메인 루프 끝에서 배치로 처리
   fi
 
@@ -1080,7 +1080,7 @@ _mark_task_rejected() {
     _set_status "$tf" "rejected"
     _db_set_status "$task_id" "rejected"
     _db_insert_event "$task_id" "status_change" "rejected"
-    git -C "$REPO_ROOT" add "$tf"
+    git -C "$REPO_ROOT" add -f "$tf"
     # commit은 메인 루프 끝에서 배치로 처리
   fi
 
