@@ -38,7 +38,7 @@ function getTotalTokens(entry: CostEntry): number {
 
 const COMPARATORS: Record<SortColumn, (a: CostEntry, b: CostEntry) => number> = {
   taskId: (a, b) => a.taskId.localeCompare(b.taskId, undefined, { numeric: true }),
-  phase: (a, b) => a.phase.localeCompare(b.phase),
+  phase: (a, b) => (a.phase ?? "").localeCompare(b.phase ?? ""),
   model: (a, b) => a.model.localeCompare(b.model),
   cost: (a, b) => a.costUsd - b.costUsd,
   time: (a, b) => a.durationMs - b.durationMs,
