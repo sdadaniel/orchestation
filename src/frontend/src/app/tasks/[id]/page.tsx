@@ -93,8 +93,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         } else if (data.status === "completed" || data.status === "failed") {
           setRunStatus(data.status);
         }
-      } catch (err) {
-        console.error("[TaskDetail] checkRunStatus error:", err);
+      } catch {
+        // silently ignore check errors
       }
     }
     checkRunStatus();
@@ -107,7 +107,9 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       try {
         const taskRes = await fetch(`/api/requests/${id}`);
         if (taskRes.ok) setTask(await taskRes.json());
-      } catch (err) { console.error("[TaskDetail] handleRunStatusChange refetch error:", err); }
+      } catch {
+        // silently ignore refetch errors
+      }
     }
   }, [id]);
 
@@ -150,13 +152,10 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       }, 500);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        // 409는 이미 멈춘 경우 → 무시, 그 외에만 알림
-        if (res.status !== 409) {
-          console.warn("Stop failed:", data.error);
-        }
+        // 409는 이미 멈춘 경우 → 무시, 그 외에만 무시
+        // (non-critical error)
       }
-    } catch (err) {
-      console.error("[TaskDetail] handleStop error:", err);
+    } catch {
       // 네트워크 오류도 UI는 즉시 반영
       setRunStatus("idle");
       setTask((prev) => prev ? { ...prev, status: "stopped" } : null);

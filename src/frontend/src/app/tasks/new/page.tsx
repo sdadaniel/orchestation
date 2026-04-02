@@ -42,7 +42,9 @@ export default function NewTaskPage() {
     fetch("/api/tasks")
       .then((r) => r.json())
       .then((data: TaskOption[]) => { if (Array.isArray(data)) setExistingTasks(data); })
-      .catch((err) => { console.error("[NewTask] existingTasks fetch error:", err); });
+      .catch(() => {
+        // silently ignore fetch errors
+      });
     fetch("/api/roles")
       .then((r) => r.json())
       .then((data: string[]) => { if (Array.isArray(data)) setAvailableRoles(data); })
