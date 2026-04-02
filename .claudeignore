@@ -121,8 +121,6 @@ docs/task/TASK-142-shell-get_field-중복-통합.md
 docs/requests/TASK-142-shell-get_field-중복-통합.md
 docs/task/TASK-168-recharts-formatter-any-타입-제거.md
 docs/requests/TASK-168-recharts-formatter-any-타입-제거.md
-docs/task/TASK-311-날짜-포맷팅-중복코드-유틸리티-추출.md
-docs/requests/TASK-311-날짜-포맷팅-중복코드-유틸리티-추출.md
 docs/task/TASK-201-태스크-생성시-큰-요청-자동-분할.md
 docs/requests/TASK-201-태스크-생성시-큰-요청-자동-분할.md
 docs/task/TASK-186-E2E-시나리오-작성-기능별-80-100개.md
@@ -137,8 +135,6 @@ docs/task/TASK-185-UX-흐름-검증-누락-동작-수정.md
 docs/requests/TASK-185-UX-흐름-검증-누락-동작-수정.md
 docs/task/TASK-027-sprint-list-page.md
 docs/requests/TASK-027-sprint-list-page.md
-docs/task/TASK-312-dagcanvas-topgroups-filter-타입-내로잉-누락-수정.md
-docs/requests/TASK-312-dagcanvas-topgroups-filter-타입-내로잉-누락-수정.md
 docs/task/TASK-118-pending-상태가-아닌-태스크의-우선순위-변경-화살표-숨기기.md
 docs/requests/TASK-118-pending-상태가-아닌-태스크의-우선순위-변경-화살표-숨기기.md
 docs/task/TASK-200-settings-zustand-전역-store-전환.md
@@ -253,8 +249,6 @@ docs/task/TASK-252-notices-사이드바-항목에-2depth-토글-arrow-추가.md
 docs/requests/TASK-252-notices-사이드바-항목에-2depth-토글-arrow-추가.md
 docs/task/TASK-105-costtable---------.md
 docs/requests/TASK-105-costtable---------.md
-docs/task/TASK-310-src-내-미사용-import-변수-정리.md
-docs/requests/TASK-310-src-내-미사용-import-변수-정리.md
 docs/task/TASK-036-채팅창-스트리밍-응답-구현.md
 docs/requests/TASK-036-채팅창-스트리밍-응답-구현.md
 docs/task/TASK-104-costtable---.md
