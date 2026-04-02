@@ -1,7 +1,7 @@
 ---
 id: TASK-307
 title: 성능 벤치마크 테스트 - 간단한 파일 생성
-status: in_progress
+status: failed
 branch: task/task-307
 worktree: ../repo-wt-task-307
 priority: high
@@ -9,7 +9,7 @@ sort_order: 1
 scope:
   - output/perf-test/
 created: 2026-04-02 22:00
-updated: 2026-04-02 15:44
+updated: 2026-04-02 15:45
 ---
 
 ## 목표
