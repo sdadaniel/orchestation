@@ -51,6 +51,8 @@ docs/task/TASK-133-zustand-설치-및-devtools-세팅.md
 docs/requests/TASK-133-zustand-설치-및-devtools-세팅.md
 docs/task/TASK-182-recharts-콜백-any-타입-제거.md
 docs/requests/TASK-182-recharts-콜백-any-타입-제거.md
+docs/task/TASK-303-usenotices-userequests-낙관적-업데이트-뮤테이션-중복-패턴-추출.md
+docs/requests/TASK-303-usenotices-userequests-낙관적-업데이트-뮤테이션-중복-패턴-추출.md
 docs/task/TASK-E2E-001-hello-world-test.md
 docs/requests/TASK-E2E-001-hello-world-test.md
 docs/task/TASK-163-className-template-literal-cn-유틸-통일.md
@@ -97,6 +99,8 @@ docs/task/TASK-155-TaskFrontmatter-status-priority-string-타입-좁히기.md
 docs/requests/TASK-155-TaskFrontmatter-status-priority-string-타입-좁히기.md
 docs/task/TASK-150-executionLog-reviewResult-any-타입-제거.md
 docs/requests/TASK-150-executionLog-reviewResult-any-타입-제거.md
+docs/task/TASK-309-api-route-getdb---non-null-assertion-제거-및-null-체크.md
+docs/requests/TASK-309-api-route-getdb---non-null-assertion-제거-및-null-체크.md
 docs/task/TASK-246-orchestration-manager-console-log를-구조화된.md
 docs/requests/TASK-246-orchestration-manager-console-log를-구조화된.md
 docs/task/TASK-132-전역-상태-관리-통합.md
@@ -109,6 +113,8 @@ docs/task/TASK-121-max-parallel-1-설정시-2개-동시실행-버그.md
 docs/requests/TASK-121-max-parallel-1-설정시-2개-동시실행-버그.md
 docs/task/TASK-172-tasks-new-page-god-component-분리.md
 docs/requests/TASK-172-tasks-new-page-god-component-분리.md
+docs/task/TASK-308-테스트-파일-readdirsync-mock-dirent-타입-불일치-수정.md
+docs/requests/TASK-308-테스트-파일-readdirsync-mock-dirent-타입-불일치-수정.md
 docs/task/TASK-032-orchestrate-api.md
 docs/requests/TASK-032-orchestrate-api.md
 docs/task/TASK-142-shell-get_field-중복-통합.md
@@ -147,6 +153,8 @@ docs/task/TASK-037-대시보드-개선---스프린트태스.md
 docs/requests/TASK-037-대시보드-개선---스프린트태스.md
 docs/task/TASK-137-태스크-생성시-의존관계-설정-UI-추가.md
 docs/requests/TASK-137-태스크-생성시-의존관계-설정-UI-추가.md
+docs/task/TASK-300-usenotices-userequests-낙관적-업데이트-뮤테이션-중복-패턴-추출.md
+docs/requests/TASK-300-usenotices-userequests-낙관적-업데이트-뮤테이션-중복-패턴-추출.md
 docs/task/TASK-164-displayTaskId-노옵-함수-중복-제거.md
 docs/requests/TASK-164-displayTaskId-노옵-함수-중복-제거.md
 docs/task/TASK-098-auto-improvesh----.md
@@ -369,8 +377,12 @@ docs/task/TASK-154-status-priority-상수-중복-통합.md
 docs/requests/TASK-154-status-priority-상수-중복-통합.md
 docs/task/TASK-124-상태-관리-컨텍스트-데이터-흐름-분석.md
 docs/requests/TASK-124-상태-관리-컨텍스트-데이터-흐름-분석.md
+docs/task/TASK-301-costtable-phase-옵셔널-타입-안전성-수정.md
+docs/requests/TASK-301-costtable-phase-옵셔널-타입-안전성-수정.md
 docs/task/TASK-116-실행-중-상태-애니메이션-인디케이터-추가.md
 docs/requests/TASK-116-실행-중-상태-애니메이션-인디케이터-추가.md
+docs/task/TASK-306-costtable-runhistory-페이지네이션-정렬-중복코드-추출.md
+docs/requests/TASK-306-costtable-runhistory-페이지네이션-정렬-중복코드-추출.md
 docs/task/TASK-026-sprint-parser-upgrade.md
 docs/requests/TASK-026-sprint-parser-upgrade.md
 docs/task/TASK-030-cost-dashboard.md

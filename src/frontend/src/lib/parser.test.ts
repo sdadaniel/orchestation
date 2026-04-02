@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { parseTaskFile, parseAllTasks, invalidateTasksCache } from "./parser";
-import fs, { Dirent } from "fs";
-import path from "path";
+import fs from "fs";
 
 // Mock fs module
 vi.mock("fs");

@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
-import path from "path";
 import { parseAllRequests, getRequestsDir } from "@/lib/request-parser";
 import type { RequestData } from "@/lib/request-parser";
 import { generateNextTaskId } from "@/lib/task-id";
 import { getErrorMessage } from "@/lib/error-utils";
-import { PROJECT_ROOT, ROLES_DIR } from "@/lib/paths";
+import { ROLES_DIR } from "@/lib/paths";
 import { generateSlug } from "@/lib/slug-utils";
 import { getDb, isDbAvailable } from "@/lib/db";
 import { syncAllTaskFilesToDb, syncTaskFileToDb } from "@/lib/task-db-sync";

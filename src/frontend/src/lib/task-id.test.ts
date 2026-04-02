@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { generateNextTaskId } from "./task-id";
-import fs, { Dirent } from "fs";
+import fs from "fs";
 
 // Mock fs module
 vi.mock("fs");
