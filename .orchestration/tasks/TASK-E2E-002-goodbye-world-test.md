@@ -1,14 +1,14 @@
 ---
 id: TASK-E2E-002
 title: Goodbye World 파일 생성 테스트
-status: in_progress
+status: done
 branch: task/task-e2e-002
 worktree: ../repo-wt-task-e2e-002
 priority: medium
 scope:
   - output/e2e-test/
 created: 2026-04-02 15:10
-updated: 2026-04-02 15:19
+updated: 2026-04-02 15:22
 ---
 
 ## 목표

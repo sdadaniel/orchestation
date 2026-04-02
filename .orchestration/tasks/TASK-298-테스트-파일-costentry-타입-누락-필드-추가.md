@@ -1,11 +1,13 @@
 ---
 id: TASK-298
 title: 테스트 파일 CostEntry 타입 누락 필드 추가
-status: pending
+status: in_progress
+branch: task/task-298
+worktree: ../repo-wt-task-298
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 15:25
 depends_on: []
 scope:  []
 ---
@@ -18,11 +20,13 @@ The test files are missing `timestamp`, `taskId`, `turns`, `durationMs` fields. 
 ---
 id: TASK-298
 title: 테스트 파일 CostEntry 타입 누락 필드 추가
-status: pending
+status: in_progress
+branch: task/task-298
+worktree: ../repo-wt-task-298
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 15:25
 depends_on: []
 scope:
   - src/frontend/src/lib/cost-aggregation.test.ts
