@@ -1,7 +1,7 @@
 ---
 id: TASK-307
 title: 성능 벤치마크 테스트 - 간단한 파일 생성
-status: failed
+status: in_progress
 branch: task/task-307
 worktree: ../repo-wt-task-307
 priority: high
