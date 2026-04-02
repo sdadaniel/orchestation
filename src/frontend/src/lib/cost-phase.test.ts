@@ -7,6 +7,10 @@ describe("cost-phase", () => {
     it("should aggregate costs by phase", () => {
       const entries: CostEntry[] = [
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-model",
           costUsd: 10.0,
           inputTokens: 0,
@@ -16,6 +20,10 @@ describe("cost-phase", () => {
           phase: "task",
         },
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-model",
           costUsd: 5.0,
           inputTokens: 0,
@@ -25,6 +33,10 @@ describe("cost-phase", () => {
           phase: "review",
         },
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-model",
           costUsd: 5.0,
           inputTokens: 0,
@@ -44,6 +56,10 @@ describe("cost-phase", () => {
     it("should calculate percentages correctly", () => {
       const entries: CostEntry[] = [
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-model",
           costUsd: 50.0,
           inputTokens: 0,
@@ -53,6 +69,10 @@ describe("cost-phase", () => {
           phase: "task",
         },
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-model",
           costUsd: 50.0,
           inputTokens: 0,
@@ -82,6 +102,10 @@ describe("cost-phase", () => {
     it("should handle case-insensitive phase names", () => {
       const entries: CostEntry[] = [
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-model",
           costUsd: 10.0,
           inputTokens: 0,
@@ -91,6 +115,10 @@ describe("cost-phase", () => {
           phase: "TASK",
         },
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-model",
           costUsd: 10.0,
           inputTokens: 0,
@@ -109,6 +137,10 @@ describe("cost-phase", () => {
     it("should handle missing phase as other", () => {
       const entries: CostEntry[] = [
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-model",
           costUsd: 5.0,
           inputTokens: 0,
@@ -118,6 +150,10 @@ describe("cost-phase", () => {
           phase: undefined,
         },
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-model",
           costUsd: 5.0,
           inputTokens: 0,
@@ -137,6 +173,10 @@ describe("cost-phase", () => {
     it("should format percentages to 1 decimal place", () => {
       const entries: CostEntry[] = [
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-model",
           costUsd: 33.33,
           inputTokens: 0,
@@ -146,6 +186,10 @@ describe("cost-phase", () => {
           phase: "task",
         },
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-model",
           costUsd: 66.67,
           inputTokens: 0,

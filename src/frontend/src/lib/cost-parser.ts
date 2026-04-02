@@ -5,7 +5,7 @@ import { PROJECT_ROOT } from "./paths";
 export interface CostEntry {
   timestamp: string;
   taskId: string;
-  phase: string;
+  phase?: string;
   model: string;
   inputTokens: number;
   cacheCreate: number;
