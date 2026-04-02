@@ -1,11 +1,13 @@
 ---
 id: TASK-302
 title: CostTable phase 옵셔널 필드 타입 안전성 수정
-status: pending
+status: rejected
+branch: task/task-302
+worktree: ../repo-wt-task-302
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 15:40
 depends_on: []
 scope:  []
 ---
@@ -15,11 +17,13 @@ scope:  []
 ---
 id: TASK-302
 title: CostTable phase 옵셔널 필드 타입 안전성 수정
-status: pending
+status: rejected
+branch: task/task-302
+worktree: ../repo-wt-task-302
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 15:40
 depends_on: []
 scope:
   - src/frontend/src/components/cost/CostTable.tsx
