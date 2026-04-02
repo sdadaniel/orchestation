@@ -122,6 +122,7 @@ export function useRequests() {
         const swapSibIdx = direction === "up" ? sibIdx - 1 : sibIdx + 1;
         if (swapSibIdx < 0 || swapSibIdx >= siblings.length) return prev;
         const other = siblings[swapSibIdx];
+        if (!other) return prev;
         const tmpOrder = target.sort_order;
         return prev.map((r) => {
           if (r.id === target.id) return { ...r, sort_order: other.sort_order };
