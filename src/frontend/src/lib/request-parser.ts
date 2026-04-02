@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { TASKS_DIR } from "./paths";
 import { parseFrontmatter, getString, getInt, getStringArray } from "./frontmatter-utils";
+import { formatDatetime, formatTime } from "./date-utils";
 
 export interface RequestData {
   id: string;
@@ -47,8 +48,8 @@ export function parseRequestFile(filePath: string): RequestData | null {
 
     // mtime fallback for created/updated
     const mt = fs.statSync(filePath).mtime;
-    const mtime = `${mt.getFullYear()}-${String(mt.getMonth()+1).padStart(2,"0")}-${String(mt.getDate()).padStart(2,"0")} ${String(mt.getHours()).padStart(2,"0")}:${String(mt.getMinutes()).padStart(2,"0")}`;
-    const timeStr = `${String(mt.getHours()).padStart(2,"0")}:${String(mt.getMinutes()).padStart(2,"0")}`;
+    const mtime = formatDatetime(mt);
+    const timeStr = formatTime(mt);
     const rawCreated = getString(data, "created");
     const rawUpdated = getString(data, "updated");
     const created = rawCreated ? (rawCreated.length <= 10 ? `${rawCreated} ${timeStr}` : rawCreated) : mtime;
