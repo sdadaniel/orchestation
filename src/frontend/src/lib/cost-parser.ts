@@ -53,17 +53,17 @@ export function parseCostLogLine(line: string): CostEntry | null {
   const matchWithModel = trimmed.match(LOG_LINE_REGEX_WITH_MODEL);
   if (matchWithModel) {
     return {
-      timestamp: matchWithModel[1],
-      taskId: matchWithModel[2],
-      phase: matchWithModel[3],
-      model: matchWithModel[4],
-      inputTokens: parseInt(matchWithModel[5], 10),
-      cacheCreate: parseInt(matchWithModel[6], 10),
-      cacheRead: parseInt(matchWithModel[7], 10),
-      outputTokens: parseInt(matchWithModel[8], 10),
-      turns: parseInt(matchWithModel[9], 10),
-      durationMs: parseInt(matchWithModel[10], 10),
-      costUsd: parseFloat(matchWithModel[11]),
+      timestamp: matchWithModel[1] ?? "",
+      taskId: matchWithModel[2] ?? "",
+      phase: matchWithModel[3] ?? "",
+      model: matchWithModel[4] ?? "",
+      inputTokens: parseInt(matchWithModel[5] ?? "0", 10),
+      cacheCreate: parseInt(matchWithModel[6] ?? "0", 10),
+      cacheRead: parseInt(matchWithModel[7] ?? "0", 10),
+      outputTokens: parseInt(matchWithModel[8] ?? "0", 10),
+      turns: parseInt(matchWithModel[9] ?? "0", 10),
+      durationMs: parseInt(matchWithModel[10] ?? "0", 10),
+      costUsd: parseFloat(matchWithModel[11] ?? "0"),
     };
   }
 
@@ -72,17 +72,17 @@ export function parseCostLogLine(line: string): CostEntry | null {
   if (!matchLegacy) return null;
 
   return {
-    timestamp: matchLegacy[1],
-    taskId: matchLegacy[2],
-    phase: matchLegacy[3],
+    timestamp: matchLegacy[1] ?? "",
+    taskId: matchLegacy[2] ?? "",
+    phase: matchLegacy[3] ?? "",
     model: "unknown",
-    inputTokens: parseInt(matchLegacy[4], 10),
-    cacheCreate: parseInt(matchLegacy[5], 10),
-    cacheRead: parseInt(matchLegacy[6], 10),
-    outputTokens: parseInt(matchLegacy[7], 10),
-    turns: parseInt(matchLegacy[8], 10),
-    durationMs: parseInt(matchLegacy[9], 10),
-    costUsd: parseFloat(matchLegacy[10]),
+    inputTokens: parseInt(matchLegacy[4] ?? "0", 10),
+    cacheCreate: parseInt(matchLegacy[5] ?? "0", 10),
+    cacheRead: parseInt(matchLegacy[6] ?? "0", 10),
+    outputTokens: parseInt(matchLegacy[7] ?? "0", 10),
+    turns: parseInt(matchLegacy[8] ?? "0", 10),
+    durationMs: parseInt(matchLegacy[9] ?? "0", 10),
+    costUsd: parseFloat(matchLegacy[10] ?? "0"),
   };
 }
 
