@@ -22,11 +22,11 @@ const VALID_STATUSES = ["pending", "stopped", "in_progress", "reviewing", "done"
 const VALID_PRIORITIES = ["high", "medium", "low"] as const;
 
 function isValidStatus(value: string): value is RequestData["status"] {
-  return VALID_STATUSES.includes(value as any);
+  return (VALID_STATUSES as readonly string[]).includes(value);
 }
 
 function isValidPriority(value: string): value is RequestData["priority"] {
-  return VALID_PRIORITIES.includes(value as any);
+  return (VALID_PRIORITIES as readonly string[]).includes(value);
 }
 
 

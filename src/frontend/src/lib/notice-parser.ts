@@ -18,7 +18,7 @@ export interface NoticeData {
 const VALID_NOTICE_TYPES = ["info", "warning", "error", "request"] as const;
 
 function isValidNoticeType(value: string): value is NoticeType {
-  return VALID_NOTICE_TYPES.includes(value as any);
+  return (VALID_NOTICE_TYPES as readonly string[]).includes(value);
 }
 
 const ORCH_NOTICES_DIR = path.join(PROJECT_ROOT, ".orchestration", "notices");
