@@ -1,7 +1,7 @@
 ---
 id: TASK-300
 title: useNotices/useRequests 낙관적 업데이트 뮤테이션 중복 패턴 추출
-status: in_progress
+status: rejected
 branch: task/task-300
 worktree: ../repo-wt-task-300
 priority: medium
