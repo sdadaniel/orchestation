@@ -47,7 +47,6 @@ export function updateTaskFileStatus(taskId: string, status: string): void {
     const files = fs.readdirSync(tasksDir);
     const taskFile = files.find((f) => f.startsWith(`${taskId}-`) && f.endsWith(".md"));
     if (!taskFile) {
-      console.error(`[task-runner] updateTaskFileStatus: file not found for ${taskId} in ${tasksDir}`);
       return;
     }
 
@@ -55,9 +54,8 @@ export function updateTaskFileStatus(taskId: string, status: string): void {
     const raw = fs.readFileSync(filePath, "utf-8");
     const updated = raw.replace(/^status:\s*.+$/m, `status: ${status}`);
     fs.writeFileSync(filePath, updated, "utf-8");
-    console.log(`[task-runner] ${taskId} status → ${status} (file: ${taskFile})`);
   } catch (err) {
-    console.error(`[task-runner] updateTaskFileStatus failed:`, err);
+    // silently ignore
   }
 }
 
