@@ -9,7 +9,7 @@ sort_order: 1
 scope:
   - output/perf-test/
 created: 2026-04-02 22:00
-updated: 2026-04-02 15:45
+updated: 2026-04-02 15:51
 ---
 
 ## 목표

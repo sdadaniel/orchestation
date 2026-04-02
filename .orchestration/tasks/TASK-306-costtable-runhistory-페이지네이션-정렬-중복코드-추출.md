@@ -1,11 +1,13 @@
 ---
 id: TASK-306
 title: CostTable-RunHistory-페이지네이션-정렬-중복코드-추출
-status: pending
+status: in_progress
+branch: task/task-306
+worktree: ../repo-wt-task-306
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 15:49
 depends_on: []
 scope:
   - src/frontend/src/components/cost/CostTable.tsx

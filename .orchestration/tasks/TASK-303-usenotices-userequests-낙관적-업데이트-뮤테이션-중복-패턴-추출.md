@@ -7,7 +7,7 @@ worktree: ../repo-wt-task-303
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02 15:45
+updated: 2026-04-02 15:47
 depends_on: []
 scope:
   - src/frontend/src/hooks/useNotices.ts

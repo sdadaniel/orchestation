@@ -1,13 +1,13 @@
 ---
 id: TASK-305
 title: type-only-import-스타일-통일-import-type-사용
-status: in_progress
+status: failed
 branch: task/task-305
 worktree: ../repo-wt-task-305
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02 15:45
+updated: 2026-04-02 15:48
 depends_on: []
 scope:
   - src/frontend/src/components/RequestCard.tsx
