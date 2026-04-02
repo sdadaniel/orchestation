@@ -7,7 +7,7 @@ worktree: ../repo-wt-task-302
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02 15:40
+updated: 2026-04-02 15:42
 depends_on: []
 scope:  []
 ---
@@ -23,7 +23,7 @@ worktree: ../repo-wt-task-302
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02 15:40
+updated: 2026-04-02 15:42
 depends_on: []
 scope:
   - src/frontend/src/components/cost/CostTable.tsx

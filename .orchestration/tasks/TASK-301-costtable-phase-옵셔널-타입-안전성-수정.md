@@ -1,11 +1,13 @@
 ---
 id: TASK-301
 title: CostTable phase 옵셔널 타입 안전성 수정
-status: pending
+status: done
+branch: task/task-301
+worktree: ../repo-wt-task-301
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 15:39
 depends_on: []
 scope:  []
 ---
@@ -15,11 +17,13 @@ scope:  []
 ---
 id: TASK-301
 title: CostTable phase 옵셔널 타입 안전성 수정
-status: pending
+status: done
+branch: task/task-301
+worktree: ../repo-wt-task-301
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 15:39
 depends_on: []
 scope:
   - src/frontend/src/components/cost/CostTable.tsx

@@ -1,11 +1,13 @@
 ---
 id: TASK-300
 title: useNotices/useRequests 낙관적 업데이트 뮤테이션 중복 패턴 추출
-status: pending
+status: in_progress
+branch: task/task-300
+worktree: ../repo-wt-task-300
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 15:44
 depends_on: []
 scope:
   - src/frontend/src/hooks/useNotices.ts
