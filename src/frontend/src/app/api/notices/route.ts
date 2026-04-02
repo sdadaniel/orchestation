@@ -62,8 +62,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "title is required" }, { status: 400 });
     }
 
-    const validTypes = ["info", "warning", "error", "request"];
-    const noticeType = validTypes.includes(type) ? type : "info";
+    const noticeType = (VALID_NOTICE_TYPES as readonly string[]).includes(type) ? type : "info";
 
     const dir = getNoticesDir();
     if (!fs.existsSync(dir)) {
