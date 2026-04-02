@@ -8,6 +8,7 @@ import { ROLES_DIR } from "@/lib/paths";
 import { generateSlug } from "@/lib/slug-utils";
 import { getDb, isDbAvailable } from "@/lib/db";
 import { syncAllTaskFilesToDb, syncTaskFileToDb } from "@/lib/task-db-sync";
+import { formatTimestamp } from "@/lib/date-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
     const bodyContent = (content && typeof content === "string") ? content.trim() : "";
 
     const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+    const today = formatTimestamp(now);
 
     const scopeLines = Array.isArray(scope) && scope.length > 0
       ? `scope:\n${scope.map((s: string) => `  - ${s}`).join("\n")}\n`
