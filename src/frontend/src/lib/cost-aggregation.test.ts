@@ -41,6 +41,10 @@ describe("cost-aggregation", () => {
     it("should aggregate entries by model name", () => {
       const entries: CostEntry[] = [
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-opus-4",
           costUsd: 1.5,
           inputTokens: 100,
@@ -50,6 +54,10 @@ describe("cost-aggregation", () => {
           phase: "task",
         },
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-opus-4",
           costUsd: 2.5,
           inputTokens: 200,
@@ -72,6 +80,10 @@ describe("cost-aggregation", () => {
     it("should sort by cost descending", () => {
       const entries: CostEntry[] = [
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-haiku",
           costUsd: 10.0,
           inputTokens: 0,
@@ -81,6 +93,10 @@ describe("cost-aggregation", () => {
           phase: "task",
         },
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-opus",
           costUsd: 50.0,
           inputTokens: 0,
@@ -90,6 +106,10 @@ describe("cost-aggregation", () => {
           phase: "task",
         },
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-sonnet",
           costUsd: 30.0,
           inputTokens: 0,
@@ -114,6 +134,10 @@ describe("cost-aggregation", () => {
     it("should track cache operations", () => {
       const entries: CostEntry[] = [
         {
+          timestamp: "2026-01-01 00:00:00",
+          taskId: "TASK-001",
+          turns: 1,
+          durationMs: 1000,
           model: "claude-model",
           costUsd: 1.0,
           inputTokens: 100,
