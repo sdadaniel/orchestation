@@ -1,14 +1,14 @@
 ---
 id: TASK-E2E-001
 title: Hello World 파일 생성 테스트
-status: in_progress
+status: done
 branch: task/task-e2e-001
 worktree: ../repo-wt-task-e2e-001
 priority: medium
 scope:
   - output/e2e-test/
 created: 2026-04-02 15:10
-updated: 2026-04-02 15:16
+updated: 2026-04-02 15:18
 ---
 
 ## 목표
