@@ -1,8 +1,7 @@
 import fs from "fs";
-import path from "path";
 import { spawnClaude, CLAUDE_DEFAULT_TIMEOUT_MS, ClaudeChildProcess } from "@/lib/claude-cli";
 import { renderTemplate } from "@/lib/template";
-import { PROJECT_ROOT, ROLES_DIR } from "@/lib/paths";
+import { ROLES_DIR } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;

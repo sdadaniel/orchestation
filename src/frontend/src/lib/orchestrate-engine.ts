@@ -81,7 +81,6 @@ export class OrchestrateEngine extends EventEmitter {
   private maxParallelReview = 2;
   private maxReviewRetry = 3;
   private loopCount = 0;
-  private pendingSignalCheck = false;
 
   constructor() {
     super();
@@ -399,7 +398,6 @@ export class OrchestrateEngine extends EventEmitter {
     // worker가 close되면 signal 파일이 이미 생성되었거나 곧 생성됨
     // 다음 mainLoop에서 signal을 처리
     this.log(`  [${taskId}/${phase}] close (exit=${code})`);
-    this.pendingSignalCheck = true;
   }
 
   // ── Signal Processing ───────────────────────────────
@@ -407,11 +405,10 @@ export class OrchestrateEngine extends EventEmitter {
   private startSignalWatcher() {
     try {
       this.signalWatcher = fs.watch(this.signalDir, () => {
-        this.pendingSignalCheck = true;
+        // Signal file detected
       });
     } catch {
       // fs.watch 실패 시 polling fallback (mainLoop에서 매번 체크)
-      this.pendingSignalCheck = true;
     }
   }
 
@@ -665,7 +662,6 @@ export class OrchestrateEngine extends EventEmitter {
 
     // 시그널 처리
     this.processSignals();
-    this.pendingSignalCheck = false;
 
     // 실행 가능한 태스크 큐
     const queue = this.scanTasks().filter(t =>

@@ -1,5 +1,4 @@
 import fs from "fs";
-import path from "path";
 import { NextResponse } from "next/server";
 import { ROLES_DIR } from "@/lib/paths";
 
