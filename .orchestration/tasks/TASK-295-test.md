@@ -1,7 +1,7 @@
 ---
 id: TASK-295
 title: test
-status: in_progress
+status: rejected
 branch: task/task-295
 worktree: ../repo-wt-task-295
 priority: medium
