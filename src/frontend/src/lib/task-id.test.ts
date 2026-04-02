@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { generateNextTaskId } from "./task-id";
-import fs from "fs";
+import fs, { Dirent } from "fs";
 
 // Mock fs module
 vi.mock("fs");
@@ -12,7 +12,7 @@ describe("task-id", () => {
 
   describe("generateNextTaskId", () => {
     it("should return TASK-001 when no existing task files", () => {
-      vi.mocked(fs.readdirSync).mockReturnValue([]);
+      vi.mocked(fs.readdirSync).mockReturnValue([] as any);
 
       const result = generateNextTaskId("/tmp/tasks");
       expect(result).toBe("TASK-001");
@@ -23,7 +23,7 @@ describe("task-id", () => {
         "TASK-001.md",
         "TASK-002.md",
         "TASK-010.md",
-      ]);
+      ] as any);
 
       const result = generateNextTaskId("/tmp/tasks");
       expect(result).toBe("TASK-011");
@@ -34,7 +34,7 @@ describe("task-id", () => {
         "TASK-005.md",
         "TASK-100.md",
         "TASK-050.md",
-      ]);
+      ] as any);
 
       const result = generateNextTaskId("/tmp/tasks");
       expect(result).toBe("TASK-101");
@@ -46,7 +46,7 @@ describe("task-id", () => {
         "README.md",
         "config.json",
         "TASK-002.md",
-      ]);
+      ] as any);
 
       const result = generateNextTaskId("/tmp/tasks");
       expect(result).toBe("TASK-003");
@@ -57,7 +57,7 @@ describe("task-id", () => {
         "TASK-001.md",
         "TASK-002.txt",
         "TASK-003",
-      ]);
+      ] as any);
 
       const result = generateNextTaskId("/tmp/tasks");
       expect(result).toBe("TASK-002");
@@ -66,7 +66,7 @@ describe("task-id", () => {
     it("should handle large task numbers", () => {
       vi.mocked(fs.readdirSync).mockReturnValue([
         "TASK-999.md",
-      ]);
+      ] as any);
 
       const result = generateNextTaskId("/tmp/tasks");
       expect(result).toBe("TASK-1000");
