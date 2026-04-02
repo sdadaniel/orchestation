@@ -115,7 +115,6 @@ export function DocTreeNode({
         await onReorder(draggedId, node.id, 1);
       }
     } catch (err) {
-      console.error("Reorder failed:", err);
       addToast("문서 순서 변경에 실패했습니다.", "error");
       // Delegate to parent for state rollback/refetch
       onReorderError?.(err);
