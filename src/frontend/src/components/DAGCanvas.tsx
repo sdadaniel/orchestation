@@ -181,7 +181,7 @@ export function computeDAGLayout(requests: RequestItem[], tasks: WaterfallTask[]
     { label: "FAILED", color: "#ef4444", box: computeGroup(new Set(["failed"]), false) },
     { label: "IN PROGRESS", color: "#3b82f6", box: computeGroup(new Set(["current"]), false) },
     { label: "DONE", color: "#22c55e", box: computeGroup(new Set(["done"]), false) },
-  ].filter((g) => g.box !== null);
+  ].filter((g): g is { label: string; color: string; box: { x: number; y: number; w: number; h: number } } => g.box !== null);
 
   const hideLabelKeys = new Set<string>();
   for (const g of topGroups) {
@@ -282,8 +282,8 @@ export default function DAGCanvas({ requests, tasks, onClickItem }: { requests: 
         <g ref={gRef}>
           {layout.topGroups.map((g) => (
             <g key={g.label}>
-              <rect x={g.box!.x} y={g.box!.y} width={g.box!.w} height={g.box!.h} rx={12} fill={g.color} fillOpacity={0.03} stroke={g.color} strokeWidth={1.5} strokeDasharray="8 4" strokeOpacity={0.4} />
-              <text x={g.box!.x + g.box!.w / 2} y={g.box!.y + 28} textAnchor="middle" fill={g.color} fontSize={11} fontWeight={700} letterSpacing="0.1em" opacity={0.5}>{g.label}</text>
+              <rect x={g.box.x} y={g.box.y} width={g.box.w} height={g.box.h} rx={12} fill={g.color} fillOpacity={0.03} stroke={g.color} strokeWidth={1.5} strokeDasharray="8 4" strokeOpacity={0.4} />
+              <text x={g.box.x + g.box.w / 2} y={g.box.y + 28} textAnchor="middle" fill={g.color} fontSize={11} fontWeight={700} letterSpacing="0.1em" opacity={0.5}>{g.label}</text>
             </g>
           ))}
           {layout.sections.map((sec) => (
