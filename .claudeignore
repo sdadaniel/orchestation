@@ -63,8 +63,6 @@ docs/task/TASK-284-appshell-데드코드-제거--logmodaltask--tasklogmodal--wat
 docs/requests/TASK-284-appshell-데드코드-제거--logmodaltask--tasklogmodal--wate.md
 docs/task/TASK-166-store-index-데드-모듈-및-zustand-미사용-의존성-제거.md
 docs/requests/TASK-166-store-index-데드-모듈-및-zustand-미사용-의존성-제거.md
-docs/task/TASK-338-globalsearch-배열-인덱스-타입-안전성-추가.md
-docs/requests/TASK-338-globalsearch-배열-인덱스-타입-안전성-추가.md
 docs/task/TASK-287-프론트엔드-console-log-warn-error-문-정리.md
 docs/requests/TASK-287-프론트엔드-console-log-warn-error-문-정리.md
 docs/task/TASK-276-비용-집계-유틸리티-단위-테스트-작성.md
