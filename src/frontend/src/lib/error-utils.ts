@@ -19,3 +19,53 @@ export function getErrorMessage(
   if (typeof error === "string" && error.length > 0) return error;
   return fallback;
 }
+
+/**
+ * Options for structured API error responses.
+ * Allows attaching machine-readable `code` and debug `details` alongside the human-readable message.
+ *
+ * @example
+ * jsonErrorResponse({ error: "title is required", status: 400, code: "INVALID_INPUT" })
+ * jsonErrorResponse({ error: "Analysis timed out", status: 504, code: "TIMEOUT" })
+ */
+export interface ApiErrorOptions {
+  error: string;
+  /** HTTP status code (default: 400) */
+  status?: number;
+  /** Machine-readable error code, e.g. "INVALID_INPUT", "TIMEOUT", "NOT_FOUND" */
+  code?: string;
+  /** Optional debug information (omitted from response when undefined) */
+  details?: unknown;
+}
+
+/**
+ * Creates a JSON error Response.
+ * Replaces the repeated `new Response(JSON.stringify({ error }), { status, headers })` pattern.
+ *
+ * Accepts either a plain string or an `ApiErrorOptions` object for structured responses.
+ *
+ * @param opts - Error message string or structured options
+ * @param status - HTTP status code (default: 400). Ignored when opts is an object with `status` set.
+ */
+export function jsonErrorResponse(
+  opts: string | ApiErrorOptions,
+  status = 400,
+): Response {
+  let body: Record<string, unknown>;
+  let finalStatus: number;
+
+  if (typeof opts === "string") {
+    body = { error: opts };
+    finalStatus = status;
+  } else {
+    body = { error: opts.error };
+    if (opts.code !== undefined) body.code = opts.code;
+    if (opts.details !== undefined) body.details = opts.details;
+    finalStatus = opts.status ?? status;
+  }
+
+  return new Response(JSON.stringify(body), {
+    status: finalStatus,
+    headers: { "Content-Type": "application/json" },
+  });
+}

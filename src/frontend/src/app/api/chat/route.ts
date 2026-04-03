@@ -1,4 +1,5 @@
 import { spawnClaude, CLAUDE_DEFAULT_TIMEOUT_MS, ClaudeChildProcess } from "@/lib/claude-cli";
+import { jsonErrorResponse } from "@/lib/error-utils";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -12,17 +13,11 @@ export async function POST(request: Request) {
     message = body.message;
     history = body.history;
   } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonErrorResponse("Invalid JSON body");
   }
 
   if (!message || typeof message !== "string" || !message.trim()) {
-    return new Response(JSON.stringify({ error: "message is required" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonErrorResponse("message is required");
   }
 
   // 대화 히스토리를 컨텍스트로 구성
