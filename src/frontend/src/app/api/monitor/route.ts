@@ -36,8 +36,8 @@ function getProcessTree(): Map<number, number> {
     for (const line of result.trim().split("\n")) {
       const parts = line.trim().split(/\s+/);
       if (parts.length < 2) continue;
-      const pid = parseInt(parts[0], 10);
-      const ppid = parseInt(parts[1], 10);
+      const pid = parseInt(parts[0] ?? "", 10);
+      const ppid = parseInt(parts[1] ?? "", 10);
       if (!isNaN(pid) && !isNaN(ppid)) {
         parentOf.set(pid, ppid);
       }
@@ -100,11 +100,11 @@ function getClaudeProcesses(): ClaudeProcess[] {
         const parts = line.trim().split(/\s+/);
         if (parts.length < 11) return null;
 
-        const pid = parseInt(parts[1], 10);
+        const pid = parseInt(parts[1] ?? "", 10);
         if (isNaN(pid)) return null;
 
-        const cpu = parseFloat(parts[2]);
-        const mem = parseFloat(parts[3]);
+        const cpu = parseFloat(parts[2] ?? "NaN");
+        const mem = parseFloat(parts[3] ?? "NaN");
         if (isNaN(cpu) || isNaN(mem)) return null;
 
         const command = parts.slice(10).join(" ");
@@ -207,9 +207,9 @@ export async function GET() {
   return NextResponse.json({
     cpu,
     loadAvg: {
-      "1m": +loadAvg[0].toFixed(2),
-      "5m": +loadAvg[1].toFixed(2),
-      "15m": +loadAvg[2].toFixed(2),
+      "1m": +(loadAvg[0] ?? 0).toFixed(2),
+      "5m": +(loadAvg[1] ?? 0).toFixed(2),
+      "15m": +(loadAvg[2] ?? 0).toFixed(2),
     },
     memory: {
       total: totalMem,
