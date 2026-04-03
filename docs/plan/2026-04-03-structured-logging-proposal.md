@@ -12,9 +12,9 @@
 
 | 파일 | console.error 건수 |
 |------|--------------------|
-| `src/frontend/src/app/api/chat/route.ts` | 2 |
-| `src/frontend/src/app/api/tasks/suggest/route.ts` | 3 |
-| `src/frontend/src/app/api/tasks/analyze/route.ts` | 3 |
+| `src/app/api/chat/route.ts` | 2 |
+| `src/app/api/tasks/suggest/route.ts` | 3 |
+| `src/app/api/tasks/analyze/route.ts` | 3 |
 | **합계** | **8** |
 
 #### 상세 위치
