@@ -151,7 +151,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         if (taskRes.ok) setTask(await taskRes.json());
       }, 500);
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        await res.json().catch(() => {});
         // 409는 이미 멈춘 경우 → 무시, 그 외에만 무시
         // (non-critical error)
       }
