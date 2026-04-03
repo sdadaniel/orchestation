@@ -110,7 +110,7 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
     // Prefix search: doc:XXX or d:XXX
     const docMatch = q.match(/^(?:doc|d):(.*)$/);
     if (docMatch) {
-      const sub = docMatch[1].trim();
+      const sub = (docMatch[1] ?? "").trim();
       if (!sub) return allItems.filter((i) => i.type === "doc");
       return allItems.filter(
         (i) =>
@@ -162,7 +162,8 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
       setActiveIndex((i) => (i - 1 + results.length) % results.length);
     } else if (e.key === "Enter") {
       e.preventDefault();
-      navigate(results[activeIndex]);
+      const item = results[activeIndex];
+      if (item) navigate(item);
     }
   }
 
