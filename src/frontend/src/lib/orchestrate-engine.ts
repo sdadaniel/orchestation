@@ -66,6 +66,8 @@ const SIGNAL_TYPES: SignalType[] = [
 const SKIP_REVIEW_ROLES = ["tech-writer"];
 const LOOP_INTERVAL_MS = 3000;
 const MAX_TASK_COST = 5.0;
+const NOTICE_API_HOST = "localhost";
+const NOTICE_API_PORT = 3000;
 
 // ── Engine ─────────────────────────────────────────────────
 
@@ -761,7 +763,7 @@ export class OrchestrateEngine extends EventEmitter {
       const http = require("http");
       const data = JSON.stringify({ title, content, type });
       const req = http.request({
-        hostname: "localhost", port: 3000, path: "/api/notices",
+        hostname: NOTICE_API_HOST, port: NOTICE_API_PORT, path: "/api/notices",
         method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data) },
       });
       req.write(data);

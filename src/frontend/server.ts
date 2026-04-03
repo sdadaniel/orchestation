@@ -34,8 +34,13 @@ process.on("unhandledRejection", (reason) => {
 });
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
-const port = parseInt(process.env.PORT || "3000", 10);
+const DEFAULT_HOSTNAME = "localhost";
+const DEFAULT_PORT = 3000;
+const TERM_NAME = "xterm-256color";
+const TERM_COLS = 80;
+const TERM_ROWS = 24;
+const hostname = DEFAULT_HOSTNAME;
+const port = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
@@ -267,9 +272,9 @@ app.prepare().then(() => {
     let ptyProcess: pty.IPty;
     try {
       ptyProcess = pty.spawn(shell, [], {
-        name: "xterm-256color",
-        cols: 80,
-        rows: 24,
+        name: TERM_NAME,
+        cols: TERM_COLS,
+        rows: TERM_ROWS,
         cwd: process.cwd(),
         env: cleanEnv,
       });
