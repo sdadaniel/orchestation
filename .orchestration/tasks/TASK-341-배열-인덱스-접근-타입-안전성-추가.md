@@ -1,11 +1,13 @@
 ---
 id: TASK-341
 title: 배열-인덱스-접근-타입-안전성-추가
-status: pending
+status: failed
+branch: task/task-341
+worktree: ../repo-wt-task-341
 priority: medium
 mode: night
 created: 2026-04-03
-updated: 2026-04-03
+updated: 2026-04-03 12:03
 depends_on: []
 scope:
   - src/frontend/src/app/tasks/new/page.tsx

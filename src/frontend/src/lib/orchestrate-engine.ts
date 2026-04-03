@@ -15,6 +15,7 @@ import { spawn, ChildProcess, execSync } from "child_process";
 import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
+import http from "http";
 import { parseFrontmatter, getString, getStringArray } from "./frontmatter-utils";
 import { pipeProcessLogs, killProcessGracefully } from "./process-utils";
 import { PROJECT_ROOT, PACKAGE_DIR, TASKS_DIR, OUTPUT_DIR } from "./paths";
@@ -760,7 +761,6 @@ export class OrchestrateEngine extends EventEmitter {
 
   private postNotice(type: string, title: string, content: string) {
     try {
-      const http = require("http");
       const data = JSON.stringify({ title, content, type });
       const req = http.request({
         hostname: NOTICE_API_HOST, port: NOTICE_API_PORT, path: "/api/notices",
