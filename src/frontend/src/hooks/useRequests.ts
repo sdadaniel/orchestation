@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export interface RequestItem {
   id: string;
@@ -149,7 +150,7 @@ export function useRequests() {
   return {
     requests,
     isLoading,
-    error: error ? (error instanceof Error ? error.message : "오류 발생") : null,
+    error: error ? getErrorMessage(error) : null,
     pendingCount,
     createRequest: (title: string, content: string, priority: string) =>
       createMutation.mutateAsync({ title, content, priority }),

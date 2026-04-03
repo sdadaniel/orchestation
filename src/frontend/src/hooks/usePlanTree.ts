@@ -6,6 +6,7 @@ import type { TaskFrontmatter } from "@/lib/parser";
 import { buildPlanTree } from "@/lib/plan-tree";
 import type { PlanTreeData } from "@/types/plan";
 import { queryKeys } from "@/lib/query-keys";
+import { getErrorMessage } from "@/lib/error-utils";
 
 type PlanTreeResult = {
   data: PlanTreeData | null;
@@ -49,6 +50,6 @@ export function usePlanTree(): UsePlanTreeResult {
     data: data?.data ?? null,
     allTasks: data?.allTasks ?? [],
     loading: isLoading,
-    error: error ? (error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.") : null,
+    error: error ? getErrorMessage(error) : null,
   };
 }

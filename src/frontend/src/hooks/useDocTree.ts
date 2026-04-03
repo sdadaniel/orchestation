@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import type { DocNode, DocDetail } from "@/lib/doc-tree";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export type { DocNode, DocDetail };
 
@@ -89,7 +90,7 @@ export function useDocTree() {
   return {
     tree,
     isLoading,
-    error: error ? (error instanceof Error ? error.message : "Error") : null,
+    error: error ? getErrorMessage(error) : null,
     fetchTree,
     createDoc: async (title: string, type: "doc" | "folder", parentId?: string | null) => {
       const data = await createMutation.mutateAsync({ title, type, parentId });
@@ -122,7 +123,7 @@ export function useDocDetail(id: string) {
   return {
     doc,
     isLoading,
-    error: error ? (error instanceof Error ? error.message : "Error") : null,
+    error: error ? getErrorMessage(error) : null,
     refetch: () => queryClient.invalidateQueries({ queryKey: queryKeys.docs.detail(id) }),
   };
 }

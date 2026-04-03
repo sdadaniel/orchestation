@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export interface Prd {
   id: string;
@@ -27,6 +28,6 @@ export function usePrds() {
   return {
     prds,
     isLoading,
-    error: error ? (error instanceof Error ? error.message : "오류 발생") : null,
+    error: error ? getErrorMessage(error) : null,
   };
 }

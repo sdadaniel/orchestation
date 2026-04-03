@@ -5,6 +5,7 @@ import { useRef, useEffect, useState } from "react";
 import type { QueryKey } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import type { ClaudeProcess } from "@/lib/monitor-types";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export type { ClaudeProcess };
 
@@ -64,6 +65,6 @@ export function useMonitor(intervalMs = 10000): MonitorData & { error: string | 
   return {
     current,
     history,
-    error: error ? (error instanceof Error ? error.message : "Unknown error") : null,
+    error: error ? getErrorMessage(error) : null,
   };
 }
