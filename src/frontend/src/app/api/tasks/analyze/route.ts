@@ -2,6 +2,7 @@ import fs from "fs";
 import { spawnClaude, CLAUDE_DEFAULT_TIMEOUT_MS, ClaudeChildProcess } from "@/lib/claude-cli";
 import { renderTemplate } from "@/lib/template";
 import { ROLES_DIR } from "@/lib/paths";
+import { jsonErrorResponse } from "@/lib/error-utils";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -38,17 +39,11 @@ export async function POST(request: Request) {
     title = body.title;
     description = body.description || "";
   } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonErrorResponse("Invalid JSON body");
   }
 
   if (!title || typeof title !== "string" || !title.trim()) {
-    return new Response(JSON.stringify({ error: "title is required" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonErrorResponse("title is required");
   }
 
   const roles = getAvailableRoles();
@@ -78,12 +73,7 @@ export async function POST(request: Request) {
     let timedOut = false;
     const timeoutTimer = setTimeout(() => {
       timedOut = true;
-      resolve(
-        new Response(
-          JSON.stringify({ error: "Analysis timed out. Please try again." }),
-          { status: 504, headers: { "Content-Type": "application/json" } },
-        ),
-      );
+      resolve(jsonErrorResponse({ error: "Analysis timed out. Please try again.", status: 504, code: "TIMEOUT" }));
     }, CLAUDE_DEFAULT_TIMEOUT_MS);
 
     child.on("close", (code) => {
@@ -92,12 +82,7 @@ export async function POST(request: Request) {
 
       if (code !== 0) {
         console.error("Claude CLI stderr:", stderr);
-        resolve(
-          new Response(
-            JSON.stringify({ error: "AI analysis failed. Please try again." }),
-            { status: 500, headers: { "Content-Type": "application/json" } },
-          ),
-        );
+        resolve(jsonErrorResponse({ error: "AI analysis failed. Please try again.", status: 500 }));
         return;
       }
 
@@ -194,14 +179,13 @@ export async function POST(request: Request) {
       console.error("Claude CLI spawn error:", err.message);
       const isNotFound = err.message.includes("ENOENT");
       resolve(
-        new Response(
-          JSON.stringify({
-            error: isNotFound
-              ? "Claude CLI not found. Install it first: https://docs.anthropic.com/en/docs/claude-cli"
-              : `Claude CLI error: ${err.message}`,
-          }),
-          { status: 500, headers: { "Content-Type": "application/json" } },
-        ),
+        jsonErrorResponse({
+          error: isNotFound
+            ? "Claude CLI not found. Install it first: https://docs.anthropic.com/en/docs/claude-cli"
+            : `Claude CLI error: ${err.message}`,
+          status: 500,
+          code: isNotFound ? "CLI_NOT_FOUND" : "CLI_ERROR",
+        }),
       );
     });
   });
