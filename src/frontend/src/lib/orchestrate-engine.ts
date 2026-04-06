@@ -177,6 +177,29 @@ export class OrchestrateEngine extends EventEmitter {
 
   // ── Task Scanning ───────────────────────────────────
 
+  private buildTaskInfo(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data: Record<string, any>,
+    taskId: string,
+    filePath: string,
+    status: TaskStatus,
+  ): TaskInfo {
+    return {
+      id: getString(data, "id", taskId),
+      filePath,
+      status,
+      priority: getString(data, "priority", "medium"),
+      branch: getString(data, "branch"),
+      worktree: getString(data, "worktree"),
+      role: getString(data, "role"),
+      reviewerRole: getString(data, "reviewer_role"),
+      scope: getStringArray(data, "scope"),
+      dependsOn: getStringArray(data, "depends_on"),
+      sortOrder: typeof data.sort_order === "number" ? data.sort_order : 0,
+      title: getString(data, "title"),
+    };
+  }
+
   private scanTasks(): TaskInfo[] {
     const tasks: TaskInfo[] = [];
     if (!fs.existsSync(TASKS_DIR)) return tasks;
@@ -194,20 +217,7 @@ export class OrchestrateEngine extends EventEmitter {
       // 완료/진행 중인 태스크는 조기 제외 (큐 스캔용)
       if (status === "done" || status === "in_progress") continue;
 
-      tasks.push({
-        id: getString(data, "id", idMatch[1]),
-        filePath,
-        status,
-        priority: getString(data, "priority", "medium"),
-        branch: getString(data, "branch"),
-        worktree: getString(data, "worktree"),
-        role: getString(data, "role"),
-        reviewerRole: getString(data, "reviewer_role"),
-        scope: getStringArray(data, "scope"),
-        dependsOn: getStringArray(data, "depends_on"),
-        sortOrder: typeof data.sort_order === "number" ? data.sort_order : 0,
-        title: getString(data, "title"),
-      });
+      tasks.push(this.buildTaskInfo(data, idMatch[1], filePath, status));
     }
 
     // 정렬: stopped > pending, high > medium > low, sortOrder, id
@@ -232,21 +242,9 @@ export class OrchestrateEngine extends EventEmitter {
     const filePath = path.join(TASKS_DIR, files[0]);
     const raw = fs.readFileSync(filePath, "utf-8");
     const { data } = parseFrontmatter(raw);
+    const status = getString(data, "status", "pending") as TaskStatus;
 
-    return {
-      id: getString(data, "id", taskId),
-      filePath,
-      status: getString(data, "status", "pending") as TaskStatus,
-      priority: getString(data, "priority", "medium"),
-      branch: getString(data, "branch"),
-      worktree: getString(data, "worktree"),
-      role: getString(data, "role"),
-      reviewerRole: getString(data, "reviewer_role"),
-      scope: getStringArray(data, "scope"),
-      dependsOn: getStringArray(data, "depends_on"),
-      sortOrder: typeof data.sort_order === "number" ? data.sort_order : 0,
-      title: getString(data, "title"),
-    };
+    return this.buildTaskInfo(data, taskId, filePath, status);
   }
 
   // ── Dependency & Scope ──────────────────────────────
