@@ -1,11 +1,13 @@
 ---
 id: TASK-354
 title: orchestrate-engine-TaskInfo-생성-로직-중복-제거
-status: pending
+status: done
+branch: task/task-354
+worktree: ../repo-wt-task-354
 priority: medium
 mode: night
 created: 2026-04-06 11:20
-updated: 2026-04-06 11:20
+updated: 2026-04-06 11:46
 depends_on: []
 scope:
   - src/frontend/src/lib/orchestrate-engine.ts
