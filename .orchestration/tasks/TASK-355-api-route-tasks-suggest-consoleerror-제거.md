@@ -1,11 +1,13 @@
 ---
 id: TASK-355
 title: api-route-tasks-suggest-console.error-제거
-status: pending
+status: done
+branch: task/task-355
+worktree: ../repo-wt-task-355
 priority: medium
 mode: night
 created: 2026-04-06 12:25
-updated: 2026-04-06 12:25
+updated: 2026-04-06 11:40
 depends_on: []
 scope:
   - src/frontend/src/app/api/tasks/suggest/route.ts
