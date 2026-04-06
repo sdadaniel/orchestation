@@ -43,7 +43,6 @@ export async function POST() {
       if (timedOut) return;
 
       if (code !== 0) {
-        console.error("Claude CLI stderr:", stderr);
         resolve(
           NextResponse.json(
             { suggestions: [], error: "AI 분석 실패. 다시 시도해주세요." },
@@ -68,7 +67,6 @@ export async function POST() {
         const data = JSON.parse(jsonMatch[0]);
         resolve(NextResponse.json(data));
       } catch {
-        console.error("Failed to parse suggest response:", stdout);
         resolve(
           NextResponse.json({
             suggestions: [],
@@ -80,7 +78,6 @@ export async function POST() {
 
     child.on("error", (err) => {
       clearTimeout(timeoutTimer);
-      console.error("Claude CLI spawn error:", err.message);
       resolve(
         NextResponse.json(
           { suggestions: [], error: "AI 호출 실패. 다시 시도해주세요." },
