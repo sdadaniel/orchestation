@@ -80,7 +80,7 @@ function parseTokenUsageLogs(taskId: string): TaskLogEntry[] {
     if (!timestampMatch) continue;
     if (timestampMatch[2] !== taskId) continue;
 
-    const timestamp = timestampMatch[1];
+    const timestamp = timestampMatch[1] ?? "";
 
     // Extract phase
     const phaseMatch = trimmed.match(/phase=(\w+)/);
@@ -213,8 +213,8 @@ function parseSignalLogs(taskId: string): TaskLogEntry[] {
     );
 
     if (tsMatch) {
-      const timestamp = tsMatch[1].replace("T", " ");
-      const msg = tsMatch[2];
+      const timestamp = (tsMatch[1] ?? "").replace("T", " ");
+      const msg = tsMatch[2] ?? "";
       const level = /error|fail|exception/i.test(msg) ? "error" : /warn/i.test(msg) ? "warn" : "info";
       entries.push({ timestamp, level, message: msg });
     } else {
