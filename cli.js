@@ -5,7 +5,6 @@ const path = require("path");
 const fs = require("fs");
 
 const ORCH_DIR = ".orchestration";
-const SCRIPTS_DIR = path.join(__dirname, "scripts");
 const FRONTEND_DIR = path.join(__dirname, "src", "frontend");
 
 const command = process.argv[2];
@@ -63,22 +62,14 @@ function checkBinary(name, hint) {
 }
 
 /**
- * Verify bash version >= 3.
+ * Verify Node.js version >= 18.
  * Returns true if OK, false otherwise.
  */
-function checkBashVersion() {
-  try {
-    const out = execSync("bash --version", { stdio: "pipe", encoding: "utf-8" });
-    const match = out.match(/version\s+(\d+)/);
-    if (match && parseInt(match[1], 10) >= 3) {
-      return true;
-    }
-    console.error("  [MISSING] bash >= 3 is required. Found:", out.split("\n")[0]);
-    return false;
-  } catch {
-    console.error("  [MISSING] bash not found.");
-    return false;
-  }
+function checkNodeVersion() {
+  const major = parseInt(process.versions.node.split(".")[0], 10);
+  if (major >= 18) return true;
+  console.error(`  [MISSING] Node.js >= 18 is required. Found: ${process.versions.node}`);
+  return false;
 }
 
 /**
@@ -90,8 +81,7 @@ function checkDependencies() {
   const results = [
     checkBinary("claude", "Install: https://docs.anthropic.com/en/docs/claude-cli"),
     checkBinary("git", "Install: https://git-scm.com/downloads"),
-    checkBinary("jq", "Install: brew install jq (macOS) / apt install jq (Linux)"),
-    checkBashVersion(),
+    checkNodeVersion(),
   ];
 
   const allOk = results.every(Boolean);
@@ -292,15 +282,17 @@ switch (command) {
   case "run": {
     ensureOrchDir();
 
-    const scriptPath = path.join(SCRIPTS_DIR, "orchestrate.sh");
-    if (!fs.existsSync(scriptPath)) {
-      console.error("Error: orchestrate.sh not found at", scriptPath);
+    const tsxBin = path.join(FRONTEND_DIR, "node_modules", ".bin", "tsx");
+    const engineScript = path.join(FRONTEND_DIR, "src", "cli", "run-engine.ts");
+
+    if (!fs.existsSync(engineScript)) {
+      console.error("Error: run-engine.ts not found at", engineScript);
       process.exit(1);
     }
 
-    console.log("Running orchestration pipeline...");
-    const runProc = spawn("bash", [scriptPath, ...args], {
-      cwd: process.cwd(),
+    console.log("Running orchestration pipeline (Node.js engine)...");
+    const runProc = spawn(tsxBin, [engineScript, ...args], {
+      cwd: FRONTEND_DIR,
       stdio: "inherit",
       env: { ...process.env, PACKAGE_DIR: __dirname, PROJECT_ROOT: process.cwd() },
     });
@@ -315,15 +307,17 @@ switch (command) {
   case "night": {
     ensureOrchDir();
 
-    const nightScript = path.join(SCRIPTS_DIR, "night-worker.sh");
+    const nightTsxBin = path.join(FRONTEND_DIR, "node_modules", ".bin", "tsx");
+    const nightScript = path.join(FRONTEND_DIR, "src", "cli", "run-night-worker.ts");
+
     if (!fs.existsSync(nightScript)) {
-      console.error("Error: night-worker.sh not found at", nightScript);
+      console.error("Error: run-night-worker.ts not found at", nightScript);
       process.exit(1);
     }
 
-    console.log("Starting Night Worker...");
-    const nightProc = spawn("bash", [nightScript, ...args], {
-      cwd: process.cwd(),
+    console.log("Starting Night Worker (Node.js)...");
+    const nightProc = spawn(nightTsxBin, [nightScript, ...args], {
+      cwd: FRONTEND_DIR,
       stdio: "inherit",
       env: { ...process.env, PACKAGE_DIR: __dirname, PROJECT_ROOT: process.cwd() },
     });

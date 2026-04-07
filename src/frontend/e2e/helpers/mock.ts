@@ -245,12 +245,6 @@ async function mockAppShellApis(
       route.continue();
     }
   });
-
-  // Sprints
-  await page.route("**/api/sprints", (route) => {
-    route.fulfill({ json: [] });
-  });
-
   // Orchestration status
   await page.route("**/api/orchestrate/status", (route) => {
     route.fulfill({ json: { status: orchestrateStatus } });
@@ -450,24 +444,41 @@ export async function setupSettingsMocks(
 
 export async function setupNightWorkerMocks(
   page: Page,
-  opts: { orchestrateStatus?: string } = {},
+  opts: { nightWorkerStatus?: string; logs?: string[] } = {},
 ) {
-  const { orchestrateStatus = "idle" } = opts;
+  const { nightWorkerStatus = "idle", logs = [] } = opts;
 
-  await mockAppShellApis(page, { orchestrateStatus });
+  await mockAppShellApis(page, {});
 
-  // Orchestrate status override for night-worker specific needs
-  await page.route("**/api/orchestrate/status", (route) => {
-    route.fulfill({ json: { status: orchestrateStatus } });
-  });
-
-  // Night worker logs
-  await page.route("**/api/orchestrate/logs", (route) => {
-    route.fulfill({
-      json: [
-        { timestamp: "2026-03-26T02:00:00", level: "info", message: "Night Worker started" },
-        { timestamp: "2026-03-26T02:01:00", level: "info", message: "Processing tasks..." },
-      ],
-    });
+  // GET /api/night-worker — returns state used by the page component
+  await page.route("**/api/night-worker", (route) => {
+    const method = route.request().method();
+    if (method === "GET") {
+      route.fulfill({
+        json: {
+          status: nightWorkerStatus,
+          logs,
+          tasksCreated: 0,
+          totalCost: "0",
+        },
+      });
+    } else if (method === "POST") {
+      route.fulfill({
+        json: {
+          message: "Night Worker 시작됨",
+          pid: 12345,
+          until: "07:00",
+          budget: "unlimited",
+          maxTasks: 10,
+          types: "typecheck,lint,review",
+        },
+      });
+    } else if (method === "DELETE") {
+      route.fulfill({
+        json: { message: "Night Worker 중지됨" },
+      });
+    } else {
+      route.continue();
+    }
   });
 }

@@ -101,7 +101,7 @@ test.describe("Current Tab (DAG Graph View)", () => {
       requests: GRAPH_REQUESTS,
       tasks: GRAPH_TASKS_WITH_DEP,
     });
-    await page.goto("/tasks?tab=stack");
+    await page.goto("/tasks?tab=current");
 
     const dagCanvas = page.locator("svg.dag-canvas");
     await expect(dagCanvas).toBeVisible({ timeout: 10_000 });
@@ -120,7 +120,7 @@ test.describe("Current Tab (DAG Graph View)", () => {
       requests: GRAPH_REQUESTS,
       tasks: GRAPH_TASKS_WITH_DEP,
     });
-    await page.goto("/tasks?tab=stack");
+    await page.goto("/tasks?tab=current");
 
     const dagCanvas = page.locator("svg.dag-canvas");
     await expect(dagCanvas).toBeVisible({ timeout: 10_000 });
@@ -133,7 +133,7 @@ test.describe("Current Tab (DAG Graph View)", () => {
 
   test("태스크가 없을 때 'No tasks yet.' 표시 및 DAG 미렌더링", async ({ page }) => {
     await setupTaskListMocks(page, { requests: [], tasks: [] });
-    await page.goto("/tasks?tab=stack");
+    await page.goto("/tasks?tab=current");
 
     await expect(
       page.locator(".content-container").getByText("No tasks yet."),
@@ -148,7 +148,7 @@ test.describe("Current Tab (DAG Graph View)", () => {
       requests: GRAPH_REQUESTS,
       tasks: GRAPH_TASKS_WITH_DEP,
     });
-    await page.goto("/tasks?tab=stack");
+    await page.goto("/tasks?tab=current");
 
     const content = page.locator(".content-container");
     const graphTab = content.getByRole("button", { name: /Graph/ });
@@ -163,7 +163,7 @@ test.describe("Current Tab (DAG Graph View)", () => {
       requests: GRAPH_REQUESTS,
       tasks: GRAPH_TASKS_WITH_DEP,
     });
-    await page.goto("/tasks?tab=stack");
+    await page.goto("/tasks?tab=current");
 
     const content = page.locator(".content-container");
     const searchInput = content.getByPlaceholder(/검색/);
@@ -177,7 +177,7 @@ test.describe("Current Tab (DAG Graph View)", () => {
       requests: GRAPH_REQUESTS,
       tasks: GRAPH_TASKS_WITH_DEP,
     });
-    await page.goto("/tasks?tab=stack");
+    await page.goto("/tasks?tab=current");
 
     const dagCanvas = page.locator("svg.dag-canvas");
     await expect(dagCanvas).toBeVisible({ timeout: 10_000 });
@@ -192,7 +192,7 @@ test.describe("Current Tab (DAG Graph View)", () => {
       requests: GRAPH_REQUESTS,
       tasks: GRAPH_TASKS_WITH_DEP,
     });
-    await page.goto("/tasks?tab=stack");
+    await page.goto("/tasks?tab=current");
 
     const dagCanvas = page.locator("svg.dag-canvas");
     await expect(dagCanvas).toBeVisible({ timeout: 10_000 });
@@ -212,7 +212,7 @@ test.describe("Current Tab (DAG Graph View)", () => {
       requests: GRAPH_REQUESTS,
       tasks: GRAPH_TASKS_WITH_DEP,
     });
-    await page.goto("/tasks?tab=stack");
+    await page.goto("/tasks?tab=current");
 
     const dagCanvas = page.locator("svg.dag-canvas");
     await expect(dagCanvas).toBeVisible({ timeout: 10_000 });
@@ -232,7 +232,7 @@ test.describe("Current Tab (DAG Graph View)", () => {
       requests: GRAPH_REQUESTS,
       tasks: GRAPH_TASKS_WITH_DEP,
     });
-    await page.goto("/tasks?tab=stack");
+    await page.goto("/tasks?tab=current");
 
     const dagCanvas = page.locator("svg.dag-canvas");
     await expect(dagCanvas).toBeVisible({ timeout: 10_000 });
@@ -276,7 +276,7 @@ test.describe("Current Tab (DAG Graph View)", () => {
       route.fulfill({ json: { status: "idle", logs: [] } });
     });
 
-    await page.goto("/tasks?tab=stack");
+    await page.goto("/tasks?tab=current");
 
     const dagCanvas = page.locator("svg.dag-canvas");
     await expect(dagCanvas).toBeVisible({ timeout: 10_000 });

@@ -1,11 +1,13 @@
 ---
 id: TASK-349
 title: usePlanTree-plans-배열-인덱스-접근-타입-안전성-추가
-status: pending
+status: stopped
+branch: task/task-349
+worktree: ../repo-wt-task-349
 priority: medium
 mode: night
 created: 2026-04-06
-updated: 2026-04-06
+updated: 2026-04-07 05:07
 depends_on: []
 scope:  []
 ---

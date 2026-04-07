@@ -12,7 +12,6 @@
   },
   "files": [
     "cli.js",
-    "scripts/",
     "template/",
     "docs/roles/",
     "config.json",
