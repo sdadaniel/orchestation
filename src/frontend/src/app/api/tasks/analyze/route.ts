@@ -81,7 +81,6 @@ export async function POST(request: Request) {
       if (timedOut) return;
 
       if (code !== 0) {
-        console.error("Claude CLI stderr:", stderr);
         resolve(jsonErrorResponse({ error: "AI analysis failed. Please try again.", status: 500 }));
         return;
       }
@@ -151,7 +150,6 @@ export async function POST(request: Request) {
           }),
         );
       } catch (err) {
-        console.error("Failed to parse AI response:", stdout);
         // Fallback
         resolve(
           new Response(
@@ -176,7 +174,6 @@ export async function POST(request: Request) {
 
     child.on("error", (err) => {
       clearTimeout(timeoutTimer);
-      console.error("Claude CLI spawn error:", err.message);
       const isNotFound = err.message.includes("ENOENT");
       resolve(
         jsonErrorResponse({
