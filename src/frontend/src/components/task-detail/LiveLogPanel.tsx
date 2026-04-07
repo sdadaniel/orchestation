@@ -4,6 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Terminal colors
+const TERMINAL_BG = "bg-[#0d1117]";
+const TERMINAL_HEADER_BG = "bg-[#161b22]";
+
 interface LogEntry {
   timestamp: string;
   level: string;
@@ -70,8 +74,8 @@ export function LiveLogPanel({ taskId, onStatusChange }: { taskId: string; onSta
   };
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden bg-[#0d1117]">
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#161b22] border-b border-border">
+    <div className={cn("rounded-lg border border-border overflow-hidden", TERMINAL_BG)}>
+      <div className={cn("flex items-center gap-2 px-3 py-1.5 border-b border-border", TERMINAL_HEADER_BG)}>
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
