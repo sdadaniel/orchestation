@@ -1,11 +1,13 @@
 ---
 id: TASK-356
 title: src-frontend-src-app-api-tasks-analyze-route-console-error-제거
-status: pending
+status: done
+branch: task/task-356
+worktree: ../repo-wt-task-356
 priority: medium
 mode: night
 created: 2026-04-06 13:11
-updated: 2026-04-06 13:11
+updated: 2026-04-07 01:11
 depends_on: []
 scope:
   - src/frontend/src/app/api/tasks/analyze/route.ts
