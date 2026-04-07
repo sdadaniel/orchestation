@@ -1,11 +1,13 @@
 ---
 id: TASK-347
 title: 터미널-패널-하드코딩-색상-상수-추출
-status: pending
+status: done
+branch: task/task-347
+worktree: ../repo-wt-task-347
 priority: medium
 mode: night
 created: 2026-04-06
-updated: 2026-04-06
+updated: 2026-04-07 05:02
 depends_on: []
 scope:  []
 ---
