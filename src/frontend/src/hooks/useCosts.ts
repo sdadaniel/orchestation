@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CostData } from "@/lib/cost-parser";
+import type { CostData } from "@/parser/cost-parser";
 import { queryKeys } from "@/lib/query-keys";
 import { getErrorMessage } from "@/lib/error-utils";
 

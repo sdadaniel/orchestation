@@ -4,13 +4,13 @@
  */
 import fs from "fs";
 import path from "path";
-import { parseFrontmatter, getString } from "./frontmatter-utils";
-import { PROJECT_ROOT, TASKS_DIR, OUTPUT_DIR, ROLES_DIR } from "./paths";
-import { loadSettings } from "./settings";
+import { PROJECT_ROOT, OUTPUT_DIR, ROLES_DIR } from "../lib/paths";
+import { loadSettings } from "../lib/settings";
 import { signalCreate } from "./signal";
 import { setupContextFilter, buildReviewPrompt } from "./context-builder";
 import { runClaudeStreamJson } from "./claude-worker";
-import { getDb } from "./db";
+import { getTask, taskRowToMarkdown } from "../service/task-store";
+import { logTokenUsage } from "../service/token-logger";
 
 const DEFAULT_REVIEW_MODEL = "claude-haiku-4-5";
 
@@ -26,35 +26,37 @@ export interface JobReviewResult {
  */
 export async function runJobReview(
   taskId: string,
-  signalDir: string,
   onLog?: (line: string) => void,
 ): Promise<JobReviewResult> {
   const log = (msg: string) => onLog?.(`[${taskId}/review] ${msg}`);
   let signalSent = false;
 
   try {
-    // 1. 태스크 파일 찾기
-    const taskFile = findTaskFile(taskId);
-    if (!taskFile) {
-      log("❌ 태스크 파일을 찾을 수 없음");
-      signalCreate(signalDir, taskId, "review-rejected");
+    // 1. DB에서 태스크 조회
+    const task = getTask(taskId);
+    if (!task) {
+      log("❌ 태스크를 찾을 수 없음");
+      signalCreate(taskId, "review-rejected");
       signalSent = true;
       return { status: "review-rejected" };
     }
 
-    const taskFilename = path.basename(taskFile);
-    const raw = fs.readFileSync(taskFile, "utf-8");
-    const { data } = parseFrontmatter(raw);
+    // buildReviewPrompt가 파일을 읽으므로 임시 파일 생성
+    const tmpTaskFile = path.join(OUTPUT_DIR, `${taskId}-review-tmp.md`);
+    fs.mkdirSync(path.dirname(tmpTaskFile), { recursive: true });
+    fs.writeFileSync(tmpTaskFile, taskRowToMarkdown(task));
+    const taskFile = tmpTaskFile;
+    const taskFilename = `${task.id}-task.md`;
 
-    const branch = getString(data, "branch");
-    const worktree = getString(data, "worktree");
-    const reviewerRole = getString(data, "reviewer_role") || "reviewer-general";
+    const branch = task.branch;
+    const worktree = task.worktree;
+    const reviewerRole = task.reviewer_role || "reviewer-general";
 
     // 2. worktree 확인
     const worktreePath = worktree ? path.resolve(PROJECT_ROOT, worktree) : null;
     if (worktreePath && !fs.existsSync(worktreePath)) {
       log(`⚠️ worktree가 없음: ${worktreePath}`);
-      signalCreate(signalDir, taskId, "review-rejected");
+      signalCreate(taskId, "review-rejected");
       signalSent = true;
       return { status: "review-rejected" };
     }
@@ -114,8 +116,10 @@ export async function runJobReview(
     const decision = parseDecision(claudeResult.result);
     log(`📋 판정: ${decision}`);
 
+    cleanupTmpTaskFile(taskId);
+
     if (decision === "approved") {
-      signalCreate(signalDir, taskId, "review-approved");
+      signalCreate(taskId, "review-approved");
       signalSent = true;
       return { status: "review-approved", cost: claudeResult.costUsd };
     } else {
@@ -123,15 +127,16 @@ export async function runJobReview(
       const feedbackFile = path.join(OUTPUT_DIR, `${taskId}-review-feedback.txt`);
       fs.writeFileSync(feedbackFile, claudeResult.result);
 
-      signalCreate(signalDir, taskId, "review-rejected");
+      signalCreate(taskId, "review-rejected");
       signalSent = true;
       return { status: "review-rejected", feedback: claudeResult.result, cost: claudeResult.costUsd };
     }
   } catch (err) {
+    cleanupTmpTaskFile(taskId);
     const msg = err instanceof Error ? err.message : String(err);
     log(`❌ 오류: ${msg}`);
     if (!signalSent) {
-      try { signalCreate(signalDir, taskId, "review-rejected"); } catch { /* ignore */ }
+      try { signalCreate(taskId, "review-rejected"); } catch { /* ignore */ }
     }
     return { status: "review-rejected" };
   }
@@ -139,20 +144,12 @@ export async function runJobReview(
 
 // ── 헬퍼 함수들 ─────────────────────────────────────────
 
-function findTaskFile(taskId: string): string | null {
-  const dirs = [
-    TASKS_DIR,
-    path.join(PROJECT_ROOT, "docs", "task"),
-    path.join(PROJECT_ROOT, "docs", "requests"),
-  ];
-
-  for (const dir of dirs) {
-    if (!fs.existsSync(dir)) continue;
-    const files = fs.readdirSync(dir);
-    const match = files.find(f => f.startsWith(`${taskId}-`) && f.endsWith(".md"));
-    if (match) return path.join(dir, match);
-  }
-  return null;
+/** 임시 태스크 파일 정리 */
+function cleanupTmpTaskFile(taskId: string): void {
+  try {
+    const tmpFile = path.join(OUTPUT_DIR, `${taskId}-review-tmp.md`);
+    if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
+  } catch { /* ignore */ }
 }
 
 function loadReviewerRole(role: string): string {
@@ -188,27 +185,3 @@ function parseDecision(result: string): "approved" | "rejected" {
   return "rejected";
 }
 
-function logTokenUsage(
-  taskId: string,
-  phase: string,
-  model: string,
-  result: { costUsd: number; inputTokens: number; outputTokens: number; durationMs: number },
-): void {
-  const logLine = `[${new Date().toISOString()}] ${taskId} | phase=${phase} | model=${model} | input=${result.inputTokens} | output=${result.outputTokens} | cost=$${result.costUsd.toFixed(4)} | duration=${result.durationMs}ms\n`;
-
-  try {
-    const logPath = path.join(OUTPUT_DIR, "token-usage.log");
-    fs.mkdirSync(path.dirname(logPath), { recursive: true });
-    fs.appendFileSync(logPath, logLine);
-  } catch { /* ignore */ }
-
-  try {
-    const db = getDb();
-    if (db) {
-      db.prepare(
-        `INSERT INTO token_usage (task_id, phase, model, input_tokens, output_tokens, cost_usd, duration_ms, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(taskId, phase, model, result.inputTokens, result.outputTokens, result.costUsd, result.durationMs, new Date().toISOString());
-    }
-  } catch { /* ignore */ }
-}

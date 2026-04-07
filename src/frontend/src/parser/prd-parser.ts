@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { parseFrontmatter, getString } from "./frontmatter-utils";
+import { parseFrontmatter, getString } from "../lib/frontmatter-utils";
 
 export interface PrdData {
   id: string;

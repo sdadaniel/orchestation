@@ -140,7 +140,7 @@ export default function SettingsPage() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground/60">
-                Anthropic API key for orchestrate.sh and Night Worker
+                Anthropic API key for Orchestrate Engine and Night Worker
               </p>
             </div>
 

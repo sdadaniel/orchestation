@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCostLogLine, aggregateByTask } from "../cost-parser";
+import { parseCostLogLine, aggregateByTask } from "../../parser/cost-parser";
 
 // ─── parseCostLogLine ───────────────────────────────────────────────────────
 

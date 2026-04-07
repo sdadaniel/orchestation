@@ -2,15 +2,15 @@
  * night-worker.ts — Night Worker 매니저
  * scripts/night-worker.sh의 Node.js 포팅
  */
-import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import http from "http";
-import { PROJECT_ROOT, PACKAGE_DIR, TASKS_DIR, OUTPUT_DIR } from "./paths";
-import { loadSettings } from "./settings";
+import { PROJECT_ROOT, PACKAGE_DIR, OUTPUT_DIR, TEMPLATE_DIR } from "../lib/paths";
+import { writeNotice } from "../parser/notice-parser";
+import { loadSettings } from "../lib/settings";
 import { runClaudeJson } from "./claude-worker";
-import { parseFrontmatter, getString } from "./frontmatter-utils";
+import { parseFrontmatter, getString, getStringArray } from "../lib/frontmatter-utils";
+import { createTask, getNextTaskId } from "../service/task-store";
 
 export interface NightWorkerOptions {
   until?: string;       // HH:MM (기본 07:00)
@@ -176,8 +176,8 @@ class NightWorkerManager {
     const srcPaths = settings.srcPaths.join(", ");
     const typePrompt = TYPE_PROMPTS[type] ?? TYPE_PROMPTS.review;
 
-    // 다음 태스크 ID 결정
-    const nextId = this.getNextTaskId();
+    // 다음 태스크 ID 결정 (DB 기반)
+    const nextId = getNextTaskId();
 
     // night-scan 프롬프트 빌드
     const nightScanTemplate = this.loadTemplate("prompt/night-scan.md");
@@ -206,13 +206,31 @@ class NightWorkerManager {
       return false;
     }
 
-    // 태스크 파일 생성
+    // Claude 결과에서 태스크 정보 추출
     const taskContent = result.result.trim();
 
     // frontmatter에서 title 추출 시도
     let title = "";
+    let role = "general";
+    let priority = "medium";
+    let scope: string[] = [];
+    let dependsOn: string[] = [];
+    let bodyContent = taskContent;
+
     const { data } = parseFrontmatter(taskContent);
     title = getString(data, "title");
+    if (data.role) role = getString(data, "role") || "general";
+    if (data.priority) priority = getString(data, "priority") || "medium";
+    if (data.scope) scope = getStringArray(data, "scope");
+    if (data.depends_on) dependsOn = getStringArray(data, "depends_on");
+
+    // frontmatter가 있으면 body만 추출
+    if (taskContent.startsWith("---")) {
+      const endIdx = taskContent.indexOf("---", 3);
+      if (endIdx !== -1) {
+        bodyContent = taskContent.slice(endIdx + 3).trim();
+      }
+    }
 
     if (!title) {
       // markdown heading에서 추출
@@ -220,53 +238,19 @@ class NightWorkerManager {
       title = headingMatch ? headingMatch[1].trim() : `${type}-auto-${Date.now()}`;
     }
 
-    // 슬러그 생성
-    const slug = title
-      .toLowerCase()
-      .replace(/[^a-z0-9가-힣\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .slice(0, 50);
-
-    const taskFilename = `${nextId}-${slug}.md`;
-    const taskFilePath = path.join(TASKS_DIR, taskFilename);
-
-    // frontmatter가 포함되지 않은 경우 추가
-    let fileContent = taskContent;
-    if (!taskContent.startsWith("---")) {
-      fileContent = `---
-id: ${nextId}
-title: ${title}
-status: pending
-priority: medium
-mode: night
-created: ${date}
-updated: ${date}
-depends_on: []
-scope: []
----
-
-${taskContent}
-`;
-    } else {
-      // id가 올바른지 확인하고 교체
-      fileContent = taskContent.replace(/^id:\s*.+$/m, `id: ${nextId}`);
-    }
-
-    // 원자적 파일 생성
-    const tmpFile = `${taskFilePath}.tmp.${process.pid}`;
-    fs.writeFileSync(tmpFile, fileContent);
-    fs.renameSync(tmpFile, taskFilePath);
+    // DB에 태스크 생성
+    createTask({
+      id: nextId,
+      title,
+      status: "pending",
+      priority,
+      role,
+      scope,
+      depends_on: dependsOn,
+      content: bodyContent,
+    });
 
     this.log(`  ✅ 태스크 생성: ${nextId} — ${title}`);
-
-    // git commit
-    try {
-      execSync(`git -C "${PROJECT_ROOT}" add -f "${taskFilePath}"`, { stdio: "ignore" });
-      execSync(
-        `git -C "${PROJECT_ROOT}" commit -m "chore(${nextId}): Night Worker 자동 생성 (${type})"`,
-        { stdio: "ignore" },
-      );
-    } catch { /* ignore */ }
 
     return true;
   }
@@ -318,27 +302,9 @@ ${taskContent}
 
   // ── 유틸리티 ────────────────────────────────────────
 
-  private getNextTaskId(): string {
-    if (!fs.existsSync(TASKS_DIR)) {
-      fs.mkdirSync(TASKS_DIR, { recursive: true });
-      return "TASK-001";
-    }
-
-    const files = fs.readdirSync(TASKS_DIR);
-    let maxId = 0;
-    for (const f of files) {
-      const match = f.match(/^TASK-(\d+)/);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        if (num > maxId) maxId = num;
-      }
-    }
-    return `TASK-${String(maxId + 1).padStart(3, "0")}`;
-  }
-
   private loadTemplate(tplPath: string): string {
     const paths = [
-      path.join(PROJECT_ROOT, ".orchestration", "template", tplPath),
+      path.join(TEMPLATE_DIR, tplPath),
       path.join(PACKAGE_DIR, "template", tplPath),
     ];
     for (const p of paths) {
@@ -389,23 +355,11 @@ ${taskContent}
   }
 
   private postCompletionNotice(): void {
-    try {
-      const data = JSON.stringify({
-        title: "Night Worker 야간 작업 완료",
-        content: `태스크 ${this._state.tasksCreated}개 생성, 총 비용 $${this._state.totalCost.toFixed(4)}`,
-        type: "info",
-      });
-      const req = http.request({
-        hostname: "localhost",
-        port: 3000,
-        path: "/api/notices",
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data) },
-      });
-      req.write(data);
-      req.end();
-      req.on("error", () => { /* ignore */ });
-    } catch { /* ignore */ }
+    writeNotice(
+      "info",
+      "Night Worker 야간 작업 완료",
+      `태스크 ${this._state.tasksCreated}개 생성, 총 비용 $${this._state.totalCost.toFixed(4)}`,
+    );
   }
 }
 

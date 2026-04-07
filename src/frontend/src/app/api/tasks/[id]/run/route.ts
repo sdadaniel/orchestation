@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import taskRunnerManager from "@/lib/task-runner-manager";
-import orchestrationManager from "@/lib/orchestration-manager";
+import taskRunnerManager from "@/engine/runner/task-runner-manager";
+import orchestrationManager from "@/engine/orchestration-manager";
 import { parseAllRequests, findRequestFile, parseRequestFile } from "@/lib/request-parser";
 import { PROJECT_ROOT, OUTPUT_DIR } from "@/lib/paths";
 
@@ -27,7 +27,7 @@ function markTaskAsStopped(taskId: string): void {
   }
 }
 
-/** stop-request 시그널 파일 생성 (orchestrate.sh 워커가 killed-by-user 인지 구분) */
+/** stop-request 시그널 파일 생성 (워커가 killed-by-user 인지 구분) */
 function createStopRequest(taskId: string): void {
   try {
     fs.mkdirSync(SIGNAL_DIR, { recursive: true });
@@ -138,18 +138,18 @@ export async function DELETE(
     return NextResponse.json({ error: "Invalid task ID format" }, { status: 400 });
   }
 
-  // stop-request 시그널 파일 생성 → run-worker.sh EXIT trap이 "failed" 대신 "stopped" 처리하도록
+  // stop-request 시그널 파일 생성
   createStopRequest(id);
 
   // 1) TaskRunnerManager로 관리되는 프로세스 중지 시도
   const result = taskRunnerManager.stop(id);
 
-  // 2) TaskRunnerManager에 없으면 (orchestrate.sh로 실행된 경우)
-  //    run-worker.sh 프로세스를 직접 찾아서 kill
+  // 2) TaskRunnerManager에 없으면 (orchestrate engine으로 실행된 경우)
+  //    claude 워커 프로세스를 직접 찾아서 kill
   if (!result.success) {
     try {
       const pids = execSync(
-        `pgrep -f "run-worker\\.sh ${id}" 2>/dev/null || true`,
+        `pgrep -f "claude.*${id}" 2>/dev/null || true`,
         { encoding: "utf-8" },
       ).trim();
 

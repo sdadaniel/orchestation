@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import { parseAllRequests, getRequestsDir } from "@/lib/request-parser";
 import type { RequestData } from "@/lib/request-parser";
-import { generateNextTaskId } from "@/lib/task-id";
 import { getErrorMessage } from "@/lib/error-utils";
 import { ROLES_DIR } from "@/lib/paths";
 import { generateSlug } from "@/lib/slug-utils";
-import { getDb, isDbAvailable } from "@/lib/db";
-import { syncAllTaskFilesToDb, syncTaskFileToDb } from "@/lib/task-db-sync";
+import { getDb, isDbAvailable } from "@/service/db";
+import { getNextTaskId, createTask } from "@/service/task-store";
 import { formatTimestamp } from "@/lib/date-utils";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +36,6 @@ function parseJsonArray(value: string | null): string[] {
 }
 
 export async function GET() {
-  syncAllTaskFilesToDb();
   if (isDbAvailable()) {
     const db = getDb()!;
     const rows = db.prepare(
@@ -90,7 +88,7 @@ export async function POST(request: Request) {
     }
 
     // Determine next TASK-XXX id
-    const taskId = generateNextTaskId(dir);
+    const taskId = getNextTaskId();
     const sanitizedTitle = title.trim();
     const bodyContent = (content && typeof content === "string") ? content.trim() : "";
 
@@ -142,7 +140,17 @@ ${bodyContent}
     const filePath = `${dir}/${fileName}`;
     fs.writeFileSync(filePath, fileContent, "utf-8");
 
-    syncTaskFileToDb(filePath);
+    // DB에도 생성
+    createTask({
+      id: taskId,
+      title: sanitizedTitle,
+      status: "pending",
+      priority: taskPriority,
+      role: taskRole || "general",
+      scope: Array.isArray(scope) ? scope : [],
+      depends_on: Array.isArray(depends_on) ? depends_on : [],
+      content: bodyContent,
+    });
 
     return NextResponse.json(
       { id: taskId, title: sanitizedTitle, status: "pending", priority: taskPriority, created: today, updated: today, content: bodyContent },

@@ -1,58 +1,23 @@
 import { NextResponse } from "next/server";
-import { parseAllTasks } from "@/lib/parser";
-import type { TaskFrontmatter } from "@/lib/parser";
-import fs from "fs";
-import path from "path";
-import { TASKS_DIR } from "@/lib/paths";
-import { generateNextTaskId } from "@/lib/task-id";
+import type { TaskFrontmatter } from "@/parser/parser";
 import { getErrorMessage } from "@/lib/error-utils";
-import { renderTemplate } from "@/lib/template";
-import { generateSlug } from "@/lib/slug-utils";
-import { getDb, isDbAvailable } from "@/lib/db";
-import { syncAllTaskFilesToDb, syncTaskFileToDb } from "@/lib/task-db-sync";
+import { getAllTasks, createTask, getNextTaskId, parseScope, parseDependsOn } from "@/service/task-store";
 
 export const dynamic = "force-dynamic";
 
-interface TaskRow {
-  id: string;
-  title: string;
-  status: string;
-  priority: string;
-  depends_on: string | null;
-  role: string | null;
-  scope: string | null;
-}
-
-function parseJsonArray(value: string | null): string[] {
-  if (!value) return [];
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.map(String) : [];
-  } catch {
-    return [];
-  }
-}
-
 export async function GET() {
-  syncAllTaskFilesToDb();
-  if (isDbAvailable()) {
-    const db = getDb()!;
-    const rows = db.prepare("SELECT id, title, status, priority, depends_on, role, scope FROM tasks ORDER BY id").all() as TaskRow[];
-    const tasks: TaskFrontmatter[] = rows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      status: row.status as TaskFrontmatter["status"],
-      priority: row.priority as TaskFrontmatter["priority"],
-      depends_on: parseJsonArray(row.depends_on),
-      blocks: [],
-      parallel_with: [],
-      role: row.role ?? "",
-      affected_files: parseJsonArray(row.scope),
-    }));
-    return NextResponse.json(tasks);
-  }
-
-  const tasks = parseAllTasks();
+  const rows = getAllTasks();
+  const tasks: TaskFrontmatter[] = rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    status: row.status as TaskFrontmatter["status"],
+    priority: row.priority as TaskFrontmatter["priority"],
+    depends_on: parseDependsOn(row),
+    blocks: [],
+    parallel_with: [],
+    role: row.role ?? "",
+    affected_files: parseScope(row),
+  }));
   return NextResponse.json(tasks);
 }
 
@@ -73,12 +38,7 @@ export async function POST(request: Request) {
       ? priority
       : "medium";
 
-    if (!fs.existsSync(TASKS_DIR)) {
-      fs.mkdirSync(TASKS_DIR, { recursive: true });
-    }
-
-    // Determine next task ID
-    const taskId = generateNextTaskId(TASKS_DIR);
+    const taskId = getNextTaskId();
     const sanitizedTitle = title.trim();
     const taskRole =
       role && typeof role === "string" ? role.trim() : "general";
@@ -89,34 +49,21 @@ export async function POST(request: Request) {
         )
       : [];
 
-    const depsYaml =
-      depsArray.length > 0
-        ? `\n${depsArray.map((d: string) => `    - ${d}`).join("\n")}`
-        : " []";
-
     const scopeArray = Array.isArray(scope)
       ? scope.filter(
           (s: unknown) => typeof s === "string" && s.trim().length > 0,
         )
       : [];
-    const scopeYaml =
-      scopeArray.length > 0
-        ? `\nscope:\n${scopeArray.map((s: string) => `  - ${s}`).join("\n")}`
-        : "";
 
-    const content = renderTemplate("entity/task.md", {
-      task_id: taskId,
+    createTask({
+      id: taskId,
       title: sanitizedTitle,
+      status: "pending",
       priority: taskPriority,
-      depends_on_yaml: depsYaml,
       role: taskRole,
-      scope_yaml: scopeYaml,
+      depends_on: depsArray,
+      scope: scopeArray,
     });
-
-    const slug = generateSlug(sanitizedTitle);
-    const filePath = path.join(TASKS_DIR, `${taskId}-${slug}.md`);
-    fs.writeFileSync(filePath, content, "utf-8");
-    syncTaskFileToDb(filePath);
 
     return NextResponse.json(
       {

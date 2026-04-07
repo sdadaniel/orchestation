@@ -4,14 +4,14 @@
  */
 import fs from "fs";
 import path from "path";
-import { parseFrontmatter, getString } from "./frontmatter-utils";
-import { PROJECT_ROOT, TASKS_DIR, PACKAGE_DIR } from "./paths";
-import { loadSettings } from "./settings";
+import { PROJECT_ROOT, PACKAGE_DIR, TEMPLATE_DIR } from "../lib/paths";
+import { loadSettings } from "../lib/settings";
+import { getTasksByStatus } from "../service/task-store";
 
 // ── Template 렌더링 ────────────────────────────────────────
 
 function resolveTemplate(tplPath: string): string {
-  const orchestrationPath = path.join(PROJECT_ROOT, ".orchestration", "template", tplPath);
+  const orchestrationPath = path.join(TEMPLATE_DIR, tplPath);
   if (fs.existsSync(orchestrationPath)) return orchestrationPath;
   const packagePath = path.join(PACKAGE_DIR, "template", tplPath);
   if (fs.existsSync(packagePath)) return packagePath;
@@ -29,29 +29,13 @@ function renderTemplate(tplPath: string, vars: Record<string, string>): string {
 
 // ── 완료된 태스크 목록 ─────────────────────────────────────
 
-function getDoneTaskIds(repoRoot: string): string[] {
-  const results: string[] = [];
-  const dirs = [
-    path.join(repoRoot, ".orchestration", "tasks"),
-    path.join(repoRoot, "docs", "task"),
-    path.join(repoRoot, "docs", "requests"),
-  ];
-
-  for (const dir of dirs) {
-    if (!fs.existsSync(dir)) continue;
-    for (const file of fs.readdirSync(dir)) {
-      if (!file.endsWith(".md")) continue;
-      if (!file.startsWith("TASK-") && !file.startsWith("REQ-")) continue;
-      try {
-        const raw = fs.readFileSync(path.join(dir, file), "utf-8");
-        const { data } = parseFrontmatter(raw);
-        if (getString(data, "status") === "done") {
-          results.push(file);
-        }
-      } catch { /* ignore */ }
-    }
+function getDoneTaskIds(): string[] {
+  try {
+    const rows = getTasksByStatus("done");
+    return rows.map(r => r.id);
+  } catch {
+    return [];
   }
-  return results;
 }
 
 // ── .claudeignore 생성 ─────────────────────────────────────
@@ -66,9 +50,7 @@ export function setupContextFilter(worktreePath: string, repoRoot: string): void
     "node_modules/",
     ".git/",
     "output/",
-    "scripts/orchestrate.sh",
-    "scripts/night-worker.sh",
-    "scripts/run-pipeline.sh",
+    "scripts/",
   ];
 
   // srcPaths 기반 필터
@@ -86,12 +68,11 @@ export function setupContextFilter(worktreePath: string, repoRoot: string): void
   } catch { /* ignore */ }
 
   // 완료된 태스크 제외
-  const doneFiles = getDoneTaskIds(repoRoot);
-  if (doneFiles.length > 0) {
+  const doneIds = getDoneTaskIds();
+  if (doneIds.length > 0) {
     lines.push("", "# 완료된 태스크");
-    for (const f of doneFiles) {
-      lines.push(`docs/task/${f}`);
-      lines.push(`docs/requests/${f}`);
+    for (const id of doneIds) {
+      lines.push(`docs/task/${id}*.md`);
     }
   }
 

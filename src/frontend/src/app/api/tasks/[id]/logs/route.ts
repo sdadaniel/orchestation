@@ -5,9 +5,9 @@ import {
   taskExists,
   hasLogSources,
   getTaskLogs,
-} from "@/lib/task-log-parser";
-import type { TaskLogEntry } from "@/lib/task-log-parser";
-import { getDb, isDbAvailable } from "@/lib/db";
+} from "@/parser/task-log-parser";
+import type { TaskLogEntry } from "@/parser/task-log-parser";
+import { getDb, isDbAvailable } from "@/service/db";
 
 export const dynamic = "force-dynamic";
 

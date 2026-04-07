@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { shortenModelName, aggregateByModel } from "./cost-aggregation";
-import type { CostEntry } from "./cost-parser";
+import type { CostEntry } from "../parser/cost-parser";
 
 describe("cost-aggregation", () => {
   describe("shortenModelName", () => {

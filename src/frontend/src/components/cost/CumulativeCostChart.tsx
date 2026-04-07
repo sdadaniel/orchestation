@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from "recharts";
 import type { TooltipValueType } from "recharts";
-import type { CostEntry } from "@/lib/cost-parser";
+import type { CostEntry } from "@/parser/cost-parser";
 
 interface CumulativeCostChartProps {
   entries: CostEntry[];

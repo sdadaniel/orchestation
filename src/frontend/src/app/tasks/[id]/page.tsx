@@ -6,7 +6,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Loader2, FileText, Terminal, Monitor, CheckCircle2, DollarSign } from "lucide-react";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
-import { useTasksStore } from "@/store/tasksStore";
+import { useTasksStore, type RequestItem } from "@/store/tasksStore";
 import { TaskDetail } from "./types";
 import { TaskMetadata } from "./TaskMetadata";
 import { DependencyFlow } from "./DependencyFlow";
@@ -114,6 +114,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   }, [id]);
 
   const handleStatusChange = async (newStatus: string) => {
+    // 사이드바 즉시 반영
+    useTasksStore.getState().patchRequest(id, { status: newStatus as RequestItem["status"] });
     await fetch(`/api/requests/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
     const res = await fetch(`/api/requests/${id}`);
     if (res.ok) setTask(await res.json());
@@ -145,6 +147,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       // 응답 성공 여부와 관계없이 UI 즉시 반영
       setRunStatus("idle");
       setTask((prev) => prev ? { ...prev, status: "stopped" } : null);
+      // 사이드바 즉시 반영
+      useTasksStore.getState().patchRequest(id, { status: "stopped" });
       // 파일 상태도 반영된 최신 데이터로 refetch
       setTimeout(async () => {
         const taskRes = await fetch(`/api/requests/${id}`);
@@ -159,6 +163,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       // 네트워크 오류도 UI는 즉시 반영
       setRunStatus("idle");
       setTask((prev) => prev ? { ...prev, status: "stopped" } : null);
+      useTasksStore.getState().patchRequest(id, { status: "stopped" });
     }
   };
 

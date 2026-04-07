@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { CostEntry } from "@/lib/cost-parser";
+import type { CostEntry } from "@/parser/cost-parser";
 import { useSortableTable } from "./useSortableTable";
 import { SortIcon } from "./SortIcon";
 import { cn } from "@/lib/utils";

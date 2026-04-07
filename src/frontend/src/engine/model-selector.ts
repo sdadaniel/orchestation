@@ -3,7 +3,7 @@
  * scripts/lib/model-selector.sh의 Node.js 포팅
  */
 import fs from "fs";
-import { parseFrontmatter, getString, getStringArray } from "./frontmatter-utils";
+import { parseFrontmatter, getString, getStringArray } from "../lib/frontmatter-utils";
 
 const MODEL_SIMPLE = "claude-haiku-4-5";
 const MODEL_COMPLEX = "claude-sonnet-4-6";
@@ -73,8 +73,18 @@ export function logModelSelection(
   taskId: string,
   tokenLogPath: string
 ): { model: string; complexity: Complexity } {
+  if (process.env.MODEL_OVERRIDE) {
+    const model = process.env.MODEL_OVERRIDE;
+    const complexity = determineComplexity(taskFilePath);
+    const logLine = `[${new Date().toISOString()}] ${taskId} | phase=model_selection | complexity=${complexity} | model=${model} (override)\n`;
+    try {
+      fs.mkdirSync(require("path").dirname(tokenLogPath), { recursive: true });
+      fs.appendFileSync(tokenLogPath, logLine);
+    } catch { /* ignore */ }
+    return { model, complexity };
+  }
   const complexity = determineComplexity(taskFilePath);
-  const model = selectModel(taskFilePath);
+  const model = complexity === "simple" ? MODEL_SIMPLE : MODEL_COMPLEX;
   const logLine = `[${new Date().toISOString()}] ${taskId} | phase=model_selection | complexity=${complexity} | model=${model}\n`;
 
   try {

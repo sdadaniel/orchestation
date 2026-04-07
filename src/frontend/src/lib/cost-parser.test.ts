@@ -10,7 +10,7 @@ vi.mock("fs", () => {
 });
 
 import * as fs from "fs";
-import { parseCostLog } from "./cost-parser";
+import { parseCostLog } from "../parser/cost-parser";
 
 const mockExistsSync = fs.existsSync as ReturnType<typeof vi.fn>;
 const mockReadFileSync = fs.readFileSync as ReturnType<typeof vi.fn>;

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseAllPrds } from "@/lib/prd-parser";
+import { parseAllPrds } from "@/parser/prd-parser";
 
 export const dynamic = "force-dynamic";
 

@@ -1,4 +1,4 @@
-import orchestrationManager from "@/lib/orchestration-manager";
+import orchestrationManager from "@/engine/orchestration-manager";
 
 export const dynamic = "force-dynamic";
 

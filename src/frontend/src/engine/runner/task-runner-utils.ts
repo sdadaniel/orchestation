@@ -2,15 +2,16 @@ import { spawn, execSync, ChildProcess } from "child_process";
 import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
-import { pipeProcessLogs } from "./process-utils";
-import { getErrorMessage } from "./error-utils";
-import { PROJECT_ROOT } from "./paths";
+import { pipeProcessLogs } from "../../lib/process-utils";
+import { getErrorMessage } from "../../lib/error-utils";
+import { PROJECT_ROOT, CONFIG_PATH, SIGNALS_DIR } from "../../lib/paths";
 import { TaskRunState } from "./task-runner-types";
+import { getTask, updateTaskStatus } from "../../service/task-store";
 
 /** config.json에서 workerMode 읽기 */
 export function getWorkerMode(): string {
   try {
-    const configPath = path.join(PROJECT_ROOT, ".orchestration", "config.json");
+    const configPath = CONFIG_PATH;
     const raw = fs.readFileSync(configPath, "utf-8");
     const config = JSON.parse(raw);
     return config.workerMode || "background";
@@ -40,42 +41,27 @@ end tell`;
   }
 }
 
-/** 태스크 파일의 status를 직접 갱신 */
+/** 태스크 status를 DB에서 갱신 */
 export function updateTaskFileStatus(taskId: string, status: string): void {
   try {
-    const tasksDir = path.join(PROJECT_ROOT, ".orchestration", "tasks");
-    const files = fs.readdirSync(tasksDir);
-    const taskFile = files.find((f) => f.startsWith(`${taskId}-`) && f.endsWith(".md"));
-    if (!taskFile) {
-      return;
-    }
-
-    const filePath = path.join(tasksDir, taskFile);
-    const raw = fs.readFileSync(filePath, "utf-8");
-    const updated = raw.replace(/^status:\s*.+$/m, `status: ${status}`);
-    fs.writeFileSync(filePath, updated, "utf-8");
-  } catch (err) {
+    updateTaskStatus(taskId, status);
+  } catch {
     // silently ignore
   }
 }
 
-/** 태스크 파일에서 role 필드 읽기 */
+/** DB에서 태스크 role 필드 읽기 */
 export function getTaskRole(taskId: string): string {
   try {
-    const tasksDir = path.join(PROJECT_ROOT, ".orchestration", "tasks");
-    const files = fs.readdirSync(tasksDir);
-    const taskFile = files.find((f) => f.startsWith(`${taskId}-`) && f.endsWith(".md"));
-    if (!taskFile) return "";
-    const raw = fs.readFileSync(path.join(tasksDir, taskFile), "utf-8");
-    const match = raw.match(/^role:\s*(.+)$/m);
-    return match ? match[1].trim() : "";
+    const task = getTask(taskId);
+    return task?.role ?? "";
   } catch {
     return "";
   }
 }
 
 /** 코드를 수정하지 않는 role은 review 스킵 */
-const SKIP_REVIEW_ROLES = ["tech-writer"];
+export const SKIP_REVIEW_ROLES = ["tech-writer"];
 
 export function shouldSkipReview(taskId: string): boolean {
   const role = getTaskRole(taskId);
@@ -85,8 +71,7 @@ export function shouldSkipReview(taskId: string): boolean {
 /** 해당 태스크의 signal 파일 잔여물 정리 */
 export function cleanupSignals(taskId: string): void {
   try {
-    const signalDir = path.join(PROJECT_ROOT, ".orchestration", "signals");
-    if (!fs.existsSync(signalDir)) return;
+    if (!fs.existsSync(SIGNALS_DIR)) return;
 
     const suffixes = [
       "task-done", "task-failed", "task-rejected",
@@ -94,7 +79,7 @@ export function cleanupSignals(taskId: string): void {
       "stop-request", "stopped", "start",
     ];
     for (const suffix of suffixes) {
-      const f = path.join(signalDir, `${taskId}-${suffix}`);
+      const f = path.join(SIGNALS_DIR, `${taskId}-${suffix}`);
       try { fs.unlinkSync(f); } catch { /* ignore */ }
     }
   } catch {
@@ -103,7 +88,7 @@ export function cleanupSignals(taskId: string): void {
 }
 
 /**
- * Spawns a bash script as a detached process with pipe stdio.
+ * Spawns a script as a detached process with pipe stdio.
  * Attaches log piping and standard error/close handlers.
  *
  * Returns the ChildProcess on success, or null on spawn failure
@@ -162,9 +147,9 @@ export function spawnJobProcess(opts: {
 /** iTerm에서 실행 중인 task 프로세스를 찾아서 kill */
 export function killItermTask(taskId: string): void {
   try {
-    // job-task.sh 또는 job-review.sh 프로세스 찾기
+    // claude 워커 또는 tsx review 프로세스 찾기
     const pids = execSync(
-      `pgrep -f "job-(task|review)\\.sh ${taskId}" 2>/dev/null || true`,
+      `pgrep -f "claude.*${taskId}" 2>/dev/null || pgrep -f "run-review\\.ts ${taskId}" 2>/dev/null || true`,
       { encoding: "utf-8" },
     ).trim();
 

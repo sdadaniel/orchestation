@@ -16,7 +16,7 @@ import {
   Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { TaskStatus } from "../../lib/constants";
+import type { TaskStatus } from "@/constants/status";
 import type { DocNode } from "@/hooks/useDocTree";
 import { useTasksStore, type RequestItem } from "@/store/tasksStore";
 import { useNotices } from "@/hooks/useNotices";

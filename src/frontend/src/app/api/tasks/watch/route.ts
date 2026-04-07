@@ -1,8 +1,5 @@
-import fs from "fs";
-import path from "path";
-import matter from "gray-matter";
-import { TASKS_DIR } from "@/lib/paths";
-import orchestrationManager from "@/lib/orchestration-manager";
+import { getDb } from "@/service/db";
+import orchestrationManager from "@/engine/orchestration-manager";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +7,10 @@ export const dynamic = "force-dynamic";
  * GET /api/tasks/watch — SSE 엔드포인트
  *
  * 이벤트:
- * - event: task-changed          → { taskId, status, priority } (변경된 태스크 정보)
+ * - event: task-changed          → { full: true } (DB 변경 감지 시 전체 refetch 트리거)
  * - event: orchestration-status  → 오케스트레이션 상태 (JSON)
+ *
+ * DB polling 방식: 1초마다 MAX(updated) 확인하여 변경 감지
  */
 export async function GET() {
   const encoder = new TextEncoder();
@@ -28,42 +27,33 @@ export async function GET() {
         }
       };
 
-      // ── 태스크 파일 변경 감지 — debounce 없이 즉시 전송 ──
-      let fsWatcher: fs.FSWatcher | null = null;
-
+      // ── DB polling으로 태스크 변경 감지 ──
+      let lastMaxUpdated = "";
       try {
-        fsWatcher = fs.watch(TASKS_DIR, { recursive: true }, (_event, filename) => {
-          if (!filename?.endsWith(".md")) return;
+        const db = getDb();
+        if (db) {
+          const row = db.prepare("SELECT MAX(updated) as maxUpdated FROM tasks").get() as { maxUpdated: string | null } | undefined;
+          lastMaxUpdated = row?.maxUpdated ?? "";
+        }
+      } catch {
+        // ignore
+      }
 
-          // 변경된 파일에서 frontmatter 파싱
-          try {
-            const filePath = path.join(TASKS_DIR, filename);
-            if (!fs.existsSync(filePath)) {
-              // 파일 삭제 시
-              const idMatch = filename.match(/^(TASK-\d+)/);
-              if (idMatch) {
-                send("task-changed", JSON.stringify({ taskId: idMatch[1], deleted: true }));
-              }
-              return;
-            }
-            const content = fs.readFileSync(filePath, "utf-8");
-            const { data } = matter(content);
-            if (data.id) {
-              send("task-changed", JSON.stringify({
-                taskId: data.id,
-                status: data.status ?? "pending",
-                priority: data.priority ?? "medium",
-                title: data.title ?? "",
-              }));
-            }
-          } catch {
-            // 파싱 실패 시 fallback: 전체 refetch 트리거
+      const pollInterval = setInterval(() => {
+        if (closed) return;
+        try {
+          const db = getDb();
+          if (!db) return;
+          const row = db.prepare("SELECT MAX(updated) as maxUpdated FROM tasks").get() as { maxUpdated: string | null } | undefined;
+          const current = row?.maxUpdated ?? "";
+          if (current && current !== lastMaxUpdated) {
+            lastMaxUpdated = current;
             send("task-changed", JSON.stringify({ full: true }));
           }
-        });
-      } catch {
-        // TASKS_DIR 없으면 무시
-      }
+        } catch {
+          // ignore polling errors
+        }
+      }, 1_000);
 
       // ── 오케스트레이션 상태 변경 감지 ──
       const onStatusChanged = (data: unknown) => {
@@ -95,7 +85,7 @@ export async function GET() {
       controller.close = new Proxy(controller.close, {
         apply(target, thisArg, args) {
           closed = true;
-          fsWatcher?.close();
+          clearInterval(pollInterval);
           orchestrationManager.events.off("status-changed", onStatusChanged);
           clearInterval(heartbeat);
           return Reflect.apply(target, thisArg, args);

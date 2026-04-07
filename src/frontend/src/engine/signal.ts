@@ -4,6 +4,7 @@
  */
 import fs from "fs";
 import path from "path";
+import { SIGNALS_DIR } from "../lib/paths";
 
 export type SignalSuffix =
   | "task-done"
@@ -28,9 +29,9 @@ const ALL_SIGNAL_SUFFIXES: SignalSuffix[] = [
  * 시그널 파일을 원자적으로 생성한다.
  * temp 파일 작성 → rename (같은 파일시스템에서는 원자적)
  */
-export function signalCreate(signalDir: string, taskId: string, suffix: SignalSuffix): void {
-  fs.mkdirSync(signalDir, { recursive: true });
-  const target = path.join(signalDir, `${taskId}-${suffix}`);
+export function signalCreate(taskId: string, suffix: SignalSuffix): void {
+  fs.mkdirSync(SIGNALS_DIR, { recursive: true });
+  const target = path.join(SIGNALS_DIR, `${taskId}-${suffix}`);
   const tmp = `${target}.tmp.${process.pid}`;
   fs.writeFileSync(tmp, `${process.pid}\n`);
   fs.renameSync(tmp, target);
@@ -40,11 +41,11 @@ export function signalCreate(signalDir: string, taskId: string, suffix: SignalSu
  * 태스크에 대한 시그널 존재 여부를 확인한다.
  * 파일을 삭제하지 않음 (비파괴적).
  */
-export function signalCheck(signalDir: string, taskId: string): SignalSuffix | null {
-  if (!fs.existsSync(signalDir)) return null;
+export function signalCheck(taskId: string): SignalSuffix | null {
+  if (!fs.existsSync(SIGNALS_DIR)) return null;
 
   for (const suffix of ALL_SIGNAL_SUFFIXES) {
-    const f = path.join(signalDir, `${taskId}-${suffix}`);
+    const f = path.join(SIGNALS_DIR, `${taskId}-${suffix}`);
     if (fs.existsSync(f)) return suffix;
   }
   return null;
@@ -54,15 +55,15 @@ export function signalCheck(signalDir: string, taskId: string): SignalSuffix | n
  * 시그널을 소비한다 (확인 + 삭제).
  * mkdir 기반 락으로 레이스 방지.
  */
-export function signalConsume(signalDir: string, taskId: string): SignalSuffix | null {
-  if (!fs.existsSync(signalDir)) return null;
+export function signalConsume(taskId: string): SignalSuffix | null {
+  if (!fs.existsSync(SIGNALS_DIR)) return null;
 
-  const lockDir = path.join(signalDir, `.lock-${taskId}`);
+  const lockDir = path.join(SIGNALS_DIR, `.lock-${taskId}`);
   if (!acquireLock(lockDir, 5000)) return null;
 
   try {
     for (const suffix of ALL_SIGNAL_SUFFIXES) {
-      const f = path.join(signalDir, `${taskId}-${suffix}`);
+      const f = path.join(SIGNALS_DIR, `${taskId}-${suffix}`);
       if (fs.existsSync(f)) {
         try {
           fs.unlinkSync(f);

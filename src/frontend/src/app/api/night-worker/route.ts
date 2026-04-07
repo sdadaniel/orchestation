@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import nightWorkerManager from "@/lib/night-worker";
+import nightWorkerManager from "@/engine/night-worker";
 
 export const dynamic = "force-dynamic";
 

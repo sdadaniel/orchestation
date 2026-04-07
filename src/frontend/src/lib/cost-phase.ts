@@ -1,4 +1,4 @@
-import type { CostEntry } from "./cost-parser";
+import type { CostEntry } from "../parser/cost-parser";
 
 export interface PhaseCostSummary {
   taskCost: number;

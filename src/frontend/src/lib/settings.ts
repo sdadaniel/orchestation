@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { CONFIG_PATH } from "./paths";
 
 export type WorkerMode = "background" | "iterm";
 
@@ -38,8 +39,7 @@ const DEFAULTS: Settings = {
 };
 
 function getConfigPath(): string {
-  const projectRoot = path.resolve(process.cwd(), "..", "..");
-  return path.join(projectRoot, ".orchestration", "config.json");
+  return CONFIG_PATH;
 }
 
 export function loadSettings(): Settings {

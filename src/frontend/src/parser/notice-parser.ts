@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { PROJECT_ROOT } from "./paths";
-import { parseFrontmatter, getString, getBool } from "./frontmatter-utils";
+import { NOTICES_DIR } from "../lib/paths";
+import { parseFrontmatter, getString, getBool } from "../lib/frontmatter-utils";
 
 export type NoticeType = "info" | "warning" | "error" | "request";
 
@@ -21,9 +21,7 @@ function isValidNoticeType(value: string): value is NoticeType {
   return (VALID_NOTICE_TYPES as readonly string[]).includes(value);
 }
 
-const ORCH_NOTICES_DIR = path.join(PROJECT_ROOT, ".orchestration", "notices");
-const LEGACY_NOTICES_DIR = path.join(PROJECT_ROOT, "docs", "notice");
-const NOTICES_DIR = fs.existsSync(ORCH_NOTICES_DIR) ? ORCH_NOTICES_DIR : LEGACY_NOTICES_DIR;
+// NOTICES_DIR is imported from paths.ts
 
 export function parseNoticeFile(filePath: string): NoticeData | null {
   try {
@@ -70,4 +68,40 @@ export function findNoticeFile(id: string): string | null {
 
 export function getNoticesDir(): string {
   return NOTICES_DIR;
+}
+
+export function writeNotice(type: NoticeType, title: string, content: string): void {
+  try {
+    if (!fs.existsSync(NOTICES_DIR)) {
+      fs.mkdirSync(NOTICES_DIR, { recursive: true });
+    }
+
+    const files = fs.readdirSync(NOTICES_DIR).filter((f) => f.startsWith("NOTICE-") && f.endsWith(".md"));
+    let maxNum = 0;
+    for (const f of files) {
+      const m = f.match(/NOTICE-(\d+)/);
+      if (m) {
+        const num = parseInt(m[1]!, 10);
+        if (num > maxNum) maxNum = num;
+      }
+    }
+
+    const nextNum = maxNum + 1;
+    const noticeId = `NOTICE-${String(nextNum).padStart(3, "0")}`;
+    const today = new Date().toISOString().split("T")[0];
+    const slug = title.toLowerCase().replace(/[^a-z0-9가-힣]+/g, "-").replace(/-+$/, "");
+
+    const fileContent = `---
+id: ${noticeId}
+title: ${title.trim()}
+type: ${type}
+read: false
+created: ${today}
+updated: ${today}
+---
+${content.trim()}
+`;
+
+    fs.writeFileSync(path.join(NOTICES_DIR, `${noticeId}-${slug}.md`), fileContent, "utf-8");
+  } catch { /* ignore */ }
 }

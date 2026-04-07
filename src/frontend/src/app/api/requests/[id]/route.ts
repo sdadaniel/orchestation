@@ -5,7 +5,7 @@ import { findRequestFile, parseRequestFile, parseAllRequests, getRequestsDir } f
 import { getErrorMessage } from "@/lib/error-utils";
 import { OUTPUT_DIR } from "@/lib/paths";
 import { generateSlug } from "@/lib/slug-utils";
-import { deleteTaskFromDb, syncTaskFileToDb } from "@/lib/task-db-sync";
+import { deleteTask } from "@/service/task-store";
 
 export const dynamic = "force-dynamic";
 
@@ -160,10 +160,10 @@ export async function PUT(
       if (newPath !== filePath) {
         fs.unlinkSync(filePath);
       }
-      syncTaskFileToDb(newPath);
+      // DB is source of truth — file write is for legacy compat only
     } else {
       fs.writeFileSync(filePath, fileContent, "utf-8");
-      syncTaskFileToDb(filePath);
+      // DB is source of truth — file write is for legacy compat only
     }
 
     // Return updated data
@@ -193,7 +193,7 @@ export async function DELETE(
 
   try {
     fs.unlinkSync(filePath);
-    deleteTaskFromDb(id);
+    deleteTask(id);
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json(

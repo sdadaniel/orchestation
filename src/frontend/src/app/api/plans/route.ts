@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseAllPlans } from "@/lib/plan-parser";
+import { parseAllPlans } from "@/parser/plan-parser";
 
 export const dynamic = "force-dynamic";
 

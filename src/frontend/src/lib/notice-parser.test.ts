@@ -15,7 +15,7 @@ import {
   parseAllNotices,
   findNoticeFile,
   getNoticesDir,
-} from "./notice-parser";
+} from "../parser/notice-parser";
 
 const mockExistsSync = fs.existsSync as ReturnType<typeof vi.fn>;
 const mockReadFileSync = fs.readFileSync as ReturnType<typeof vi.fn>;

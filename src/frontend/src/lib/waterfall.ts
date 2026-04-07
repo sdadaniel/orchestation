@@ -2,8 +2,8 @@ import type {
   WaterfallGroup,
   WaterfallTask,
 } from "@/types/waterfall";
-import type { TaskFrontmatter } from "@/lib/parser";
-import type { TaskStatus } from "../../lib/constants";
+import type { TaskFrontmatter } from "@/parser/parser";
+import type { TaskStatus } from "@/constants/status";
 
 const VALID_STATUSES: Set<TaskStatus> = new Set([
   "pending",

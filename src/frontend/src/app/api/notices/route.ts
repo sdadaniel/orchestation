@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
-import { parseAllNotices, getNoticesDir } from "@/lib/notice-parser";
-import type { NoticeData, NoticeType } from "@/lib/notice-parser";
+import { parseAllNotices, getNoticesDir } from "@/parser/notice-parser";
+import type { NoticeData, NoticeType } from "@/parser/notice-parser";
 import { getErrorMessage } from "@/lib/error-utils";
 import { generateSlug } from "@/lib/slug-utils";
-import { getDb, isDbAvailable } from "@/lib/db";
+import { getDb, isDbAvailable } from "@/service/db";
 
 export const dynamic = "force-dynamic";
 

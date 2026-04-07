@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "postinstall": "sh scripts/fix-pty-permissions.sh",
+    "postinstall": "node -e \"const fs=require('fs'),p=require('path');try{const d='node_modules/node-pty/prebuilds';fs.readdirSync(d).forEach(s=>{const f=p.join(d,s,'spawn-helper');try{fs.chmodSync(f,0o755)}catch{}})}catch{}\"",
     "dev": "tsx server.ts",
     "build": "next build",
     "start": "next start",

@@ -2,7 +2,7 @@ import type { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
-import { PROJECT_ROOT } from "./paths";
+import { PROJECT_ROOT, SIGNALS_DIR, LOGS_DIR } from "../../lib/paths";
 import { TaskRunState } from "./task-runner-types";
 import {
   runInIterm,
@@ -83,11 +83,10 @@ export function watchItermCompletion(
   taskId: string,
   state: TaskRunState,
   logFile: string,
-  signalDir: string,
   dummy: ChildProcess,
   events: EventEmitter,
   watcherMgr: ItermWatcherManager,
-  startReviewIterm: (taskId: string, state: TaskRunState, signalDir: string) => void,
+  startReviewIterm: (taskId: string, state: TaskRunState) => void,
   startMergeCallback: (taskId: string, state: TaskRunState) => void,
 ): void {
   // 기존 watcher 정리
@@ -98,15 +97,15 @@ export function watchItermCompletion(
 
   // signal 디렉토리 감시
   try {
-    fs.mkdirSync(signalDir, { recursive: true });
+    fs.mkdirSync(SIGNALS_DIR, { recursive: true });
 
-    const watcher = fs.watch(signalDir, (_event, filename) => {
+    const watcher = fs.watch(SIGNALS_DIR, (_event, filename) => {
       if (!filename || !filename.startsWith(taskId)) return;
       if (state.status !== "running") return;
 
-      const doneSignal = path.join(signalDir, `${taskId}-task-done`);
-      const failedSignal = path.join(signalDir, `${taskId}-task-failed`);
-      const rejectedSignal = path.join(signalDir, `${taskId}-task-rejected`);
+      const doneSignal = path.join(SIGNALS_DIR, `${taskId}-task-done`);
+      const failedSignal = path.join(SIGNALS_DIR, `${taskId}-task-failed`);
+      const rejectedSignal = path.join(SIGNALS_DIR, `${taskId}-task-rejected`);
 
       if (filename === `${taskId}-task-done` && fs.existsSync(doneSignal)) {
         watcherMgr.closeWatchers(taskId);
@@ -122,7 +121,7 @@ export function watchItermCompletion(
           const doneLine = `[task-runner] ${taskId} task 완료 (iTerm) → review 시작`;
           state.logs.push(doneLine);
           events.emit(`log:${taskId}`, doneLine);
-          startReviewIterm(taskId, state, signalDir);
+          startReviewIterm(taskId, state);
         }
 
       } else if (filename === `${taskId}-task-rejected` && fs.existsSync(rejectedSignal)) {
@@ -162,18 +161,18 @@ export function watchItermCompletion(
 export function startReviewInIterm(
   taskId: string,
   state: TaskRunState,
-  signalDir: string,
   events: EventEmitter,
   watcherMgr: ItermWatcherManager,
   startReviewBackground: (taskId: string, state: TaskRunState) => void,
   startMerge: (taskId: string, state: TaskRunState) => void,
 ): void {
-  const reviewScript = path.join(PROJECT_ROOT, "scripts", "job-review.sh");
-  const logFile = path.join(PROJECT_ROOT, "output", "logs", `${taskId}-review.log`);
-  const closeScript = path.join(PROJECT_ROOT, "scripts", "lib", "close-iterm-session.sh");
+  const frontendDir = path.join(PROJECT_ROOT, "src", "frontend");
+  const tsxBin = path.join(frontendDir, "node_modules", ".bin", "tsx");
+  const reviewScript = path.join(frontendDir, "src", "cli", "run-review.ts");
+  const logFile = path.join(LOGS_DIR, `${taskId}-review.log`);
 
   state.phase = "review";
-  const cmd = `bash '${reviewScript}' '${taskId}' '${signalDir}' 2>&1 | tee '${logFile}'; bash '${closeScript}'`;
+  const cmd = `cd '${frontendDir}' && PROJECT_ROOT='${PROJECT_ROOT}' '${tsxBin}' '${reviewScript}' '${taskId}' 2>&1 | tee '${logFile}'; exit`;
 
   const opened = runInIterm(`🔍 ${taskId} review`, cmd);
   if (!opened) {
@@ -189,12 +188,12 @@ export function startReviewInIterm(
 
   // signal 디렉토리 감시로 review 완료 감지
   try {
-    const watcher = fs.watch(signalDir, (_event, filename) => {
+    const watcher = fs.watch(SIGNALS_DIR, (_event, filename) => {
       if (!filename || !filename.startsWith(taskId)) return;
       if (state.status !== "running") return;
 
-      const approvedSignal = path.join(signalDir, `${taskId}-review-approved`);
-      const rejectedSignal = path.join(signalDir, `${taskId}-review-rejected`);
+      const approvedSignal = path.join(SIGNALS_DIR, `${taskId}-review-approved`);
+      const rejectedSignal = path.join(SIGNALS_DIR, `${taskId}-review-rejected`);
 
       if (filename === `${taskId}-review-approved` && fs.existsSync(approvedSignal)) {
         watcherMgr.closeWatchers(taskId);

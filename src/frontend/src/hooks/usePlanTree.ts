@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { PlanFrontmatter } from "@/lib/plan-parser";
-import type { TaskFrontmatter } from "@/lib/parser";
-import { buildPlanTree } from "@/lib/plan-tree";
+import type { PlanFrontmatter } from "@/parser/plan-parser";
+import type { TaskFrontmatter } from "@/parser/parser";
+import { buildPlanTree } from "@/parser/plan-tree";
 import type { PlanTreeData } from "@/types/plan";
 import { queryKeys } from "@/lib/query-keys";
 import { getErrorMessage } from "@/lib/error-utils";

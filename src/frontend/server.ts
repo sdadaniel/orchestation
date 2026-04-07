@@ -5,7 +5,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
 import os from "os";
 import { resolve } from "path";
-import taskRunnerManager from "./src/lib/task-runner-manager";
+import taskRunnerManager from "./src/engine/runner/task-runner-manager";
 import { getErrorMessage } from "./src/lib/error-utils";
 
 const _PROJECT_ROOT = process.env.PROJECT_ROOT || resolve(process.cwd(), "../..");

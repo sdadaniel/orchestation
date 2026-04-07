@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { OUTPUT_DIR, TASKS_DIR } from "../lib/paths";
 
 export interface TaskLogEntry {
   timestamp: string;
@@ -31,7 +32,7 @@ interface TaskResultData {
   [key: string]: unknown;
 }
 
-const OUTPUT_DIR = path.join(process.cwd(), "../../output");
+// OUTPUT_DIR is imported from paths.ts
 const TOKEN_LOG = path.join(OUTPUT_DIR, "token-usage.log");
 
 // TASK-ID format: alphanumeric with hyphens
@@ -50,10 +51,8 @@ export function isValidTaskId(id: string): boolean {
  * Check if a task exists in docs/task/ directory
  */
 export function taskExists(taskId: string): boolean {
-  const projectRoot = path.resolve(process.cwd(), "..", "..");
-  const orchDir = path.join(projectRoot, ".orchestration", "tasks");
-  const tasksDir = fs.existsSync(orchDir) ? orchDir : path.join(projectRoot, "docs", "task");
-  if (!fs.existsSync(tasksDir)) return false;
+  if (!fs.existsSync(TASKS_DIR)) return false;
+  const tasksDir = TASKS_DIR;
   const files = fs.readdirSync(tasksDir).filter((f) => f.endsWith(".md"));
   return files.some((f) => f.startsWith(taskId));
 }
@@ -195,7 +194,7 @@ function parseResultLogs(taskId: string): TaskLogEntry[] {
  * Parse orchestration signal logs (if they exist)
  */
 function parseSignalLogs(taskId: string): TaskLogEntry[] {
-  // Worker logs stored in output/logs/ by orchestrate.sh
+  // Worker logs stored in output/logs/ by orchestrate engine
   const logFile = path.join(OUTPUT_DIR, "logs", `${taskId}.log`);
   if (!fs.existsSync(logFile)) return [];
 

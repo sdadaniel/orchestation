@@ -1,6 +1,6 @@
 "use client";
 
-import type { CostEntry, TaskCostSummary } from "@/lib/cost-parser";
+import type { CostEntry, TaskCostSummary } from "@/parser/cost-parser";
 import { aggregateByModel } from "@/lib/cost-aggregation";
 import { aggregateCostByPhase } from "@/lib/cost-phase";
 

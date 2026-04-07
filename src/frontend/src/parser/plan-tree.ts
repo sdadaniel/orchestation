@@ -1,5 +1,5 @@
-import type { PlanFrontmatter } from "@/lib/plan-parser";
-import type { TaskFrontmatter } from "@/lib/parser";
+import type { PlanFrontmatter } from "@/parser/plan-parser";
+import type { TaskFrontmatter } from "@/parser/parser";
 import type {
   PlanTreeData,
   PlanTaskNode,

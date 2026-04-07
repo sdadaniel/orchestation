@@ -5,7 +5,7 @@ import {
   findNodeById,
   removeNodeById,
   insertNode,
-} from "@/lib/doc-tree";
+} from "@/parser/doc-tree";
 
 export const dynamic = "force-dynamic";
 

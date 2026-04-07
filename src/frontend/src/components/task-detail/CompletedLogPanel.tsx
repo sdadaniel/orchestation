@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TERMINAL_BG, TERMINAL_HEADER_BG } from "@/constants/terminal";
+import { TERMINAL_BG, TERMINAL_HEADER_BG } from "@/constants/theme";
 
 export function CompletedLogPanel({ taskId }: { taskId: string }) {
   const [lines, setLines] = useState<string[]>([]);

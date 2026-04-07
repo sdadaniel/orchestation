@@ -1,4 +1,4 @@
-import type { TaskStatus, TaskPriority } from "../../lib/constants";
+import type { TaskStatus, TaskPriority } from "@/constants/status";
 
 export type WaterfallTask = {
   id: string;

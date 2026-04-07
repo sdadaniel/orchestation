@@ -1,26 +1,24 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-import { TASKS_DIR } from "@/lib/paths";
+import { getDb } from "@/service/db";
 
 export const dynamic = "force-dynamic";
 
-/** 가벼운 엔드포인트 — task 디렉토리의 최신 수정 시간만 반환 */
+/** 가벼운 엔드포인트 — tasks 테이블의 최신 수정 시간만 반환 */
 export async function GET() {
   try {
-    if (!fs.existsSync(TASKS_DIR)) {
+    const db = getDb();
+    if (!db) {
       return NextResponse.json({ lastMod: 0 });
     }
 
-    const files = fs.readdirSync(TASKS_DIR).filter((f) => f.endsWith(".md"));
-    let maxMtime = 0;
-
-    for (const file of files) {
-      const stat = fs.statSync(path.join(TASKS_DIR, file));
-      if (stat.mtimeMs > maxMtime) maxMtime = stat.mtimeMs;
+    const row = db.prepare("SELECT MAX(updated) as maxUpdated FROM tasks").get() as { maxUpdated: string | null } | undefined;
+    if (!row?.maxUpdated) {
+      return NextResponse.json({ lastMod: 0 });
     }
 
-    return NextResponse.json({ lastMod: Math.floor(maxMtime) });
+    // updated is stored as ISO string, convert to epoch ms
+    const lastMod = new Date(row.maxUpdated).getTime();
+    return NextResponse.json({ lastMod: Math.floor(lastMod) });
   } catch {
     return NextResponse.json({ lastMod: 0 });
   }

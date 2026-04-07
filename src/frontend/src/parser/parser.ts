@@ -1,8 +1,5 @@
-import fs from "fs";
-import path from "path";
-import matter from "gray-matter";
-import type { TaskStatus, TaskPriority } from "../../lib/constants";
-import { TASKS_DIR } from "./paths";
+import type { TaskStatus, TaskPriority } from "@/constants/status";
+import { getAllTasks as getAllTasksFromDb, parseScope, parseDependsOn, type TaskRow } from "../service/task-store";
 
 export interface TaskFrontmatter {
   id: string;
@@ -43,35 +40,25 @@ function toTaskPriority(value: unknown): TaskPriority {
 }
 
 
-export function parseTaskFile(filePath: string): TaskFrontmatter | null {
-  try {
-    const content = fs.readFileSync(filePath, "utf-8");
-    const { data } = matter(content);
-
-    if (!data.id || !data.title) {
-      return null;
-    }
-
-    return {
-      id: data.id,
-      title: data.title,
-      status: toTaskStatus(data.status),
-      priority: toTaskPriority(data.priority),
-      depends_on: toStringArray(data.depends_on),
-      blocks: toStringArray(data.blocks),
-      parallel_with: toStringArray(data.parallel_with),
-      role: data.role ?? "",
-      affected_files: toStringArray(data.affected_files),
-    };
-  } catch {
-    return null;
-  }
-}
-
-// TTL 캐시: 3초간 유효 (폴링 결합 시 초당 수회 디스크 I/O 방지)
+// TTL 캐시: 3초간 유효 (폴링 결합 시 초당 수회 DB 쿼리 방지)
 let _tasksCache: TaskFrontmatter[] | null = null;
 let _tasksCacheTime = 0;
 const CACHE_TTL_MS = 3000;
+
+/** TaskRow를 TaskFrontmatter로 변환 */
+function taskRowToFrontmatter(row: TaskRow): TaskFrontmatter {
+  return {
+    id: row.id,
+    title: row.title,
+    status: toTaskStatus(row.status),
+    priority: toTaskPriority(row.priority),
+    depends_on: parseDependsOn(row),
+    blocks: [],
+    parallel_with: [],
+    role: row.role ?? "",
+    affected_files: parseScope(row),
+  };
+}
 
 export function parseAllTasks(): TaskFrontmatter[] {
   const now = Date.now();
@@ -79,21 +66,8 @@ export function parseAllTasks(): TaskFrontmatter[] {
     return _tasksCache;
   }
 
-  if (!fs.existsSync(TASKS_DIR)) {
-    _tasksCache = [];
-    _tasksCacheTime = now;
-    return _tasksCache;
-  }
-
-  const files = fs.readdirSync(TASKS_DIR).filter((f) => f.endsWith(".md"));
-  const tasks: TaskFrontmatter[] = [];
-
-  for (const file of files) {
-    const task = parseTaskFile(path.join(TASKS_DIR, file));
-    if (task) {
-      tasks.push(task);
-    }
-  }
+  const rows = getAllTasksFromDb();
+  const tasks = rows.map(taskRowToFrontmatter);
 
   _tasksCache = tasks;
   _tasksCacheTime = now;

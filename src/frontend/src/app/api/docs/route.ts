@@ -10,7 +10,7 @@ import {
   generateId,
   writeDocContent,
   type DocNode,
-} from "@/lib/doc-tree";
+} from "@/parser/doc-tree";
 
 export const dynamic = "force-dynamic";
 

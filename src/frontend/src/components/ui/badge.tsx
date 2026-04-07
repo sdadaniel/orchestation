@@ -1,12 +1,8 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import {
-  STATUS_STYLES,
-  PRIORITY_STYLES,
-  type TaskStatus,
-  type TaskPriority,
-} from "../../../lib/constants";
+import type { TaskStatus, TaskPriority } from "@/constants/status";
+import { STATUS_STYLES, PRIORITY_STYLES } from "@/constants/theme";
 
 const badgeVariants = cva("inline-flex items-center rounded font-medium", {
   variants: {

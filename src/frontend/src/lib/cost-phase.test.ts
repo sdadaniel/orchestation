@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { aggregateCostByPhase } from "./cost-phase";
-import type { CostEntry } from "./cost-parser";
+import type { CostEntry } from "../parser/cost-parser";
 
 describe("cost-phase", () => {
   describe("aggregateCostByPhase", () => {

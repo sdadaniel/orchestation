@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { PriorityBadge } from "@/components/ui/badge";
-import { STATUS_STYLES } from "../../../lib/constants";
+import { STATUS_STYLES } from "@/constants/theme";
 import type { WaterfallTask } from "@/types/waterfall";
 
 type TaskBarProps = {

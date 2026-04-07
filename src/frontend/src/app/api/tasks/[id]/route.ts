@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-import matter from "gray-matter";
 import { getErrorMessage } from "@/lib/error-utils";
-import { TASKS_DIR } from "@/lib/paths";
-import { deleteTaskFromDb, syncTaskContentToDb } from "@/lib/task-db-sync";
+import { getTask, updateTask, deleteTask, parseDependsOn, parseScope } from "@/service/task-store";
 
 export const dynamic = "force-dynamic";
 
@@ -12,22 +8,6 @@ const TASK_ID_PATTERN = /^TASK-\d{3}$/;
 
 function isValidTaskId(taskId: string): boolean {
   return TASK_ID_PATTERN.test(taskId);
-}
-
-function findTaskFile(taskId: string): string | null {
-  if (!fs.existsSync(TASKS_DIR)) return null;
-  const files = fs.readdirSync(TASKS_DIR).filter((f) => f.endsWith(".md"));
-  for (const file of files) {
-    if (file.startsWith(taskId)) {
-      const resolved = path.resolve(TASKS_DIR, file);
-      // Path traversal 방어: resolve된 경로가 TASKS_DIR 내부인지 확인
-      if (!resolved.startsWith(TASKS_DIR + path.sep) && resolved !== TASKS_DIR) {
-        return null;
-      }
-      return resolved;
-    }
-  }
-  return null;
 }
 
 export async function PUT(
@@ -42,33 +22,38 @@ export async function PUT(
       return NextResponse.json({ error: "Invalid task ID format" }, { status: 400 });
     }
 
-    const filePath = findTaskFile(id);
-    if (!filePath) {
+    const task = getTask(id);
+    if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
-
-    const content = fs.readFileSync(filePath, "utf-8");
-    const { data, content: markdownBody } = matter(content);
 
     const validStatuses = ["pending", "stopped", "in_progress", "reviewing", "done", "failed", "rejected"];
     const validPriorities = ["critical", "high", "medium", "low"];
 
+    const updates: Parameters<typeof updateTask>[1] = {};
+
     if (body.status !== undefined) {
-      if (validStatuses.includes(body.status)) {
-        // Dependency validation: in_progress requires all depends_on tasks to be done
-        if (body.status === "in_progress" && Array.isArray(data.depends_on) && data.depends_on.length > 0) {
+      if (!validStatuses.includes(body.status)) {
+        return NextResponse.json(
+          { error: `Invalid status: ${body.status}` },
+          { status: 400 },
+        );
+      }
+
+      // Dependency validation: in_progress requires all depends_on tasks to be done
+      if (body.status === "in_progress") {
+        const deps = parseDependsOn(task);
+        if (deps.length > 0) {
           const unmetDeps: { id: string; status: string }[] = [];
-          for (const depId of data.depends_on) {
-            if (typeof depId !== "string" || !depId.trim()) continue;
-            const depFile = findTaskFile(depId.trim());
-            if (!depFile) {
+          for (const depId of deps) {
+            if (!depId.trim()) continue;
+            const depTask = getTask(depId.trim());
+            if (!depTask) {
               unmetDeps.push({ id: depId, status: "not found" });
               continue;
             }
-            const depContent = fs.readFileSync(depFile, "utf-8");
-            const depData = matter(depContent).data;
-            if (depData.status !== "done") {
-              unmetDeps.push({ id: depId, status: depData.status || "unknown" });
+            if (depTask.status !== "done") {
+              unmetDeps.push({ id: depId, status: depTask.status || "unknown" });
             }
           }
           if (unmetDeps.length > 0) {
@@ -79,58 +64,51 @@ export async function PUT(
             );
           }
         }
-        data.status = body.status;
-      } else {
-        return NextResponse.json(
-          { error: `Invalid status: ${body.status}` },
-          { status: 400 },
-        );
       }
+      updates.status = body.status;
     }
 
     if (body.priority !== undefined) {
-      if (validPriorities.includes(body.priority)) {
-        data.priority = body.priority;
-      } else {
+      if (!validPriorities.includes(body.priority)) {
         return NextResponse.json(
           { error: `Invalid priority: ${body.priority}` },
           { status: 400 },
         );
       }
+      updates.priority = body.priority;
     }
 
     if (body.depends_on !== undefined) {
-      if (Array.isArray(body.depends_on)) {
-        data.depends_on = body.depends_on.filter(
-          (d: unknown) => typeof d === "string" && d.trim().length > 0,
-        );
-      } else {
+      if (!Array.isArray(body.depends_on)) {
         return NextResponse.json(
           { error: "depends_on must be an array" },
           { status: 400 },
         );
       }
+      updates.depends_on = body.depends_on.filter(
+        (d: unknown) => typeof d === "string" && d.trim().length > 0,
+      );
     }
 
     if (body.role !== undefined && typeof body.role === "string") {
-      data.role = body.role.trim();
+      updates.role = body.role.trim();
     }
 
     if (body.title !== undefined && typeof body.title === "string" && body.title.trim().length > 0) {
-      data.title = body.title.trim();
+      updates.title = body.title.trim();
     }
 
-    const updated = matter.stringify(markdownBody, data);
-    fs.writeFileSync(filePath, updated, "utf-8");
-    syncTaskContentToDb(filePath, updated);
+    updateTask(id, updates);
 
+    const updated = getTask(id)!;
     return NextResponse.json({
-      id: data.id,
-      title: data.title,
-      status: data.status,
-      priority: data.priority,
-      depends_on: data.depends_on || [],
-      role: data.role || "",
+      id: updated.id,
+      title: updated.title,
+      status: updated.status,
+      priority: updated.priority,
+      depends_on: parseDependsOn(updated),
+      role: updated.role || "",
+      affected_files: parseScope(updated),
     });
   } catch (err) {
     return NextResponse.json(
@@ -153,17 +131,15 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid task ID format" }, { status: 400 });
     }
 
-    const filePath = findTaskFile(id);
-    if (!filePath) {
+    const task = getTask(id);
+    if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    try {
-      fs.unlinkSync(filePath);
-      deleteTaskFromDb(id);
-    } catch (deleteErr) {
+    const deleted = deleteTask(id);
+    if (!deleted) {
       return NextResponse.json(
-        { error: getErrorMessage(deleteErr, "Failed to delete task file") },
+        { error: "Failed to delete task" },
         { status: 500 },
       );
     }

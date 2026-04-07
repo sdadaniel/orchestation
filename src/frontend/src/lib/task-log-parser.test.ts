@@ -15,7 +15,7 @@ import {
   taskExists,
   getTaskLogs,
   hasLogSources,
-} from "./task-log-parser";
+} from "../parser/task-log-parser";
 
 const mockExistsSync = fs.existsSync as ReturnType<typeof vi.fn>;
 const mockReadFileSync = fs.readFileSync as ReturnType<typeof vi.fn>;

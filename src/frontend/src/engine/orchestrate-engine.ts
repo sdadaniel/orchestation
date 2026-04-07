@@ -1,30 +1,34 @@
 /**
  * orchestrate-engine.ts
  *
- * orchestrate.sh의 메인 루프를 Node.js로 포팅.
- * Worker(job-task.sh, job-review.sh)는 bash 그대로 유지 (Option B).
- *
- * 개선 사항:
- * - PID 파일 → Map<taskId, ChildProcess> (메모리 관리)
+ * 오케스트레이션 메인 엔진 (Node.js native).
+ * - Map<taskId, WorkerEntry> 기반 워커 관리
  * - 시그널 파일 → fs.watch 이벤트 기반
  * - process.on("exit") → 자식 일괄 종료
- * - bash 3.x 제약 해소
+ * - SQLite 기반 태스크 저장소 (task-store.ts)
  */
 
 import { execSync } from "child_process";
 import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
-import http from "http";
-import { parseFrontmatter, getString, getStringArray } from "./frontmatter-utils";
-import { PROJECT_ROOT, PACKAGE_DIR, TASKS_DIR, OUTPUT_DIR } from "./paths";
-import { loadSettings } from "./settings";
-import { parseCostLog } from "./cost-parser";
-import { syncTaskContentToDb, syncTaskFileToDb } from "./task-db-sync";
+import { PROJECT_ROOT, OUTPUT_DIR, SIGNALS_DIR, CONFIG_PATH } from "../lib/paths";
+import { writeNotice } from "../parser/notice-parser";
+import { loadSettings } from "../lib/settings";
+import { parseCostLog } from "../parser/cost-parser";
+import {
+  getTask,
+  getTasksByStatus,
+  updateTask,
+  updateTaskStatus,
+  parseScope,
+  parseDependsOn,
+  type TaskRow,
+} from "../service/task-store";
 import { runJobTask } from "./job-task";
 import { runJobReview } from "./job-review";
 import { runMergeTask } from "./merge-utils";
-import { signalCreate } from "./signal";
+import { SKIP_REVIEW_ROLES } from "./runner/task-runner-utils";
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -68,11 +72,8 @@ const SIGNAL_TYPES: SignalType[] = [
   "task-done", "task-failed", "task-rejected",
   "review-approved", "review-rejected", "stopped",
 ];
-const SKIP_REVIEW_ROLES = ["tech-writer"];
 const LOOP_INTERVAL_MS = 3000;
 const MAX_TASK_COST = 5.0;
-const NOTICE_API_HOST = "localhost";
-const NOTICE_API_PORT = 3000;
 
 // ── Engine ─────────────────────────────────────────────────
 
@@ -82,7 +83,6 @@ export class OrchestrateEngine extends EventEmitter {
   private loopTimer: ReturnType<typeof setInterval> | null = null;
   private signalWatcher: fs.FSWatcher | null = null;
   private _status: EngineStatus = "idle";
-  private signalDir: string;
   private baseBranch = "main";
   private maxParallelTask = 2;
   private maxParallelReview = 2;
@@ -92,7 +92,6 @@ export class OrchestrateEngine extends EventEmitter {
   constructor() {
     super();
     this.setMaxListeners(50);
-    this.signalDir = path.join(PROJECT_ROOT, ".orchestration", "signals");
   }
 
   // ── Public API ──────────────────────────────────────
@@ -110,7 +109,7 @@ export class OrchestrateEngine extends EventEmitter {
     this.retryCounts.clear();
 
     // 시그널 디렉토리 생성
-    fs.mkdirSync(this.signalDir, { recursive: true });
+    fs.mkdirSync(SIGNALS_DIR, { recursive: true });
 
     this.log("🚀 Pipeline 시작 (Node.js engine)");
     this.log(`⚙️  Base Branch: ${this.baseBranch}`);
@@ -147,7 +146,7 @@ export class OrchestrateEngine extends EventEmitter {
     if (this.signalWatcher) { this.signalWatcher.close(); this.signalWatcher = null; }
 
     // 시그널 디렉토리 정리
-    try { fs.rmSync(this.signalDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    try { fs.rmSync(SIGNALS_DIR, { recursive: true, force: true }); } catch { /* ignore */ }
 
     this._status = "failed";
     this.log("🛑 Pipeline 종료 완료");
@@ -164,7 +163,7 @@ export class OrchestrateEngine extends EventEmitter {
 
     // maxParallel 분리: config.json에서 task/review 별도 설정
     try {
-      const configPath = path.join(PROJECT_ROOT, ".orchestration", "config.json");
+      const configPath = CONFIG_PATH;
       if (fs.existsSync(configPath)) {
         const cfg = JSON.parse(fs.readFileSync(configPath, "utf-8"));
         this.maxParallelTask = cfg.maxParallel?.task ?? settings.maxParallel;
@@ -181,48 +180,28 @@ export class OrchestrateEngine extends EventEmitter {
 
   // ── Task Scanning ───────────────────────────────────
 
-  private buildTaskInfo(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    data: Record<string, any>,
-    taskId: string,
-    filePath: string,
-    status: TaskStatus,
-  ): TaskInfo {
+  private taskRowToInfo(row: TaskRow): TaskInfo {
     return {
-      id: getString(data, "id", taskId),
-      filePath,
-      status,
-      priority: getString(data, "priority", "medium"),
-      branch: getString(data, "branch"),
-      worktree: getString(data, "worktree"),
-      role: getString(data, "role"),
-      reviewerRole: getString(data, "reviewer_role"),
-      scope: getStringArray(data, "scope"),
-      dependsOn: getStringArray(data, "depends_on"),
-      sortOrder: typeof data.sort_order === "number" ? data.sort_order : 0,
-      title: getString(data, "title"),
+      id: row.id,
+      filePath: "",  // no longer file-based
+      status: row.status as TaskStatus,
+      priority: row.priority || "medium",
+      branch: row.branch || "",
+      worktree: row.worktree || "",
+      role: row.role || "",
+      reviewerRole: row.reviewer_role || "",
+      scope: parseScope(row),
+      dependsOn: parseDependsOn(row),
+      sortOrder: row.sort_order || 0,
+      title: row.title || "",
     };
   }
 
   private scanTasks(): TaskInfo[] {
-    const tasks: TaskInfo[] = [];
-    if (!fs.existsSync(TASKS_DIR)) return tasks;
-
-    for (const file of fs.readdirSync(TASKS_DIR)) {
-      if (!file.endsWith(".md")) continue;
-      const idMatch = file.match(/^(TASK-\d+)/);
-      if (!idMatch) continue;
-
-      const filePath = path.join(TASKS_DIR, file);
-      const raw = fs.readFileSync(filePath, "utf-8");
-      const { data } = parseFrontmatter(raw);
-
-      const status = getString(data, "status", "pending") as TaskStatus;
-      // 완료/진행 중인 태스크는 조기 제외 (큐 스캔용)
-      if (status === "done" || status === "in_progress") continue;
-
-      tasks.push(this.buildTaskInfo(data, idMatch[1], filePath, status));
-    }
+    const rows = getTasksByStatus("pending", "stopped");
+    const tasks = rows
+      .filter(r => r.status !== "done" && r.status !== "in_progress")
+      .map(r => this.taskRowToInfo(r));
 
     // 정렬: stopped > pending, high > medium > low, sortOrder, id
     const statusWeight = (s: string) => s === "stopped" ? 0 : 1;
@@ -239,16 +218,9 @@ export class OrchestrateEngine extends EventEmitter {
   }
 
   private readTaskInfo(taskId: string): TaskInfo | null {
-    if (!fs.existsSync(TASKS_DIR)) return null;
-    const files = fs.readdirSync(TASKS_DIR).filter(f => f.startsWith(taskId) && f.endsWith(".md"));
-    if (files.length === 0) return null;
-
-    const filePath = path.join(TASKS_DIR, files[0]);
-    const raw = fs.readFileSync(filePath, "utf-8");
-    const { data } = parseFrontmatter(raw);
-    const status = getString(data, "status", "pending") as TaskStatus;
-
-    return this.buildTaskInfo(data, taskId, filePath, status);
+    const row = getTask(taskId);
+    if (!row) return null;
+    return this.taskRowToInfo(row);
   }
 
   // ── Dependency & Scope ──────────────────────────────
@@ -256,8 +228,8 @@ export class OrchestrateEngine extends EventEmitter {
   private depsSatisfied(task: TaskInfo): boolean {
     if (task.dependsOn.length === 0) return true;
     for (const dep of task.dependsOn) {
-      const depInfo = this.readTaskInfo(dep);
-      if (!depInfo || depInfo.status !== "done") return false;
+      const row = getTask(dep);
+      if (!row || row.status !== "done") return false;
     }
     return true;
   }
@@ -266,11 +238,13 @@ export class OrchestrateEngine extends EventEmitter {
     if (task.scope.length === 0) return true;
 
     for (const [runningId, _entry] of this.workers) {
-      const runningInfo = this.readTaskInfo(runningId);
-      if (!runningInfo || runningInfo.scope.length === 0) continue;
+      const row = getTask(runningId);
+      if (!row) continue;
+      const runningScope = parseScope(row);
+      if (runningScope.length === 0) continue;
 
       for (const ns of task.scope) {
-        for (const rs of runningInfo.scope) {
+        for (const rs of runningScope) {
           if (ns === rs) {
             this.log(`  ⚠️  ${task.id}: scope 충돌 (${ns}) ← ${runningId} 실행 중`);
             return false;
@@ -291,36 +265,36 @@ export class OrchestrateEngine extends EventEmitter {
 
   private startTask(taskId: string, feedbackFile?: string): boolean {
     const info = this.readTaskInfo(taskId);
-    if (!info) { this.log(`  ❌ ${taskId}: 태스크 파일 없음`); return false; }
+    if (!info) { this.log(`  ❌ ${taskId}: 태스크 없음`); return false; }
 
     // branch/worktree 자동 추가
     if (!info.branch) {
       const slug = taskId.toLowerCase();
-      const raw = fs.readFileSync(info.filePath, "utf-8");
-      const updated = raw.replace(
-        /^(status: .*)$/m,
-        `$1\nbranch: task/${slug}\nworktree: ../repo-wt-${slug}`
-      );
-      fs.writeFileSync(info.filePath, updated);
+      const branch = `task/${slug}`;
+      const worktree = `../repo-wt-${slug}`;
+      updateTask(taskId, { branch, worktree });
       this.log(`  📝 ${taskId}: branch/worktree 필드 자동 추가`);
-      info.branch = `task/${slug}`;
-      info.worktree = `../repo-wt-${slug}`;
-      syncTaskContentToDb(info.filePath, updated);
+      info.branch = branch;
+      info.worktree = worktree;
     }
 
     // status → in_progress
     this.setTaskStatus(taskId, "in_progress");
 
+    // 로그 파일 생성 (Terminal/로그 탭에서 watch)
+    const logFile = path.join(OUTPUT_DIR, "logs", `${taskId}.log`);
+    fs.mkdirSync(path.dirname(logFile), { recursive: true });
+
     const abortController = new AbortController();
 
-    const promise = runJobTask(taskId, this.signalDir, feedbackFile, (line) => {
+    const promise = runJobTask(taskId, feedbackFile, (line) => {
       this.log(`  ${line}`);
+      // 로그 파일에도 기록 (UI Terminal/로그 탭에서 file watch)
+      try { fs.appendFileSync(logFile, line + "\n"); } catch { /* ignore */ }
     }).then((result) => {
       this.log(`  [${taskId}/task] 완료: ${result.status}`);
-      // 시그널은 runJobTask 내부에서 이미 생성됨
     }).catch((err) => {
       this.log(`  ❌ ${taskId}: task 오류: ${err instanceof Error ? err.message : String(err)}`);
-      // 시그널은 runJobTask 내부에서 이미 생성됨
     });
 
     this.workers.set(taskId, { abortController, promise, taskId, phase: "task", startedAt: Date.now() });
@@ -330,10 +304,14 @@ export class OrchestrateEngine extends EventEmitter {
   }
 
   private startReview(taskId: string): boolean {
+    const logFile = path.join(OUTPUT_DIR, "logs", `${taskId}-review.log`);
+    fs.mkdirSync(path.dirname(logFile), { recursive: true });
+
     const abortController = new AbortController();
 
-    const promise = runJobReview(taskId, this.signalDir, (line) => {
+    const promise = runJobReview(taskId, (line) => {
       this.log(`  ${line}`);
+      try { fs.appendFileSync(logFile, line + "\n"); } catch { /* ignore */ }
     }).then((result) => {
       this.log(`  [${taskId}/review] 완료: ${result.status}`);
     }).catch((err) => {
@@ -353,7 +331,7 @@ export class OrchestrateEngine extends EventEmitter {
 
   private startSignalWatcher() {
     try {
-      this.signalWatcher = fs.watch(this.signalDir, () => {
+      this.signalWatcher = fs.watch(SIGNALS_DIR, () => {
         // Signal file detected
       });
     } catch {
@@ -362,8 +340,8 @@ export class OrchestrateEngine extends EventEmitter {
   }
 
   private processSignals() {
-    if (!fs.existsSync(this.signalDir)) return;
-    const files = fs.readdirSync(this.signalDir);
+    if (!fs.existsSync(SIGNALS_DIR)) return;
+    const files = fs.readdirSync(SIGNALS_DIR);
 
     for (const file of files) {
       for (const suffix of SIGNAL_TYPES) {
@@ -372,7 +350,7 @@ export class OrchestrateEngine extends EventEmitter {
           const taskId = match[1];
           this.handleSignal(taskId, suffix as SignalType);
           // signal 파일 삭제
-          try { fs.unlinkSync(path.join(this.signalDir, file)); } catch { /* ignore */ }
+          try { fs.unlinkSync(path.join(SIGNALS_DIR, file)); } catch { /* ignore */ }
         }
       }
     }
@@ -460,31 +438,9 @@ export class OrchestrateEngine extends EventEmitter {
   // ── Status Management ───────────────────────────────
 
   private setTaskStatus(taskId: string, newStatus: TaskStatus) {
-    const info = this.readTaskInfo(taskId);
-    if (!info) return;
-
-    const raw = fs.readFileSync(info.filePath, "utf-8");
-    const updated = raw
-      .replace(/^status: .*/m, `status: ${newStatus}`)
-      .replace(/^updated: .*/m, `updated: ${new Date().toISOString().slice(0, 16).replace("T", " ")}`);
-    fs.writeFileSync(info.filePath, updated);
-    syncTaskContentToDb(info.filePath, updated);
-
-    // git add + commit
-    try {
-      execSync(`git -C "${PROJECT_ROOT}" add -f "${info.filePath}"`, { stdio: "ignore" });
-    } catch { /* ignore */ }
-  }
-
-  private batchCommit() {
-    try {
-      const staged = execSync(`git -C "${PROJECT_ROOT}" diff --cached --name-only 2>/dev/null`, { encoding: "utf-8" }).trim();
-      if (!staged) return;
-      const count = staged.split("\n").filter(f => f.endsWith(".md")).length;
-      if (count > 0) {
-        execSync(`git -C "${PROJECT_ROOT}" commit -m "chore: 태스크 상태 일괄 업데이트 (${count}건)"`, { stdio: "ignore" });
-      }
-    } catch { /* ignore */ }
+    const row = getTask(taskId);
+    if (!row) return;
+    updateTaskStatus(taskId, newStatus, row.status);
   }
 
   // ── Merge ───────────────────────────────────────────
@@ -525,10 +481,14 @@ export class OrchestrateEngine extends EventEmitter {
     if (!info) return;
     const worktreePath = info.worktree ? path.resolve(PROJECT_ROOT, info.worktree) : null;
     if (worktreePath && fs.existsSync(worktreePath)) {
-      try { execSync(`git -C "${PROJECT_ROOT}" worktree remove "${worktreePath}" --force`, { stdio: "ignore" }); } catch { /* ignore */ }
+      try {
+        execSync(`git -C "${PROJECT_ROOT}" worktree remove "${worktreePath}" --force`, { stdio: "ignore" });
+      } catch { /* ignore */ }
     }
     if (info.branch) {
-      try { execSync(`git -C "${PROJECT_ROOT}" branch -D "${info.branch}"`, { stdio: "ignore" }); } catch { /* ignore */ }
+      try {
+        execSync(`git -C "${PROJECT_ROOT}" branch -D "${info.branch}"`, { stdio: "ignore" });
+      } catch { /* ignore */ }
     }
   }
 
@@ -581,9 +541,6 @@ export class OrchestrateEngine extends EventEmitter {
 
     // health check (10회마다)
     if (this.loopCount % 10 === 0) this.healthCheck();
-
-    // 배치 git commit
-    this.batchCommit();
   }
 
   // ── Guards ──────────────────────────────────────────
@@ -623,25 +580,16 @@ export class OrchestrateEngine extends EventEmitter {
   // ── Zombie Cleanup ──────────────────────────────────
 
   private cleanupZombies() {
-    if (!fs.existsSync(TASKS_DIR)) return;
+    const zombies = getTasksByStatus("in_progress");
     let cleaned = 0;
 
-    for (const file of fs.readdirSync(TASKS_DIR)) {
-      if (!file.endsWith(".md")) continue;
-      const filePath = path.join(TASKS_DIR, file);
-      const raw = fs.readFileSync(filePath, "utf-8");
-      if (!raw.includes("status: in_progress")) continue;
-
-      const idMatch = file.match(/^(TASK-\d+)/);
-      if (!idMatch) continue;
-
+    for (const row of zombies) {
       // Node engine에서 관리 중이면 건너뛰기
-      if (this.workers.has(idMatch[1])) continue;
+      if (this.workers.has(row.id)) continue;
 
-      fs.writeFileSync(filePath, raw.replace("status: in_progress", "status: stopped"));
-      syncTaskFileToDb(filePath);
+      updateTaskStatus(row.id, "stopped", "in_progress");
       cleaned++;
-      this.log(`  🧹 zombie: ${idMatch[1]} in_progress → stopped`);
+      this.log(`  🧹 zombie: ${row.id} in_progress → stopped`);
     }
 
     if (cleaned > 0) this.log(`  🧹 ${cleaned}개 좀비 태스크 정리`);
@@ -650,16 +598,7 @@ export class OrchestrateEngine extends EventEmitter {
   // ── Notice ──────────────────────────────────────────
 
   private postNotice(type: string, title: string, content: string) {
-    try {
-      const data = JSON.stringify({ title, content, type });
-      const req = http.request({
-        hostname: NOTICE_API_HOST, port: NOTICE_API_PORT, path: "/api/notices",
-        method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data) },
-      });
-      req.write(data);
-      req.end();
-      req.on("error", () => { /* ignore */ });
-    } catch { /* ignore */ }
+    writeNotice(type as "info" | "warning" | "error" | "request", title, content);
   }
 
   // ── Logging ─────────────────────────────────────────

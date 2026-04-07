@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TERMINAL_BG, TERMINAL_HEADER_BG } from "@/constants/terminal";
+import { TERMINAL_BG, TERMINAL_HEADER_BG } from "@/constants/theme";
 
 interface TerminalEntry {
   type: "tool_use" | "tool_result" | "thinking" | "text" | "system";

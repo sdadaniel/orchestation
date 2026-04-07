@@ -5,14 +5,14 @@
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import { parseFrontmatter, getString, getStringArray } from "./frontmatter-utils";
-import { PROJECT_ROOT, PACKAGE_DIR, TASKS_DIR, OUTPUT_DIR, ROLES_DIR } from "./paths";
-import { loadSettings } from "./settings";
-import { signalCreate, SignalSuffix } from "./signal";
-import { selectModel, logModelSelection } from "./model-selector";
+import { PROJECT_ROOT, OUTPUT_DIR, ROLES_DIR } from "../lib/paths";
+import { loadSettings } from "../lib/settings";
+import { signalCreate } from "./signal";
+import { logModelSelection } from "./model-selector";
 import { setupContextFilter, buildTaskPrompt } from "./context-builder";
 import { runClaudeStreamJson } from "./claude-worker";
-import { getDb } from "./db";
+import { getTask, parseScope, parseContext, taskRowToMarkdown } from "../service/task-store";
+import { logTokenUsage } from "../service/token-logger";
 
 export interface JobTaskResult {
   status: "task-done" | "task-failed" | "task-rejected";
@@ -27,7 +27,6 @@ export interface JobTaskResult {
  */
 export async function runJobTask(
   taskId: string,
-  signalDir: string,
   feedbackFile?: string,
   onLog?: (line: string) => void,
 ): Promise<JobTaskResult> {
@@ -35,26 +34,29 @@ export async function runJobTask(
   let signalSent = false;
 
   try {
-    // 1. 태스크 파일 찾기
-    const taskFile = findTaskFile(taskId);
-    if (!taskFile) {
-      log("❌ 태스크 파일을 찾을 수 없음");
-      signalCreate(signalDir, taskId, "task-failed");
+    // 1. DB에서 태스크 조회
+    const task = getTask(taskId);
+    if (!task) {
+      log("❌ 태스크를 찾을 수 없음");
+      signalCreate(taskId, "task-failed");
       signalSent = true;
       return { status: "task-failed" };
     }
 
-    const taskFilename = path.basename(taskFile);
-    const raw = fs.readFileSync(taskFile, "utf-8");
-    const { data } = parseFrontmatter(raw);
+    // buildTaskPrompt / logModelSelection 등 파일 경로가 필요한 함수를 위해 임시 파일 생성
+    const tmpTaskFile = path.join(OUTPUT_DIR, `${taskId}-task-tmp.md`);
+    fs.mkdirSync(path.dirname(tmpTaskFile), { recursive: true });
+    fs.writeFileSync(tmpTaskFile, taskRowToMarkdown(task));
+    const taskFile = tmpTaskFile;
+    const taskFilename = `${task.id}-task.md`;
 
-    const branch = getString(data, "branch");
-    const worktree = getString(data, "worktree");
-    const role = getString(data, "role") || "general";
-    const scope = getStringArray(data, "scope");
-    const context = getStringArray(data, "context");
+    const branch = task.branch;
+    const worktree = task.worktree;
+    const role = task.role || "general";
+    const scope = parseScope(task);
+    const context = parseContext(task);
 
-    log(`📋 태스크: ${getString(data, "title")}`);
+    log(`📋 태스크: ${task.title}`);
     log(`📂 scope: ${scope.join(", ") || "(없음)"}`);
 
     // 2. worktree 확인/생성
@@ -137,7 +139,7 @@ export async function runJobTask(
       log(`🚫 거절: ${reason}`);
       const reasonFile = path.join(OUTPUT_DIR, `${taskId}-rejection-reason.txt`);
       fs.writeFileSync(reasonFile, claudeResult.result);
-      signalCreate(signalDir, taskId, "task-rejected");
+      signalCreate(taskId, "task-rejected");
       signalSent = true;
       return { status: "task-rejected", cost: claudeResult.costUsd, model, result: claudeResult.result };
     }
@@ -145,7 +147,7 @@ export async function runJobTask(
     // 11. 실행 실패 확인
     if (claudeResult.exitCode !== 0) {
       log(`❌ Claude 비정상 종료 (exit=${claudeResult.exitCode})`);
-      signalCreate(signalDir, taskId, "task-failed");
+      signalCreate(taskId, "task-failed");
       signalSent = true;
       return { status: "task-failed", cost: claudeResult.costUsd, model };
     }
@@ -157,16 +159,18 @@ export async function runJobTask(
     }
 
     // 13. 성공 시그널
-    signalCreate(signalDir, taskId, "task-done");
+    signalCreate(taskId, "task-done");
     signalSent = true;
     log(`✅ task-done 시그널 생성`);
 
+    cleanupTmpTaskFile(taskId);
     return { status: "task-done", cost: claudeResult.costUsd, model, result: claudeResult.result };
   } catch (err) {
+    cleanupTmpTaskFile(taskId);
     const msg = err instanceof Error ? err.message : String(err);
     log(`❌ 오류: ${msg}`);
     if (!signalSent) {
-      try { signalCreate(signalDir, taskId, "task-failed"); } catch { /* ignore */ }
+      try { signalCreate(taskId, "task-failed"); } catch { /* ignore */ }
     }
     return { status: "task-failed" };
   }
@@ -187,31 +191,12 @@ function ensureGitignoreEntry(worktreePath: string, entry: string): void {
   } catch { /* ignore */ }
 }
 
-function findTaskFile(taskId: string): string | null {
-  // .orchestration/tasks/ 먼저
-  if (fs.existsSync(TASKS_DIR)) {
-    const files = fs.readdirSync(TASKS_DIR);
-    const match = files.find(f => f.startsWith(`${taskId}-`) && f.endsWith(".md"));
-    if (match) return path.join(TASKS_DIR, match);
-  }
-
-  // docs/task/ fallback
-  const docsTask = path.join(PROJECT_ROOT, "docs", "task");
-  if (fs.existsSync(docsTask)) {
-    const files = fs.readdirSync(docsTask);
-    const match = files.find(f => f.startsWith(`${taskId}-`) && f.endsWith(".md"));
-    if (match) return path.join(docsTask, match);
-  }
-
-  // docs/requests/ fallback
-  const docsReq = path.join(PROJECT_ROOT, "docs", "requests");
-  if (fs.existsSync(docsReq)) {
-    const files = fs.readdirSync(docsReq);
-    const match = files.find(f => f.startsWith(`${taskId}-`) && f.endsWith(".md"));
-    if (match) return path.join(docsReq, match);
-  }
-
-  return null;
+/** 임시 태스크 파일 정리 */
+function cleanupTmpTaskFile(taskId: string): void {
+  try {
+    const tmpFile = path.join(OUTPUT_DIR, `${taskId}-task-tmp.md`);
+    if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
+  } catch { /* ignore */ }
 }
 
 function ensureWorktree(worktreePath: string, branch: string, log: (msg: string) => void): void {
@@ -297,28 +282,3 @@ function validateScope(
   } catch { /* ignore */ }
 }
 
-function logTokenUsage(
-  taskId: string,
-  phase: string,
-  model: string,
-  result: { costUsd: number; inputTokens: number; outputTokens: number; durationMs: number },
-): void {
-  const logLine = `[${new Date().toISOString()}] ${taskId} | phase=${phase} | model=${model} | input=${result.inputTokens} | output=${result.outputTokens} | cost=$${result.costUsd.toFixed(4)} | duration=${result.durationMs}ms\n`;
-
-  try {
-    const logPath = path.join(OUTPUT_DIR, "token-usage.log");
-    fs.mkdirSync(path.dirname(logPath), { recursive: true });
-    fs.appendFileSync(logPath, logLine);
-  } catch { /* ignore */ }
-
-  // SQLite에도 기록
-  try {
-    const db = getDb();
-    if (db) {
-      db.prepare(
-        `INSERT INTO token_usage (task_id, phase, model, input_tokens, output_tokens, cost_usd, duration_ms, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(taskId, phase, model, result.inputTokens, result.outputTokens, result.costUsd, result.durationMs, new Date().toISOString());
-    }
-  } catch { /* ignore */ }
-}

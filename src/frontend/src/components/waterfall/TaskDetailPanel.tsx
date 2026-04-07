@@ -8,10 +8,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import {
-  STATUS_STYLES,
-  PRIORITY_STYLES,
-} from "../../../lib/constants";
+import { STATUS_STYLES, PRIORITY_STYLES } from "@/constants/theme";
 import type { WaterfallTask } from "@/types/waterfall";
 
 type TaskDetailPanelProps = {

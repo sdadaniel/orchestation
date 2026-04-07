@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { TaskFrontmatter } from "@/lib/parser";
+import type { TaskFrontmatter } from "@/parser/parser";
 import { buildWaterfallGroups } from "@/lib/waterfall";
 import type { WaterfallGroup } from "@/types/waterfall";
 import { queryKeys } from "@/lib/query-keys";

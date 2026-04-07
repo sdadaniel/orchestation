@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import type { RunHistoryEntry } from "@/lib/run-history";
+import type { RunHistoryEntry } from "@/service/run-history";
 import { getErrorMessage } from "@/lib/error-utils";
 
 export type { RunHistoryEntry };

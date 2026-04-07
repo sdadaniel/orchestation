@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
-import { findNoticeFile, parseNoticeFile } from "@/lib/notice-parser";
+import { findNoticeFile, parseNoticeFile } from "@/parser/notice-parser";
 
 export const dynamic = "force-dynamic";
 

@@ -2,10 +2,7 @@
 
 import type { PlanTreeData, PlanTaskNode } from "@/types/plan";
 import { cn } from "@/lib/utils";
-import {
-  STATUS_STYLES,
-  PRIORITY_STYLES,
-} from "../../../lib/constants";
+import { STATUS_STYLES, PRIORITY_STYLES } from "@/constants/theme";
 
 type PlanTreeContainerProps = {
   data: PlanTreeData;

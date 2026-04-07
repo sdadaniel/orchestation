@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseCostLog } from "@/lib/cost-parser";
+import { parseCostLog } from "@/parser/cost-parser";
 
 export const dynamic = "force-dynamic";
 

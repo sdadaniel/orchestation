@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readRunHistory } from "@/lib/run-history";
+import { readRunHistory } from "@/service/run-history";
 
 export const dynamic = "force-dynamic";
 

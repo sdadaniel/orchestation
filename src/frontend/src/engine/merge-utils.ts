@@ -5,12 +5,11 @@
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import http from "http";
-import { parseFrontmatter, getString } from "./frontmatter-utils";
-import { PROJECT_ROOT, TASKS_DIR, OUTPUT_DIR } from "./paths";
-import { loadSettings } from "./settings";
+import { PROJECT_ROOT } from "../lib/paths";
+import { writeNotice } from "../parser/notice-parser";
+import { loadSettings } from "../lib/settings";
 import { runClaudeJson } from "./claude-worker";
-import { syncTaskContentToDb } from "./task-db-sync";
+import { getTask, updateTaskStatus } from "../service/task-store";
 
 /**
  * 태스크 브랜치를 메인에 머지하고 클린업한다.
@@ -23,22 +22,20 @@ export async function runMergeTask(
   const log = (msg: string) => onLog?.(`[${taskId}/merge] ${msg}`);
 
   try {
-    const taskFile = findTaskFile(taskId);
-    if (!taskFile) {
-      log("❌ 태스크 파일 없음");
+    const task = getTask(taskId);
+    if (!task) {
+      log("❌ 태스크를 찾을 수 없음");
       return false;
     }
 
-    const raw = fs.readFileSync(taskFile, "utf-8");
-    const { data } = parseFrontmatter(raw);
-    const branch = getString(data, "branch");
-    const worktree = getString(data, "worktree");
+    const branch = task.branch;
+    const worktree = task.worktree;
     const settings = loadSettings();
     const baseBranch = settings.baseBranch;
 
     if (!branch) {
       log("ℹ️ 브랜치 없음 — 머지 스킵, 상태만 업데이트");
-      updateStatusToDone(taskFile, taskId);
+      updateTaskStatus(taskId, "done", task.status);
       return true;
     }
 
@@ -101,7 +98,7 @@ export async function runMergeTask(
     }
 
     // 상태 업데이트
-    updateStatusToDone(taskFile, taskId);
+    updateTaskStatus(taskId, "done", task.status);
     log("✅ 머지 완료, 상태 → done");
 
     return true;
@@ -192,48 +189,6 @@ ${conflictDetails.join("\n\n")}
 
 // ── 유틸리티 ───────────────────────────────────────────
 
-function findTaskFile(taskId: string): string | null {
-  const dirs = [
-    TASKS_DIR,
-    path.join(PROJECT_ROOT, "docs", "task"),
-    path.join(PROJECT_ROOT, "docs", "requests"),
-  ];
-
-  for (const dir of dirs) {
-    if (!fs.existsSync(dir)) continue;
-    const files = fs.readdirSync(dir);
-    const match = files.find(f => f.startsWith(`${taskId}-`) && f.endsWith(".md"));
-    if (match) return path.join(dir, match);
-  }
-  return null;
-}
-
-function updateStatusToDone(taskFile: string, taskId: string): void {
-  try {
-    const raw = fs.readFileSync(taskFile, "utf-8");
-    const updated = raw
-      .replace(/^status: .*/m, "status: done")
-      .replace(/^updated: .*/m, `updated: ${new Date().toISOString().slice(0, 16).replace("T", " ")}`);
-    fs.writeFileSync(taskFile, updated);
-    syncTaskContentToDb(taskFile, updated);
-
-    execSync(`git -C "${PROJECT_ROOT}" add -f "${taskFile}"`, { stdio: "ignore" });
-    execSync(`git -C "${PROJECT_ROOT}" commit -m "chore(${taskId}): status → done"`, { stdio: "ignore" });
-  } catch { /* ignore */ }
-}
-
 function postNotice(type: string, title: string, content: string): void {
-  try {
-    const data = JSON.stringify({ title, content, type });
-    const req = http.request({
-      hostname: "localhost",
-      port: 3000,
-      path: "/api/notices",
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data) },
-    });
-    req.write(data);
-    req.end();
-    req.on("error", () => { /* ignore */ });
-  } catch { /* fallback to file */ }
+  writeNotice(type as "info" | "warning" | "error" | "request", title, content);
 }
