@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import Link from "next/link";
+import { formatDuration } from "@/lib/format-utils";
 
 interface CostTableProps {
   entries: CostEntry[];
@@ -23,14 +24,6 @@ function formatTimestamp(raw: string): string {
   return raw; // Already in YYYY-MM-DD HH:mm:ss format
 }
 
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  const seconds = ms / 1000;
-  if (seconds < 60) return `${seconds.toFixed(1)}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainSec = Math.round(seconds % 60);
-  return `${minutes}m ${remainSec}s`;
-}
 
 function getTotalTokens(entry: CostEntry): number {
   return entry.inputTokens + entry.outputTokens + entry.cacheCreate + entry.cacheRead;
