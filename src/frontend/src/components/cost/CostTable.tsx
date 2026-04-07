@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import Link from "next/link";
-import { formatDuration } from "@/lib/format-utils";
+import { formatDurationMinutes } from "@/lib/format-utils";
 
 interface CostTableProps {
   entries: CostEntry[];
@@ -154,7 +154,7 @@ export function CostTable({ entries }: CostTableProps) {
                     ${entry.costUsd.toFixed(4)}
                   </td>
                   <td className="text-right font-mono">
-                    {formatDuration(entry.durationMs)}
+                    {formatDurationMinutes(entry.durationMs)}
                   </td>
                   <td className="text-right font-mono">
                     {entry.turns}
