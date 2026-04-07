@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TERMINAL_BG, TERMINAL_HEADER_BG } from "@/constants/terminal";
 
 interface TerminalEntry {
   type: "tool_use" | "tool_result" | "thinking" | "text" | "system";
@@ -133,8 +134,8 @@ export function LiveTerminalPanel({ taskId }: { taskId: string }) {
   };
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden bg-[#0d1117]">
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#161b22] border-b border-border">
+    <div className={cn("rounded-lg border border-border overflow-hidden", TERMINAL_BG)}>
+      <div className={cn("flex items-center gap-2 px-3 py-1.5 border-b border-border", TERMINAL_HEADER_BG)}>
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />

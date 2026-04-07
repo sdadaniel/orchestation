@@ -11,3 +11,5 @@ package-lock.json
 src/frontend/.next/
 *.tgz
 .orchestration/orchestration.db
+
+.claudeignore
