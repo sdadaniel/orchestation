@@ -1,11 +1,13 @@
 ---
 id: TASK-321
 title: 프론트엔드-에러메시지-하드코딩-중복-상수-추출
-status: pending
+status: failed
+branch: task/task-321
+worktree: ../repo-wt-task-321
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 08:58
 depends_on: []
 scope:
   - src/frontend/src/hooks/useTasks.ts

@@ -1,11 +1,13 @@
 ---
 id: TASK-332
 title: orchestrate-engine-하드코딩-상수-추출-및-신규-기능-제안-문서화
-status: pending
+status: done
+branch: task/task-332
+worktree: ../repo-wt-task-332
 priority: medium
 mode: night
 created: 2026-04-03
-updated: 2026-04-03
+updated: 2026-04-03 02:12
 depends_on: []
 scope:
   - src/frontend/src/lib/orchestrate-engine.ts

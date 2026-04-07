@@ -1,11 +1,13 @@
 ---
 id: TASK-326
 title: parser-유틸-as-any-타입-단언-제거
-status: pending
+status: done
+branch: task/task-326
+worktree: ../repo-wt-task-326
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 09:11
 depends_on: []
 scope:
   - src/frontend/src/lib/notice-parser.ts

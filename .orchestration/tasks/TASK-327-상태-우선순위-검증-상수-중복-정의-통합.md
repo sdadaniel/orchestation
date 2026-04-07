@@ -1,11 +1,13 @@
 ---
 id: TASK-327
 title: 상태-우선순위-검증-상수-중복-정의-통합
-status: pending
+status: failed
+branch: task/task-327
+worktree: ../repo-wt-task-327
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 18:25
 depends_on: []
 scope:
   - src/frontend/src/lib/parser.ts

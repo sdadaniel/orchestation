@@ -1,11 +1,13 @@
 ---
 id: TASK-313
 title: 프론트엔드-컴포넌트-console-문-제거
-status: pending
+status: failed
+branch: task/task-313
+worktree: ../repo-wt-task-313
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 08:49
 depends_on: []
 scope:  []
 ---
@@ -15,11 +17,13 @@ scope:  []
 ---
 id: TASK-313
 title: 프론트엔드-컴포넌트-console-문-제거
-status: pending
+status: failed
+branch: task/task-313
+worktree: ../repo-wt-task-313
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 17:26
 depends_on: []
 scope:
   - src/frontend/src/components/DAGCanvas.tsx

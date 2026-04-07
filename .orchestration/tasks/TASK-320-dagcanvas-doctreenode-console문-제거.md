@@ -1,11 +1,13 @@
 ---
 id: TASK-320
 title: DAGCanvas-DocTreeNode-console문-제거
-status: pending
+status: done
+branch: task/task-320
+worktree: ../repo-wt-task-320
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 08:56
 depends_on: []
 scope:
   - src/frontend/src/components/DAGCanvas.tsx

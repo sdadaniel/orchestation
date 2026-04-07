@@ -10,12 +10,31 @@
     "start": "node cli.js run",
     "night": "node cli.js night"
   },
-  "files": ["cli.js", "scripts/", "template/", "docs/roles/", "config.json", "src/frontend/"],
+  "files": [
+    "cli.js",
+    "scripts/",
+    "template/",
+    "docs/roles/",
+    "config.json",
+    "src/frontend/"
+  ],
   "bundledDependencies": false,
   "engines": {
     "node": ">=18"
   },
-  "os": ["darwin", "linux"],
-  "keywords": ["ai", "orchestration", "claude", "automation"],
-  "license": "MIT"
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "keywords": [
+    "ai",
+    "orchestration",
+    "claude",
+    "automation"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  },
+  "bundleDependencies": []
 }

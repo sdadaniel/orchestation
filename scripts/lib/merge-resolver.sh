@@ -92,9 +92,40 @@ post_notice() {
   local title="$2"
   local content="$3"
 
-  curl -s -X POST "$NOTICE_API" \
+  # API 호출 시도
+  local api_ok=false
+  if curl -s -f -X POST "$NOTICE_API" \
     -H "Content-Type: application/json" \
     -d "$(jq -n --arg t "$title" --arg c "$content" --arg ty "$type" \
       '{title: $t, content: $c, type: $ty}')" \
-    > /dev/null 2>&1 || true
+    > /dev/null 2>&1; then
+    api_ok=true
+  fi
+
+  # API 실패 시 파일 직접 생성 (fallback)
+  if [ "$api_ok" = false ]; then
+    local notice_dir="${PROJECT_ROOT:-.}/.orchestration/notices"
+    mkdir -p "$notice_dir" 2>/dev/null || true
+    # 다음 ID 계산
+    local last_id
+    last_id=$(ls -1 "$notice_dir"/NOTICE-*.md 2>/dev/null | sed 's/.*NOTICE-\([0-9]*\).*/\1/' | sort -n | tail -1)
+    local next_id=$(( ${last_id:-0} + 1 ))
+    # 제목에서 파일명 생성 (한글/특수문자 → 하이픈)
+    local slug
+    slug=$(echo "$title" | sed 's/[^a-zA-Z0-9가-힣]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//' | cut -c1-50)
+    local today
+    today=$(date '+%Y-%m-%d')
+    local notice_file="$notice_dir/NOTICE-${next_id}-${slug}.md"
+    cat > "$notice_file" << NOTICE_EOF
+---
+id: NOTICE-${next_id}
+title: ${title}
+type: ${type}
+read: false
+created: ${today}
+updated: ${today}
+---
+${content}
+NOTICE_EOF
+  fi
 }

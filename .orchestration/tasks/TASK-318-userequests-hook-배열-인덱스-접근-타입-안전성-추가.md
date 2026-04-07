@@ -1,11 +1,13 @@
 ---
 id: TASK-318
 title: useRequests-hook-배열-인덱스-접근-타입-안전성-추가
-status: pending
+status: done
+branch: task/task-318
+worktree: ../repo-wt-task-318
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 08:39
 depends_on: []
 scope:
   - src/frontend/src/hooks/useRequests.ts

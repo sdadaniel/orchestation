@@ -1,11 +1,13 @@
 ---
 id: TASK-310
 title: src-내-미사용-import-변수-정리
-status: pending
+status: done
+branch: task/task-310
+worktree: ../repo-wt-task-310
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 08:24
 depends_on: []
 scope:  []
 ---
@@ -15,11 +17,13 @@ Confirmed: `useState` is imported but never used in AppShell.tsx. Let me also ve
 ---
 id: TASK-310
 title: src-내-미사용-import-변수-정리
-status: pending
+status: failed
+branch: task/task-310
+worktree: ../repo-wt-task-310
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 17:19
 depends_on: []
 scope:
   - src/frontend/src/components/AppShell.tsx

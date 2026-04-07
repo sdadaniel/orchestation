@@ -1,11 +1,13 @@
 ---
 id: TASK-331
 title: task-detail-page-미사용-변수-제거
-status: pending
+status: done
+branch: task/task-331
+worktree: ../repo-wt-task-331
 priority: medium
 mode: night
 created: 2026-04-03
-updated: 2026-04-03
+updated: 2026-04-03 01:03
 depends_on: []
 scope:
   - src/frontend/src/app/tasks/[id]/page.tsx

@@ -1,13 +1,13 @@
 ---
 id: TASK-334
 title: orchestrate-engine-require-http-implicit-any-수정
-status: in_progress
+status: done
 branch: task/task-334
 worktree: ../repo-wt-task-334
 priority: medium
 mode: night
 created: 2026-04-03
-updated: 2026-04-03 03:02
+updated: 2026-04-03 03:12
 depends_on: []
 scope:
   - src/frontend/src/lib/orchestrate-engine.ts

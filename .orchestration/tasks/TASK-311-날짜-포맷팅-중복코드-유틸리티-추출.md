@@ -1,11 +1,13 @@
 ---
 id: TASK-311
 title: 날짜-포맷팅-중복코드-유틸리티-추출
-status: pending
+status: done
+branch: task/task-311
+worktree: ../repo-wt-task-311
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 08:25
 depends_on: []
 scope:
   - src/frontend/src/lib/request-parser.ts

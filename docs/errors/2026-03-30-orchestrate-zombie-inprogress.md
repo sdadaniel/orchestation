@@ -107,14 +107,14 @@ TASK-273*.log → 없음
 
 ## 재발 방지 제안
 
-### 단기
-1. **job dispatch 직후 PID liveness 체크**: `start_task()`에서 `nohup ... &` 후 1~2초 대기하고 `kill -0 $pid`로 프로세스가 살아있는지 확인. 죽었으면 즉시 status를 pending으로 원복
-2. **process_signals_for_task에 PID 생존 확인 추가**: 시그널 파일이 없을 때 `/tmp/worker-${task_id}.pid`의 PID가 실제로 살아있는지 체크. 죽었으면 `_mark_task_failed` 호출
+### 단기 — ✅ 구현 완료
+1. **job dispatch 직후 PID liveness 체크**: `start_task()`에서 `nohup ... &` 후 0.3초 대기하고 `kill -0 $pid`로 프로세스가 살아있는지 확인. 죽었으면 즉시 status를 pending으로 원복 → `orchestrate.sh:689-703`
+2. **process_signals_for_task에 PID 생존 확인 추가**: 시그널 파일이 없을 때 PID가 실제로 살아있는지 + PID 재사용 검증(프로세스 명령어 확인) → `orchestrate.sh:888-927`
 
-### 중기
-3. **in_progress 타임아웃**: 태스크가 in_progress로 전환 후 N분(예: 30분) 이내에 로그 파일이 생성되지 않으면 자동으로 `pending`으로 원복
-4. **상태 전이 로깅**: in_progress 전환 시 타임스탬프를 frontmatter에 기록(`started_at`)하여 경과 시간 기반 이상 탐지 가능하게 함
+### 중기 — ✅ 구현 완료 (2026-04-02)
+3. **in_progress 타임아웃**: `INPROGRESS_TIMEOUT` (기본 1800초=30분) 추가. start 파일 epoch 또는 로그 파일 mtime 중 최신 기준으로 경과 시간 체크. 타임아웃 시 워커 프로세스 kill 후 failed 처리 → `orchestrate.sh:process_signals_for_task` 내 타임아웃 체크 블록. `config.json`의 `inProgressTimeout`으로 조정 가능.
+4. **상태 전이 로깅**: job-task.sh가 시작 시 `${SIGNAL_DIR}/${TASK_ID}-start`에 epoch 타임스탬프 기록 (기존 구현 활용)
 
-### 장기
+### 장기 — 미구현
 5. **heartbeat 기반 liveness 체크**: orchestrate.sh가 주기적으로(예: 5분) heartbeat 파일을 갱신하고, 대시보드 또는 별도 watchdog이 heartbeat 갱신이 멈추면 알림 발송
 6. **프로세스 트리 검증**: orchestrate.sh가 job을 dispatch한 후, 실제 claude 프로세스가 자식 트리에 존재하는지 확인하는 로직 추가

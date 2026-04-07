@@ -160,7 +160,7 @@ if echo "$result" | grep -qiE '\*\*Decision\*\*:\s*APPROVE'; then
     signal_create "$SIGNAL_DIR" "$TASK_ID" "review-approved"
   fi
   if [ -f "$DB_FILE" ]; then
-    sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,to_status) VALUES('${TASK_ID}','review_approved','done');" 2>/dev/null || true
+    sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,from_status,to_status) VALUES('${TASK_ID}','review_approved','reviewing','done');" 2>/dev/null || true
   fi
   echo "✅ [job-review] ${TASK_ID} 승인 (Decision: APPROVE) → review-approved signal"
   exit 0
@@ -171,7 +171,7 @@ elif echo "$result" | grep -q "승인"; then
       signal_create "$SIGNAL_DIR" "$TASK_ID" "review-approved"
     fi
     if [ -f "$DB_FILE" ]; then
-      sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,to_status) VALUES('${TASK_ID}','review_approved','done');" 2>/dev/null || true
+      sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,from_status,to_status) VALUES('${TASK_ID}','review_approved','reviewing','done');" 2>/dev/null || true
     fi
     echo "✅ [job-review] ${TASK_ID} 승인 (레거시 매칭) → review-approved signal"
     exit 0
@@ -184,7 +184,7 @@ if [ "${SKIP_SIGNAL:-}" != "1" ]; then
   signal_create "$SIGNAL_DIR" "$TASK_ID" "review-rejected"
 fi
 if [ -f "$DB_FILE" ]; then
-  sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,to_status) VALUES('${TASK_ID}','review_rejected','reviewing');" 2>/dev/null || true
+  sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,from_status,to_status) VALUES('${TASK_ID}','review_rejected','reviewing','in_progress');" 2>/dev/null || true
 fi
 echo "🔄 [job-review] ${TASK_ID} 수정요청 → review-rejected signal"
 exit 1

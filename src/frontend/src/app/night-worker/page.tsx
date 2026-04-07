@@ -138,7 +138,7 @@ export default function NightWorkerPage() {
             />
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground/60 font-mono">
-                {isRunning ? `${tasksCreated} tasks created / $${totalCost}` : "코드 스캔 후 이슈 태스크 자동 생성 · branch: nm/"}
+                {isRunning ? `${tasksCreated} tasks created / $${totalCost}` : "코드 스캔 후 이슈 태스크 자동 생성"}
               </p>
               {isRunning && (
                 <span className="flex items-center gap-1.5 text-[11px] text-yellow-400">
@@ -292,10 +292,6 @@ export default function NightWorkerPage() {
                 <span className="text-right max-w-[300px]">
                   {selectedTypes.size === 0 ? "None" : [...selectedTypes].map((id) => TASK_TYPES.find((t) => t.id === id)?.label).join(", ")}
                 </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Branch prefix</span>
-                <span className="font-mono text-yellow-400">nm/</span>
               </div>
             </div>
           )}

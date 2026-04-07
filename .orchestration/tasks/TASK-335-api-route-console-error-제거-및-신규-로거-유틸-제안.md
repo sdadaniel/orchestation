@@ -1,11 +1,13 @@
 ---
 id: TASK-335
 title: api-route-console-error-제거-및-신규-로거-유틸-제안
-status: pending
+status: done
+branch: task/task-335
+worktree: ../repo-wt-task-335
 priority: medium
 mode: night
 created: 2026-04-03
-updated: 2026-04-03
+updated: 2026-04-03 02:13
 depends_on: []
 scope:
   - src/frontend/src/app/api/tasks/suggest/route.ts

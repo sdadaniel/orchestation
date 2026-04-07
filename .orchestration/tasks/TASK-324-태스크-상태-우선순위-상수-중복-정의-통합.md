@@ -1,11 +1,13 @@
 ---
 id: TASK-324
 title: 태스크-상태-우선순위-상수-중복-정의-통합
-status: pending
+status: failed
+branch: task/task-324
+worktree: ../repo-wt-task-324
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 09:20
 depends_on: []
 scope:
   - src/frontend/src/app/tasks/constants.ts

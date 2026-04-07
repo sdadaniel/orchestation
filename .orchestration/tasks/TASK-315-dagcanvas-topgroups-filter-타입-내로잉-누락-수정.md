@@ -1,13 +1,13 @@
 ---
 id: TASK-315
 title: DAGCanvas-topGroups-filter-타입-내로잉-누락-수정
-status: rejected
+status: failed
 branch: task/task-315
 worktree: ../repo-wt-task-315
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02 17:27
+updated: 2026-04-02 17:29
 depends_on: []
 scope:
   - src/frontend/src/components/DAGCanvas.tsx

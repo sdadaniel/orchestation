@@ -1,11 +1,13 @@
 ---
 id: TASK-325
 title: parser-includes-as-any-타입-단언-제거
-status: pending
+status: done
+branch: task/task-325
+worktree: ../repo-wt-task-325
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 09:11
 depends_on: []
 scope:
   - src/frontend/src/lib/request-parser.ts

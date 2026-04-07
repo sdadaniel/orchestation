@@ -1,11 +1,13 @@
 ---
 id: TASK-299
 title: cost 테스트 파일 TypeScript 타입 에러 수정
-status: pending
+status: done
+branch: task/task-299
+worktree: ../repo-wt-task-299
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 15:35
 depends_on: []
 scope:
   - src/frontend/src/lib/cost-aggregation.test.ts

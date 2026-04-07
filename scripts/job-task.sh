@@ -292,8 +292,10 @@ if echo "$RESULT" | head -1 | grep -q "^거절:"; then
   fi
   # task 파일 status를 rejected로 직접 변경 (개별 실행 시 orchestrate.sh가 없으므로)
   if [ -f "$DB_FILE" ]; then
+    local _old_st
+    _old_st=$(sqlite3 "$DB_FILE" "SELECT status FROM tasks WHERE id='${TASK_ID}';" 2>/dev/null || echo "")
     sqlite3 "$DB_FILE" "UPDATE tasks SET status='rejected', updated=datetime('now','localtime') WHERE id='${TASK_ID}';" 2>/dev/null || true
-    sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,to_status) VALUES('${TASK_ID}','task_rejected','rejected');" 2>/dev/null || true
+    sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,from_status,to_status) VALUES('${TASK_ID}','task_rejected','${_old_st}','rejected');" 2>/dev/null || true
   fi
   task_file=$(find "$REPO_ROOT/.orchestration/tasks" -name "${TASK_ID}-*" -type f 2>/dev/null | head -1)
   if [ -n "$task_file" ]; then

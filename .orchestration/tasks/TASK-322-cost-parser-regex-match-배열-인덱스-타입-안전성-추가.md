@@ -1,11 +1,13 @@
 ---
 id: TASK-322
 title: cost-parser-regex-match-배열-인덱스-타입-안전성-추가
-status: pending
+status: done
+branch: task/task-322
+worktree: ../repo-wt-task-322
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 09:04
 depends_on: []
 scope:
   - src/frontend/src/lib/cost-parser.ts

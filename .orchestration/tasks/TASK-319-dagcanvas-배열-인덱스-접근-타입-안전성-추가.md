@@ -1,11 +1,13 @@
 ---
 id: TASK-319
 title: DAGCanvas-배열-인덱스-접근-타입-안전성-추가
-status: pending
+status: rejected
+branch: task/task-319
+worktree: ../repo-wt-task-319
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 08:55
 depends_on: []
 scope:  []
 ---
@@ -15,11 +17,13 @@ Good, it's just a reserved placeholder. Now I'll output the task.
 ---
 id: TASK-319
 title: DAGCanvas-배열-인덱스-접근-타입-안전성-추가
-status: pending
+status: failed
+branch: task/task-319
+worktree: ../repo-wt-task-319
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 17:51
 depends_on: []
 scope:
   - src/frontend/src/components/DAGCanvas.tsx

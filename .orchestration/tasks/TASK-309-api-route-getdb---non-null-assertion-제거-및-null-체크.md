@@ -1,11 +1,13 @@
 ---
 id: TASK-309
 title: API route getDb() non-null assertion 제거 및 null 체크 추가
-status: pending
+status: done
+branch: task/task-309
+worktree: ../repo-wt-task-309
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 08:17
 depends_on: []
 scope:  []
 ---
@@ -15,11 +17,13 @@ scope:  []
 ---
 id: TASK-309
 title: API route getDb() non-null assertion 제거 및 null 체크 추가
-status: pending
+status: failed
+branch: task/task-309
+worktree: ../repo-wt-task-309
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 17:16
 depends_on: []
 scope:
   - src/frontend/src/app/api/tasks/route.ts

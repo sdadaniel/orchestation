@@ -1,11 +1,13 @@
 ---
 id: TASK-317
 title: notices-route-매직-배열-중복-제거
-status: pending
+status: done
+branch: task/task-317
+worktree: ../repo-wt-task-317
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 08:36
 depends_on: []
 scope:
   - src/frontend/src/app/api/notices/route.ts

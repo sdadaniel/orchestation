@@ -11,17 +11,20 @@
  * - bash 3.x 제약 해소
  */
 
-import { spawn, ChildProcess, execSync } from "child_process";
+import { execSync } from "child_process";
 import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
 import http from "http";
 import { parseFrontmatter, getString, getStringArray } from "./frontmatter-utils";
-import { pipeProcessLogs, killProcessGracefully } from "./process-utils";
 import { PROJECT_ROOT, PACKAGE_DIR, TASKS_DIR, OUTPUT_DIR } from "./paths";
 import { loadSettings } from "./settings";
 import { parseCostLog } from "./cost-parser";
 import { syncTaskContentToDb, syncTaskFileToDb } from "./task-db-sync";
+import { runJobTask } from "./job-task";
+import { runJobReview } from "./job-review";
+import { runMergeTask } from "./merge-utils";
+import { signalCreate } from "./signal";
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -44,7 +47,8 @@ interface TaskInfo {
 }
 
 interface WorkerEntry {
-  process: ChildProcess;
+  abortController: AbortController;
+  promise: Promise<void>;
   taskId: string;
   phase: "task" | "review";
   startedAt: number;
@@ -133,7 +137,7 @@ export class OrchestrateEngine extends EventEmitter {
     // 모든 워커 종료
     for (const [taskId, entry] of this.workers) {
       this.log(`  🛑 ${taskId}: 워커 종료`);
-      killProcessGracefully(entry.process);
+      entry.abortController.abort();
       this.setTaskStatus(taskId, "stopped");
     }
     this.workers.clear();
@@ -307,99 +311,43 @@ export class OrchestrateEngine extends EventEmitter {
     // status → in_progress
     this.setTaskStatus(taskId, "in_progress");
 
-    const logFile = path.join(OUTPUT_DIR, "logs", `${taskId}.log`);
-    fs.mkdirSync(path.dirname(logFile), { recursive: true });
+    const abortController = new AbortController();
 
-    const args = [
-      path.join(PACKAGE_DIR, "scripts", "job-task.sh"),
-      taskId, this.signalDir,
-    ];
-    if (feedbackFile && fs.existsSync(feedbackFile)) args.push(feedbackFile);
-
-    const env: NodeJS.ProcessEnv = { ...process.env, PACKAGE_DIR, PROJECT_ROOT };
-    const settings = loadSettings();
-    if (settings.apiKey) env.ANTHROPIC_API_KEY = settings.apiKey;
-
-    const logStream = fs.createWriteStream(logFile);
-    const proc = spawn("bash", args, {
-      cwd: PROJECT_ROOT,
-      env,
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: false,
+    const promise = runJobTask(taskId, this.signalDir, feedbackFile, (line) => {
+      this.log(`  ${line}`);
+    }).then((result) => {
+      this.log(`  [${taskId}/task] 완료: ${result.status}`);
+      // 시그널은 runJobTask 내부에서 이미 생성됨
+    }).catch((err) => {
+      this.log(`  ❌ ${taskId}: task 오류: ${err instanceof Error ? err.message : String(err)}`);
+      // 시그널은 runJobTask 내부에서 이미 생성됨
     });
 
-    proc.stdout?.pipe(logStream);
-    proc.stderr?.pipe(logStream);
-
-    pipeProcessLogs(proc,
-      (line) => this.log(`  [${taskId}] ${line}`),
-      (line) => this.parseTaskResult(taskId, line),
-    );
-
-    this.workers.set(taskId, { process: proc, taskId, phase: "task", startedAt: Date.now() });
-    this.log(`  🔧 ${taskId}: job-task 시작 (PID=${proc.pid})`);
-
-    proc.on("close", (code) => {
-      logStream.end();
-      this.handleWorkerClose(taskId, "task", code);
-    });
-
-    proc.on("error", (err) => {
-      this.log(`  ❌ ${taskId}: spawn error: ${err.message}`);
-      logStream.end();
-    });
+    this.workers.set(taskId, { abortController, promise, taskId, phase: "task", startedAt: Date.now() });
+    this.log(`  🔧 ${taskId}: job-task 시작 (Node.js native)`);
 
     return true;
   }
 
   private startReview(taskId: string): boolean {
-    const logFile = path.join(OUTPUT_DIR, "logs", `${taskId}-review.log`);
-    fs.mkdirSync(path.dirname(logFile), { recursive: true });
+    const abortController = new AbortController();
 
-    const args = [
-      path.join(PACKAGE_DIR, "scripts", "job-review.sh"),
-      taskId, this.signalDir,
-    ];
-
-    const env: NodeJS.ProcessEnv = { ...process.env, PACKAGE_DIR, PROJECT_ROOT };
-    const settings = loadSettings();
-    if (settings.apiKey) env.ANTHROPIC_API_KEY = settings.apiKey;
-
-    const logStream = fs.createWriteStream(logFile);
-    const proc = spawn("bash", args, {
-      cwd: PROJECT_ROOT,
-      env,
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: false,
+    const promise = runJobReview(taskId, this.signalDir, (line) => {
+      this.log(`  ${line}`);
+    }).then((result) => {
+      this.log(`  [${taskId}/review] 완료: ${result.status}`);
+    }).catch((err) => {
+      this.log(`  ❌ ${taskId}: review 오류: ${err instanceof Error ? err.message : String(err)}`);
     });
 
-    proc.stdout?.pipe(logStream);
-    proc.stderr?.pipe(logStream);
-    pipeProcessLogs(proc, (line) => this.log(`  [${taskId}/review] ${line}`));
-
-    this.workers.set(taskId, { process: proc, taskId, phase: "review", startedAt: Date.now() });
-    this.log(`  🔍 ${taskId}: job-review 시작 (PID=${proc.pid})`);
-
-    proc.on("close", (code) => {
-      logStream.end();
-      this.handleWorkerClose(taskId, "review", code);
-    });
-
-    proc.on("error", (err) => {
-      this.log(`  ❌ ${taskId}: review spawn error: ${err.message}`);
-      logStream.end();
-    });
+    this.workers.set(taskId, { abortController, promise, taskId, phase: "review", startedAt: Date.now() });
+    this.log(`  🔍 ${taskId}: job-review 시작 (Node.js native)`);
 
     return true;
   }
 
-  // ── Worker Close → Signal 생성 대기 (bash job이 signal 파일 생성) ──
-
-  private handleWorkerClose(taskId: string, phase: string, code: number | null) {
-    // worker가 close되면 signal 파일이 이미 생성되었거나 곧 생성됨
-    // 다음 mainLoop에서 signal을 처리
-    this.log(`  [${taskId}/${phase}] close (exit=${code})`);
-  }
+  // Worker Close 핸들러는 Node.js native 모드에서는 불필요
+  // 시그널은 runJobTask/runJobReview 내부에서 직접 생성됨
 
   // ── Signal Processing ───────────────────────────────
 
@@ -541,74 +489,19 @@ export class OrchestrateEngine extends EventEmitter {
 
   // ── Merge ───────────────────────────────────────────
 
-  private mergeAndDone(taskId: string) {
+  private async mergeAndDone(taskId: string) {
     const info = this.readTaskInfo(taskId);
     if (!info) return;
 
-    this.setTaskStatus(taskId, "done");
+    const success = await runMergeTask(taskId, (line) => this.log(`  ${line}`));
 
-    if (info.branch) {
-      try {
-        const hasCommits = execSync(
-          `git -C "${PROJECT_ROOT}" log --oneline "${this.baseBranch}..${info.branch}" 2>/dev/null`,
-          { encoding: "utf-8" }
-        ).trim();
-
-        if (hasCommits) {
-          this.log(`  🔀 ${taskId}: ${info.branch} → ${this.baseBranch} 머지`);
-
-          // stash 보호
-          let stashed = false;
-          try {
-            const dirty = execSync(`git -C "${PROJECT_ROOT}" status --porcelain`, { encoding: "utf-8" }).trim();
-            if (dirty) {
-              execSync(`git -C "${PROJECT_ROOT}" stash push -m "merge-${taskId}" --include-untracked`, { stdio: "ignore" });
-              stashed = true;
-            }
-          } catch { /* ignore */ }
-
-          let mergeFailed = false;
-          try {
-            execSync(`git -C "${PROJECT_ROOT}" merge "${info.branch}" --no-ff --no-edit`, { stdio: "ignore" });
-          } catch {
-            // 충돌 → merge-resolver.sh 호출
-            this.log(`  ⚠️  ${taskId}: 머지 충돌 → 자동 해결 시도`);
-            try {
-              execSync(
-                `bash "${PACKAGE_DIR}/scripts/lib/merge-resolver.sh" resolve "${PROJECT_ROOT}" "${taskId}" "${info.branch}" "${this.baseBranch}"`,
-                { stdio: "ignore" }
-              );
-            } catch {
-              mergeFailed = true;
-              try { execSync(`git -C "${PROJECT_ROOT}" merge --abort`, { stdio: "ignore" }); } catch { /* ignore */ }
-            }
-          }
-
-          // stash 복원
-          if (stashed) {
-            try { execSync(`git -C "${PROJECT_ROOT}" stash pop`, { stdio: "ignore" }); } catch { /* ignore */ }
-          }
-
-          if (mergeFailed) {
-            this.markTaskFailed(taskId, "merge conflict");
-            return;
-          }
-        }
-
-        // 브랜치 삭제
-        try { execSync(`git -C "${PROJECT_ROOT}" branch -d "${info.branch}"`, { stdio: "ignore" }); } catch { /* ignore */ }
-      } catch { /* ignore */ }
+    if (success) {
+      this.postNotice("info", `${taskId} 완료`, `**${taskId}:** ${info.title}\n\n태스크가 성공적으로 완료되어 ${this.baseBranch}에 머지되었습니다.`);
+      this.emit("task-result", { taskId, status: "success" });
+      this.log(`  ✅ ${taskId} 완료 → ${this.baseBranch} 머지됨`);
+    } else {
+      this.markTaskFailed(taskId, "merge 실패");
     }
-
-    // worktree 정리
-    const worktreePath = info.worktree ? path.resolve(PROJECT_ROOT, info.worktree) : null;
-    if (worktreePath && fs.existsSync(worktreePath)) {
-      try { execSync(`git -C "${PROJECT_ROOT}" worktree remove "${worktreePath}" --force`, { stdio: "ignore" }); } catch { /* ignore */ }
-    }
-
-    this.postNotice("info", `${taskId} 완료`, `**${taskId}:** ${info.title}\n\n태스크가 성공적으로 완료되어 ${this.baseBranch}에 머지되었습니다.`);
-    this.emit("task-result", { taskId, status: "success" });
-    this.log(`  ✅ ${taskId} 완료 → ${this.baseBranch} 머지됨`);
   }
 
   // ── Failure/Rejection ───────────────────────────────
@@ -713,17 +606,16 @@ export class OrchestrateEngine extends EventEmitter {
   // ── Health Check ────────────────────────────────────
 
   private healthCheck() {
+    // Node.js native 워커는 Promise 기반이므로 프로세스 사망 체크 불필요
+    // 시그널 기반으로 상태 확인
     for (const [taskId, entry] of this.workers) {
-      if (entry.process.exitCode !== null || entry.process.killed) {
-        this.log(`  ⚠️  ${taskId}: 워커 프로세스 사망 감지`);
+      const elapsed = Date.now() - entry.startedAt;
+      // 30분 타임아웃
+      if (elapsed > 1800000) {
+        this.log(`  ⚠️  ${taskId}: 타임아웃 (${Math.round(elapsed / 60000)}분)`);
+        entry.abortController.abort();
         this.workers.delete(taskId);
-        // signal 파일이 없으면 failed 처리
-        const hasSignal = SIGNAL_TYPES.some(s =>
-          fs.existsSync(path.join(this.signalDir, `${taskId}-${s}`))
-        );
-        if (!hasSignal) {
-          this.markTaskFailed(taskId, "워커 프로세스 비정상 종료");
-        }
+        this.markTaskFailed(taskId, "워커 타임아웃 (30분)");
       }
     }
   }

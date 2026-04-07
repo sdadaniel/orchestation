@@ -1,13 +1,13 @@
 ---
 id: TASK-308
 title: 테스트-파일-readdirSync-mock-Dirent-타입-불일치-수정
-status: in_progress
+status: done
 branch: task/task-308
 worktree: ../repo-wt-task-308
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02 15:50
+updated: 2026-04-02 16:15
 depends_on: []
 scope:
   - src/frontend/src/lib/task-id.test.ts

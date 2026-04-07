@@ -77,6 +77,28 @@ get_field() {
   ' "$1"
 }
 
+# ── YAML frontmatter 복수 필드 한번에 읽기 ────────────
+# 인자: $1=파일경로, 나머지=필드명들
+# 출력: key=value 형태로 한 줄씩 출력
+# 사용 예: eval "$(get_fields file.md id priority status sort_order)"
+get_fields() {
+  local file="$1"; shift
+  awk -v fields="$*" '
+    BEGIN { n=split(fields, keys) }
+    NR==1 && /^---$/ { in_fm=1; next }
+    in_fm && /^---$/ { exit }
+    in_fm {
+      for (i=1; i<=n; i++) {
+        if ($0 ~ "^"keys[i]":") {
+          val = $0
+          sub("^"keys[i]":[ ]*", "", val)
+          print keys[i]"="val
+        }
+      }
+    }
+  ' "$file"
+}
+
 # ── YAML frontmatter 리스트 필드 읽기 ──────────────────
 # 인자: $1=파일경로, $2=필드명
 # 출력: 리스트 항목을 한 줄씩 출력

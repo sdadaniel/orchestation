@@ -17,21 +17,36 @@ source "$PACKAGE_DIR/scripts/lib/merge-resolver.sh"
 # ── SQLite DB (dual-write: 파일 + DB) ──
 DB_FILE="${PROJECT_ROOT:-.}/.orchestration/orchestration.db"
 
-# SQLite 헬퍼: status 업데이트
+# SQLite 헬퍼: 현재 status 조회
+_db_get_status() {
+  local task_id="$1"
+  [ ! -f "$DB_FILE" ] && return 0
+  sqlite3 "$DB_FILE" "SELECT status FROM tasks WHERE id='${task_id}';" 2>/dev/null || echo ""
+}
+
+# SQLite 헬퍼: status 업데이트 (이전 상태 → 새 상태 이벤트 자동 기록)
 _db_set_status() {
   local task_id="$1" new_status="$2"
   [ ! -f "$DB_FILE" ] && return 0
+  local old_status
+  old_status=$(_db_get_status "$task_id")
   sqlite3 "$DB_FILE" "UPDATE tasks SET status='${new_status}', updated=datetime('now','localtime') WHERE id='${task_id}';" 2>/dev/null || true
+  # from→to 상태 전이를 자동 기록
+  if [ -n "$old_status" ] && [ "$old_status" != "$new_status" ]; then
+    sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,from_status,to_status) VALUES('${task_id}','status_change','${old_status}','${new_status}');" 2>/dev/null || true
+  fi
 }
 
 # SQLite 헬퍼: 이벤트 삽입
 _db_insert_event() {
   local task_id="$1" event_type="$2" to_status="${3:-}"
   [ ! -f "$DB_FILE" ] && return 0
+  local from_status
+  from_status=$(_db_get_status "$task_id")
   if [ -n "$to_status" ]; then
-    sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,to_status) VALUES('${task_id}','${event_type}','${to_status}');" 2>/dev/null || true
+    sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,from_status,to_status) VALUES('${task_id}','${event_type}','${from_status}','${to_status}');" 2>/dev/null || true
   else
-    sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type) VALUES('${task_id}','${event_type}');" 2>/dev/null || true
+    sqlite3 "$DB_FILE" "INSERT INTO task_events(task_id,event_type,from_status) VALUES('${task_id}','${event_type}','${from_status}');" 2>/dev/null || true
   fi
 }
 
@@ -68,6 +83,12 @@ else
   MAX_REVIEW_RETRY="${MAX_REVIEW_RETRY:-3}"
 fi
 MAX_TASK_COST="${MAX_TASK_COST:-5.0}"  # 태스크당 누적 비용 상한 ($)
+# in_progress 타임아웃 (초) — 로그 파일 갱신 없이 이 시간이 지나면 failed 처리
+if [ -z "${INPROGRESS_TIMEOUT:-}" ] && [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
+  INPROGRESS_TIMEOUT=$(jq -r '.inProgressTimeout // 1800' "$CONFIG_FILE" 2>/dev/null || echo "1800")
+else
+  INPROGRESS_TIMEOUT="${INPROGRESS_TIMEOUT:-1800}"  # 기본 30분
+fi
 if [ -z "${MAX_PARALLEL_TASK:-}" ] && [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
   MAX_PARALLEL_TASK=$(jq -r '.maxParallel.task // 2' "$CONFIG_FILE" 2>/dev/null || echo "2")
 else
@@ -80,7 +101,7 @@ else
 fi
 MAX_CLAUDE_PROCS=$(( MAX_PARALLEL_TASK + MAX_PARALLEL_REVIEW ))
 echo "⚙️  Parallel: task=${MAX_PARALLEL_TASK}, review=${MAX_PARALLEL_REVIEW}, max_procs=${MAX_CLAUDE_PROCS}"
-echo "⚙️  Review Retry: ${MAX_REVIEW_RETRY}"
+echo "⚙️  Review Retry: ${MAX_REVIEW_RETRY}, In-progress Timeout: ${INPROGRESS_TIMEOUT}초"
 SIGNAL_DIR="$REPO_ROOT/.orchestration/signals"
 mkdir -p "$SIGNAL_DIR"
 LAST_DISPATCH_TIME=0
@@ -184,7 +205,7 @@ cleanup_lock() {
     if [ -n "$_tf" ] && grep -q 'status: in_progress' "$_tf" 2>/dev/null; then
       _set_status "$_tf" "stopped"
       _db_set_status "$_tid" "stopped"
-      _db_insert_event "$_tid" "status_change" "stopped"
+      # status_change 이벤트는 _db_set_status()에서 자동 기록
       echo "  ⏹️  ${_tid}: in_progress → stopped"
     fi
   done
@@ -216,30 +237,94 @@ count_claude_procs() {
   pgrep -f "claude.*--dangerously-skip-permissions" 2>/dev/null | wc -l | tr -d ' '
 }
 
+# ── Notice 파일 자동 정리 (최근 100개 유지, 7일 초과 삭제) ──
+_rotate_notices() {
+  local notice_dir="$REPO_ROOT/.orchestration/notices"
+  [ -d "$notice_dir" ] || return 0
+  local count
+  count=$(ls -1 "$notice_dir"/NOTICE-*.md 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$count" -gt 100 ]; then
+    # 7일 초과 삭제
+    find "$notice_dir" -name "NOTICE-*.md" -mtime +7 -delete 2>/dev/null || true
+    # 그래도 100개 초과면 오래된 것부터 삭제
+    local still
+    still=$(ls -1 "$notice_dir"/NOTICE-*.md 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$still" -gt 100 ]; then
+      (cd "$notice_dir" && ls -1t NOTICE-*.md | tail -n +101 | xargs rm -f 2>/dev/null || true)
+    fi
+    local after
+    after=$(ls -1 "$notice_dir"/NOTICE-*.md 2>/dev/null | wc -l | tr -d ' ')
+    echo "  🧹 Notice 정리: ${count} → ${after}개"
+  fi
+}
+
+# ── config mtime 캐시 (변경 시에만 jq 호출) ──
+_last_config_mtime=""
+_reload_config_if_changed() {
+  [ -f "$CONFIG_FILE" ] || return 0
+  command -v jq &>/dev/null || return 0
+  local current_mtime
+  if [[ "$(uname)" == "Darwin" ]]; then
+    current_mtime=$(stat -f %m "$CONFIG_FILE" 2>/dev/null || echo 0)
+  else
+    current_mtime=$(stat -c %Y "$CONFIG_FILE" 2>/dev/null || echo 0)
+  fi
+  [ "$current_mtime" = "$_last_config_mtime" ] && return 0
+  _last_config_mtime="$current_mtime"
+  local _new_task _new_review
+  _new_task=$(jq -r '.maxParallel.task // .maxParallel // 2' "$CONFIG_FILE" 2>/dev/null || echo "")
+  _new_review=$(jq -r '.maxParallel.review // .maxParallel // 2' "$CONFIG_FILE" 2>/dev/null || echo "")
+  if [ -n "$_new_task" ] && [ "$_new_task" != "$MAX_PARALLEL_TASK" ]; then
+    echo "  ⚙️  MAX_PARALLEL_TASK 변경: ${MAX_PARALLEL_TASK} → ${_new_task}"
+    MAX_PARALLEL_TASK="$_new_task"
+  fi
+  if [ -n "$_new_review" ] && [ "$_new_review" != "$MAX_PARALLEL_REVIEW" ]; then
+    echo "  ⚙️  MAX_PARALLEL_REVIEW 변경: ${MAX_PARALLEL_REVIEW} → ${_new_review}"
+    MAX_PARALLEL_REVIEW="$_new_review"
+  fi
+  MAX_CLAUDE_PROCS=$(( MAX_PARALLEL_TASK + MAX_PARALLEL_REVIEW ))
+}
+
+_mem_cache_value="normal"
+_mem_cache_time=0
+
 can_dispatch() {
-  # Gate 1: OS 레벨 claude 프로세스 hard limit
-  local current
-  current=$(count_claude_procs)
-  if [ "$current" -ge "$MAX_CLAUDE_PROCS" ]; then
-    echo "  🛑 claude hard limit (${current}/${MAX_CLAUDE_PROCS}) → 대기"
+  # Gate 1: RUNNING 배열 크기로 빠른 체크 (pgrep 불필요)
+  if [ "${#RUNNING[@]}" -ge "$MAX_CLAUDE_PROCS" ]; then
+    echo "  🛑 claude hard limit (${#RUNNING[@]}/${MAX_CLAUDE_PROCS}) → 대기"
     return 1
   fi
 
-  # Gate 2: 시스템 메모리 체크 (macOS: memory_pressure / Linux: /proc/meminfo)
-  if [[ "$(uname)" == "Darwin" ]]; then
-    local level
-    level=$(memory_pressure 2>/dev/null | grep -o 'The system is under .*memory pressure' | awk '{print $6}' || echo "normal")
-    case "$level" in
-      critical|warn*) echo "  🚨 메모리 압박 (${level}) → 대기"; return 1 ;;
-    esac
-  else
-    local avail_mb
-    avail_mb=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 9999)
-    if [ "${avail_mb}" -lt 2048 ]; then
-      echo "  🚨 가용 메모리 ${avail_mb}MB < 2048MB → 대기"
+  # Gate 1b: 10루프마다 pgrep으로 실제 프로세스 수 보정
+  if [ $((LOOP_COUNT % 10)) -eq 0 ]; then
+    local actual
+    actual=$(count_claude_procs)
+    if [ "$actual" -ge "$MAX_CLAUDE_PROCS" ]; then
+      echo "  🛑 claude hard limit (actual=${actual}/${MAX_CLAUDE_PROCS}) → 대기"
       return 1
     fi
   fi
+
+  # Gate 2: 시스템 메모리 체크 (30초 캐시)
+  local now
+  now=$(date +%s)
+  if [ $((now - _mem_cache_time)) -gt 30 ]; then
+    _mem_cache_time=$now
+    if [[ "$(uname)" == "Darwin" ]]; then
+      _mem_cache_value=$(memory_pressure 2>/dev/null | grep -o 'The system is under .*memory pressure' | awk '{print $6}' || echo "normal")
+    else
+      local avail_mb
+      avail_mb=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 9999)
+      if [ "${avail_mb}" -lt 2048 ]; then
+        _mem_cache_value="critical"
+      else
+        _mem_cache_value="normal"
+      fi
+    fi
+  fi
+  case "$_mem_cache_value" in
+    critical|warn*) echo "  🚨 메모리 압박 (${_mem_cache_value}) → 대기"; return 1 ;;
+  esac
 
   return 0
 }
@@ -253,20 +338,9 @@ wait_for_signal() {
   done
 
   if command -v fswatch &>/dev/null; then
-    # fswatch 이벤트를 직접 수신 (polling 루프 제거)
-    fswatch -1 --event Created --event Updated "$SIGNAL_DIR" --latency 0.3 2>/dev/null &
-    local fspid=$!
-    # fswatch가 이벤트를 감지하거나 10초 경과 중 먼저 발생하는 것
-    local waited=0
-    while kill -0 "$fspid" 2>/dev/null && [ "$waited" -lt 10 ]; do
-      sleep 0.3
-      waited=$((waited + 1))
-      # 빠른 시그널 체크 (0.3초 간격)
-      for sf in "$SIGNAL_DIR"/*-task-done "$SIGNAL_DIR"/*-task-failed "$SIGNAL_DIR"/*-review-approved "$SIGNAL_DIR"/*-review-rejected "$SIGNAL_DIR"/*-stopped; do
-        [ -f "$sf" ] && kill "$fspid" 2>/dev/null && return 0
-      done
-    done
-    kill "$fspid" 2>/dev/null || true
+    # fswatch -1: 첫 이벤트 감지 시 즉시 종료 (polling 없음)
+    timeout 10 fswatch -1 --event Created --event Updated "$SIGNAL_DIR" --latency 0.3 2>/dev/null || true
+    return 0
   else
     sleep 1
   fi
@@ -274,13 +348,17 @@ wait_for_signal() {
 
 # ── 헬퍼 함수 ─────────────────────────────────────────
 
-# status 변경 + updated 타임스탬프 갱신
+# status 변경 + updated 타임스탬프 갱신 (1회 awk 호출로 동시 변경)
 _set_status() {
   local file="$1" new_status="$2"
   local today
   today=$(date '+%Y-%m-%d %H:%M')
-  sed_inplace "s/^status: .*/status: ${new_status}/" "$file"
-  sed_inplace "s/^updated: .*/updated: ${today}/" "$file"
+  local tmp="${file}.tmp.$$"
+  awk -v st="$new_status" -v dt="$today" '
+    /^status:/ { print "status: " st; next }
+    /^updated:/ { print "updated: " dt; next }
+    { print }
+  ' "$file" > "$tmp" && mv "$tmp" "$file"
 }
 
 get_output_dir() {
@@ -305,32 +383,28 @@ get_task_ids() {
   # docs/task/ + docs/requests/ 둘 다 스캔
   # 완료(done)/in_progress 태스크는 조기 제외하여 불필요한 처리 방지
   # priority 순 정렬: high(1) → medium(2) → low(3) → 기타(4), 동일 priority 내 id순
-  {
-    find "$TASK_DIR" -maxdepth 1 -name "TASK-*.md" 2>/dev/null
-    find "$REQ_DIR" -maxdepth 1 -name "REQ-*.md" 2>/dev/null
-  } | while read -r f; do
-    local id pri st weight sort_ord status_weight 2>/dev/null || true
-    id=$(get_field "$f" "id")
-    pri=$(get_field "$f" "priority")
-    st=$(get_field "$f" "status")
+  # 최적화: get_fields()로 1회 awk 호출로 여러 필드 동시 추출
+  for f in "$TASK_DIR"/TASK-*.md "$REQ_DIR"/REQ-*.md; do
+    [ -f "$f" ] || continue
+    local id="" priority="" status="" sort_order="" 2>/dev/null || true
+    eval "$(get_fields "$f" id priority status sort_order)"
     # 완료/진행 중 태스크 조기 제외
-    case "$st" in
+    case "$status" in
       done|in_progress) continue ;;
     esac
-    sort_ord=$(get_field "$f" "sort_order")
-    sort_ord="${sort_ord:-0}"
-    # stopped(0)가 pending(1)보다 우선
-    case "$st" in
+    sort_order="${sort_order:-0}"
+    local status_weight weight 2>/dev/null || true
+    case "$status" in
       stopped) status_weight=0 ;;
       *)       status_weight=1 ;;
     esac
-    case "$pri" in
+    case "$priority" in
       high)   weight=1 ;;
       medium) weight=2 ;;
       low)    weight=3 ;;
       *)      weight=4 ;;
     esac
-    printf "%s %s %04d %s\n" "${status_weight}" "${weight}" "${sort_ord}" "${id}"
+    printf "%s %s %04d %s\n" "${status_weight}" "${weight}" "${sort_order}" "${id}"
   done | sort -k1,1n -k2,2n -k3,3n -k4,4 | awk '{print $4}'
 }
 
@@ -351,11 +425,22 @@ _rebuild_find_cache() {
   _FIND_CACHE_EPOCH=$(date +%s)
 }
 
-# 60초마다 캐시 갱신
+# 디렉토리 mtime 변경 시에만 캐시 갱신 (60초 최소 간격)
+_task_dir_mtime=""
 _maybe_refresh_cache() {
   local now
   now=$(date +%s)
-  if [ $((now - _FIND_CACHE_EPOCH)) -gt 60 ]; then
+  if [ $((now - _FIND_CACHE_EPOCH)) -lt 60 ]; then
+    return 0
+  fi
+  local cur_mtime
+  if [[ "$(uname)" == "Darwin" ]]; then
+    cur_mtime=$(stat -f %m "$TASK_DIR" 2>/dev/null || echo 0)
+  else
+    cur_mtime=$(stat -c %Y "$TASK_DIR" 2>/dev/null || echo 0)
+  fi
+  if [ "$cur_mtime" != "$_task_dir_mtime" ]; then
+    _task_dir_mtime="$cur_mtime"
     _rebuild_find_cache
   fi
 }
@@ -365,8 +450,14 @@ find_file() {
   local id="$1"
   _maybe_refresh_cache
   if [ -f "$_FIND_CACHE_DIR/$id" ]; then
-    cat "$_FIND_CACHE_DIR/$id"
-    return
+    local cached
+    cached=$(cat "$_FIND_CACHE_DIR/$id" 2>/dev/null)
+    if [ -n "$cached" ] && [ -f "$cached" ]; then
+      echo "$cached"
+      return
+    fi
+    # 캐시가 빈 파일이거나 참조 파일이 삭제됨 → 캐시 무효화
+    rm -f "$_FIND_CACHE_DIR/$id"
   fi
   # 캐시 미스 → 직접 찾고 캐시에 저장
   local f=""
@@ -498,7 +589,7 @@ stop_dependents() {
       echo "  ⏸️  ${tid}: 의존 태스크 ${failed_id} 실패 → stopped"
       _set_status "$tf" "stopped"
       _db_set_status "$tid" "stopped"
-      _db_insert_event "$tid" "status_change" "stopped"
+      # status_change 이벤트는 _db_set_status()에서 자동 기록
       git -C "$REPO_ROOT" add -f "$tf"
       git -C "$REPO_ROOT" commit --only "$tf" \
         -m "chore(${tid}): status → stopped (dependency ${failed_id} failed)" || true
@@ -646,7 +737,7 @@ start_task() {
   if [ -n "$tf" ]; then
     _set_status "$tf" "in_progress"
     _db_set_status "$task_id" "in_progress"
-    _db_insert_event "$task_id" "status_change" "in_progress"
+    # status_change 이벤트는 _db_set_status()에서 자동 기록
     git -C "$REPO_ROOT" add -f "$tf"
     # commit은 메인 루프 끝에서 배치로 처리
   fi
@@ -695,7 +786,7 @@ start_task() {
       if [ -n "$tf" ]; then
         _set_status "$tf" "pending"
         _db_set_status "$task_id" "pending"
-        _db_insert_event "$task_id" "status_change" "pending"
+        # status_change 이벤트는 _db_set_status()에서 자동 기록
         git -C "$REPO_ROOT" add -f "$tf"
         # commit은 메인 루프 끝에서 배치로 처리
       fi
@@ -766,7 +857,7 @@ process_signals_for_task() {
     if [ -n "$stopped_tf" ]; then
       _set_status "$stopped_tf" "stopped"
       _db_set_status "$task_id" "stopped"
-      _db_insert_event "$task_id" "status_change" "stopped"
+      # status_change 이벤트는 _db_set_status()에서 자동 기록
       git -C "$REPO_ROOT" add "$stopped_tf"
       # commit은 메인 루프 끝에서 배치로 처리
     fi
@@ -926,6 +1017,48 @@ process_signals_for_task() {
     fi
   fi
 
+  # ── in_progress 타임아웃 체크 ──
+  # start 파일 또는 로그 파일의 마지막 수정 시각 기준으로 타임아웃 판단
+  local now_epoch
+  now_epoch=$(date +%s)
+  local last_activity=0
+
+  # 1) start 파일에서 시작 시각
+  local startfile="${SIGNAL_DIR}/${task_id}-start"
+  if [ -f "$startfile" ]; then
+    last_activity=$(cat "$startfile" 2>/dev/null || echo "0")
+  fi
+
+  # 2) 로그 파일의 마지막 수정 시각 (더 최근이면 채택)
+  local logfile="$REPO_ROOT/output/logs/${task_id}.log"
+  if [ -f "$logfile" ]; then
+    local log_mtime
+    log_mtime=$(stat -f %m "$logfile" 2>/dev/null || stat -c %Y "$logfile" 2>/dev/null || echo "0")
+    if [ "$log_mtime" -gt "$last_activity" ] 2>/dev/null; then
+      last_activity="$log_mtime"
+    fi
+  fi
+
+  if [ "$last_activity" -gt 0 ] 2>/dev/null; then
+    local elapsed=$(( now_epoch - last_activity ))
+    if [ "$elapsed" -ge "$INPROGRESS_TIMEOUT" ]; then
+      echo "  ⏰ ${task_id}: in_progress 타임아웃 (${elapsed}초 경과, 상한 ${INPROGRESS_TIMEOUT}초) → failed 처리"
+      _write_crashlog "$task_id" "in_progress 타임아웃: ${elapsed}초 경과 (상한 ${INPROGRESS_TIMEOUT}초)"
+      # 워커 프로세스 종료 시도
+      if [ -f "$pidfile" ]; then
+        local timeout_wpid
+        timeout_wpid=$(cat "$pidfile" 2>/dev/null || true)
+        if [ -n "$timeout_wpid" ] && kill -0 "$timeout_wpid" 2>/dev/null; then
+          kill "$timeout_wpid" 2>/dev/null || true
+          echo "  🔪 ${task_id}: 워커 프로세스(PID $timeout_wpid) 종료 시도"
+        fi
+        rm -f "$pidfile"
+      fi
+      _mark_task_failed "$task_id" "in_progress 타임아웃 (${elapsed}초 경과)"
+      return 1
+    fi
+  fi
+
   return 2  # 프로세스 살아있음, 아직 진행 중
 }
 
@@ -953,7 +1086,7 @@ _merge_and_done() {
   if [ -n "$local_task_file" ]; then
     _set_status "$local_task_file" "done"
     _db_set_status "$task_id" "done"
-    _db_insert_event "$task_id" "status_change" "done"
+    # status_change 이벤트는 _db_set_status()에서 자동 기록
   fi
 
   local wt_path
@@ -1004,7 +1137,7 @@ _merge_and_done() {
       if [ "$_merge_failed" = true ]; then
         _set_status "$local_task_file" "failed"
         _db_set_status "$task_id" "failed"
-        _db_insert_event "$task_id" "status_change" "failed"
+        # status_change 이벤트는 _db_set_status()에서 자동 기록
         git -C "$REPO_ROOT" add "$local_task_file"
         git -C "$REPO_ROOT" commit --only "$local_task_file" \
           -m "chore(${task_id}): status → failed (merge conflict)" || true
@@ -1045,7 +1178,7 @@ _mark_task_failed() {
   if [ -n "$tf" ]; then
     _set_status "$tf" "failed"
     _db_set_status "$task_id" "failed"
-    _db_insert_event "$task_id" "status_change" "failed"
+    # status_change 이벤트는 _db_set_status()에서 자동 기록
     git -C "$REPO_ROOT" add -f "$tf"
     # commit은 메인 루프 끝에서 배치로 처리
   fi
@@ -1079,7 +1212,7 @@ _mark_task_rejected() {
   if [ -n "$tf" ]; then
     _set_status "$tf" "rejected"
     _db_set_status "$task_id" "rejected"
-    _db_insert_event "$task_id" "status_change" "rejected"
+    # status_change 이벤트는 _db_set_status()에서 자동 기록
     git -C "$REPO_ROOT" add -f "$tf"
     # commit은 메인 루프 끝에서 배치로 처리
   fi
@@ -1149,19 +1282,12 @@ LOOP_COUNT=0
 
 while true; do
   LOOP_COUNT=$((LOOP_COUNT + 1))
-  # ── config.json에서 maxParallel 핫 리로드 ──
-  if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
-    _new_task=$(jq -r '.maxParallel.task // 2' "$CONFIG_FILE" 2>/dev/null || echo "")
-    _new_review=$(jq -r '.maxParallel.review // 2' "$CONFIG_FILE" 2>/dev/null || echo "")
-    if [ -n "$_new_task" ] && [ "$_new_task" != "$MAX_PARALLEL_TASK" ]; then
-      echo "  ⚙️  MAX_PARALLEL_TASK 변경: ${MAX_PARALLEL_TASK} → ${_new_task}"
-      MAX_PARALLEL_TASK="$_new_task"
-    fi
-    if [ -n "$_new_review" ] && [ "$_new_review" != "$MAX_PARALLEL_REVIEW" ]; then
-      echo "  ⚙️  MAX_PARALLEL_REVIEW 변경: ${MAX_PARALLEL_REVIEW} → ${_new_review}"
-      MAX_PARALLEL_REVIEW="$_new_review"
-    fi
-    MAX_CLAUDE_PROCS=$(( MAX_PARALLEL_TASK + MAX_PARALLEL_REVIEW ))
+  # ── config.json에서 maxParallel 핫 리로드 (mtime 캐시) ──
+  _reload_config_if_changed
+
+  # ── Notice 파일 정리 (100루프마다) ──
+  if [ $((LOOP_COUNT % 100)) -eq 0 ]; then
+    _rotate_notices
   fi
 
   # ── 실행 중인 태스크 완료 여부 체크 (슬롯 투입 전에 먼저 갱신) ──

@@ -1,11 +1,13 @@
 ---
 id: TASK-316
 title: task-runner-utils-console문-제거
-status: pending
+status: done
+branch: task/task-316
+worktree: ../repo-wt-task-316
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 08:33
 depends_on: []
 scope:
   - src/frontend/src/lib/task-runner-utils.ts

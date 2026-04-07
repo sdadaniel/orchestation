@@ -1,13 +1,13 @@
 ---
 id: TASK-340
 title: API-route-JSON-에러-응답-중복-유틸-추출-및-신규-기능-제안
-status: in_progress
+status: done
 branch: task/task-340
 worktree: ../repo-wt-task-340
 priority: medium
 mode: night
 created: 2026-04-03
-updated: 2026-04-03 03:01
+updated: 2026-04-03 03:13
 depends_on: []
 scope:
   - src/frontend/src/lib/error-utils.ts

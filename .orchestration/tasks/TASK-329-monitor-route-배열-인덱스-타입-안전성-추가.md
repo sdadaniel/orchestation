@@ -1,11 +1,13 @@
 ---
 id: TASK-329
 title: monitor-route-배열-인덱스-타입-안전성-추가
-status: pending
+status: done
+branch: task/task-329
+worktree: ../repo-wt-task-329
 priority: medium
 mode: night
 created: 2026-04-03
-updated: 2026-04-03
+updated: 2026-04-03 00:35
 depends_on: []
 scope:
   - src/frontend/src/app/api/monitor/route.ts

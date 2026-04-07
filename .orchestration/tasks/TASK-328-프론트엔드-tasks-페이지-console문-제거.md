@@ -1,11 +1,13 @@
 ---
 id: TASK-328
 title: 프론트엔드-tasks-페이지-console문-제거
-status: pending
+status: done
+branch: task/task-328
+worktree: ../repo-wt-task-328
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 11:50
 depends_on: []
 scope:
   - src/frontend/src/app/tasks/[id]/page.tsx

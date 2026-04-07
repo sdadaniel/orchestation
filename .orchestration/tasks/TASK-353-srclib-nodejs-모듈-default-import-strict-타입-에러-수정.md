@@ -1,7 +1,9 @@
 ---
 id: TASK-353
 title: src/lib-Node.js-모듈-default-import-strict-타입-에러-수정
-status: pending
+status: failed
+branch: task/task-353
+worktree: ../repo-wt-task-353
 priority: medium
 mode: night
 created: 2026-04-06 00:00

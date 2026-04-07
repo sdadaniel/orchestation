@@ -106,10 +106,10 @@ STEOF
 should_stop() {
   # 시간 체크
   local now_minutes
-  now_minutes=$(( $(date +%H) * 60 + $(date +%M) ))
+  now_minutes=$(( 10#$(date +%H) * 60 + 10#$(date +%M) ))
   local until_h="${UNTIL_TIME%%:*}"
   local until_m="${UNTIL_TIME##*:}"
-  local until_minutes=$(( until_h * 60 + until_m ))
+  local until_minutes=$(( 10#$until_h * 60 + 10#$until_m ))
 
   # 자정 넘기는 경우 처리 (예: 23:00 시작 → 07:00 종료)
   if [ "$until_minutes" -gt "$now_minutes" ]; then

@@ -1,11 +1,13 @@
 ---
 id: TASK-312
 title: DAGCanvas-topGroups-filter-타입-내로잉-누락-수정
-status: pending
+status: done
+branch: task/task-312
+worktree: ../repo-wt-task-312
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 08:26
 depends_on: []
 scope:  []
 ---
@@ -15,11 +17,13 @@ Good. Now let me verify the file path for the task scope.
 ---
 id: TASK-312
 title: DAGCanvas-topGroups-filter-타입-내로잉-누락-수정
-status: pending
+status: failed
+branch: task/task-312
+worktree: ../repo-wt-task-312
 priority: medium
 mode: night
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-02 17:23
 depends_on: []
 scope:
   - src/frontend/src/components/DAGCanvas.tsx
