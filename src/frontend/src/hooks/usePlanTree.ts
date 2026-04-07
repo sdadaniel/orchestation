@@ -33,8 +33,9 @@ async function fetchPlanTree(): Promise<PlanTreeResult> {
   const plans: PlanFrontmatter[] = await plansRes.json();
   const tasks: TaskFrontmatter[] = await tasksRes.json();
 
+  const firstPlan = plans[0];
   return {
-    data: plans.length === 0 ? null : buildPlanTree(plans[0], tasks),
+    data: !firstPlan ? null : buildPlanTree(firstPlan, tasks),
     allTasks: tasks,
   };
 }
