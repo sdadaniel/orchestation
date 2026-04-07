@@ -35,7 +35,7 @@ async function fetchPlanTree(): Promise<PlanTreeResult> {
 
   const firstPlan = plans[0];
   return {
-    data: !firstPlan ? null : buildPlanTree(firstPlan, tasks),
+    data: firstPlan === undefined ? null : buildPlanTree(firstPlan, tasks),
     allTasks: tasks,
   };
 }
