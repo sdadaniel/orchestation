@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { useSortableTable } from "./useSortableTable";
 import { SortIcon } from "./SortIcon";
+import { formatDuration } from "@/lib/format-utils";
 
 interface RunHistoryProps {
   runs: RunHistoryEntry[];
@@ -14,17 +15,6 @@ interface RunHistoryProps {
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  const seconds = ms / 1000;
-  if (seconds < 60) return `${seconds.toFixed(1)}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainSec = Math.round(seconds % 60);
-  if (minutes < 60) return `${minutes}m ${remainSec}s`;
-  const hours = Math.floor(minutes / 60);
-  const remainMin = minutes % 60;
-  return `${hours}h ${remainMin}m`;
-}
 
 function formatTimestamp(iso: string): string {
   try {
