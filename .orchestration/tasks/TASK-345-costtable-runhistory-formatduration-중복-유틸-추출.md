@@ -1,11 +1,13 @@
 ---
 id: TASK-345
 title: CostTable-RunHistory-formatDuration-중복-유틸-추출
-status: pending
+status: in_progress
+branch: task/task-345
+worktree: ../repo-wt-task-345
 priority: medium
 mode: night
 created: 2026-04-06
-updated: 2026-04-06
+updated: 2026-04-07 04:53
 depends_on: []
 scope:
   - src/frontend/src/components/cost/CostTable.tsx

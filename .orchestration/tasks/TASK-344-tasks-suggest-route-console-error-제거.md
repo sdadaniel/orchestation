@@ -1,11 +1,13 @@
 ---
 id: TASK-344
 title: tasks-suggest-route-console-error-제거
-status: pending
+status: rejected
+branch: task/task-344
+worktree: ../repo-wt-task-344
 priority: medium
 mode: night
 created: 2026-04-06
-updated: 2026-04-06
+updated: 2026-04-07 04:53
 depends_on: []
 scope:
   - src/frontend/src/app/api/tasks/suggest/route.ts
