@@ -12,7 +12,6 @@
   },
   "files": [
     "cli.js",
-    "template/",
     "docs/roles/",
     "config.json",
     "src/frontend/"
@@ -32,8 +31,5 @@
     "automation"
   ],
   "license": "MIT",
-  "devDependencies": {
-    "typescript": "^6.0.2"
-  },
   "bundleDependencies": []
 }

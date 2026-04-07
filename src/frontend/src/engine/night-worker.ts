@@ -5,7 +5,7 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { PROJECT_ROOT, PACKAGE_DIR, OUTPUT_DIR, TEMPLATE_DIR } from "../lib/paths";
+import { PROJECT_ROOT, OUTPUT_DIR, TEMPLATE_DIR } from "../lib/paths";
 import { writeNotice } from "../parser/notice-parser";
 import { loadSettings } from "../lib/settings";
 import { runClaudeJson } from "./claude-worker";
@@ -305,7 +305,7 @@ class NightWorkerManager {
   private loadTemplate(tplPath: string): string {
     const paths = [
       path.join(TEMPLATE_DIR, tplPath),
-      path.join(PACKAGE_DIR, "template", tplPath),
+      path.resolve(process.cwd(), "template", tplPath),
     ];
     for (const p of paths) {
       if (fs.existsSync(p)) return fs.readFileSync(p, "utf-8");

@@ -3,7 +3,7 @@ import path from "path";
 
 export const PROJECT_ROOT = process.env.PROJECT_ROOT || path.resolve(process.cwd(), "..", "..");
 
-// 패키지 설치 경로 (template/, docs/roles/ 등 패키지 내부 리소스 참조용)
+// 패키지 설치 경로 (docs/roles/ 등 패키지 내부 리소스 참조용)
 export const PACKAGE_DIR = process.env.PACKAGE_DIR || path.resolve(process.cwd(), "..", "..");
 
 // ── .orchestration 하위 경로 일괄 정의 ──────────────────────

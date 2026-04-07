@@ -4,7 +4,7 @@ import fs from "fs";
 import { PROJECT_ROOT, DB_DIR } from "../lib/paths";
 
 const DB_PATH = resolve(DB_DIR, "orchestration.db");
-const SCHEMA_PATH = resolve(PROJECT_ROOT, "scripts", "lib", "schema.sql");
+const SCHEMA_PATH = resolve(__dirname, "schema.sql");
 
 let _readonlyDb: Database.Database | null = null;
 let _writableDb: Database.Database | null = null;
@@ -16,15 +16,31 @@ function ensureDb(): void {
 
   if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
 
-  if (!fs.existsSync(DB_PATH)) {
-    // DB가 없으면 생성 + 스키마 초기화
-    const db = new Database(DB_PATH);
-    db.pragma("journal_mode = WAL");
-    if (fs.existsSync(SCHEMA_PATH)) {
-      db.exec(fs.readFileSync(SCHEMA_PATH, "utf-8"));
-    }
-    db.close();
+  const isNew = !fs.existsSync(DB_PATH);
+  const db = new Database(DB_PATH);
+  db.pragma("journal_mode = WAL");
+
+  if (isNew && fs.existsSync(SCHEMA_PATH)) {
+    db.exec(fs.readFileSync(SCHEMA_PATH, "utf-8"));
+  } else if (!isNew) {
+    // Migrate: create missing tables on existing DBs
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS run_history (
+        id TEXT PRIMARY KEY,
+        started_at TEXT NOT NULL,
+        finished_at TEXT NOT NULL,
+        status TEXT NOT NULL,
+        exit_code INTEGER,
+        task_results TEXT DEFAULT '[]',
+        total_cost_usd REAL DEFAULT 0,
+        total_duration_ms INTEGER DEFAULT 0,
+        tasks_completed INTEGER DEFAULT 0,
+        tasks_failed INTEGER DEFAULT 0
+      )
+    `);
   }
+
+  db.close();
 }
 
 export function getDb(): Database.Database | null {

@@ -4,7 +4,7 @@
  */
 import fs from "fs";
 import path from "path";
-import { PROJECT_ROOT, PACKAGE_DIR, TEMPLATE_DIR } from "../lib/paths";
+import { PROJECT_ROOT, TEMPLATE_DIR } from "../lib/paths";
 import { loadSettings } from "../lib/settings";
 import { getTasksByStatus } from "../service/task-store";
 
@@ -13,8 +13,8 @@ import { getTasksByStatus } from "../service/task-store";
 function resolveTemplate(tplPath: string): string {
   const orchestrationPath = path.join(TEMPLATE_DIR, tplPath);
   if (fs.existsSync(orchestrationPath)) return orchestrationPath;
-  const packagePath = path.join(PACKAGE_DIR, "template", tplPath);
-  if (fs.existsSync(packagePath)) return packagePath;
+  const localPath = path.resolve(process.cwd(), "template", tplPath);
+  if (fs.existsSync(localPath)) return localPath;
   throw new Error(`Template not found: ${tplPath}`);
 }
 
