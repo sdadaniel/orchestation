@@ -1,6 +1,6 @@
 "use client";
 
-import { Save, Loader2, Plus, X } from "lucide-react";
+import { Save, Loader2, Plus, X, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
 import type { WorkerMode } from "@/lib/settings";
@@ -16,6 +16,7 @@ interface AppSettings {
   apiKey: string;
   srcPaths: string[];
   model: string;
+  baseBranch: string;
   maxParallel: number;
   maxReviewRetry: number;
   workerMode: WorkerMode;
@@ -25,10 +26,12 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
   const [draft, setDraft] = useState<AppSettings>({
     apiKey: "",
     srcPaths: ["src/"],
     model: "claude-sonnet-4-6",
+    baseBranch: "main",
     maxParallel: 3,
     maxReviewRetry: 2,
     workerMode: "background",
@@ -82,18 +85,16 @@ export default function SettingsPage() {
   return (
     <PageLayout className="max-w-2xl mx-auto">
       <PageHeader title="Settings">
-        <button
+        <Button
           onClick={handleSave}
           disabled={!isDirty || saving}
-          className={cn(
-            isDirty
-              ? "filter-pill active flex items-center gap-1"
-              : "filter-pill flex items-center gap-1 opacity-50 pointer-events-none"
-          )}
+          variant={isDirty ? "default" : "ghost"}
+          size="sm"
+          className="flex items-center gap-1"
         >
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
           Save
-        </button>
+        </Button>
       </PageHeader>
 
       {loading ? (
@@ -106,6 +107,8 @@ export default function SettingsPage() {
 
           {/* API Section */}
           <div className="space-y-4">
+            <Label size="section">API Configuration</Label>
+
             {/* Name */}
             <div className="space-y-1.5">
               <Label>Name</Label>
@@ -118,14 +121,24 @@ export default function SettingsPage() {
             {/* API Key */}
             <div className="space-y-1.5">
               <Label htmlFor="apiKey">API Key</Label>
-              <Input
-                id="apiKey"
-                type="password"
-                value={draft.apiKey}
-                onChange={(e) => setDraft((prev) => ({ ...prev, apiKey: e.target.value }))}
-                placeholder="sk-ant-api03-..."
-                className="font-mono"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  id="apiKey"
+                  type={showApiKey ? "text" : "password"}
+                  value={draft.apiKey}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, apiKey: e.target.value }))}
+                  placeholder="sk-ant-api03-..."
+                  className="font-mono flex-1"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground/60">
                 Anthropic API key for orchestrate.sh and Night Worker
               </p>
@@ -142,6 +155,20 @@ export default function SettingsPage() {
                 <option value="claude-sonnet-4-6">claude-sonnet-4.6</option>
                 <option value="claude-opus-4-6">claude-opus-4.6</option>
               </Select>
+            </div>
+
+            {/* Base Branch */}
+            <div className="space-y-1.5">
+              <Label>Base branch</Label>
+              <Input
+                value={draft.baseBranch}
+                onChange={(e) => setDraft((prev) => ({ ...prev, baseBranch: e.target.value }))}
+                placeholder="main"
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground/60">
+                Default branch for pull requests and base comparisons
+              </p>
             </div>
           </div>
 
