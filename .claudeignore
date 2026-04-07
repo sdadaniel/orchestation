@@ -424,8 +424,6 @@ docs/task/TASK-340-api-route-json-에러-응답-중복-유틸-추출-및-신규-
 docs/requests/TASK-340-api-route-json-에러-응답-중복-유틸-추출-및-신규-기능-제안.md
 docs/task/TASK-341-배열-인덱스-접근-타입-안전성-추가.md
 docs/requests/TASK-341-배열-인덱스-접근-타입-안전성-추가.md
-docs/task/TASK-345-costtable-runhistory-formatduration-중복-유틸-추출.md
-docs/requests/TASK-345-costtable-runhistory-formatduration-중복-유틸-추출.md
 docs/task/TASK-354-orchestrate-engine-taskinfo-생성-로직-중복-제거.md
 docs/requests/TASK-354-orchestrate-engine-taskinfo-생성-로직-중복-제거.md
 docs/task/TASK-355-api-route-tasks-suggest-consoleerror-제거.md

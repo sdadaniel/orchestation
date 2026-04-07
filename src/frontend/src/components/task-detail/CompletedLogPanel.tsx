@@ -3,10 +3,7 @@
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Terminal colors
-const TERMINAL_BG = "bg-[#0d1117]";
-const TERMINAL_HEADER_BG = "bg-[#161b22]";
+import { TERMINAL_BG, TERMINAL_HEADER_BG } from "@/constants/terminal";
 
 export function CompletedLogPanel({ taskId }: { taskId: string }) {
   const [lines, setLines] = useState<string[]>([]);
