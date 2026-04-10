@@ -5,6 +5,7 @@ import matter from "gray-matter";
 import { getErrorMessage } from "@/lib/error-utils";
 import { TASKS_DIR } from "@/lib/paths";
 import { deleteTaskFromDb, syncTaskContentToDb } from "@/lib/task-db-sync";
+import { VALID_PRIORITIES, VALID_STATUSES } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -50,11 +51,8 @@ export async function PUT(
     const content = fs.readFileSync(filePath, "utf-8");
     const { data, content: markdownBody } = matter(content);
 
-    const validStatuses = ["pending", "stopped", "in_progress", "reviewing", "done", "failed", "rejected"];
-    const validPriorities = ["critical", "high", "medium", "low"];
-
     if (body.status !== undefined) {
-      if (validStatuses.includes(body.status)) {
+      if ((VALID_STATUSES as readonly string[]).includes(body.status)) {
         // Dependency validation: in_progress requires all depends_on tasks to be done
         if (body.status === "in_progress" && Array.isArray(data.depends_on) && data.depends_on.length > 0) {
           const unmetDeps: { id: string; status: string }[] = [];
@@ -89,7 +87,7 @@ export async function PUT(
     }
 
     if (body.priority !== undefined) {
-      if (validPriorities.includes(body.priority)) {
+      if ((VALID_PRIORITIES as readonly string[]).includes(body.priority)) {
         data.priority = body.priority;
       } else {
         return NextResponse.json(
