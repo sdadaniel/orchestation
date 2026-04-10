@@ -175,7 +175,7 @@ function parseResultLogs(taskId: string): TaskLogEntry[] {
         data.created_at ||
         new Date().toISOString().replace("T", " ").substring(0, 19);
 
-      const resultStatus = data.result || data.is_error ? "error" : "success";
+      const resultStatus = (data.result || data.is_error) ? "error" : "success";
       const level = data.is_error ? "error" : "info";
 
       entries.push({
