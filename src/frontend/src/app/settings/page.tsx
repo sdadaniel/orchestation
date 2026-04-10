@@ -11,6 +11,8 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PageLayout, PageHeader } from "@/components/ui/page-layout";
+import { FieldRow } from "@/components/ui/FieldRow";
+import { SettingSection } from "@/components/ui/SettingSection";
 
 interface AppSettings {
   apiKey: string;
@@ -106,21 +108,12 @@ export default function SettingsPage() {
         <div className="space-y-4">
 
           {/* API Section */}
-          <div className="space-y-4">
-            <Label size="section">API Configuration</Label>
+          <SettingSection title="API Configuration">
+            <FieldRow label="Name" description="sdadaniel/orchestation">
+              <Input value="Orchestration" readOnly className="cursor-default font-mono" />
+            </FieldRow>
 
-            {/* Name */}
-            <div className="space-y-1.5">
-              <Label>Name</Label>
-              <Input value="Orchestration" readOnly className="cursor-default" />
-              <p className="text-xs text-muted-foreground/60 font-mono">
-                sdadaniel/orchestation
-              </p>
-            </div>
-
-            {/* API Key */}
-            <div className="space-y-1.5">
-              <Label htmlFor="apiKey">API Key</Label>
+            <FieldRow label="API Key" htmlFor="apiKey" description="Anthropic API key for Orchestrate Engine and Night Worker">
               <div className="flex items-center gap-2">
                 <Input
                   id="apiKey"
@@ -139,14 +132,9 @@ export default function SettingsPage() {
                   {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground/60">
-                Anthropic API key for Orchestrate Engine and Night Worker
-              </p>
-            </div>
+            </FieldRow>
 
-            {/* Model */}
-            <div className="space-y-1.5">
-              <Label>Model</Label>
+            <FieldRow label="Model">
               <Select
                 value={draft.model}
                 onChange={(e) => setDraft((prev) => ({ ...prev, model: e.target.value }))}
@@ -155,27 +143,20 @@ export default function SettingsPage() {
                 <option value="claude-sonnet-4-6">claude-sonnet-4.6</option>
                 <option value="claude-opus-4-6">claude-opus-4.6</option>
               </Select>
-            </div>
+            </FieldRow>
 
-            {/* Base Branch */}
-            <div className="space-y-1.5">
-              <Label>Base branch</Label>
+            <FieldRow label="Base branch" description="Default branch for pull requests and base comparisons">
               <Input
                 value={draft.baseBranch}
                 onChange={(e) => setDraft((prev) => ({ ...prev, baseBranch: e.target.value }))}
                 placeholder="main"
                 className="font-mono"
               />
-              <p className="text-xs text-muted-foreground/60">
-                Default branch for pull requests and base comparisons
-              </p>
-            </div>
-          </div>
+            </FieldRow>
+          </SettingSection>
 
           {/* Source Paths */}
-          <div className="space-y-4">
-            <Label size="section">Source Paths</Label>
-
+          <SettingSection title="Source Paths">
             <div className="space-y-2">
               {draft.srcPaths.map((p, i) => (
                 <div key={i} className="flex items-center gap-2">
@@ -211,15 +192,11 @@ export default function SettingsPage() {
                 <span>Add Path</span>
               </Button>
             </div>
-          </div>
+          </SettingSection>
 
           {/* Configuration */}
-          <div className="space-y-4">
-            <Label size="section">Configuration</Label>
-
-            {/* Worker Mode */}
-            <div className="space-y-1.5">
-              <Label>Worker mode</Label>
+          <SettingSection title="Configuration">
+            <FieldRow label="Worker mode">
               <Select
                 value={draft.workerMode}
                 onChange={(e) => setDraft((prev) => ({ ...prev, workerMode: e.target.value as WorkerMode }))}
@@ -227,7 +204,7 @@ export default function SettingsPage() {
                 <option value="background">background</option>
                 <option value="iterm">iterm</option>
               </Select>
-            </div>
+            </FieldRow>
 
             {/* Max Parallel Tasks */}
             <div className="space-y-2">
@@ -256,7 +233,7 @@ export default function SettingsPage() {
                 onChange={(v) => setDraft((prev) => ({ ...prev, maxReviewRetry: v }))}
               />
             </div>
-          </div>
+          </SettingSection>
 
         </div>
       )}
