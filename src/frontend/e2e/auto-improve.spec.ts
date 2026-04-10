@@ -2,8 +2,10 @@ import { test, expect } from "@playwright/test";
 import { setupTaskListMocks } from "./helpers/mock";
 
 /**
- * AutoImproveControl is embedded in the Tasks page header.
- * We test it by mocking /api/orchestrate/status and navigating to /tasks.
+ * AutoImproveControl은 AppShell의 .global-header 영역에 위치한다.
+ * /tasks 페이지로 이동 후 .global-header 내 버튼을 검증한다.
+ *
+ * 오케스트레이션 상태는 SSE mock의 orchestration-status 이벤트로 주입된다.
  */
 
 test.describe("AutoImproveControl", () => {
@@ -13,15 +15,15 @@ test.describe("AutoImproveControl", () => {
     await setupTaskListMocks(page, { orchestrateStatus: "idle" });
     await page.goto("/tasks");
 
-    const content = page.locator(".content-container");
-    const runBtn = content.getByRole("button", { name: /^Run$/ });
-    await expect(runBtn).toBeVisible();
+    const header = page.locator(".global-header");
+    const runBtn = header.getByRole("button", { name: /^Run$/ });
+    await expect(runBtn).toBeVisible({ timeout: 5_000 });
     await expect(runBtn).not.toBeDisabled();
 
     // Stop button should NOT be visible in idle state
-    await expect(content.getByRole("button", { name: /^Stop$/ })).not.toBeVisible();
+    await expect(header.getByRole("button", { name: /^Stop$/ })).not.toBeVisible();
     // "Stopping..." should NOT be visible
-    await expect(content.getByText("Stopping...")).not.toBeVisible();
+    await expect(header.getByText("Stopping...")).not.toBeVisible();
   });
 
   // ── running → Stop 버튼 ────────────────────────────────────────────────────
@@ -30,28 +32,26 @@ test.describe("AutoImproveControl", () => {
     await setupTaskListMocks(page, { orchestrateStatus: "running" });
     await page.goto("/tasks");
 
-    const content = page.locator(".content-container");
-    const stopBtn = content.getByRole("button", { name: /^Stop$/ });
-    await expect(stopBtn).toBeVisible();
+    const header = page.locator(".global-header");
+    const stopBtn = header.getByRole("button", { name: /^Stop$/ });
+    await expect(stopBtn).toBeVisible({ timeout: 5_000 });
 
     // Run button should NOT be visible when running
-    await expect(content.getByRole("button", { name: /^Run$/ })).not.toBeVisible();
+    await expect(header.getByRole("button", { name: /^Run$/ })).not.toBeVisible();
   });
 
   // ── stopping → "Stopping..." 표시 ─────────────────────────────────────────
 
-  test("stopping 상태에서 'Stopping...' 텍스트가 표시된다", async ({
-    page,
-  }) => {
+  test("stopping 상태에서 'Stopping...' 텍스트가 표시된다", async ({ page }) => {
     await setupTaskListMocks(page, { orchestrateStatus: "stopping" });
     await page.goto("/tasks");
 
-    const content = page.locator(".content-container");
-    await expect(content.getByText("Stopping...")).toBeVisible();
+    const header = page.locator(".global-header");
+    await expect(header.getByText("Stopping...")).toBeVisible({ timeout: 5_000 });
 
     // Neither Run nor Stop button should be shown
-    await expect(content.getByRole("button", { name: /^Run$/ })).not.toBeVisible();
-    await expect(content.getByRole("button", { name: /^Stop$/ })).not.toBeVisible();
+    await expect(header.getByRole("button", { name: /^Run$/ })).not.toBeVisible();
+    await expect(header.getByRole("button", { name: /^Stop$/ })).not.toBeVisible();
   });
 
   // ── completed → Run 버튼 (idle과 동일) ────────────────────────────────────
@@ -60,9 +60,9 @@ test.describe("AutoImproveControl", () => {
     await setupTaskListMocks(page, { orchestrateStatus: "completed" });
     await page.goto("/tasks");
 
-    const content = page.locator(".content-container");
-    await expect(content.getByRole("button", { name: /^Run$/ })).toBeVisible();
-    await expect(content.getByText("Stopping...")).not.toBeVisible();
+    const header = page.locator(".global-header");
+    await expect(header.getByRole("button", { name: /^Run$/ })).toBeVisible({ timeout: 5_000 });
+    await expect(header.getByText("Stopping...")).not.toBeVisible();
   });
 
   // ── Run 클릭 → running 상태로 전환 ────────────────────────────────────────
@@ -84,8 +84,9 @@ test.describe("AutoImproveControl", () => {
 
     await page.goto("/tasks");
 
-    const content = page.locator(".content-container");
-    const runBtn = content.getByRole("button", { name: /^Run$/ });
+    const header = page.locator(".global-header");
+    const runBtn = header.getByRole("button", { name: /^Run$/ });
+    await expect(runBtn).toBeVisible({ timeout: 5_000 });
     await runBtn.click();
 
     expect(runCalled).toBe(true);
@@ -93,9 +94,7 @@ test.describe("AutoImproveControl", () => {
 
   // ── Stop 클릭 → stop 요청 전송 ────────────────────────────────────────────
 
-  test("Stop 버튼 클릭 시 orchestrate/stop POST 요청 전송", async ({
-    page,
-  }) => {
+  test("Stop 버튼 클릭 시 orchestrate/stop POST 요청 전송", async ({ page }) => {
     let stopCalled = false;
 
     await setupTaskListMocks(page, { orchestrateStatus: "running" });
@@ -111,8 +110,9 @@ test.describe("AutoImproveControl", () => {
 
     await page.goto("/tasks");
 
-    const content = page.locator(".content-container");
-    const stopBtn = content.getByRole("button", { name: /^Stop$/ });
+    const header = page.locator(".global-header");
+    const stopBtn = header.getByRole("button", { name: /^Stop$/ });
+    await expect(stopBtn).toBeVisible({ timeout: 5_000 });
     await stopBtn.click();
 
     expect(stopCalled).toBe(true);

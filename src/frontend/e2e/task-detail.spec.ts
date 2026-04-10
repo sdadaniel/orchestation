@@ -239,7 +239,7 @@ test.describe("Task Detail Page", () => {
     await expect(runBtn).toBeDisabled();
   });
 
-  // ── Tabs: Content / Scope / Cost / AI Result / 로그 / 리뷰결과 ────────────
+  // ── Tabs: Content / Scope / Cost / AI Result / 로그 / Terminal ───────────
 
   test("Content 탭에 마크다운 내용이 렌더링된다", async ({ page }) => {
     await setupTaskDetailMocks(page, {
@@ -363,20 +363,20 @@ test.describe("Task Detail Page", () => {
     }
   });
 
-  test("리뷰결과 탭 클릭 → 리뷰 탭 활성화", async ({ page }) => {
+  test("Terminal 탭 클릭 → Terminal 탭 활성화", async ({ page }) => {
     await setupTaskDetailMocks(page, {
       taskId: TASK_ID,
       task: {
         id: TASK_ID,
-        title: "Reviewed Task",
-        status: "reviewing",
+        title: "Alpha Task",
+        status: "pending",
         priority: "high",
         created: "2026-03-01T10:00:00",
-        content: "## Task under review",
+        content: "## Test task",
         depends_on_detail: [],
         depended_by: [],
         executionLog: null,
-        reviewResult: "## Review\n\nApproved.",
+        reviewResult: null,
         costEntries: [],
         scope: [],
         branch: "task/task-001",
@@ -385,12 +385,12 @@ test.describe("Task Detail Page", () => {
 
     await page.goto(`/tasks/${TASK_ID}`);
     const content = page.locator(".content-container");
-    await content.getByText("Reviewed Task").waitFor();
+    await content.getByText("Alpha Task").waitFor();
 
-    const reviewTab = content.getByRole("button", { name: /리뷰결과|Review/ });
-    if (await reviewTab.isVisible()) {
-      await reviewTab.click();
-      await expect(reviewTab).toHaveClass(/border-primary/);
+    const terminalTab = content.getByRole("button", { name: /Terminal/ });
+    if (await terminalTab.isVisible()) {
+      await terminalTab.click();
+      await expect(terminalTab).toHaveClass(/border-primary/);
     }
   });
 

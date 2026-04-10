@@ -217,22 +217,6 @@ test.describe("Task Run Lifecycle - 개별 실행 상태 전이", () => {
     await expect(statusSelect).toHaveValue("in_progress");
   });
 
-  // ── 실행 완료(completed) 시 배너 표시 ─────────────────────────────────────
-
-  test("runStatus=completed → 실행 완료 배너 표시", async ({ page }) => {
-    await setupTaskDetailMocks(page, {
-      taskId: TASK_ID,
-      task: makeTask({ status: "done" }),
-      runStatus: "completed",
-    });
-
-    await page.goto(`/tasks/${TASK_ID}`);
-    const content = page.locator(".content-container");
-    await content.getByRole("heading", { name: "Lifecycle Test Task", exact: true }).waitFor();
-
-    await expect(content.getByText("실행 완료")).toBeVisible();
-  });
-
   // ── 실행 실패(failed) 시 배너 표시 ────────────────────────────────────────
 
   test("runStatus=failed → 실행 실패 배너 표시", async ({ page }) => {

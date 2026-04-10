@@ -10,8 +10,7 @@ test.describe("Settings Page (/settings)", () => {
 
     const content = page.locator(".content-container");
 
-    await expect(content.locator("#apiKey, input[id='apiKey']")).toBeVisible();
-    await expect(content.locator("#maxParallel, input[id='maxParallel']")).toBeVisible();
+    await expect(content.locator("#apiKey")).toBeVisible();
     await expect(content.getByRole("button", { name: /Save/ })).toBeVisible();
   });
 
@@ -22,7 +21,7 @@ test.describe("Settings Page (/settings)", () => {
     await page.goto("/settings");
 
     const content = page.locator(".content-container");
-    await content.locator("#apiKey, input[id='apiKey']").waitFor();
+    await content.locator("#apiKey").waitFor();
 
     const saveBtn = content.getByRole("button", { name: /Save/ });
     // Save button should be disabled or have disabled styling when no changes
@@ -96,11 +95,12 @@ test.describe("Settings Page (/settings)", () => {
     const content = page.locator(".content-container");
     await content.locator("#apiKey").waitFor();
 
-    const addPathBtn = content.getByRole("button", { name: /경로 추가|Add/ });
+    // Button text is "Add Path"
+    const addPathBtn = content.getByRole("button", { name: /Add Path|경로 추가/ });
     if (await addPathBtn.isVisible()) {
-      const inputsBefore = await content.locator("input[placeholder*='src']").count();
+      const inputsBefore = await content.locator("input[placeholder='src/']").count();
       await addPathBtn.click();
-      const inputsAfter = await content.locator("input[placeholder*='src']").count();
+      const inputsAfter = await content.locator("input[placeholder='src/']").count();
       expect(inputsAfter).toBeGreaterThan(inputsBefore);
     }
   });
@@ -117,75 +117,90 @@ test.describe("Settings Page (/settings)", () => {
     const content = page.locator(".content-container");
     await content.locator("#apiKey").waitFor();
 
-    const deleteButtons = content.getByRole("button", { name: /삭제|remove|×/ });
-    if ((await deleteButtons.count()) > 0) {
-      const inputsBefore = await content.locator("input[placeholder*='src/']").count();
-      await deleteButtons.first().click();
-      const inputsAfter = await content.locator("input[placeholder*='src/']").count();
-      expect(inputsAfter).toBeLessThan(inputsBefore);
+    // Delete buttons are icon-only ghost buttons next to each path input
+    const pathInputs = content.locator("input[placeholder='src/']");
+    const inputsBefore = await pathInputs.count();
+
+    if (inputsBefore > 1) {
+      // Find and click the first delete button (sibling of path inputs)
+      const deleteBtn = content.locator("input[placeholder='src/']").first()
+        .locator("xpath=following-sibling::button").first();
+      if (await deleteBtn.isVisible()) {
+        await deleteBtn.click();
+        const inputsAfter = await pathInputs.count();
+        expect(inputsAfter).toBeLessThan(inputsBefore);
+      }
     }
   });
 
   // ── 7. 모델 선택 ────────────────────────────────────────────────────────
 
-  test("Sonnet 모델 선택 → 활성 스타일 적용", async ({ page }) => {
+  test("Sonnet 모델 선택 → select 값 반영", async ({ page }) => {
     await setupSettingsMocks(page);
     await page.goto("/settings");
 
     const content = page.locator(".content-container");
     await content.locator("#apiKey").waitFor();
 
-    const sonnetBtn = content.getByRole("button", { name: /Sonnet/ });
-    if (await sonnetBtn.isVisible()) {
-      await sonnetBtn.click();
-      await expect(sonnetBtn).toHaveClass(/border-primary/);
+    // Model is a <Select> dropdown, not buttons
+    const modelSelect = content.locator("select").first();
+    if (await modelSelect.isVisible()) {
+      await modelSelect.selectOption("claude-sonnet-4-6");
+      await expect(modelSelect).toHaveValue("claude-sonnet-4-6");
+
+      const saveBtn = content.getByRole("button", { name: /Save/ });
+      await expect(saveBtn).not.toBeDisabled();
     }
   });
 
-  test("Haiku 모델 선택 → 활성 스타일 적용", async ({ page }) => {
+  test("Haiku 모델 선택 → select 값 반영", async ({ page }) => {
     await setupSettingsMocks(page);
     await page.goto("/settings");
 
     const content = page.locator(".content-container");
     await content.locator("#apiKey").waitFor();
 
-    const haikuBtn = content.getByRole("button", { name: /Haiku/ });
-    if (await haikuBtn.isVisible()) {
-      await haikuBtn.click();
-      await expect(haikuBtn).toHaveClass(/border-primary/);
+    // Model is a <Select> dropdown, not buttons
+    const modelSelect = content.locator("select").first();
+    if (await modelSelect.isVisible()) {
+      await modelSelect.selectOption("claude-haiku-4-5-20251001");
+      await expect(modelSelect).toHaveValue("claude-haiku-4-5-20251001");
+
+      const saveBtn = content.getByRole("button", { name: /Save/ });
+      await expect(saveBtn).not.toBeDisabled();
     }
   });
 
   // ── 8. maxParallel 변경 ─────────────────────────────────────────────────
 
-  test("maxParallel 프리셋 버튼 클릭 → 값 변경", async ({ page }) => {
+  test("maxParallel 슬라이더가 표시된다", async ({ page }) => {
     await setupSettingsMocks(page);
     await page.goto("/settings");
 
     const content = page.locator(".content-container");
-    await content.locator("#maxParallel").waitFor();
+    await content.locator("#apiKey").waitFor();
 
-    // Click preset button "5"
-    const preset5 = content.getByRole("button", { name: /^5$/ });
-    if (await preset5.isVisible()) {
-      await preset5.click();
-      const maxParallelInput = content.locator("#maxParallel");
-      await expect(maxParallelInput).toHaveValue("5");
-    }
+    // maxParallel is rendered as a Slider (input[type=range])
+    const slider = content.locator("input[type='range']").first();
+    await expect(slider).toBeVisible();
   });
 
-  test("maxParallel 직접 입력 → 값 반영", async ({ page }) => {
+  test("maxParallel 슬라이더 값 변경 → Save 버튼 활성화", async ({ page }) => {
     await setupSettingsMocks(page);
     await page.goto("/settings");
 
     const content = page.locator(".content-container");
-    const maxParallelInput = content.locator("#maxParallel");
-    await maxParallelInput.waitFor();
+    await content.locator("#apiKey").waitFor();
 
-    await maxParallelInput.fill("4");
-    await expect(maxParallelInput).toHaveValue("4");
+    const slider = content.locator("input[type='range']").first();
+    if (await slider.isVisible()) {
+      // Change slider value
+      const currentVal = await slider.inputValue();
+      const newVal = currentVal === "3" ? "5" : "3";
+      await slider.fill(newVal);
 
-    const saveBtn = content.getByRole("button", { name: /Save/ });
-    await expect(saveBtn).not.toBeDisabled();
+      const saveBtn = content.getByRole("button", { name: /Save/ });
+      await expect(saveBtn).not.toBeDisabled();
+    }
   });
 });

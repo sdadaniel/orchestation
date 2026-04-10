@@ -215,8 +215,16 @@ async function mockAppShellApis(
     notices = [],
   } = opts;
 
-  // SSE — return empty stream so reconnect loop doesn't fire
+  // SSE — send orchestration-status event so orchestrationStore is initialized
   await page.route("**/api/tasks/watch", (route) => {
+    const payload = {
+      status: orchestrateStatus,
+      startedAt: null,
+      finishedAt: null,
+      exitCode: null,
+      taskResults: [],
+    };
+    const statusEvent = `event: orchestration-status\ndata: ${JSON.stringify(payload)}\n\n`;
     route.fulfill({
       status: 200,
       headers: {
@@ -224,7 +232,7 @@ async function mockAppShellApis(
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
       },
-      body: ": keep-alive\n\n",
+      body: `${statusEvent}: keep-alive\n\n`,
     });
   });
 
