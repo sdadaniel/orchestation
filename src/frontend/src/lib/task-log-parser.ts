@@ -80,7 +80,7 @@ function parseTokenUsageLogs(taskId: string): TaskLogEntry[] {
       /^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+([\w-]+)\s+\|/,
     );
     if (!timestampMatch) continue;
-    if (timestampMatch[2] !== taskId) continue;
+    if ((timestampMatch[2] ?? "") !== taskId) continue;
 
     const timestamp = timestampMatch[1] ?? "";
 
