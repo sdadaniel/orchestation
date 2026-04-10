@@ -9,11 +9,6 @@ export const PACKAGE_DIR = process.env.PACKAGE_DIR || path.resolve(process.cwd()
 // ── .orchestration 하위 경로 일괄 정의 ──────────────────────
 const ORCH_DIR = path.join(PROJECT_ROOT, ".orchestration");
 
-export const TASKS_DIR = (() => {
-  const o = path.join(ORCH_DIR, "tasks");
-  return fs.existsSync(o) ? o : path.join(PROJECT_ROOT, "docs", "task");
-})();
-
 export const OUTPUT_DIR = (() => {
   const o = path.join(ORCH_DIR, "output");
   return fs.existsSync(o) ? o : path.join(PROJECT_ROOT, "output");
