@@ -1,6 +1,7 @@
-import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
+import fs from "fs";
+import { parseAllFromDirectory } from "./parser";
 
 export interface PlanFrontmatter {
   id: string;
@@ -30,19 +31,5 @@ export function parsePlanFile(filePath: string): PlanFrontmatter | null {
 }
 
 export function parseAllPlans(): PlanFrontmatter[] {
-  if (!fs.existsSync(PLANS_DIR)) {
-    return [];
-  }
-
-  const files = fs.readdirSync(PLANS_DIR).filter((f) => f.endsWith(".md"));
-  const plans: PlanFrontmatter[] = [];
-
-  for (const file of files) {
-    const plan = parsePlanFile(path.join(PLANS_DIR, file));
-    if (plan) {
-      plans.push(plan);
-    }
-  }
-
-  return plans;
+  return parseAllFromDirectory<PlanFrontmatter>(PLANS_DIR, parsePlanFile);
 }

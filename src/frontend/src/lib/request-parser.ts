@@ -3,6 +3,7 @@ import path from "path";
 import { TASKS_DIR } from "./paths";
 import { parseFrontmatter, getString, getInt, getStringArray } from "./frontmatter-utils";
 import { formatDatetime, formatTime } from "./date-utils";
+import { parseAllFromDirectory } from "./parser";
 
 export interface RequestData {
   id: string;
@@ -28,7 +29,6 @@ function isValidStatus(value: string): value is RequestData["status"] {
 function isValidPriority(value: string): value is RequestData["priority"] {
   return (VALID_PRIORITIES as readonly string[]).includes(value);
 }
-
 
 export function parseRequestFile(filePath: string): RequestData | null {
   try {
@@ -65,24 +65,20 @@ export function parseRequestFile(filePath: string): RequestData | null {
   }
 }
 
+// Sort: pending first, then reviewing, in_progress, rejected, done
+const STATUS_ORDER: Record<string, number> = { pending: 0, reviewing: 1, in_progress: 2, rejected: 3, done: 4 };
+
 export function parseAllRequests(): RequestData[] {
-  if (!fs.existsSync(TASKS_DIR)) return [];
-
-  const files = fs.readdirSync(TASKS_DIR).filter((f) => f.startsWith("TASK-") && f.endsWith(".md"));
-  const requests: RequestData[] = [];
-
-  for (const file of files) {
-    const req = parseRequestFile(path.join(TASKS_DIR, file));
-    if (req) requests.push(req);
-  }
-
-  // Sort: pending first, then in_progress, then done
-  const statusOrder: Record<string, number> = { pending: 0, reviewing: 1, in_progress: 2, rejected: 3, done: 4 };
-  return requests.sort((a, b) => {
-    const so = (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99);
-    if (so !== 0) return so;
-    return a.id.localeCompare(b.id);
-  });
+  return parseAllFromDirectory<RequestData>(
+    TASKS_DIR,
+    parseRequestFile,
+    (f) => f.startsWith("TASK-"),
+    (a, b) => {
+      const so = (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99);
+      if (so !== 0) return so;
+      return a.id.localeCompare(b.id);
+    }
+  );
 }
 
 export function findRequestFile(id: string): string | null {

@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { PROJECT_ROOT } from "./paths";
 import { parseFrontmatter, getString, getBool } from "./frontmatter-utils";
+import { parseAllFromDirectory } from "./parser";
 
 export type NoticeType = "info" | "warning" | "error" | "request";
 
@@ -47,18 +48,12 @@ export function parseNoticeFile(filePath: string): NoticeData | null {
 }
 
 export function parseAllNotices(): NoticeData[] {
-  if (!fs.existsSync(NOTICES_DIR)) return [];
-
-  const files = fs.readdirSync(NOTICES_DIR).filter((f) => f.startsWith("NOTICE-") && f.endsWith(".md"));
-  const notices: NoticeData[] = [];
-
-  for (const file of files) {
-    const notice = parseNoticeFile(path.join(NOTICES_DIR, file));
-    if (notice) notices.push(notice);
-  }
-
-  // Sort by newest first
-  return notices.sort((a, b) => b.id.localeCompare(a.id));
+  return parseAllFromDirectory<NoticeData>(
+    NOTICES_DIR,
+    parseNoticeFile,
+    (f) => f.startsWith("NOTICE-"),
+    (a, b) => b.id.localeCompare(a.id)
+  );
 }
 
 export function findNoticeFile(id: string): string | null {

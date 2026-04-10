@@ -1,6 +1,7 @@
-import fs from "fs";
 import path from "path";
 import { parseFrontmatter, getString } from "./frontmatter-utils";
+import { parseAllFromDirectory } from "./parser";
+import fs from "fs";
 
 export interface PrdData {
   id: string;
@@ -31,15 +32,10 @@ export function parsePrdFile(filePath: string): PrdData | null {
 }
 
 export function parseAllPrds(): PrdData[] {
-  if (!fs.existsSync(PRD_DIR)) return [];
-
-  const files = fs.readdirSync(PRD_DIR).filter((f) => f.startsWith("PRD-") && f.endsWith(".md"));
-  const prds: PrdData[] = [];
-
-  for (const file of files) {
-    const prd = parsePrdFile(path.join(PRD_DIR, file));
-    if (prd) prds.push(prd);
-  }
-
-  return prds.sort((a, b) => a.id.localeCompare(b.id));
+  return parseAllFromDirectory<PrdData>(
+    PRD_DIR,
+    parsePrdFile,
+    (f) => f.startsWith("PRD-"),
+    (a, b) => a.id.localeCompare(b.id)
+  );
 }
