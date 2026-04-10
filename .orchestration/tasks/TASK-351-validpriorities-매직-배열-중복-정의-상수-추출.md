@@ -1,11 +1,13 @@
 ---
 id: TASK-351
 title: validPriorities-매직-배열-중복-정의-상수-추출
-status: pending
+status: rejected
+branch: task/task-351
+worktree: ../repo-wt-task-351
 priority: medium
 mode: night
 created: 2026-04-06
-updated: 2026-04-06
+updated: 2026-04-10 07:58
 depends_on: []
 scope:
   - src/frontend/src/app/api/tasks/route.ts

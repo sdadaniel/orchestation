@@ -1,11 +1,13 @@
 ---
 id: TASK-350
 title: globalThis-싱글턴-패턴-Record-string-unknown-타입-단언-통합-유틸-추출
-status: pending
+status: rejected
+branch: task/task-350
+worktree: ../repo-wt-task-350
 priority: medium
 mode: night
 created: 2026-04-06
-updated: 2026-04-06
+updated: 2026-04-10 07:57
 depends_on: []
 scope:
   - src/frontend/src/lib/orchestration-manager.ts
