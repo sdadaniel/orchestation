@@ -38,7 +38,11 @@ export async function GET() {
   syncAllTaskFilesToDb();
   if (isDbAvailable()) {
     const db = getDb()!;
-    const rows = db.prepare("SELECT id, title, status, priority, depends_on, role, scope FROM tasks ORDER BY id").all() as TaskRow[];
+    const rows = db
+      .prepare(
+        "SELECT id, title, status, priority, depends_on, role, scope FROM tasks ORDER BY id",
+      )
+      .all() as TaskRow[];
     const tasks: TaskFrontmatter[] = rows.map((row) => ({
       id: row.id,
       title: row.title,
@@ -63,13 +67,12 @@ export async function POST(request: Request) {
     const { title, priority, role, depends_on, scope } = body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0) {
-      return NextResponse.json(
-        { error: "title is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "title is required" }, { status: 400 });
     }
 
-    const taskPriority = (VALID_PRIORITIES as readonly string[]).includes(priority)
+    const taskPriority = (VALID_PRIORITIES as readonly string[]).includes(
+      priority,
+    )
       ? priority
       : "medium";
 
@@ -80,8 +83,7 @@ export async function POST(request: Request) {
     // Determine next task ID
     const taskId = generateNextTaskId(TASKS_DIR);
     const sanitizedTitle = title.trim();
-    const taskRole =
-      role && typeof role === "string" ? role.trim() : "general";
+    const taskRole = role && typeof role === "string" ? role.trim() : "general";
 
     const depsArray = Array.isArray(depends_on)
       ? depends_on.filter(

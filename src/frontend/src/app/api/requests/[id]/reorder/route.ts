@@ -68,7 +68,10 @@ function writeSortOrder(taskId: string, order: number) {
     content = content.replace(/^sort_order:\s*.+$/m, `sort_order: ${order}`);
   } else {
     // Add sort_order after priority line in frontmatter
-    content = content.replace(/^(priority:\s*.+)$/m, `$1\nsort_order: ${order}`);
+    content = content.replace(
+      /^(priority:\s*.+)$/m,
+      `$1\nsort_order: ${order}`,
+    );
   }
 
   fs.writeFileSync(filePath, content, "utf-8");

@@ -34,33 +34,62 @@ export const useSuggestStore = create<SuggestState>()(
       error: null,
 
       fetchSuggestions: async () => {
-        set({ isLoading: true, error: null, suggestions: [], selectedIndices: new Set() }, false, "suggest/fetch/start");
+        set(
+          {
+            isLoading: true,
+            error: null,
+            suggestions: [],
+            selectedIndices: new Set(),
+          },
+          false,
+          "suggest/fetch/start",
+        );
         try {
           const res = await fetch("/api/tasks/suggest", { method: "POST" });
           const data = await res.json();
           if (data.error) {
-            set({ error: data.error, isLoading: false }, false, "suggest/fetch/error");
+            set(
+              { error: data.error, isLoading: false },
+              false,
+              "suggest/fetch/error",
+            );
           } else {
-            set({ suggestions: data.suggestions ?? [], isLoading: false }, false, "suggest/fetch/done");
+            set(
+              { suggestions: data.suggestions ?? [], isLoading: false },
+              false,
+              "suggest/fetch/done",
+            );
           }
         } catch {
-          set({ error: "추천 요청 실패", isLoading: false }, false, "suggest/fetch/error");
+          set(
+            { error: "추천 요청 실패", isLoading: false },
+            false,
+            "suggest/fetch/error",
+          );
         }
       },
 
       toggleSelection: (idx) => {
-        set((state) => {
-          const next = new Set(state.selectedIndices);
-          if (next.has(idx)) next.delete(idx);
-          else next.add(idx);
-          return { selectedIndices: next };
-        }, false, "suggest/toggle");
+        set(
+          (state) => {
+            const next = new Set(state.selectedIndices);
+            if (next.has(idx)) next.delete(idx);
+            else next.add(idx);
+            return { selectedIndices: next };
+          },
+          false,
+          "suggest/toggle",
+        );
       },
 
       selectAll: () => {
-        set((state) => ({
-          selectedIndices: new Set(state.suggestions.map((_, i) => i)),
-        }), false, "suggest/selectAll");
+        set(
+          (state) => ({
+            selectedIndices: new Set(state.suggestions.map((_, i) => i)),
+          }),
+          false,
+          "suggest/selectAll",
+        );
       },
 
       deselectAll: () => {
@@ -68,7 +97,16 @@ export const useSuggestStore = create<SuggestState>()(
       },
 
       clear: () => {
-        set({ suggestions: [], selectedIndices: new Set(), error: null, isLoading: false }, false, "suggest/clear");
+        set(
+          {
+            suggestions: [],
+            selectedIndices: new Set(),
+            error: null,
+            isLoading: false,
+          },
+          false,
+          "suggest/clear",
+        );
       },
     }),
     { name: "SuggestStore" },

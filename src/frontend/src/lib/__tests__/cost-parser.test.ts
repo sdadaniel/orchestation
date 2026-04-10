@@ -95,7 +95,7 @@ describe("aggregateByTask", () => {
     durationMs: number,
     costUsd: number,
     phase = "task",
-    timestamp = "2026-03-23 12:00:00"
+    timestamp = "2026-03-23 12:00:00",
   ) => ({
     timestamp,
     taskId,
@@ -112,7 +112,17 @@ describe("aggregateByTask", () => {
 
   it("aggregates single entry correctly", () => {
     const entries = [
-      makeEntry("TASK-001", "claude-sonnet-4-20250514", 1000, 500, 100, 50, 2, 3000, 0.02),
+      makeEntry(
+        "TASK-001",
+        "claude-sonnet-4-20250514",
+        1000,
+        500,
+        100,
+        50,
+        2,
+        3000,
+        0.02,
+      ),
     ];
     const result = aggregateByTask(entries);
     expect(result).toHaveLength(1);
@@ -131,8 +141,28 @@ describe("aggregateByTask", () => {
 
   it("aggregates multiple entries for the same task", () => {
     const entries = [
-      makeEntry("TASK-001", "claude-sonnet-4-20250514", 1000, 500, 0, 0, 2, 3000, 0.01),
-      makeEntry("TASK-001", "claude-sonnet-4-20250514", 2000, 800, 50, 100, 3, 4000, 0.02),
+      makeEntry(
+        "TASK-001",
+        "claude-sonnet-4-20250514",
+        1000,
+        500,
+        0,
+        0,
+        2,
+        3000,
+        0.01,
+      ),
+      makeEntry(
+        "TASK-001",
+        "claude-sonnet-4-20250514",
+        2000,
+        800,
+        50,
+        100,
+        3,
+        4000,
+        0.02,
+      ),
     ];
     const result = aggregateByTask(entries);
     expect(result).toHaveLength(1);
@@ -149,21 +179,61 @@ describe("aggregateByTask", () => {
 
   it("handles multiple tasks independently", () => {
     const entries = [
-      makeEntry("TASK-001", "claude-sonnet-4-20250514", 100, 50, 0, 0, 1, 1000, 0.005),
-      makeEntry("TASK-002", "claude-opus-4-20250514", 200, 100, 0, 0, 2, 2000, 0.010),
+      makeEntry(
+        "TASK-001",
+        "claude-sonnet-4-20250514",
+        100,
+        50,
+        0,
+        0,
+        1,
+        1000,
+        0.005,
+      ),
+      makeEntry(
+        "TASK-002",
+        "claude-opus-4-20250514",
+        200,
+        100,
+        0,
+        0,
+        2,
+        2000,
+        0.01,
+      ),
     ];
     const result = aggregateByTask(entries);
     expect(result).toHaveLength(2);
     const t1 = result.find((r) => r.taskId === "TASK-001")!;
     const t2 = result.find((r) => r.taskId === "TASK-002")!;
     expect(t1.totalCostUsd).toBeCloseTo(0.005);
-    expect(t2.totalCostUsd).toBeCloseTo(0.010);
+    expect(t2.totalCostUsd).toBeCloseTo(0.01);
   });
 
   it("merges multiple distinct models into comma-separated string", () => {
     const entries = [
-      makeEntry("TASK-001", "claude-sonnet-4-20250514", 100, 50, 0, 0, 1, 1000, 0.01),
-      makeEntry("TASK-001", "claude-opus-4-20250514", 200, 100, 0, 0, 1, 2000, 0.02),
+      makeEntry(
+        "TASK-001",
+        "claude-sonnet-4-20250514",
+        100,
+        50,
+        0,
+        0,
+        1,
+        1000,
+        0.01,
+      ),
+      makeEntry(
+        "TASK-001",
+        "claude-opus-4-20250514",
+        200,
+        100,
+        0,
+        0,
+        1,
+        2000,
+        0.02,
+      ),
     ];
     const result = aggregateByTask(entries);
     expect(result[0].models).toContain("claude-sonnet-4-20250514");
@@ -180,7 +250,17 @@ describe("aggregateByTask", () => {
 
   it("ignores 'unknown' model when other real models exist", () => {
     const entries = [
-      makeEntry("TASK-001", "claude-sonnet-4-20250514", 100, 50, 0, 0, 1, 1000, 0.01),
+      makeEntry(
+        "TASK-001",
+        "claude-sonnet-4-20250514",
+        100,
+        50,
+        0,
+        0,
+        1,
+        1000,
+        0.01,
+      ),
       makeEntry("TASK-001", "unknown", 50, 25, 0, 0, 1, 500, 0.005),
     ];
     const result = aggregateByTask(entries);
@@ -200,6 +280,8 @@ describe("aggregateByTask", () => {
     const result = aggregateByTask(entries);
     expect(result[0].totalCostUsd).toBeCloseTo(0.3, 6);
     // Must not have more than 6 decimal places
-    expect(result[0].totalCostUsd.toString().replace(/.*\./, "").length).toBeLessThanOrEqual(6);
+    expect(
+      result[0].totalCostUsd.toString().replace(/.*\./, "").length,
+    ).toBeLessThanOrEqual(6);
   });
 });

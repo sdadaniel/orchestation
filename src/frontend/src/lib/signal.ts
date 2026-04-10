@@ -28,7 +28,11 @@ const ALL_SIGNAL_SUFFIXES: SignalSuffix[] = [
  * 시그널 파일을 원자적으로 생성한다.
  * temp 파일 작성 → rename (같은 파일시스템에서는 원자적)
  */
-export function signalCreate(signalDir: string, taskId: string, suffix: SignalSuffix): void {
+export function signalCreate(
+  signalDir: string,
+  taskId: string,
+  suffix: SignalSuffix,
+): void {
   fs.mkdirSync(signalDir, { recursive: true });
   const target = path.join(signalDir, `${taskId}-${suffix}`);
   const tmp = `${target}.tmp.${process.pid}`;
@@ -40,7 +44,10 @@ export function signalCreate(signalDir: string, taskId: string, suffix: SignalSu
  * 태스크에 대한 시그널 존재 여부를 확인한다.
  * 파일을 삭제하지 않음 (비파괴적).
  */
-export function signalCheck(signalDir: string, taskId: string): SignalSuffix | null {
+export function signalCheck(
+  signalDir: string,
+  taskId: string,
+): SignalSuffix | null {
   if (!fs.existsSync(signalDir)) return null;
 
   for (const suffix of ALL_SIGNAL_SUFFIXES) {
@@ -54,7 +61,10 @@ export function signalCheck(signalDir: string, taskId: string): SignalSuffix | n
  * 시그널을 소비한다 (확인 + 삭제).
  * mkdir 기반 락으로 레이스 방지.
  */
-export function signalConsume(signalDir: string, taskId: string): SignalSuffix | null {
+export function signalConsume(
+  signalDir: string,
+  taskId: string,
+): SignalSuffix | null {
   if (!fs.existsSync(signalDir)) return null;
 
   const lockDir = path.join(signalDir, `.lock-${taskId}`);
@@ -66,7 +76,9 @@ export function signalConsume(signalDir: string, taskId: string): SignalSuffix |
       if (fs.existsSync(f)) {
         try {
           fs.unlinkSync(f);
-        } catch { /* already consumed */ }
+        } catch {
+          /* already consumed */
+        }
         return suffix;
       }
     }
@@ -88,7 +100,9 @@ function acquireLock(lockDir: string, timeoutMs: number): boolean {
     } catch {
       // 10ms 대기 후 재시도
       const waitEnd = Date.now() + 10;
-      while (Date.now() < waitEnd) { /* spin */ }
+      while (Date.now() < waitEnd) {
+        /* spin */
+      }
     }
   }
   // 타임아웃: stale 락 정리 시도
@@ -104,5 +118,7 @@ function acquireLock(lockDir: string, timeoutMs: number): boolean {
 function releaseLock(lockDir: string): void {
   try {
     fs.rmdirSync(lockDir);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }

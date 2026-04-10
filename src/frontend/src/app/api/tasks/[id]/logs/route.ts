@@ -35,16 +35,20 @@ function getLogsFromDb(taskId: string): TaskLogEntry[] | null {
   const db = getDb()!;
 
   // Check task exists in DB
-  const task = db.prepare("SELECT id FROM tasks WHERE id = ?").get(taskId) as { id: string } | undefined;
+  const task = db.prepare("SELECT id FROM tasks WHERE id = ?").get(taskId) as
+    | { id: string }
+    | undefined;
   if (!task) return null;
 
   const entries: TaskLogEntry[] = [];
 
   // Token usage entries
   try {
-    const tokenRows = db.prepare(
-      "SELECT task_id, phase, turns, duration_ms, cost_usd, timestamp FROM token_usage WHERE task_id = ? ORDER BY timestamp"
-    ).all(taskId) as TokenUsageRow[];
+    const tokenRows = db
+      .prepare(
+        "SELECT task_id, phase, turns, duration_ms, cost_usd, timestamp FROM token_usage WHERE task_id = ? ORDER BY timestamp",
+      )
+      .all(taskId) as TokenUsageRow[];
 
     for (const row of tokenRows) {
       entries.push({
@@ -59,9 +63,11 @@ function getLogsFromDb(taskId: string): TaskLogEntry[] | null {
 
   // Task events
   try {
-    const eventRows = db.prepare(
-      "SELECT task_id, event_type, from_status, to_status, detail, timestamp FROM task_events WHERE task_id = ? ORDER BY timestamp"
-    ).all(taskId) as TaskEventRow[];
+    const eventRows = db
+      .prepare(
+        "SELECT task_id, event_type, from_status, to_status, detail, timestamp FROM task_events WHERE task_id = ? ORDER BY timestamp",
+      )
+      .all(taskId) as TaskEventRow[];
 
     for (const row of eventRows) {
       const parts = [`[${row.event_type}]`];
@@ -74,7 +80,10 @@ function getLogsFromDb(taskId: string): TaskLogEntry[] | null {
 
       entries.push({
         timestamp: row.timestamp,
-        level: row.event_type === "review_result" && row.detail?.includes("reject") ? "error" : "info",
+        level:
+          row.event_type === "review_result" && row.detail?.includes("reject")
+            ? "error"
+            : "info",
         message: parts.join(" "),
       });
     }
@@ -111,10 +120,7 @@ export async function GET(
 
     // Fall back to file-based
     if (!taskExists(id)) {
-      return NextResponse.json(
-        { error: "Task not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
     if (!hasLogSources(id)) {

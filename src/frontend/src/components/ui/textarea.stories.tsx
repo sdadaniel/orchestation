@@ -30,7 +30,8 @@ export const Disabled: Story = {
 
 export const WithContent: Story = {
   args: {
-    defaultValue: "# Task Description\n\nThis is a multi-line task description with markdown support.",
+    defaultValue:
+      "# Task Description\n\nThis is a multi-line task description with markdown support.",
     rows: 5,
   },
 };

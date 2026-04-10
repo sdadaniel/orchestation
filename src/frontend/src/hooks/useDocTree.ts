@@ -22,7 +22,11 @@ export function useDocTree() {
   const queryClient = useQueryClient();
   const queryKey = queryKeys.docs.tree();
 
-  const { data: tree = [], isLoading, error } = useQuery({
+  const {
+    data: tree = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey,
     queryFn: fetchDocTree,
     staleTime: 30_000,
@@ -30,11 +34,19 @@ export function useDocTree() {
 
   // ── 생성
   const createMutation = useMutation({
-    mutationFn: async (vars: { title: string; type: "doc" | "folder"; parentId?: string | null }) => {
+    mutationFn: async (vars: {
+      title: string;
+      type: "doc" | "folder";
+      parentId?: string | null;
+    }) => {
       const res = await fetch("/api/docs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: vars.title, type: vars.type, parentId: vars.parentId || null }),
+        body: JSON.stringify({
+          title: vars.title,
+          type: vars.type,
+          parentId: vars.parentId || null,
+        }),
       });
       if (!res.ok) throw new Error("Failed to create");
       return res.json();
@@ -46,7 +58,10 @@ export function useDocTree() {
 
   // ── 수정
   const updateMutation = useMutation({
-    mutationFn: async (vars: { id: string; updates: { title?: string; content?: string } }) => {
+    mutationFn: async (vars: {
+      id: string;
+      updates: { title?: string; content?: string };
+    }) => {
       const res = await fetch(`/api/docs/${vars.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -72,7 +87,11 @@ export function useDocTree() {
 
   // ── 재정렬
   const reorderMutation = useMutation({
-    mutationFn: async (vars: { id: string; parentId: string | null; index?: number }) => {
+    mutationFn: async (vars: {
+      id: string;
+      parentId: string | null;
+      index?: number;
+    }) => {
       const res = await fetch("/api/docs/reorder", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -85,14 +104,19 @@ export function useDocTree() {
     },
   });
 
-  const fetchTree = () => queryClient.invalidateQueries({ queryKey: queryKeys.docs.all });
+  const fetchTree = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.docs.all });
 
   return {
     tree,
     isLoading,
     error: error ? getErrorMessage(error) : null,
     fetchTree,
-    createDoc: async (title: string, type: "doc" | "folder", parentId?: string | null) => {
+    createDoc: async (
+      title: string,
+      type: "doc" | "folder",
+      parentId?: string | null,
+    ) => {
       const data = await createMutation.mutateAsync({ title, type, parentId });
       return data.node as DocNode;
     },
@@ -113,7 +137,11 @@ async function fetchDocDetail(id: string): Promise<DocDetail> {
 export function useDocDetail(id: string) {
   const queryClient = useQueryClient();
 
-  const { data: doc = null, isLoading, error } = useQuery({
+  const {
+    data: doc = null,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.docs.detail(id),
     queryFn: () => fetchDocDetail(id),
     staleTime: 30_000,
@@ -124,6 +152,7 @@ export function useDocDetail(id: string) {
     doc,
     isLoading,
     error: error ? getErrorMessage(error) : null,
-    refetch: () => queryClient.invalidateQueries({ queryKey: queryKeys.docs.detail(id) }),
+    refetch: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.docs.detail(id) }),
   };
 }

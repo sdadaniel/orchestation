@@ -24,7 +24,11 @@ export function useNotices() {
   const queryClient = useQueryClient();
   const queryKey = queryKeys.notices.list();
 
-  const { data: notices = [], isLoading, error } = useQuery({
+  const {
+    data: notices = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey,
     queryFn: fetchNotices,
     staleTime: 30_000,
@@ -32,7 +36,11 @@ export function useNotices() {
 
   // ── 생성
   const createMutation = useMutation({
-    mutationFn: async (vars: { title: string; content: string; type: string }) => {
+    mutationFn: async (vars: {
+      title: string;
+      content: string;
+      type: string;
+    }) => {
       const res = await fetch("/api/notices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -48,7 +56,10 @@ export function useNotices() {
 
   // ── 수정 (낙관적 업데이트: 읽음 처리 즉시 반영)
   const updateMutation = useMutation({
-    mutationFn: async (vars: { id: string; updates: Partial<Pick<NoticeItem, "title" | "content" | "type" | "read">> }) => {
+    mutationFn: async (vars: {
+      id: string;
+      updates: Partial<Pick<NoticeItem, "title" | "content" | "type" | "read">>;
+    }) => {
       const res = await fetch(`/api/notices/${vars.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -107,9 +118,12 @@ export function useNotices() {
     unreadCount,
     createNotice: (title: string, content: string, type: string) =>
       createMutation.mutateAsync({ title, content, type }),
-    updateNotice: (id: string, updates: Partial<Pick<NoticeItem, "title" | "content" | "type" | "read">>) =>
-      updateMutation.mutateAsync({ id, updates }),
+    updateNotice: (
+      id: string,
+      updates: Partial<Pick<NoticeItem, "title" | "content" | "type" | "read">>,
+    ) => updateMutation.mutateAsync({ id, updates }),
     deleteNotice: (id: string) => deleteMutation.mutateAsync(id),
-    refetch: () => queryClient.invalidateQueries({ queryKey: queryKeys.notices.all }),
+    refetch: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.notices.all }),
   };
 }

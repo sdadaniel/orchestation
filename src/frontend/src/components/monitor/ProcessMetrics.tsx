@@ -3,7 +3,11 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { MonitorSnapshot } from "@/hooks/useMonitor";
-import type { TooltipValueType, TooltipPayloadEntry, LegendPayload } from "recharts";
+import type {
+  TooltipValueType,
+  TooltipPayloadEntry,
+  LegendPayload,
+} from "recharts";
 import {
   LineChart,
   Line,
@@ -24,13 +28,19 @@ interface ProcessMetricsProps {
 }
 
 const WORKER_COLORS = [
-  "#ff9900", "#1f77b4", "#2ca02c", "#d62728", "#9467bd",
-  "#8c564b", "#e377c2", "#17becf", "#bcbd22", "#ff7f0e",
+  "#ff9900",
+  "#1f77b4",
+  "#2ca02c",
+  "#d62728",
+  "#9467bd",
+  "#8c564b",
+  "#e377c2",
+  "#17becf",
+  "#bcbd22",
+  "#ff7f0e",
 ];
 
-const USER_COLORS = [
-  "#6b7280", "#9ca3af", "#d1d5db", "#4b5563", "#374151",
-];
+const USER_COLORS = ["#6b7280", "#9ca3af", "#d1d5db", "#4b5563", "#374151"];
 
 const tooltipContentStyle = {
   backgroundColor: "#111",
@@ -118,7 +128,7 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
       timeLabel: formatTime(totalPoints - 1 - i),
     };
     const snapProcesses = showAll
-      ? (snap.claudeProcesses || [])
+      ? snap.claudeProcesses || []
       : (snap.claudeProcesses || []).filter((p) => p.isWorker);
     snapProcesses.forEach((p) => {
       entry[`cpu_${p.pid}`] = p.cpu;
@@ -151,8 +161,7 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-foreground">
-            {showAll ? "Claude Processes" : "Orchestrate Workers"}
-            {" "}
+            {showAll ? "Claude Processes" : "Orchestrate Workers"}{" "}
             <span className="font-normal text-muted-foreground">
               ({processes.length} active)
             </span>
@@ -191,13 +200,24 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
         <div className="rounded border border-border bg-card overflow-hidden">
           <div className="px-3 pt-2.5 pb-1">
             <div className="text-xs font-medium text-foreground">
-              CPU per Process <span className="text-muted-foreground font-normal">(Percent)</span>
+              CPU per Process{" "}
+              <span className="text-muted-foreground font-normal">
+                (Percent)
+              </span>
             </div>
           </div>
           <div style={{ height: 180 }} className="px-2 pb-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
+              <BarChart
+                data={barData}
+                margin={{ top: 8, right: 12, bottom: 4, left: 4 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="hsl(var(--border))"
+                  strokeOpacity={0.5}
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="name"
                   tick={axisTickStyle}
@@ -215,7 +235,11 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                   itemStyle={tooltipItemStyle}
                   labelStyle={tooltipLabelStyle}
                   cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                  formatter={(value: TooltipValueType | undefined, _: number | string | undefined, item: TooltipPayloadEntry): [string, string] => [
+                  formatter={(
+                    value: TooltipValueType | undefined,
+                    _: number | string | undefined,
+                    item: TooltipPayloadEntry,
+                  ): [string, string] => [
                     `${value}%`,
                     String(item?.payload?.label ?? ""),
                   ]}
@@ -234,13 +258,22 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
         <div className="rounded border border-border bg-card overflow-hidden">
           <div className="px-3 pt-2.5 pb-1">
             <div className="text-xs font-medium text-foreground">
-              Memory per Process <span className="text-muted-foreground font-normal">(MB)</span>
+              Memory per Process{" "}
+              <span className="text-muted-foreground font-normal">(MB)</span>
             </div>
           </div>
           <div style={{ height: 180 }} className="px-2 pb-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
+              <BarChart
+                data={barData}
+                margin={{ top: 8, right: 12, bottom: 4, left: 4 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="hsl(var(--border))"
+                  strokeOpacity={0.5}
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="name"
                   tick={axisTickStyle}
@@ -258,7 +291,11 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                   itemStyle={tooltipItemStyle}
                   labelStyle={tooltipLabelStyle}
                   cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                  formatter={(value: TooltipValueType | undefined, _: number | string | undefined, item: TooltipPayloadEntry): [string, string] => [
+                  formatter={(
+                    value: TooltipValueType | undefined,
+                    _: number | string | undefined,
+                    item: TooltipPayloadEntry,
+                  ): [string, string] => [
                     `${value} MB`,
                     String(item?.payload?.label ?? ""),
                   ]}
@@ -280,13 +317,23 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
         <div className="rounded border border-border bg-card overflow-hidden">
           <div className="px-3 pt-2.5 pb-1">
             <div className="text-xs font-medium text-foreground">
-              CPU History <span className="text-muted-foreground font-normal">(Percent)</span>
+              CPU History{" "}
+              <span className="text-muted-foreground font-normal">
+                (Percent)
+              </span>
             </div>
           </div>
           <div style={{ height: 180 }} className="px-2 pb-2">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={timeSeriesData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
+              <LineChart
+                data={timeSeriesData}
+                margin={{ top: 8, right: 12, bottom: 4, left: 4 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="hsl(var(--border))"
+                  strokeOpacity={0.5}
+                />
                 <XAxis
                   dataKey="timeLabel"
                   tick={axisTickStyle}
@@ -305,22 +352,36 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                   contentStyle={tooltipContentStyle}
                   itemStyle={tooltipItemStyle}
                   labelStyle={tooltipLabelStyle}
-                  formatter={(value: TooltipValueType | undefined, name: number | string | undefined): [string, string] => {
+                  formatter={(
+                    value: TooltipValueType | undefined,
+                    name: number | string | undefined,
+                  ): [string, string] => {
                     const pid = String(name).replace("cpu_", "");
                     const proc = processes.find((p) => String(p.pid) === pid);
                     const shortLabel = proc?.isWorker
                       ? (proc.taskId ?? `W (PID ${pid})`)
                       : `User (PID ${pid})`;
-                    return [`${typeof value === "number" ? value.toFixed(1) : value}%`, shortLabel];
+                    return [
+                      `${typeof value === "number" ? value.toFixed(1) : value}%`,
+                      shortLabel,
+                    ];
                   }}
-                  labelFormatter={(_, payload) => payload?.[0]?.payload?.timeLabel ?? ""}
+                  labelFormatter={(_, payload) =>
+                    payload?.[0]?.payload?.timeLabel ?? ""
+                  }
                 />
                 <Legend
-                  formatter={(value: string | undefined, _entry: LegendPayload, _index: number): ReactNode => {
+                  formatter={(
+                    value: string | undefined,
+                    _entry: LegendPayload,
+                    _index: number,
+                  ): ReactNode => {
                     const pid = String(value).replace("cpu_", "");
                     const proc = processes.find((p) => String(p.pid) === pid);
                     if (!proc) return value;
-                    return proc.isWorker ? (proc.taskId ?? `W${pid}`) : `U${pid}`;
+                    return proc.isWorker
+                      ? (proc.taskId ?? `W${pid}`)
+                      : `U${pid}`;
                   }}
                   wrapperStyle={{ fontSize: "10px", paddingTop: "2px" }}
                   iconType="plainline"
@@ -347,13 +408,21 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
         <div className="rounded border border-border bg-card overflow-hidden">
           <div className="px-3 pt-2.5 pb-1">
             <div className="text-xs font-medium text-foreground">
-              Memory History <span className="text-muted-foreground font-normal">(MB)</span>
+              Memory History{" "}
+              <span className="text-muted-foreground font-normal">(MB)</span>
             </div>
           </div>
           <div style={{ height: 180 }} className="px-2 pb-2">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={timeSeriesData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
+              <LineChart
+                data={timeSeriesData}
+                margin={{ top: 8, right: 12, bottom: 4, left: 4 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="hsl(var(--border))"
+                  strokeOpacity={0.5}
+                />
                 <XAxis
                   dataKey="timeLabel"
                   tick={axisTickStyle}
@@ -372,22 +441,36 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                   contentStyle={tooltipContentStyle}
                   itemStyle={tooltipItemStyle}
                   labelStyle={tooltipLabelStyle}
-                  formatter={(value: TooltipValueType | undefined, name: number | string | undefined): [string, string] => {
+                  formatter={(
+                    value: TooltipValueType | undefined,
+                    name: number | string | undefined,
+                  ): [string, string] => {
                     const pid = String(name).replace("mem_", "");
                     const proc = processes.find((p) => String(p.pid) === pid);
                     const shortLabel = proc?.isWorker
                       ? (proc.taskId ?? `W (PID ${pid})`)
                       : `User (PID ${pid})`;
-                    return [`${typeof value === "number" ? value.toFixed(0) : value} MB`, shortLabel];
+                    return [
+                      `${typeof value === "number" ? value.toFixed(0) : value} MB`,
+                      shortLabel,
+                    ];
                   }}
-                  labelFormatter={(_, payload) => payload?.[0]?.payload?.timeLabel ?? ""}
+                  labelFormatter={(_, payload) =>
+                    payload?.[0]?.payload?.timeLabel ?? ""
+                  }
                 />
                 <Legend
-                  formatter={(value: string | undefined, _entry: LegendPayload, _index: number): ReactNode => {
+                  formatter={(
+                    value: string | undefined,
+                    _entry: LegendPayload,
+                    _index: number,
+                  ): ReactNode => {
                     const pid = String(value).replace("mem_", "");
                     const proc = processes.find((p) => String(p.pid) === pid);
                     if (!proc) return value;
-                    return proc.isWorker ? (proc.taskId ?? `W${pid}`) : `U${pid}`;
+                    return proc.isWorker
+                      ? (proc.taskId ?? `W${pid}`)
+                      : `U${pid}`;
                   }}
                   wrapperStyle={{ fontSize: "10px", paddingTop: "2px" }}
                   iconType="plainline"
@@ -437,7 +520,10 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                   : `U${++uIdx}`;
                 const color = getColor(isWorker, colorIdx);
                 return (
-                  <tr key={p.pid} className="border-b border-border/50 last:border-0">
+                  <tr
+                    key={p.pid}
+                    className="border-b border-border/50 last:border-0"
+                  >
                     <td className="px-3 py-1.5">
                       <div
                         className="w-2.5 h-2.5 rounded-full"
@@ -456,13 +542,26 @@ export function ProcessMetrics({ current, history }: ProcessMetricsProps) {
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-1.5 text-right font-mono text-muted-foreground">{p.pid}</td>
+                    <td className="px-3 py-1.5 text-right font-mono text-muted-foreground">
+                      {p.pid}
+                    </td>
                     <td className="px-3 py-1.5 text-right font-mono">
-                      <span style={{ color: p.cpu > 50 ? "#d62728" : p.cpu > 20 ? "#ff9900" : "#2ca02c" }}>
+                      <span
+                        style={{
+                          color:
+                            p.cpu > 50
+                              ? "#d62728"
+                              : p.cpu > 20
+                                ? "#ff9900"
+                                : "#2ca02c",
+                        }}
+                      >
                         {p.cpu.toFixed(1)}%
                       </span>
                     </td>
-                    <td className="px-3 py-1.5 text-right font-mono">{p.memMB.toFixed(0)}</td>
+                    <td className="px-3 py-1.5 text-right font-mono">
+                      {p.memMB.toFixed(0)}
+                    </td>
                     <td className="px-3 py-1.5">
                       <span className="inline-flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

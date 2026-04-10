@@ -17,9 +17,11 @@ export function SortIcon({ active, direction }: SortIconProps) {
     <span
       className={cn(
         "inline-block ml-0.5 text-[9px]",
-        active ? "text-foreground" : "text-muted-foreground/40"
+        active ? "text-foreground" : "text-muted-foreground/40",
       )}
-      aria-label={active ? (direction === "asc" ? "오름차순" : "내림차순") : "정렬 없음"}
+      aria-label={
+        active ? (direction === "asc" ? "오름차순" : "내림차순") : "정렬 없음"
+      }
     >
       {active ? (direction === "asc" ? "▲" : "▼") : "⇅"}
     </span>

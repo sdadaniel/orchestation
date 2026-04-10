@@ -32,7 +32,10 @@ export function DependsOnSelector({
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
         setQuery("");
       }
@@ -122,13 +125,16 @@ export function DependsOnSelector({
                 onClick={() => add(t.id)}
                 className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center gap-2"
               >
-                <span className="font-mono text-muted-foreground shrink-0">{t.id}</span>
+                <span className="font-mono text-muted-foreground shrink-0">
+                  {t.id}
+                </span>
                 <span className="truncate">{t.title}</span>
                 <span
                   className={cn(
                     "ml-auto shrink-0 text-[10px] px-1 rounded",
                     t.status === "done" && "bg-green-500/15 text-green-500",
-                    t.status === "in_progress" && "bg-blue-500/15 text-blue-500",
+                    t.status === "in_progress" &&
+                      "bg-blue-500/15 text-blue-500",
                     t.status === "pending" && "bg-muted text-muted-foreground",
                   )}
                 >

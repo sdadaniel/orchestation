@@ -22,7 +22,10 @@ function findTaskFile(taskId: string): string | null {
     if (file.startsWith(taskId)) {
       const resolved = path.resolve(TASKS_DIR, file);
       // Path traversal 방어: resolve된 경로가 TASKS_DIR 내부인지 확인
-      if (!resolved.startsWith(TASKS_DIR + path.sep) && resolved !== TASKS_DIR) {
+      if (
+        !resolved.startsWith(TASKS_DIR + path.sep) &&
+        resolved !== TASKS_DIR
+      ) {
         return null;
       }
       return resolved;
@@ -40,7 +43,10 @@ export async function PUT(
     const body = await request.json();
 
     if (!id || typeof id !== "string" || !isValidTaskId(id)) {
-      return NextResponse.json({ error: "Invalid task ID format" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid task ID format" },
+        { status: 400 },
+      );
     }
 
     const filePath = findTaskFile(id);
@@ -54,7 +60,11 @@ export async function PUT(
     if (body.status !== undefined) {
       if ((VALID_STATUSES as readonly string[]).includes(body.status)) {
         // Dependency validation: in_progress requires all depends_on tasks to be done
-        if (body.status === "in_progress" && Array.isArray(data.depends_on) && data.depends_on.length > 0) {
+        if (
+          body.status === "in_progress" &&
+          Array.isArray(data.depends_on) &&
+          data.depends_on.length > 0
+        ) {
           const unmetDeps: { id: string; status: string }[] = [];
           for (const depId of data.depends_on) {
             if (typeof depId !== "string" || !depId.trim()) continue;
@@ -66,13 +76,20 @@ export async function PUT(
             const depContent = fs.readFileSync(depFile, "utf-8");
             const depData = matter(depContent).data;
             if (depData.status !== "done") {
-              unmetDeps.push({ id: depId, status: depData.status || "unknown" });
+              unmetDeps.push({
+                id: depId,
+                status: depData.status || "unknown",
+              });
             }
           }
           if (unmetDeps.length > 0) {
-            const details = unmetDeps.map((d) => `${d.id} (status: ${d.status})`).join(", ");
+            const details = unmetDeps
+              .map((d) => `${d.id} (status: ${d.status})`)
+              .join(", ");
             return NextResponse.json(
-              { error: `의존성 미충족: 선행 태스크가 완료되지 않았습니다 - ${details}` },
+              {
+                error: `의존성 미충족: 선행 태스크가 완료되지 않았습니다 - ${details}`,
+              },
               { status: 400 },
             );
           }
@@ -114,7 +131,11 @@ export async function PUT(
       data.role = body.role.trim();
     }
 
-    if (body.title !== undefined && typeof body.title === "string" && body.title.trim().length > 0) {
+    if (
+      body.title !== undefined &&
+      typeof body.title === "string" &&
+      body.title.trim().length > 0
+    ) {
       data.title = body.title.trim();
     }
 
@@ -148,7 +169,10 @@ export async function DELETE(
     const { id } = await params;
 
     if (!id || typeof id !== "string" || !isValidTaskId(id)) {
-      return NextResponse.json({ error: "Invalid task ID format" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid task ID format" },
+        { status: 400 },
+      );
     }
 
     const filePath = findTaskFile(id);

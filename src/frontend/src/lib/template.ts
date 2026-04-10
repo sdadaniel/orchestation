@@ -3,7 +3,8 @@ import path from "path";
 import { PROJECT_ROOT } from "./paths";
 
 // 패키지 내부 template/ 우선, 프로젝트 루트 fallback
-const PACKAGE_DIR = process.env.PACKAGE_DIR || path.resolve(__dirname, "..", "..", "..", "..");
+const PACKAGE_DIR =
+  process.env.PACKAGE_DIR || path.resolve(__dirname, "..", "..", "..", "..");
 const _pkgTemplate = path.join(PACKAGE_DIR, "template");
 const _projTemplate = path.join(PROJECT_ROOT, "template");
 const TEMPLATE_DIR = fs.existsSync(_pkgTemplate) ? _pkgTemplate : _projTemplate;

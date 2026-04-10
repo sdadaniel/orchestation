@@ -18,7 +18,11 @@ async function fetchPrds(): Promise<Prd[]> {
 }
 
 export function usePrds() {
-  const { data: prds = [], isLoading, error } = useQuery({
+  const {
+    data: prds = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.prds.list(),
     queryFn: fetchPrds,
     // PRD는 자주 안 바뀜: staleTime 5분

@@ -43,7 +43,11 @@ export async function GET(request: Request) {
         if (!closed) {
           closed = true;
           clearInterval(intervalId);
-          try { controller.close(); } catch { /* already closed */ }
+          try {
+            controller.close();
+          } catch {
+            /* already closed */
+          }
         }
       }, MAX_STREAM_MS);
 
@@ -61,7 +65,7 @@ export async function GET(request: Request) {
               status: state.status,
             };
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
+              encoder.encode(`data: ${JSON.stringify(event)}\n\n`),
             );
             cursor = state.logs.length;
           }
@@ -76,7 +80,7 @@ export async function GET(request: Request) {
               taskResults: state.taskResults,
             };
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
+              encoder.encode(`data: ${JSON.stringify(event)}\n\n`),
             );
             // Close the stream after sending final status
             clearInterval(intervalId);
@@ -86,7 +90,11 @@ export async function GET(request: Request) {
         } catch {
           clearInterval(intervalId);
           closed = true;
-          try { controller.close(); } catch { /* already closed */ }
+          try {
+            controller.close();
+          } catch {
+            /* already closed */
+          }
         }
       };
 

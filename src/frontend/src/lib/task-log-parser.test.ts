@@ -114,7 +114,7 @@ describe("getTaskLogs — token-usage.log", () => {
 
   it("parses a matching token-usage.log line", () => {
     mockExistsSync.mockImplementation((p: string) =>
-      String(p).includes("token-usage.log")
+      String(p).includes("token-usage.log"),
     );
     const logLine =
       "[2026-03-27 10:00:00] TASK-001 | phase=task | turns=3 | duration=5000ms | cost=$0.045";
@@ -132,7 +132,7 @@ describe("getTaskLogs — token-usage.log", () => {
 
   it("ignores lines from different task IDs", () => {
     mockExistsSync.mockImplementation((p: string) =>
-      String(p).includes("token-usage.log")
+      String(p).includes("token-usage.log"),
     );
     const logLine =
       "[2026-03-27 10:00:00] TASK-999 | phase=task | turns=1 | duration=1000ms | cost=$0.001";
@@ -143,7 +143,7 @@ describe("getTaskLogs — token-usage.log", () => {
 
   it("returns entries sorted by timestamp", () => {
     mockExistsSync.mockImplementation((p: string) =>
-      String(p).includes("token-usage.log")
+      String(p).includes("token-usage.log"),
     );
     const lines = [
       "[2026-03-27 12:00:00] TASK-001 | phase=review | turns=2 | duration=2000ms | cost=$0.020",
@@ -163,9 +163,10 @@ describe("getTaskLogs — token-usage.log", () => {
 describe("getTaskLogs — worker log file", () => {
   it("parses worker log with timestamp prefix", () => {
     mockExistsSync.mockImplementation((p: string) =>
-      String(p).includes("TASK-001.log")
+      String(p).includes("TASK-001.log"),
     );
-    const content = "[2026-03-27 09:00:00] Starting task execution\n[2026-03-27 09:01:00] Error: something failed\n";
+    const content =
+      "[2026-03-27 09:00:00] Starting task execution\n[2026-03-27 09:01:00] Error: something failed\n";
     mockReadFileSync.mockReturnValue(content);
 
     const logs = getTaskLogs("TASK-001");
@@ -176,7 +177,7 @@ describe("getTaskLogs — worker log file", () => {
 
   it("handles log lines without timestamp", () => {
     mockExistsSync.mockImplementation((p: string) =>
-      String(p).includes("TASK-001.log")
+      String(p).includes("TASK-001.log"),
     );
     mockReadFileSync.mockReturnValue("plain log line without timestamp\n");
 
@@ -197,7 +198,7 @@ describe("hasLogSources", () => {
 
   it("returns true when token-usage.log contains taskId", () => {
     mockExistsSync.mockImplementation((p: string) =>
-      String(p).includes("token-usage.log")
+      String(p).includes("token-usage.log"),
     );
     mockReadFileSync.mockReturnValue("TASK-001 | some log data");
     expect(hasLogSources("TASK-001")).toBe(true);
@@ -205,14 +206,14 @@ describe("hasLogSources", () => {
 
   it("returns true when task json output file exists", () => {
     mockExistsSync.mockImplementation((p: string) =>
-      String(p).endsWith("TASK-001-task.json")
+      String(p).endsWith("TASK-001-task.json"),
     );
     expect(hasLogSources("TASK-001")).toBe(true);
   });
 
   it("returns false when log exists but does not contain taskId", () => {
     mockExistsSync.mockImplementation((p: string) =>
-      String(p).includes("token-usage.log")
+      String(p).includes("token-usage.log"),
     );
     mockReadFileSync.mockReturnValue("TASK-999 | some other log");
     expect(hasLogSources("TASK-001")).toBe(false);

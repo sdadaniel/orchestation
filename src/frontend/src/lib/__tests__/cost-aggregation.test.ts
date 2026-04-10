@@ -52,7 +52,7 @@ const makeEntry = (
   inputTokens = 100,
   outputTokens = 50,
   cacheCreate = 0,
-  cacheRead = 0
+  cacheRead = 0,
 ): CostEntry => ({
   timestamp: "2026-03-23 12:00:00",
   taskId: "TASK-001",
@@ -73,7 +73,9 @@ describe("aggregateByModel", () => {
   });
 
   it("aggregates single model correctly", () => {
-    const entries = [makeEntry("claude-sonnet-4-20250514", 0.01, 500, 200, 50, 100)];
+    const entries = [
+      makeEntry("claude-sonnet-4-20250514", 0.01, 500, 200, 50, 100),
+    ];
     const result = aggregateByModel(entries);
     expect(result).toHaveLength(1);
     expect(result[0].model).toBe("claude-sonnet-4-20250514");
@@ -100,7 +102,7 @@ describe("aggregateByModel", () => {
   it("separates different models into separate summaries", () => {
     const entries = [
       makeEntry("claude-sonnet-4-20250514", 0.05),
-      makeEntry("claude-opus-4-20250514", 0.10),
+      makeEntry("claude-opus-4-20250514", 0.1),
       makeEntry("claude-haiku-3-20240307", 0.01),
     ];
     const result = aggregateByModel(entries);
@@ -114,7 +116,7 @@ describe("aggregateByModel", () => {
   it("sorts results by totalCostUsd descending", () => {
     const entries = [
       makeEntry("model-cheap", 0.01),
-      makeEntry("model-expensive", 0.10),
+      makeEntry("model-expensive", 0.1),
       makeEntry("model-mid", 0.05),
     ];
     const result = aggregateByModel(entries);
@@ -137,10 +139,7 @@ describe("aggregateByModel", () => {
   });
 
   it("preserves floating-point precision", () => {
-    const entries = [
-      makeEntry("m", 0.1),
-      makeEntry("m", 0.2),
-    ];
+    const entries = [makeEntry("m", 0.1), makeEntry("m", 0.2)];
     const result = aggregateByModel(entries);
     expect(result[0].totalCostUsd).toBeCloseTo(0.3, 6);
   });

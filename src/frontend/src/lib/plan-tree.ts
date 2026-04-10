@@ -1,10 +1,6 @@
 import type { PlanFrontmatter } from "@/lib/plan-parser";
 import type { TaskFrontmatter } from "@/lib/parser";
-import type {
-  PlanTreeData,
-  PlanTaskNode,
-  PlanStatus,
-} from "@/types/plan";
+import type { PlanTreeData, PlanTaskNode, PlanStatus } from "@/types/plan";
 
 const VALID_PLAN_STATUSES: Set<string> = new Set([
   "draft",

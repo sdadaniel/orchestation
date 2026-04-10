@@ -22,7 +22,8 @@ const badgeVariants = cva("inline-flex items-center rounded font-medium", {
 });
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLSpanElement>,
+  extends
+    React.HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof badgeVariants> {}
 
 const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
@@ -50,7 +51,12 @@ function StatusBadge({
   return (
     <Badge
       size={size}
-      className={cn(style.bg, style.text ?? "text-white", "font-semibold", className)}
+      className={cn(
+        style.bg,
+        style.text ?? "text-white",
+        "font-semibold",
+        className,
+      )}
       {...props}
     >
       {style.label}

@@ -25,6 +25,9 @@ export async function PUT(req: NextRequest) {
       apiKey: maskKey(updated.apiKey),
     });
   } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid request body" },
+      { status: 400 },
+    );
   }
 }

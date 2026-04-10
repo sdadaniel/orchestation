@@ -36,6 +36,6 @@ export function parseAllPrds(): PrdData[] {
     PRD_DIR,
     parsePrdFile,
     (f) => f.startsWith("PRD-"),
-    (a, b) => a.id.localeCompare(b.id)
+    (a, b) => a.id.localeCompare(b.id),
   );
 }

@@ -43,7 +43,10 @@ const LOG_LINE_REGEX_WITH_MODEL =
 const LOG_LINE_REGEX_LEGACY =
   /^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+([\w-]+)\s+\|\s+phase=(\w+)\s+\|\s+input=(\d+)\s+cache_create=(\d+)\s+cache_read=(\d+)\s+output=(\d+)\s+\|\s+turns=(\d+)\s+\|\s+duration=(\d+)ms\s+\|\s+cost=\$([\d.]+)/;
 
-const LOG_FILE = path.join(PROJECT_ROOT, ".orchestration/output/token-usage.log");
+const LOG_FILE = path.join(
+  PROJECT_ROOT,
+  ".orchestration/output/token-usage.log",
+);
 
 export function parseCostLogLine(line: string): CostEntry | null {
   const trimmed = line.trim();
@@ -143,7 +146,7 @@ export function aggregateByTask(entries: CostEntry[]): TaskCostSummary[] {
     summary.totalTurns += e.turns;
     summary.totalDurationMs += e.durationMs;
     summary.totalCostUsd = parseFloat(
-      (summary.totalCostUsd + e.costUsd).toFixed(6)
+      (summary.totalCostUsd + e.costUsd).toFixed(6),
     );
     summary.entries += 1;
   }
@@ -151,7 +154,8 @@ export function aggregateByTask(entries: CostEntry[]): TaskCostSummary[] {
   // Set comma-separated model names on each summary
   for (const [taskId, summary] of map) {
     const models = modelsMap.get(taskId)!;
-    summary.models = models.size > 0 ? Array.from(models).join(", ") : "unknown";
+    summary.models =
+      models.size > 0 ? Array.from(models).join(", ") : "unknown";
   }
 
   return Array.from(map.values());

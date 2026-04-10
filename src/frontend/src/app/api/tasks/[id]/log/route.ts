@@ -15,13 +15,22 @@ export async function GET(
   const logPath = path.join(PROJECT_ROOT, "output", "logs", `${taskId}.log`);
 
   if (!fs.existsSync(logPath)) {
-    return new NextResponse("", { status: 200, headers: { "Content-Type": "text/plain" } });
+    return new NextResponse("", {
+      status: 200,
+      headers: { "Content-Type": "text/plain" },
+    });
   }
 
   try {
     const content = fs.readFileSync(logPath, "utf-8");
-    return new NextResponse(content, { status: 200, headers: { "Content-Type": "text/plain" } });
+    return new NextResponse(content, {
+      status: 200,
+      headers: { "Content-Type": "text/plain" },
+    });
   } catch {
-    return new NextResponse("", { status: 200, headers: { "Content-Type": "text/plain" } });
+    return new NextResponse("", {
+      status: 200,
+      headers: { "Content-Type": "text/plain" },
+    });
   }
 }

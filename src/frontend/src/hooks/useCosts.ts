@@ -21,7 +21,11 @@ async function fetchCosts(): Promise<CostData> {
 export function useCosts(): UseCostsResult {
   const queryClient = useQueryClient();
 
-  const { data = null, isLoading, error } = useQuery({
+  const {
+    data = null,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.costs.list(),
     queryFn: fetchCosts,
     // 비용 데이터: staleTime 60s
@@ -32,6 +36,7 @@ export function useCosts(): UseCostsResult {
     data,
     isLoading,
     error: error ? getErrorMessage(error) : null,
-    refetch: () => queryClient.invalidateQueries({ queryKey: queryKeys.costs.all }),
+    refetch: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.costs.all }),
   };
 }

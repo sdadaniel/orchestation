@@ -55,7 +55,10 @@ interface TasksState {
   deleteRequest: (id: string) => Promise<void>;
   reorderRequest: (id: string, direction: "up" | "down") => Promise<void>;
   stopTask: (id: string) => Promise<void>;
-  patchRequest: (id: string, patch: Partial<Pick<RequestItem, "status" | "priority" | "title">>) => void;
+  patchRequest: (
+    id: string,
+    patch: Partial<Pick<RequestItem, "status" | "priority" | "title">>,
+  ) => void;
 }
 
 export const useTasksStore = create<TasksState>()(
@@ -96,13 +99,10 @@ export const useTasksStore = create<TasksState>()(
 
       fetchRequests: async () => {
         try {
-          set(
-            { isRequestsLoading: true },
-            false,
-            "tasks/fetchRequests/start",
-          );
+          set({ isRequestsLoading: true }, false, "tasks/fetchRequests/start");
           const res = await fetch("/api/requests");
-          if (!res.ok) throw new Error("요청 데이터를 불러오는데 실패했습니다.");
+          if (!res.ok)
+            throw new Error("요청 데이터를 불러오는데 실패했습니다.");
           const data: RequestItem[] = await res.json();
           set(
             { requests: data, requestsError: null },
@@ -182,7 +182,8 @@ export const useTasksStore = create<TasksState>()(
             const tmpOrder = target.sort_order;
             return {
               requests: state.requests.map((r) => {
-                if (r.id === target.id) return { ...r, sort_order: other.sort_order };
+                if (r.id === target.id)
+                  return { ...r, sort_order: other.sort_order };
                 if (r.id === other.id) return { ...r, sort_order: tmpOrder };
                 return r;
               }),

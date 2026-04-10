@@ -14,11 +14,7 @@ export interface NewItemInputProps {
 
 /* ── Component ── */
 
-export function NewItemInput({
-  type,
-  onConfirm,
-  onCancel,
-}: NewItemInputProps) {
+export function NewItemInput({ type, onConfirm, onCancel }: NewItemInputProps) {
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 

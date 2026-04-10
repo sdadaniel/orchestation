@@ -11,10 +11,10 @@ export interface ClaudeWorkerOptions {
   systemPrompt?: string;
   model?: string;
   cwd: string;
-  convFile?: string;   // conversation JSONL 저장 경로
-  timeout?: number;     // ms (기본 600000 = 10분)
+  convFile?: string; // conversation JSONL 저장 경로
+  timeout?: number; // ms (기본 600000 = 10분)
   env?: Record<string, string>;
-  onLine?: (line: string) => void;  // 각 stdout 라인 콜백
+  onLine?: (line: string) => void; // 각 stdout 라인 콜백
 }
 
 export interface ClaudeStreamResult {
@@ -39,13 +39,16 @@ export interface ClaudeJsonResult {
  * Claude CLI를 stream-json 모드로 호출한다.
  * job-task.sh에서 사용하던 패턴의 Node.js 구현.
  */
-export function runClaudeStreamJson(opts: ClaudeWorkerOptions): Promise<ClaudeStreamResult> {
+export function runClaudeStreamJson(
+  opts: ClaudeWorkerOptions,
+): Promise<ClaudeStreamResult> {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
     const timeoutMs = opts.timeout ?? 600000;
 
     const args = [
-      "--output-format", "stream-json",
+      "--output-format",
+      "stream-json",
       "--verbose",
       "--dangerously-skip-permissions",
       "--print",
@@ -85,12 +88,25 @@ export function runClaudeStreamJson(opts: ClaudeWorkerOptions): Promise<ClaudeSt
         try {
           const obj = JSON.parse(line);
           if (obj.type === "result") {
-            resultText = typeof obj.result === "string" ? obj.result : JSON.stringify(obj.result);
+            resultText =
+              typeof obj.result === "string"
+                ? obj.result
+                : JSON.stringify(obj.result);
             costUsd = obj.total_cost_usd ?? obj.cost_usd ?? obj.costUsd ?? 0;
-            inputTokens = obj.usage?.input_tokens ?? obj.input_tokens ?? obj.inputTokens ?? 0;
-            outputTokens = obj.usage?.output_tokens ?? obj.output_tokens ?? obj.outputTokens ?? 0;
+            inputTokens =
+              obj.usage?.input_tokens ??
+              obj.input_tokens ??
+              obj.inputTokens ??
+              0;
+            outputTokens =
+              obj.usage?.output_tokens ??
+              obj.output_tokens ??
+              obj.outputTokens ??
+              0;
           }
-        } catch { /* 비-JSON 라인 무시 */ }
+        } catch {
+          /* 비-JSON 라인 무시 */
+        }
       }
     });
 
@@ -102,9 +118,17 @@ export function runClaudeStreamJson(opts: ClaudeWorkerOptions): Promise<ClaudeSt
     // 타임아웃 워치독 — proc.kill 사용 (process group kill 회피)
     const timer = setTimeout(() => {
       opts.onLine?.("[timeout] Claude CLI 타임아웃 → SIGTERM");
-      try { proc.kill("SIGTERM"); } catch { /* ignore */ }
+      try {
+        proc.kill("SIGTERM");
+      } catch {
+        /* ignore */
+      }
       setTimeout(() => {
-        try { proc.kill("SIGKILL"); } catch { /* ignore */ }
+        try {
+          proc.kill("SIGKILL");
+        } catch {
+          /* ignore */
+        }
       }, 5000);
     }, timeoutMs);
 
@@ -117,12 +141,25 @@ export function runClaudeStreamJson(opts: ClaudeWorkerOptions): Promise<ClaudeSt
         try {
           const obj = JSON.parse(stdoutBuf);
           if (obj.type === "result") {
-            resultText = typeof obj.result === "string" ? obj.result : JSON.stringify(obj.result);
+            resultText =
+              typeof obj.result === "string"
+                ? obj.result
+                : JSON.stringify(obj.result);
             costUsd = obj.total_cost_usd ?? obj.cost_usd ?? obj.costUsd ?? 0;
-            inputTokens = obj.usage?.input_tokens ?? obj.input_tokens ?? obj.inputTokens ?? 0;
-            outputTokens = obj.usage?.output_tokens ?? obj.output_tokens ?? obj.outputTokens ?? 0;
+            inputTokens =
+              obj.usage?.input_tokens ??
+              obj.input_tokens ??
+              obj.inputTokens ??
+              0;
+            outputTokens =
+              obj.usage?.output_tokens ??
+              obj.output_tokens ??
+              obj.outputTokens ??
+              0;
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
 
       resolve({
@@ -147,13 +184,16 @@ export function runClaudeStreamJson(opts: ClaudeWorkerOptions): Promise<ClaudeSt
  * Claude CLI를 json 모드로 호출한다.
  * job-review.sh, night-worker.sh에서 사용하던 패턴.
  */
-export function runClaudeJson(opts: ClaudeWorkerOptions): Promise<ClaudeJsonResult> {
+export function runClaudeJson(
+  opts: ClaudeWorkerOptions,
+): Promise<ClaudeJsonResult> {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
     const timeoutMs = opts.timeout ?? 600000;
 
     const args = [
-      "--output-format", "json",
+      "--output-format",
+      "json",
       "--dangerously-skip-permissions",
       "--print",
     ];
@@ -181,9 +221,17 @@ export function runClaudeJson(opts: ClaudeWorkerOptions): Promise<ClaudeJsonResu
 
     const timer = setTimeout(() => {
       opts.onLine?.("[timeout] Claude CLI 타임아웃 → SIGTERM");
-      try { proc.kill("SIGTERM"); } catch { /* ignore */ }
+      try {
+        proc.kill("SIGTERM");
+      } catch {
+        /* ignore */
+      }
       setTimeout(() => {
-        try { proc.kill("SIGKILL"); } catch { /* ignore */ }
+        try {
+          proc.kill("SIGKILL");
+        } catch {
+          /* ignore */
+        }
       }, 5000);
     }, timeoutMs);
 
@@ -197,10 +245,16 @@ export function runClaudeJson(opts: ClaudeWorkerOptions): Promise<ClaudeJsonResu
 
       try {
         const obj = JSON.parse(stdout.trim());
-        resultText = typeof obj.result === "string" ? obj.result : stdout.trim();
+        resultText =
+          typeof obj.result === "string" ? obj.result : stdout.trim();
         costUsd = obj.total_cost_usd ?? obj.cost_usd ?? obj.costUsd ?? 0;
-        inputTokens = obj.usage?.input_tokens ?? obj.input_tokens ?? obj.inputTokens ?? 0;
-        outputTokens = obj.usage?.output_tokens ?? obj.output_tokens ?? obj.outputTokens ?? 0;
+        inputTokens =
+          obj.usage?.input_tokens ?? obj.input_tokens ?? obj.inputTokens ?? 0;
+        outputTokens =
+          obj.usage?.output_tokens ??
+          obj.output_tokens ??
+          obj.outputTokens ??
+          0;
       } catch {
         resultText = stdout.trim();
       }
@@ -210,7 +264,9 @@ export function runClaudeJson(opts: ClaudeWorkerOptions): Promise<ClaudeJsonResu
         try {
           fs.mkdirSync(path.dirname(opts.convFile), { recursive: true });
           fs.writeFileSync(opts.convFile, stdout);
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
 
       resolve({

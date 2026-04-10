@@ -20,7 +20,15 @@ export const STATUS_LABEL: Record<string, string> = {
   rejected: "Rejected",
 };
 
-export const STATUS_ORDER = ["in_progress", "reviewing", "stopped", "pending", "done", "failed", "rejected"];
+export const STATUS_ORDER = [
+  "in_progress",
+  "reviewing",
+  "stopped",
+  "pending",
+  "done",
+  "failed",
+  "rejected",
+];
 
 // ── Priority ─────────────────────────────────────────
 
@@ -35,7 +43,11 @@ export const PRIORITY_COLORS: Record<string, string> = {
 export const TAB_STACK = "current";
 export const TAB_ALL = "all";
 export const TABS = [TAB_STACK, TAB_ALL, ...STATUS_ORDER] as const;
-export const TAB_LABEL: Record<string, string> = { current: "Graph", all: "All", ...STATUS_LABEL };
+export const TAB_LABEL: Record<string, string> = {
+  current: "Graph",
+  all: "All",
+  ...STATUS_LABEL,
+};
 
 // ── DAG Layout ───────────────────────────────────────
 

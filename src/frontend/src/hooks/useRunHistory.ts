@@ -24,7 +24,11 @@ async function fetchRunHistory(): Promise<RunHistoryEntry[]> {
 export function useRunHistory(): UseRunHistoryResult {
   const queryClient = useQueryClient();
 
-  const { data: runs = [], isLoading, error } = useQuery({
+  const {
+    data: runs = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.runHistory.list(),
     queryFn: fetchRunHistory,
     // 실행 이력: staleTime 60s (orchestration 완료 시 invalidate)
@@ -35,6 +39,7 @@ export function useRunHistory(): UseRunHistoryResult {
     runs,
     isLoading,
     error: error ? getErrorMessage(error) : null,
-    refetch: () => queryClient.invalidateQueries({ queryKey: queryKeys.runHistory.all }),
+    refetch: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.runHistory.all }),
   };
 }

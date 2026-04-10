@@ -26,13 +26,18 @@ async function fetchTasks(): Promise<WaterfallGroup[]> {
 export function useTasks(): UseTasksResult {
   const queryClient = useQueryClient();
 
-  const { data: groups = [], isLoading, error } = useQuery({
+  const {
+    data: groups = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.tasks.list(),
     queryFn: fetchTasks,
     staleTime: 5_000,
   });
 
-  const refetch = () => queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+  const refetch = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
 
   return {
     groups,

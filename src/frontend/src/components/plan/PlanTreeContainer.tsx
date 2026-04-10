@@ -2,10 +2,7 @@
 
 import type { PlanTreeData, PlanTaskNode } from "@/types/plan";
 import { cn } from "@/lib/utils";
-import {
-  STATUS_STYLES,
-  PRIORITY_STYLES,
-} from "../../../lib/constants";
+import { STATUS_STYLES, PRIORITY_STYLES } from "../../../lib/constants";
 
 type PlanTreeContainerProps = {
   data: PlanTreeData;
@@ -56,7 +53,10 @@ function PlanTaskBar({
   );
 }
 
-export function PlanTreeContainer({ data, onTaskClick }: PlanTreeContainerProps) {
+export function PlanTreeContainer({
+  data,
+  onTaskClick,
+}: PlanTreeContainerProps) {
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2 pb-2 border-b border-border mb-1">
@@ -69,16 +69,10 @@ export function PlanTreeContainer({ data, onTaskClick }: PlanTreeContainerProps)
       <div className="flex flex-col py-0.5">
         {data.tasks.length > 0 ? (
           data.tasks.map((task) => (
-            <PlanTaskBar
-              key={task.id}
-              task={task}
-              onClick={onTaskClick}
-            />
+            <PlanTaskBar key={task.id} task={task} onClick={onTaskClick} />
           ))
         ) : (
-          <p className="py-1 px-2 text-xs text-muted-foreground">
-            No tasks
-          </p>
+          <p className="py-1 px-2 text-xs text-muted-foreground">No tasks</p>
         )}
       </div>
     </div>

@@ -4,7 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getErrorMessage } from "@/lib/error-utils";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Loader2, Pencil, Check, Plus, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  Pencil,
+  Check,
+  Plus,
+  Sparkles,
+} from "lucide-react";
 import { useSuggestStore } from "@/store/suggestStore";
 import { useTasksStore } from "@/store/tasksStore";
 import type { TaskOption } from "@/components/DependsOnSelector";
@@ -36,18 +43,27 @@ export default function NewTaskPage() {
   const suggestLoading = useSuggestStore((s) => s.isLoading);
   const suggestError = useSuggestStore((s) => s.error);
   const selectedSuggestions = useSuggestStore((s) => s.selectedIndices);
-  const { fetchSuggestions: handleSuggest, toggleSelection: toggleSuggestion, selectAll, deselectAll } = useSuggestStore();
+  const {
+    fetchSuggestions: handleSuggest,
+    toggleSelection: toggleSuggestion,
+    selectAll,
+    deselectAll,
+  } = useSuggestStore();
 
   useEffect(() => {
     fetch("/api/tasks")
       .then((r) => r.json())
-      .then((data: TaskOption[]) => { if (Array.isArray(data)) setExistingTasks(data); })
+      .then((data: TaskOption[]) => {
+        if (Array.isArray(data)) setExistingTasks(data);
+      })
       .catch(() => {
         // silently ignore fetch errors
       });
     fetch("/api/roles")
       .then((r) => r.json())
-      .then((data: string[]) => { if (Array.isArray(data)) setAvailableRoles(data); })
+      .then((data: string[]) => {
+        if (Array.isArray(data)) setAvailableRoles(data);
+      })
       .catch(() => {});
   }, []);
 
@@ -57,15 +73,24 @@ export default function NewTaskPage() {
       for (const idx of selectedSuggestions) {
         const s = suggestions[idx];
         const content = [
-          s.description, "",
+          s.description,
+          "",
           `**카테고리:** ${s.category}`,
           `**예상 작업량:** ${EFFORT_LABEL[s.effort] || s.effort}`,
-          "", "## Completion Criteria", "- 위 설명의 개선 사항이 반영되었다",
+          "",
+          "## Completion Criteria",
+          "- 위 설명의 개선 사항이 반영되었다",
         ].join("\n");
         await fetch("/api/requests", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: s.title, content, priority: s.priority, scope: s.scope, depends_on: [] }),
+          body: JSON.stringify({
+            title: s.title,
+            content,
+            priority: s.priority,
+            scope: s.scope,
+            depends_on: [],
+          }),
         });
       }
       useSuggestStore.getState().clear();
@@ -86,7 +111,10 @@ export default function NewTaskPage() {
       const res = await fetch("/api/tasks/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), description: description.trim() }),
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+        }),
       });
       if (!res.ok) {
         let errMsg = `Analysis failed (HTTP ${res.status})`;
@@ -97,14 +125,18 @@ export default function NewTaskPage() {
           // non-JSON error response
         }
         if (res.status === 500) {
-          errMsg += "\n\nClaude CLI가 설치되어 있고 인증되었는지 확인하세요. (터미널에서 'claude --version' 실행)";
+          errMsg +=
+            "\n\nClaude CLI가 설치되어 있고 인증되었는지 확인하세요. (터미널에서 'claude --version' 실행)";
         }
         throw new Error(errMsg);
       }
       const data = await res.json();
       const analyzedTasks: AnalyzedTask[] = data.tasks;
       if (inputExternalDeps.length > 0 && analyzedTasks.length > 0) {
-        analyzedTasks[0] = { ...analyzedTasks[0], external_depends_on: inputExternalDeps };
+        analyzedTasks[0] = {
+          ...analyzedTasks[0],
+          external_depends_on: inputExternalDeps,
+        };
       }
       setTasks(analyzedTasks);
       setStep("preview");
@@ -121,15 +153,31 @@ export default function NewTaskPage() {
       const createdIds: string[] = [];
       for (let i = 0; i < tasks.length; i++) {
         const task = tasks[i];
-        const content = [task.description, "", "## Completion Criteria", ...task.criteria.map((c) => `- ${c}`)].join("\n");
+        const content = [
+          task.description,
+          "",
+          "## Completion Criteria",
+          ...task.criteria.map((c) => `- ${c}`),
+        ].join("\n");
         const resolvedBatchDeps = (task.depends_on ?? [])
           .filter((idx) => idx >= 0 && idx < createdIds.length)
           .map((idx) => createdIds[idx]);
-        const dependsOn = [...resolvedBatchDeps, ...(task.external_depends_on ?? [])];
+        const dependsOn = [
+          ...resolvedBatchDeps,
+          ...(task.external_depends_on ?? []),
+        ];
         const res = await fetch("/api/requests", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: task.title, content, priority: task.priority, scope: task.scope ?? [], context: task.context ?? [], depends_on: dependsOn, role: task.role ?? "general" }),
+          body: JSON.stringify({
+            title: task.title,
+            content,
+            priority: task.priority,
+            scope: task.scope ?? [],
+            context: task.context ?? [],
+            depends_on: dependsOn,
+            role: task.role ?? "general",
+          }),
         });
         if (!res.ok) throw new Error("Failed to create task");
         const created = await res.json();
@@ -145,17 +193,23 @@ export default function NewTaskPage() {
   };
 
   const updateTask = (idx: number, updates: Partial<AnalyzedTask>) => {
-    setTasks((prev) => prev.map((t, i) => (i === idx ? { ...t, ...updates } : t)));
+    setTasks((prev) =>
+      prev.map((t, i) => (i === idx ? { ...t, ...updates } : t)),
+    );
   };
   const removeTask = (idx: number) => {
     setTasks((prev) => prev.filter((_, i) => i !== idx));
   };
   const addTask = () => {
-    setTasks((prev) => [...prev, { title: "", description: "", priority: "medium", criteria: [""] }]);
+    setTasks((prev) => [
+      ...prev,
+      { title: "", description: "", priority: "medium", criteria: [""] },
+    ]);
     setEditingIdx(tasks.length);
   };
 
-  const canConfirm = !confirming && tasks.length > 0 && tasks.every((t) => t.title.trim());
+  const canConfirm =
+    !confirming && tasks.length > 0 && tasks.every((t) => t.title.trim());
 
   return (
     <div className="space-y-4 max-w-3xl mx-auto pb-[500px]">
@@ -163,24 +217,48 @@ export default function NewTaskPage() {
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => { step === "preview" ? setStep("input") : router.push("/tasks"); }}
+          onClick={() => {
+            step === "preview" ? setStep("input") : router.push("/tasks");
+          }}
           className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <h1 className="text-lg font-semibold">
-          {pageTab === "suggest" ? "태스크 추천" : step === "input" ? "New Task" : "AI Analysis Result"}
+          {pageTab === "suggest"
+            ? "태스크 추천"
+            : step === "input"
+              ? "New Task"
+              : "AI Analysis Result"}
         </h1>
       </div>
 
       {/* Page Tabs */}
       {step === "input" && (
         <div className="flex items-center gap-1 border-b border-border">
-          <button type="button" onClick={() => setPageTab("write")} className={cn("flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors", pageTab === "write" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
+          <button
+            type="button"
+            onClick={() => setPageTab("write")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors",
+              pageTab === "write"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
             <Pencil className="h-3 w-3" />
             직접 작성
           </button>
-          <button type="button" onClick={() => setPageTab("suggest")} className={cn("flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors", pageTab === "suggest" ? "border-yellow-400 text-yellow-400" : "border-transparent text-muted-foreground hover:text-foreground")}>
+          <button
+            type="button"
+            onClick={() => setPageTab("suggest")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors",
+              pageTab === "suggest"
+                ? "border-yellow-400 text-yellow-400"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
             <Sparkles className="h-3 w-3" />
             추천받기
           </button>
@@ -189,30 +267,47 @@ export default function NewTaskPage() {
 
       {pageTab === "suggest" && step === "input" && (
         <SuggestionsTab
-          suggestions={suggestions} suggestLoading={suggestLoading} suggestError={suggestError}
-          selectedSuggestions={selectedSuggestions} creatingSuggestions={creatingSuggestions}
-          onSuggest={handleSuggest} onToggle={toggleSuggestion}
-          onSelectAll={selectAll} onDeselectAll={deselectAll}
+          suggestions={suggestions}
+          suggestLoading={suggestLoading}
+          suggestError={suggestError}
+          selectedSuggestions={selectedSuggestions}
+          creatingSuggestions={creatingSuggestions}
+          onSuggest={handleSuggest}
+          onToggle={toggleSuggestion}
+          onSelectAll={selectAll}
+          onDeselectAll={deselectAll}
           onCreateFromSuggestions={createFromSuggestions}
         />
       )}
 
       {step === "input" && pageTab === "write" && (
         <InputForm
-          title={title} description={description} analyzing={analyzing}
-          analyzeError={analyzeError} inputExternalDeps={inputExternalDeps}
-          existingTasks={existingTasks} onTitleChange={setTitle}
-          onDescriptionChange={setDescription} onExternalDepsChange={setInputExternalDeps}
-          onAnalyze={handleAnalyze} onCancel={() => router.push("/tasks")}
+          title={title}
+          description={description}
+          analyzing={analyzing}
+          analyzeError={analyzeError}
+          inputExternalDeps={inputExternalDeps}
+          existingTasks={existingTasks}
+          onTitleChange={setTitle}
+          onDescriptionChange={setDescription}
+          onExternalDepsChange={setInputExternalDeps}
+          onAnalyze={handleAnalyze}
+          onCancel={() => router.push("/tasks")}
         />
       )}
 
       {step === "preview" && (
         <div className="space-y-3">
           <div className="rounded-lg border border-border bg-muted/30 p-3">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">원본 입력</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+              원본 입력
+            </div>
             <div className="text-sm font-medium">{title}</div>
-            {description && <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{description}</div>}
+            {description && (
+              <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
+                {description}
+              </div>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             AI가 {tasks.length}개 Task로 분해했습니다. 수정 후 컨펌하세요.
@@ -220,28 +315,64 @@ export default function NewTaskPage() {
           </p>
           {tasks.map((task, idx) => (
             <TaskPreviewCard
-              key={idx} task={task} index={idx} isEditing={editingIdx === idx}
+              key={idx}
+              task={task}
+              index={idx}
+              isEditing={editingIdx === idx}
               onEdit={() => setEditingIdx(editingIdx === idx ? null : idx)}
               onUpdate={(updates) => updateTask(idx, updates)}
               onRemove={() => removeTask(idx)}
-              totalTasks={tasks.length} existingTasks={existingTasks} availableRoles={availableRoles}
+              totalTasks={tasks.length}
+              existingTasks={existingTasks}
+              availableRoles={availableRoles}
             />
           ))}
-          <button type="button" onClick={addTask} className="w-full rounded-lg border border-dashed border-border bg-card/50 p-3 text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors flex items-center justify-center gap-1.5">
+          <button
+            type="button"
+            onClick={addTask}
+            className="w-full rounded-lg border border-dashed border-border bg-card/50 p-3 text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors flex items-center justify-center gap-1.5"
+          >
             <Plus className="h-3 w-3" /> Add Task
           </button>
-          {analyzeError && <div className="text-sm text-red-500 bg-red-500/10 rounded px-3 py-2">{analyzeError}</div>}
+          {analyzeError && (
+            <div className="text-sm text-red-500 bg-red-500/10 rounded px-3 py-2">
+              {analyzeError}
+            </div>
+          )}
           <div className="flex items-center justify-end gap-2 pt-2">
-            <button type="button" onClick={() => router.push("/tasks")} className="filter-pill text-xs">Cancel</button>
-            <button type="button" onClick={() => setStep("input")} className="filter-pill text-xs">Back</button>
             <button
-              type="button" onClick={handleConfirm}
-              disabled={!canConfirm}
-              className={cn("filter-pill text-xs flex items-center gap-1.5", canConfirm ? "active" : "opacity-50 cursor-not-allowed")}
+              type="button"
+              onClick={() => router.push("/tasks")}
+              className="filter-pill text-xs"
             >
-              {confirming
-                ? <><Loader2 className="h-3 w-3 animate-spin" /> Creating...</>
-                : <><Check className="h-3 w-3" /> Confirm ({tasks.length} task{tasks.length !== 1 ? "s" : ""})</>}
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep("input")}
+              className="filter-pill text-xs"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={!canConfirm}
+              className={cn(
+                "filter-pill text-xs flex items-center gap-1.5",
+                canConfirm ? "active" : "opacity-50 cursor-not-allowed",
+              )}
+            >
+              {confirming ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" /> Creating...
+                </>
+              ) : (
+                <>
+                  <Check className="h-3 w-3" /> Confirm ({tasks.length} task
+                  {tasks.length !== 1 ? "s" : ""})
+                </>
+              )}
             </button>
           </div>
         </div>

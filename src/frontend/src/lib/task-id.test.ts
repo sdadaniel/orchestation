@@ -64,9 +64,7 @@ describe("task-id", () => {
     });
 
     it("should handle large task numbers", () => {
-      vi.mocked(fs.readdirSync).mockReturnValue([
-        "TASK-999.md",
-      ] as any);
+      vi.mocked(fs.readdirSync).mockReturnValue(["TASK-999.md"] as any);
 
       const result = generateNextTaskId("/tmp/tasks");
       expect(result).toBe("TASK-1000");

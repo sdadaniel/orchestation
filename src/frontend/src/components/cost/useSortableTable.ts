@@ -24,17 +24,14 @@ export function useSortableTable<T, K extends string>(
     direction: defaultDirection,
   });
 
-  const toggleSort = useCallback(
-    (column: K) => {
-      setSort((prev) => {
-        if (prev.column === column) {
-          return { column, direction: prev.direction === "asc" ? "desc" : "asc" };
-        }
-        return { column, direction: "desc" };
-      });
-    },
-    [],
-  );
+  const toggleSort = useCallback((column: K) => {
+    setSort((prev) => {
+      if (prev.column === column) {
+        return { column, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { column, direction: "desc" };
+    });
+  }, []);
 
   const sorted = useMemo(() => {
     const comparator = comparators[sort.column];

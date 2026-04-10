@@ -101,7 +101,9 @@ export function InputForm({
           disabled={!title.trim() || analyzing}
           className={cn(
             "filter-pill text-xs flex items-center gap-1.5",
-            title.trim() && !analyzing ? "active" : "opacity-50 cursor-not-allowed",
+            title.trim() && !analyzing
+              ? "active"
+              : "opacity-50 cursor-not-allowed",
           )}
         >
           {analyzing ? (

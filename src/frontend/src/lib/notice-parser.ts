@@ -24,7 +24,9 @@ function isValidNoticeType(value: string): value is NoticeType {
 
 const ORCH_NOTICES_DIR = path.join(PROJECT_ROOT, ".orchestration", "notices");
 const LEGACY_NOTICES_DIR = path.join(PROJECT_ROOT, "docs", "notice");
-const NOTICES_DIR = fs.existsSync(ORCH_NOTICES_DIR) ? ORCH_NOTICES_DIR : LEGACY_NOTICES_DIR;
+const NOTICES_DIR = fs.existsSync(ORCH_NOTICES_DIR)
+  ? ORCH_NOTICES_DIR
+  : LEGACY_NOTICES_DIR;
 
 export function parseNoticeFile(filePath: string): NoticeData | null {
   try {
@@ -52,7 +54,7 @@ export function parseAllNotices(): NoticeData[] {
     NOTICES_DIR,
     parseNoticeFile,
     (f) => f.startsWith("NOTICE-"),
-    (a, b) => b.id.localeCompare(a.id)
+    (a, b) => b.id.localeCompare(a.id),
   );
 }
 

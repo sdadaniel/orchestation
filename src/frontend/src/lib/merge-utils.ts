@@ -50,7 +50,9 @@ export async function runMergeTask(
         { encoding: "utf-8" },
       ).trim();
       hasCommits = !!commits;
-    } catch { /* 브랜치가 없거나 커밋 없음 */ }
+    } catch {
+      /* 브랜치가 없거나 커밋 없음 */
+    }
 
     if (hasCommits) {
       log(`🔀 ${branch} → ${baseBranch} 머지`);
@@ -58,46 +60,88 @@ export async function runMergeTask(
       // stash 보호
       let stashed = false;
       try {
-        const dirty = execSync(`git -C "${PROJECT_ROOT}" status --porcelain`, { encoding: "utf-8" }).trim();
+        const dirty = execSync(`git -C "${PROJECT_ROOT}" status --porcelain`, {
+          encoding: "utf-8",
+        }).trim();
         if (dirty) {
-          execSync(`git -C "${PROJECT_ROOT}" stash push -m "merge-${taskId}" --include-untracked`, { stdio: "ignore" });
+          execSync(
+            `git -C "${PROJECT_ROOT}" stash push -m "merge-${taskId}" --include-untracked`,
+            { stdio: "ignore" },
+          );
           stashed = true;
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
 
       // 머지 시도
       let mergeFailed = false;
       try {
-        execSync(`git -C "${PROJECT_ROOT}" merge "${branch}" --no-ff --no-edit`, { stdio: "ignore" });
+        execSync(
+          `git -C "${PROJECT_ROOT}" merge "${branch}" --no-ff --no-edit`,
+          { stdio: "ignore" },
+        );
         log("✅ 머지 성공");
       } catch {
         log("⚠️ 머지 충돌 → 자동 해결 시도");
-        const resolved = await resolveMergeConflict(taskId, branch, baseBranch, log);
+        const resolved = await resolveMergeConflict(
+          taskId,
+          branch,
+          baseBranch,
+          log,
+        );
         if (!resolved) {
           mergeFailed = true;
-          try { execSync(`git -C "${PROJECT_ROOT}" merge --abort`, { stdio: "ignore" }); } catch { /* ignore */ }
+          try {
+            execSync(`git -C "${PROJECT_ROOT}" merge --abort`, {
+              stdio: "ignore",
+            });
+          } catch {
+            /* ignore */
+          }
         }
       }
 
       // stash 복원
       if (stashed) {
-        try { execSync(`git -C "${PROJECT_ROOT}" stash pop`, { stdio: "ignore" }); } catch { /* ignore */ }
+        try {
+          execSync(`git -C "${PROJECT_ROOT}" stash pop`, { stdio: "ignore" });
+        } catch {
+          /* ignore */
+        }
       }
 
       if (mergeFailed) {
         log("❌ 머지 실패");
-        postNotice("error", `${taskId} 머지 실패`, `충돌 자동 해결에 실패했습니다.`);
+        postNotice(
+          "error",
+          `${taskId} 머지 실패`,
+          `충돌 자동 해결에 실패했습니다.`,
+        );
         return false;
       }
     }
 
     // 브랜치 삭제
-    try { execSync(`git -C "${PROJECT_ROOT}" branch -d "${branch}"`, { stdio: "ignore" }); } catch { /* ignore */ }
+    try {
+      execSync(`git -C "${PROJECT_ROOT}" branch -d "${branch}"`, {
+        stdio: "ignore",
+      });
+    } catch {
+      /* ignore */
+    }
 
     // worktree 삭제
     const worktreePath = worktree ? path.resolve(PROJECT_ROOT, worktree) : null;
     if (worktreePath && fs.existsSync(worktreePath)) {
-      try { execSync(`git -C "${PROJECT_ROOT}" worktree remove "${worktreePath}" --force`, { stdio: "ignore" }); } catch { /* ignore */ }
+      try {
+        execSync(
+          `git -C "${PROJECT_ROOT}" worktree remove "${worktreePath}" --force`,
+          { stdio: "ignore" },
+        );
+      } catch {
+        /* ignore */
+      }
     }
 
     // 상태 업데이트
@@ -140,7 +184,9 @@ async function resolveMergeConflict(
       try {
         const content = fs.readFileSync(path.join(PROJECT_ROOT, file), "utf-8");
         conflictDetails.push(`### ${file}\n\`\`\`\n${content}\n\`\`\``);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     // Claude로 충돌 해결
@@ -168,24 +214,42 @@ ${conflictDetails.join("\n\n")}
           hasRemainingConflicts = true;
           break;
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     if (hasRemainingConflicts) {
       log("❌ 충돌 마커가 남아있음");
-      postNotice("error", `${taskId} 충돌 해결 실패`, "자동 충돌 해결에 실패했습니다. 수동 해결이 필요합니다.");
+      postNotice(
+        "error",
+        `${taskId} 충돌 해결 실패`,
+        "자동 충돌 해결에 실패했습니다. 수동 해결이 필요합니다.",
+      );
       return false;
     }
 
     // 충돌 해결된 파일들을 stage
-    execSync(`git -C "${PROJECT_ROOT}" add ${conflictFiles.split("\n").map(f => `"${f}"`).join(" ")}`, { stdio: "ignore" });
+    execSync(
+      `git -C "${PROJECT_ROOT}" add ${conflictFiles
+        .split("\n")
+        .map((f) => `"${f}"`)
+        .join(" ")}`,
+      { stdio: "ignore" },
+    );
     execSync(`git -C "${PROJECT_ROOT}" commit --no-edit`, { stdio: "ignore" });
 
     log("✅ 충돌 자동 해결 완료");
-    postNotice("warning", `${taskId} 충돌 자동 해결`, "머지 충돌이 자동으로 해결되었습니다. 검토해주세요.");
+    postNotice(
+      "warning",
+      `${taskId} 충돌 자동 해결`,
+      "머지 충돌이 자동으로 해결되었습니다. 검토해주세요.",
+    );
     return true;
   } catch (err) {
-    log(`❌ 충돌 해결 실패: ${err instanceof Error ? err.message : String(err)}`);
+    log(
+      `❌ 충돌 해결 실패: ${err instanceof Error ? err.message : String(err)}`,
+    );
     return false;
   }
 }
@@ -202,7 +266,9 @@ function findTaskFile(taskId: string): string | null {
   for (const dir of dirs) {
     if (!fs.existsSync(dir)) continue;
     const files = fs.readdirSync(dir);
-    const match = files.find(f => f.startsWith(`${taskId}-`) && f.endsWith(".md"));
+    const match = files.find(
+      (f) => f.startsWith(`${taskId}-`) && f.endsWith(".md"),
+    );
     if (match) return path.join(dir, match);
   }
   return null;
@@ -213,13 +279,23 @@ function updateStatusToDone(taskFile: string, taskId: string): void {
     const raw = fs.readFileSync(taskFile, "utf-8");
     const updated = raw
       .replace(/^status: .*/m, "status: done")
-      .replace(/^updated: .*/m, `updated: ${new Date().toISOString().slice(0, 16).replace("T", " ")}`);
+      .replace(
+        /^updated: .*/m,
+        `updated: ${new Date().toISOString().slice(0, 16).replace("T", " ")}`,
+      );
     fs.writeFileSync(taskFile, updated);
     syncTaskContentToDb(taskFile, updated);
 
-    execSync(`git -C "${PROJECT_ROOT}" add -f "${taskFile}"`, { stdio: "ignore" });
-    execSync(`git -C "${PROJECT_ROOT}" commit -m "chore(${taskId}): status → done"`, { stdio: "ignore" });
-  } catch { /* ignore */ }
+    execSync(`git -C "${PROJECT_ROOT}" add -f "${taskFile}"`, {
+      stdio: "ignore",
+    });
+    execSync(
+      `git -C "${PROJECT_ROOT}" commit -m "chore(${taskId}): status → done"`,
+      { stdio: "ignore" },
+    );
+  } catch {
+    /* ignore */
+  }
 }
 
 function postNotice(type: string, title: string, content: string): void {
@@ -230,10 +306,17 @@ function postNotice(type: string, title: string, content: string): void {
       port: 3000,
       path: "/api/notices",
       method: "POST",
-      headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data) },
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(data),
+      },
     });
     req.write(data);
     req.end();
-    req.on("error", () => { /* ignore */ });
-  } catch { /* fallback to file */ }
+    req.on("error", () => {
+      /* ignore */
+    });
+  } catch {
+    /* fallback to file */
+  }
 }

@@ -29,7 +29,7 @@ function buildChartData(entries: CostEntry[]): ChartDataPoint[] {
 
   // Sort entries by timestamp ascending
   const sorted = [...entries].sort((a, b) =>
-    a.timestamp.localeCompare(b.timestamp)
+    a.timestamp.localeCompare(b.timestamp),
   );
 
   let cumulative = 0;
@@ -98,13 +98,18 @@ export function CumulativeCostChart({ entries }: CumulativeCostChartProps) {
                 borderRadius: "6px",
                 fontSize: "11px",
               }}
-              formatter={(value: TooltipValueType | undefined, name: string | number | undefined) => [
+              formatter={(
+                value: TooltipValueType | undefined,
+                name: string | number | undefined,
+              ) => [
                 `$${Number(value ?? 0).toFixed(4)}`,
                 name === "cumulative" ? "누적 비용" : "개별 비용",
               ]}
               labelFormatter={(_, payload) => {
                 if (payload && payload.length > 0) {
-                  const point = payload[0]?.payload as ChartDataPoint | undefined;
+                  const point = payload[0]?.payload as
+                    | ChartDataPoint
+                    | undefined;
                   return point?.timestamp ?? "";
                 }
                 return "";
