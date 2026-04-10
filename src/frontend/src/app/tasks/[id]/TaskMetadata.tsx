@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Loader2, Play, Square, Trash2 } from "lucide-react";
 import { HorseRunningIndicator } from "@/components/HorseRunningIndicator";
 import { BranchBadge } from "@/components/task-detail/BranchBadge";
+import { Select } from "@/components/ui/select";
 import { TaskDetail, STATUS_DOT, STATUS_LABEL, PRIORITY_COLORS } from "./types";
 
 interface TaskMetadataProps {
@@ -35,15 +36,16 @@ export function TaskMetadata({
           ) : (
             <span className={cn("w-2 h-2 rounded-full", STATUS_DOT[task.status])} />
           )}
-          <select
+          <Select
             value={task.status}
             onChange={(e) => onStatusChange(e.target.value)}
-            className="text-xs font-medium bg-transparent border-none outline-none cursor-pointer hover:text-primary transition-colors"
+            size="inline"
+            className="text-xs font-medium"
           >
             {["pending", "stopped", "in_progress", "reviewing", "done", "failed", "rejected"].map((s) => (
               <option key={s} value={s}>{STATUS_LABEL[s] || s}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium", PRIORITY_COLORS[task.priority])}>
           {task.priority}
