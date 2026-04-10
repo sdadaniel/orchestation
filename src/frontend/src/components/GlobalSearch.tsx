@@ -222,64 +222,58 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
           <div className="search-dropdown" ref={listRef}>
             {(() => {
               const sliced = results.slice(0, 20);
-              const taskItems = sliced.filter((i) => i.type === "task");
-              const docItems = sliced.filter((i) => i.type === "doc");
+              // Pre-compute indices to avoid O(n) indexOf calls
+              const itemsWithIndex = sliced.map((item, idx) => ({ item, idx }));
+              const taskItems = itemsWithIndex.filter((i) => i.item.type === "task");
+              const docItems = itemsWithIndex.filter((i) => i.item.type === "doc");
               const hasBoth = taskItems.length > 0 && docItems.length > 0;
-              let globalIdx = 0;
+
+              // Reusable group renderer
+              const renderGroup = (
+                items: typeof taskItems,
+                groupLabel: string | null,
+                icon: React.ReactNode,
+                renderExtra?: (item: SearchResultItem) => React.ReactNode,
+              ) => (
+                <>
+                  {groupLabel && <div className="search-group-label">{groupLabel}</div>}
+                  {items.map(({ item, idx }) => (
+                    <button
+                      key={`${item.type}-${item.id}`}
+                      className={cn("search-item", idx === activeIndex && "search-item-active")}
+                      onMouseEnter={() => setActiveIndex(idx)}
+                      onClick={() => navigate(item)}
+                    >
+                      <span className="search-item-icon">{icon}</span>
+                      <span className="search-item-id font-mono">{item.displayId}</span>
+                      <span className="search-item-title">{item.title}</span>
+                      {renderExtra?.(item)}
+                    </button>
+                  ))}
+                </>
+              );
 
               return (
                 <>
-                  {taskItems.length > 0 && (
-                    <>
-                      {hasBoth && <div className="search-group-label">Tasks</div>}
-                      {taskItems.map((item) => {
-                        const idx = sliced.indexOf(item);
-                        globalIdx++;
-                        return (
-                          <button
-                            key={`task-${item.id}`}
-                            className={cn("search-item", idx === activeIndex && "search-item-active")}
-                            onMouseEnter={() => setActiveIndex(idx)}
-                            onClick={() => navigate(item)}
-                          >
-                            <span className="search-item-icon">
-                              <ListTodoIcon className="h-3.5 w-3.5" />
-                            </span>
-                            <span className="search-item-id font-mono">{item.displayId}</span>
-                            <span className="search-item-title">{item.title}</span>
-                            {item.status && (
-                              <span className={cn("search-item-status", statusColors[item.status])}>
-                                {statusLabel[item.status] || item.status}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </>
-                  )}
-                  {docItems.length > 0 && (
-                    <>
-                      {hasBoth && <div className="search-group-label">Docs</div>}
-                      {docItems.map((item) => {
-                        const idx = sliced.indexOf(item);
-                        return (
-                          <button
-                            key={`doc-${item.id}`}
-                            className={cn("search-item", idx === activeIndex && "search-item-active")}
-                            onMouseEnter={() => setActiveIndex(idx)}
-                            onClick={() => navigate(item)}
-                          >
-                            <span className="search-item-icon">
-                              <FileTextIcon className="h-3.5 w-3.5" />
-                            </span>
-                            <span className="search-item-id font-mono">{item.displayId}</span>
-                            <span className="search-item-title">{item.title}</span>
-                            <span className="search-item-type">Doc</span>
-                          </button>
-                        );
-                      })}
-                    </>
-                  )}
+                  {taskItems.length > 0 &&
+                    renderGroup(
+                      taskItems,
+                      hasBoth ? "Tasks" : null,
+                      <ListTodoIcon className="h-3.5 w-3.5" />,
+                      (item) =>
+                        item.status && (
+                          <span className={cn("search-item-status", statusColors[item.status])}>
+                            {statusLabel[item.status] || item.status}
+                          </span>
+                        ),
+                    )}
+                  {docItems.length > 0 &&
+                    renderGroup(
+                      docItems,
+                      hasBoth ? "Docs" : null,
+                      <FileTextIcon className="h-3.5 w-3.5" />,
+                      () => <span className="search-item-type">Doc</span>,
+                    )}
                 </>
               );
             })()}
