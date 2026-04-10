@@ -9,7 +9,12 @@ vi.mock("fs", () => {
   return { default: mod, ...mod };
 });
 
+vi.mock("../service/task-store", () => ({
+  getTask: vi.fn().mockReturnValue(null),
+}));
+
 import * as fs from "fs";
+import * as taskStore from "../service/task-store";
 import {
   isValidTaskId,
   taskExists,
@@ -20,12 +25,14 @@ import {
 const mockExistsSync = fs.existsSync as ReturnType<typeof vi.fn>;
 const mockReadFileSync = fs.readFileSync as ReturnType<typeof vi.fn>;
 const mockReaddirSync = fs.readdirSync as ReturnType<typeof vi.fn>;
+const mockGetTask = taskStore.getTask as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockExistsSync.mockReturnValue(false);
   mockReadFileSync.mockReturnValue("");
   mockReaddirSync.mockReturnValue([]);
+  mockGetTask.mockReturnValue(null);
 });
 
 // ──────────────────────────────────────────────────────────────
@@ -79,26 +86,23 @@ describe("isValidTaskId", () => {
 // taskExists
 // ──────────────────────────────────────────────────────────────
 describe("taskExists", () => {
-  it("returns false when tasks directory does not exist", () => {
-    mockExistsSync.mockReturnValue(false);
+  it("returns false when task is not in DB", () => {
+    mockGetTask.mockReturnValue(null);
     expect(taskExists("TASK-001")).toBe(false);
   });
 
-  it("returns true when task file exists", () => {
-    mockExistsSync.mockReturnValue(true);
-    mockReaddirSync.mockReturnValue(["TASK-001.md", "TASK-002.md"]);
+  it("returns true when task exists in DB", () => {
+    mockGetTask.mockReturnValue({ id: "TASK-001", title: "Test task" });
     expect(taskExists("TASK-001")).toBe(true);
   });
 
-  it("returns false when task file does not exist", () => {
-    mockExistsSync.mockReturnValue(true);
-    mockReaddirSync.mockReturnValue(["TASK-002.md"]);
+  it("returns false when different task exists in DB", () => {
+    mockGetTask.mockReturnValue(null);
     expect(taskExists("TASK-001")).toBe(false);
   });
 
-  it("returns true when task file has a suffix (e.g. title slug)", () => {
-    mockExistsSync.mockReturnValue(true);
-    mockReaddirSync.mockReturnValue(["TASK-001-my-task-title.md"]);
+  it("returns true when task with any id exists in DB", () => {
+    mockGetTask.mockReturnValue({ id: "TASK-001", title: "My task title" });
     expect(taskExists("TASK-001")).toBe(true);
   });
 });
