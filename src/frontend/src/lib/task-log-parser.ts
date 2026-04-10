@@ -1,5 +1,5 @@
-import fs from "fs";
-import path from "path";
+import * as fs from "fs";
+import * as path from "path";
 
 export interface TaskLogEntry {
   timestamp: string;
@@ -56,8 +56,8 @@ export function taskExists(taskId: string): boolean {
     ? orchDir
     : path.join(projectRoot, "docs", "task");
   if (!fs.existsSync(tasksDir)) return false;
-  const files = fs.readdirSync(tasksDir).filter((f) => f.endsWith(".md"));
-  return files.some((f) => f.startsWith(taskId));
+  const files = fs.readdirSync(tasksDir).filter((f: string) => f.endsWith(".md"));
+  return files.some((f: string) => f.startsWith(taskId));
 }
 
 /**
@@ -80,9 +80,9 @@ function parseTokenUsageLogs(taskId: string): TaskLogEntry[] {
       /^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+([\w-]+)\s+\|/,
     );
     if (!timestampMatch) continue;
-    if ((timestampMatch[2] ?? "") !== taskId) continue;
+    if ((timestampMatch?.[2] ?? "") !== taskId) continue;
 
-    const timestamp = timestampMatch[1] ?? "";
+    const timestamp = timestampMatch?.[1] ?? "";
 
     // Extract phase
     const phaseMatch = trimmed.match(/phase=(\w+)/);
@@ -215,8 +215,8 @@ function parseSignalLogs(taskId: string): TaskLogEntry[] {
     );
 
     if (tsMatch) {
-      const timestamp = (tsMatch[1] ?? "").replace("T", " ");
-      const msg = tsMatch[2] ?? "";
+      const timestamp = (tsMatch?.[1] ?? "").replace("T", " ");
+      const msg = tsMatch?.[2] ?? "";
       const level = /error|fail|exception/i.test(msg)
         ? "error"
         : /warn/i.test(msg)
