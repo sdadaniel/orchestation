@@ -10,6 +10,7 @@ import { renderTemplate } from "@/lib/template";
 import { generateSlug } from "@/lib/slug-utils";
 import { getDb, isDbAvailable } from "@/lib/db";
 import { syncAllTaskFilesToDb, syncTaskFileToDb } from "@/lib/task-db-sync";
+import { VALID_PRIORITIES } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -68,8 +69,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const validPriorities = ["critical", "high", "medium", "low"];
-    const taskPriority = validPriorities.includes(priority)
+    const taskPriority = (VALID_PRIORITIES as readonly string[]).includes(priority)
       ? priority
       : "medium";
 

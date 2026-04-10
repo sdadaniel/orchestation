@@ -9,6 +9,7 @@ import { generateSlug } from "@/lib/slug-utils";
 import { getDb, isDbAvailable } from "@/lib/db";
 import { syncAllTaskFilesToDb, syncTaskFileToDb } from "@/lib/task-db-sync";
 import { formatTimestamp } from "@/lib/date-utils";
+import { VALID_PRIORITIES } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -81,8 +82,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "title is required" }, { status: 400 });
     }
 
-    const validPriorities = ["high", "medium", "low"];
-    const taskPriority = validPriorities.includes(priority) ? priority : "medium";
+    const taskPriority = (VALID_PRIORITIES as readonly string[]).includes(priority) ? priority : "medium";
 
     const dir = getRequestsDir();
     if (!fs.existsSync(dir)) {
