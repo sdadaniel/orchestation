@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { OUTPUT_DIR, TASKS_DIR } from "../lib/paths";
+import { OUTPUT_DIR } from "../lib/paths";
+import { getTask } from "../service/task-store";
 
 export interface TaskLogEntry {
   timestamp: string;
@@ -48,13 +49,10 @@ export function isValidTaskId(id: string): boolean {
 }
 
 /**
- * Check if a task exists in docs/task/ directory
+ * Check if a task exists in the database
  */
 export function taskExists(taskId: string): boolean {
-  if (!fs.existsSync(TASKS_DIR)) return false;
-  const tasksDir = TASKS_DIR;
-  const files = fs.readdirSync(tasksDir).filter((f) => f.endsWith(".md"));
-  return files.some((f) => f.startsWith(taskId));
+  return getTask(taskId) !== null;
 }
 
 /**
