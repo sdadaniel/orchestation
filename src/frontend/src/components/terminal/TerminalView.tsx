@@ -17,7 +17,8 @@ export function TerminalView() {
     const terminal = new Terminal({
       cursorBlink: true,
       fontSize: 14,
-      fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace",
+      fontFamily:
+        "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace",
       theme: {
         background: "#0a0a0a",
         foreground: "#e4e4e7",
@@ -36,7 +37,9 @@ export function TerminalView() {
 
     // WebSocket connection
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/terminal`);
+    const ws = new WebSocket(
+      `${protocol}//${window.location.host}/ws/terminal`,
+    );
 
     ws.onopen = () => {
       // Send initial size
@@ -45,7 +48,7 @@ export function TerminalView() {
           type: "resize",
           cols: terminal.cols,
           rows: terminal.rows,
-        })
+        }),
       );
     };
 
@@ -58,10 +61,10 @@ export function TerminalView() {
           const parsed = JSON.parse(data);
           if (parsed.type === "error") {
             terminal.write(
-              `\r\n\x1b[31m[Terminal Error] ${parsed.message}\x1b[0m\r\n`
+              `\r\n\x1b[31m[Terminal Error] ${parsed.message}\x1b[0m\r\n`,
             );
             terminal.write(
-              "\x1b[90m페이지를 새로고침하여 다시 시도하세요.\x1b[0m\r\n"
+              "\x1b[90m페이지를 새로고침하여 다시 시도하세요.\x1b[0m\r\n",
             );
             dead = true;
             return;
@@ -77,7 +80,7 @@ export function TerminalView() {
       if (event.code === 4000) {
         terminal.write("\r\n\x1b[31m[터미널 시작 실패]\x1b[0m\r\n");
         terminal.write(
-          "\x1b[90m페이지를 새로고침하여 다시 시도하세요.\x1b[0m\r\n"
+          "\x1b[90m페이지를 새로고침하여 다시 시도하세요.\x1b[0m\r\n",
         );
       } else {
         terminal.write("\r\n\x1b[90m[연결 종료]\x1b[0m\r\n");

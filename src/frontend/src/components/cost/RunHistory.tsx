@@ -15,7 +15,6 @@ interface RunHistoryProps {
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
-
 function formatTimestamp(iso: string): string {
   try {
     const d = new Date(iso);
@@ -32,24 +31,32 @@ function formatTimestamp(iso: string): string {
   }
 }
 
-type RunSortColumn = "time" | "status" | "tasks" | "duration" | "cost" | "details";
+type RunSortColumn =
+  | "time"
+  | "status"
+  | "tasks"
+  | "duration"
+  | "cost"
+  | "details";
 
-const RUN_COMPARATORS: Record<RunSortColumn, (a: RunHistoryEntry, b: RunHistoryEntry) => number> = {
+const RUN_COMPARATORS: Record<
+  RunSortColumn,
+  (a: RunHistoryEntry, b: RunHistoryEntry) => number
+> = {
   time: (a, b) => a.startedAt.localeCompare(b.startedAt),
   status: (a, b) => a.status.localeCompare(b.status),
-  tasks: (a, b) => (a.tasksCompleted + a.tasksFailed) - (b.tasksCompleted + b.tasksFailed),
+  tasks: (a, b) =>
+    a.tasksCompleted + a.tasksFailed - (b.tasksCompleted + b.tasksFailed),
   duration: (a, b) => a.totalDurationMs - b.totalDurationMs,
   cost: (a, b) => a.totalCostUsd - b.totalCostUsd,
   details: (a, b) => a.taskResults.length - b.taskResults.length,
 };
 
 export function RunHistory({ runs }: RunHistoryProps) {
-  const { sorted, sort, toggleSort } = useSortableTable<RunHistoryEntry, RunSortColumn>(
-    runs,
-    "time",
-    "desc",
-    RUN_COMPARATORS,
-  );
+  const { sorted, sort, toggleSort } = useSortableTable<
+    RunHistoryEntry,
+    RunSortColumn
+  >(runs, "time", "desc", RUN_COMPARATORS);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(20);
@@ -59,9 +66,16 @@ export function RunHistory({ runs }: RunHistoryProps) {
   const totalItems = sorted.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const safePage = Math.min(page, totalPages);
-  const paginatedItems = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const paginatedItems = sorted.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize,
+  );
 
-  function renderSortableHeader(key: RunSortColumn, label: string, align?: "right") {
+  function renderSortableHeader(
+    key: RunSortColumn,
+    label: string,
+    align?: "right",
+  ) {
     const isActive = sort.column === key;
     return (
       <th
@@ -69,9 +83,12 @@ export function RunHistory({ runs }: RunHistoryProps) {
         className={cn(
           "font-medium cursor-pointer select-none hover:text-foreground transition-colors",
           align === "right" && "text-right",
-          isActive && "text-foreground"
+          isActive && "text-foreground",
         )}
-        onClick={() => { toggleSort(key); setPage(1); }}
+        onClick={() => {
+          toggleSort(key);
+          setPage(1);
+        }}
       >
         {label}
         <SortIcon active={isActive} direction={sort.direction} />
@@ -108,7 +125,7 @@ export function RunHistory({ runs }: RunHistoryProps) {
                       "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
                       run.status === "completed"
                         ? "bg-emerald-500/15 text-emerald-400"
-                        : "bg-red-500/15 text-red-400"
+                        : "bg-red-500/15 text-red-400",
                     )}
                   >
                     {run.status === "completed" ? "Success" : "Failed"}
@@ -150,10 +167,15 @@ export function RunHistory({ runs }: RunHistoryProps) {
             <Select
               size="inline"
               value={pageSize}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(1);
+              }}
             >
               {PAGE_SIZE_OPTIONS.map((n) => (
-                <option key={n} value={n}>{n}개</option>
+                <option key={n} value={n}>
+                  {n}개
+                </option>
               ))}
             </Select>
           </div>
@@ -169,15 +191,24 @@ export function RunHistory({ runs }: RunHistoryProps) {
             </button>
 
             {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+              .filter(
+                (p) =>
+                  p === 1 || p === totalPages || Math.abs(p - safePage) <= 1,
+              )
               .reduce<(number | "...")[]>((acc, p, idx, arr) => {
-                if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                if (idx > 0 && p - (arr[idx - 1] as number) > 1)
+                  acc.push("...");
                 acc.push(p);
                 return acc;
               }, [])
               .map((p, i) =>
                 p === "..." ? (
-                  <span key={`dots-${i}`} className="px-1 text-[11px] text-muted-foreground">...</span>
+                  <span
+                    key={`dots-${i}`}
+                    className="px-1 text-[11px] text-muted-foreground"
+                  >
+                    ...
+                  </span>
                 ) : (
                   <button
                     key={p}
@@ -206,7 +237,8 @@ export function RunHistory({ runs }: RunHistoryProps) {
           </div>
 
           <span className="text-[11px] text-muted-foreground">
-            {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, totalItems)} / {totalItems}
+            {(safePage - 1) * pageSize + 1}–
+            {Math.min(safePage * pageSize, totalItems)} / {totalItems}
           </span>
         </div>
       )}

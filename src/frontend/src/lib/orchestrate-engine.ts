@@ -16,7 +16,11 @@ import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
 import http from "http";
-import { parseFrontmatter, getString, getStringArray } from "./frontmatter-utils";
+import {
+  parseFrontmatter,
+  getString,
+  getStringArray,
+} from "./frontmatter-utils";
 import { PROJECT_ROOT, PACKAGE_DIR, TASKS_DIR, OUTPUT_DIR } from "./paths";
 import { loadSettings } from "./settings";
 import { parseCostLog } from "./cost-parser";
@@ -28,8 +32,21 @@ import { signalCreate } from "./signal";
 
 // ── Types ──────────────────────────────────────────────────
 
-export type TaskStatus = "pending" | "stopped" | "in_progress" | "reviewing" | "done" | "rejected" | "failed";
-type SignalType = "task-done" | "task-failed" | "task-rejected" | "review-approved" | "review-rejected" | "stopped";
+export type TaskStatus =
+  | "pending"
+  | "stopped"
+  | "in_progress"
+  | "reviewing"
+  | "done"
+  | "rejected"
+  | "failed";
+type SignalType =
+  | "task-done"
+  | "task-failed"
+  | "task-rejected"
+  | "review-approved"
+  | "review-rejected"
+  | "stopped";
 
 interface TaskInfo {
   id: string;
@@ -57,7 +74,10 @@ interface WorkerEntry {
 export interface EngineEvents {
   log: (line: string) => void;
   "status-changed": (status: EngineStatus) => void;
-  "task-result": (result: { taskId: string; status: "success" | "failure" }) => void;
+  "task-result": (result: {
+    taskId: string;
+    status: "success" | "failure";
+  }) => void;
 }
 
 export type EngineStatus = "idle" | "running" | "completed" | "failed";
@@ -65,8 +85,12 @@ export type EngineStatus = "idle" | "running" | "completed" | "failed";
 // ── Constants ──────────────────────────────────────────────
 
 const SIGNAL_TYPES: SignalType[] = [
-  "task-done", "task-failed", "task-rejected",
-  "review-approved", "review-rejected", "stopped",
+  "task-done",
+  "task-failed",
+  "task-rejected",
+  "review-approved",
+  "review-rejected",
+  "stopped",
 ];
 const SKIP_REVIEW_ROLES = ["tech-writer"];
 const LOOP_INTERVAL_MS = 3000;
@@ -97,8 +121,12 @@ export class OrchestrateEngine extends EventEmitter {
 
   // ── Public API ──────────────────────────────────────
 
-  get status(): EngineStatus { return this._status; }
-  get runningCount(): number { return this.workers.size; }
+  get status(): EngineStatus {
+    return this._status;
+  }
+  get runningCount(): number {
+    return this.workers.size;
+  }
 
   start(): { success: boolean; error?: string } {
     if (this._status === "running") {
@@ -114,7 +142,9 @@ export class OrchestrateEngine extends EventEmitter {
 
     this.log("🚀 Pipeline 시작 (Node.js engine)");
     this.log(`⚙️  Base Branch: ${this.baseBranch}`);
-    this.log(`⚙️  Max Parallel: task=${this.maxParallelTask}, review=${this.maxParallelReview}`);
+    this.log(
+      `⚙️  Max Parallel: task=${this.maxParallelTask}, review=${this.maxParallelReview}`,
+    );
     this.emit("status-changed", this._status);
 
     // 좀비 태스크 정리
@@ -143,11 +173,21 @@ export class OrchestrateEngine extends EventEmitter {
     this.workers.clear();
 
     // 루프 중지
-    if (this.loopTimer) { clearInterval(this.loopTimer); this.loopTimer = null; }
-    if (this.signalWatcher) { this.signalWatcher.close(); this.signalWatcher = null; }
+    if (this.loopTimer) {
+      clearInterval(this.loopTimer);
+      this.loopTimer = null;
+    }
+    if (this.signalWatcher) {
+      this.signalWatcher.close();
+      this.signalWatcher = null;
+    }
 
     // 시그널 디렉토리 정리
-    try { fs.rmSync(this.signalDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    try {
+      fs.rmSync(this.signalDir, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
 
     this._status = "failed";
     this.log("🛑 Pipeline 종료 완료");
@@ -164,11 +204,16 @@ export class OrchestrateEngine extends EventEmitter {
 
     // maxParallel 분리: config.json에서 task/review 별도 설정
     try {
-      const configPath = path.join(PROJECT_ROOT, ".orchestration", "config.json");
+      const configPath = path.join(
+        PROJECT_ROOT,
+        ".orchestration",
+        "config.json",
+      );
       if (fs.existsSync(configPath)) {
         const cfg = JSON.parse(fs.readFileSync(configPath, "utf-8"));
         this.maxParallelTask = cfg.maxParallel?.task ?? settings.maxParallel;
-        this.maxParallelReview = cfg.maxParallel?.review ?? settings.maxParallel;
+        this.maxParallelReview =
+          cfg.maxParallel?.review ?? settings.maxParallel;
       } else {
         this.maxParallelTask = settings.maxParallel;
         this.maxParallelReview = settings.maxParallel;
@@ -225,14 +270,16 @@ export class OrchestrateEngine extends EventEmitter {
     }
 
     // 정렬: stopped > pending, high > medium > low, sortOrder, id
-    const statusWeight = (s: string) => s === "stopped" ? 0 : 1;
-    const priorityWeight = (p: string) => ({ high: 1, medium: 2, low: 3 }[p] ?? 4);
+    const statusWeight = (s: string) => (s === "stopped" ? 0 : 1);
+    const priorityWeight = (p: string) =>
+      ({ high: 1, medium: 2, low: 3 })[p] ?? 4;
 
-    tasks.sort((a, b) =>
-      statusWeight(a.status) - statusWeight(b.status) ||
-      priorityWeight(a.priority) - priorityWeight(b.priority) ||
-      a.sortOrder - b.sortOrder ||
-      a.id.localeCompare(b.id)
+    tasks.sort(
+      (a, b) =>
+        statusWeight(a.status) - statusWeight(b.status) ||
+        priorityWeight(a.priority) - priorityWeight(b.priority) ||
+        a.sortOrder - b.sortOrder ||
+        a.id.localeCompare(b.id),
     );
 
     return tasks;
@@ -240,7 +287,9 @@ export class OrchestrateEngine extends EventEmitter {
 
   private readTaskInfo(taskId: string): TaskInfo | null {
     if (!fs.existsSync(TASKS_DIR)) return null;
-    const files = fs.readdirSync(TASKS_DIR).filter(f => f.startsWith(taskId) && f.endsWith(".md"));
+    const files = fs
+      .readdirSync(TASKS_DIR)
+      .filter((f) => f.startsWith(taskId) && f.endsWith(".md"));
     if (files.length === 0) return null;
 
     const filePath = path.join(TASKS_DIR, files[0]);
@@ -272,13 +321,17 @@ export class OrchestrateEngine extends EventEmitter {
       for (const ns of task.scope) {
         for (const rs of runningInfo.scope) {
           if (ns === rs) {
-            this.log(`  ⚠️  ${task.id}: scope 충돌 (${ns}) ← ${runningId} 실행 중`);
+            this.log(
+              `  ⚠️  ${task.id}: scope 충돌 (${ns}) ← ${runningId} 실행 중`,
+            );
             return false;
           }
           const nsBase = ns.replace(/\/\*\*$/, "");
           const rsBase = rs.replace(/\/\*\*$/, "");
           if (nsBase.startsWith(rsBase) || rsBase.startsWith(nsBase)) {
-            this.log(`  ⚠️  ${task.id}: scope 충돌 (${ns} ↔ ${rs}) ← ${runningId} 실행 중`);
+            this.log(
+              `  ⚠️  ${task.id}: scope 충돌 (${ns} ↔ ${rs}) ← ${runningId} 실행 중`,
+            );
             return false;
           }
         }
@@ -291,7 +344,10 @@ export class OrchestrateEngine extends EventEmitter {
 
   private startTask(taskId: string, feedbackFile?: string): boolean {
     const info = this.readTaskInfo(taskId);
-    if (!info) { this.log(`  ❌ ${taskId}: 태스크 파일 없음`); return false; }
+    if (!info) {
+      this.log(`  ❌ ${taskId}: 태스크 파일 없음`);
+      return false;
+    }
 
     // branch/worktree 자동 추가
     if (!info.branch) {
@@ -299,7 +355,7 @@ export class OrchestrateEngine extends EventEmitter {
       const raw = fs.readFileSync(info.filePath, "utf-8");
       const updated = raw.replace(
         /^(status: .*)$/m,
-        `$1\nbranch: task/${slug}\nworktree: ../repo-wt-${slug}`
+        `$1\nbranch: task/${slug}\nworktree: ../repo-wt-${slug}`,
       );
       fs.writeFileSync(info.filePath, updated);
       this.log(`  📝 ${taskId}: branch/worktree 필드 자동 추가`);
@@ -315,15 +371,25 @@ export class OrchestrateEngine extends EventEmitter {
 
     const promise = runJobTask(taskId, this.signalDir, feedbackFile, (line) => {
       this.log(`  ${line}`);
-    }).then((result) => {
-      this.log(`  [${taskId}/task] 완료: ${result.status}`);
-      // 시그널은 runJobTask 내부에서 이미 생성됨
-    }).catch((err) => {
-      this.log(`  ❌ ${taskId}: task 오류: ${err instanceof Error ? err.message : String(err)}`);
-      // 시그널은 runJobTask 내부에서 이미 생성됨
-    });
+    })
+      .then((result) => {
+        this.log(`  [${taskId}/task] 완료: ${result.status}`);
+        // 시그널은 runJobTask 내부에서 이미 생성됨
+      })
+      .catch((err) => {
+        this.log(
+          `  ❌ ${taskId}: task 오류: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        // 시그널은 runJobTask 내부에서 이미 생성됨
+      });
 
-    this.workers.set(taskId, { abortController, promise, taskId, phase: "task", startedAt: Date.now() });
+    this.workers.set(taskId, {
+      abortController,
+      promise,
+      taskId,
+      phase: "task",
+      startedAt: Date.now(),
+    });
     this.log(`  🔧 ${taskId}: job-task 시작 (Node.js native)`);
 
     return true;
@@ -334,13 +400,23 @@ export class OrchestrateEngine extends EventEmitter {
 
     const promise = runJobReview(taskId, this.signalDir, (line) => {
       this.log(`  ${line}`);
-    }).then((result) => {
-      this.log(`  [${taskId}/review] 완료: ${result.status}`);
-    }).catch((err) => {
-      this.log(`  ❌ ${taskId}: review 오류: ${err instanceof Error ? err.message : String(err)}`);
-    });
+    })
+      .then((result) => {
+        this.log(`  [${taskId}/review] 완료: ${result.status}`);
+      })
+      .catch((err) => {
+        this.log(
+          `  ❌ ${taskId}: review 오류: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
 
-    this.workers.set(taskId, { abortController, promise, taskId, phase: "review", startedAt: Date.now() });
+    this.workers.set(taskId, {
+      abortController,
+      promise,
+      taskId,
+      phase: "review",
+      startedAt: Date.now(),
+    });
     this.log(`  🔍 ${taskId}: job-review 시작 (Node.js native)`);
 
     return true;
@@ -367,12 +443,18 @@ export class OrchestrateEngine extends EventEmitter {
 
     for (const file of files) {
       for (const suffix of SIGNAL_TYPES) {
-        const match = file.match(new RegExp(`^(TASK-\\d+)-${suffix.replace("-", "\\-")}$`));
+        const match = file.match(
+          new RegExp(`^(TASK-\\d+)-${suffix.replace("-", "\\-")}$`),
+        );
         if (match) {
           const taskId = match[1];
           this.handleSignal(taskId, suffix as SignalType);
           // signal 파일 삭제
-          try { fs.unlinkSync(path.join(this.signalDir, file)); } catch { /* ignore */ }
+          try {
+            fs.unlinkSync(path.join(this.signalDir, file));
+          } catch {
+            /* ignore */
+          }
         }
       }
     }
@@ -404,8 +486,12 @@ export class OrchestrateEngine extends EventEmitter {
       case "task-rejected": {
         this.log(`  🚫 ${taskId} 거절됨`);
         let reason = "";
-        const reasonFile = path.join(OUTPUT_DIR, `${taskId}-rejection-reason.txt`);
-        if (fs.existsSync(reasonFile)) reason = fs.readFileSync(reasonFile, "utf-8").split("\n")[0];
+        const reasonFile = path.join(
+          OUTPUT_DIR,
+          `${taskId}-rejection-reason.txt`,
+        );
+        if (fs.existsSync(reasonFile))
+          reason = fs.readFileSync(reasonFile, "utf-8").split("\n")[0];
         this.markTaskRejected(taskId, reason);
         break;
       }
@@ -430,8 +516,13 @@ export class OrchestrateEngine extends EventEmitter {
         const count = this.retryCounts.get(taskId) ?? 0;
         if (count < this.maxReviewRetry) {
           this.retryCounts.set(taskId, count + 1);
-          this.log(`  🔄 ${taskId} review 수정요청 → retry (${count + 1}/${this.maxReviewRetry})`);
-          const feedbackFile = path.join(OUTPUT_DIR, `${taskId}-review-feedback.txt`);
+          this.log(
+            `  🔄 ${taskId} review 수정요청 → retry (${count + 1}/${this.maxReviewRetry})`,
+          );
+          const feedbackFile = path.join(
+            OUTPUT_DIR,
+            `${taskId}-review-feedback.txt`,
+          );
           this.startTask(taskId, feedbackFile);
         } else {
           this.log(`  ❌ ${taskId} retry 상한 초과 (${this.maxReviewRetry})`);
@@ -450,10 +541,14 @@ export class OrchestrateEngine extends EventEmitter {
         if (entry.taskId === taskId) total += entry.costUsd;
       }
       if (total > MAX_TASK_COST) {
-        this.log(`  🚨 ${taskId} 비용 상한 초과 ($${total.toFixed(2)} > $${MAX_TASK_COST})`);
+        this.log(
+          `  🚨 ${taskId} 비용 상한 초과 ($${total.toFixed(2)} > $${MAX_TASK_COST})`,
+        );
         return true;
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return false;
   }
 
@@ -466,25 +561,40 @@ export class OrchestrateEngine extends EventEmitter {
     const raw = fs.readFileSync(info.filePath, "utf-8");
     const updated = raw
       .replace(/^status: .*/m, `status: ${newStatus}`)
-      .replace(/^updated: .*/m, `updated: ${new Date().toISOString().slice(0, 16).replace("T", " ")}`);
+      .replace(
+        /^updated: .*/m,
+        `updated: ${new Date().toISOString().slice(0, 16).replace("T", " ")}`,
+      );
     fs.writeFileSync(info.filePath, updated);
     syncTaskContentToDb(info.filePath, updated);
 
     // git add + commit
     try {
-      execSync(`git -C "${PROJECT_ROOT}" add -f "${info.filePath}"`, { stdio: "ignore" });
-    } catch { /* ignore */ }
+      execSync(`git -C "${PROJECT_ROOT}" add -f "${info.filePath}"`, {
+        stdio: "ignore",
+      });
+    } catch {
+      /* ignore */
+    }
   }
 
   private batchCommit() {
     try {
-      const staged = execSync(`git -C "${PROJECT_ROOT}" diff --cached --name-only 2>/dev/null`, { encoding: "utf-8" }).trim();
+      const staged = execSync(
+        `git -C "${PROJECT_ROOT}" diff --cached --name-only 2>/dev/null`,
+        { encoding: "utf-8" },
+      ).trim();
       if (!staged) return;
-      const count = staged.split("\n").filter(f => f.endsWith(".md")).length;
+      const count = staged.split("\n").filter((f) => f.endsWith(".md")).length;
       if (count > 0) {
-        execSync(`git -C "${PROJECT_ROOT}" commit -m "chore: 태스크 상태 일괄 업데이트 (${count}건)"`, { stdio: "ignore" });
+        execSync(
+          `git -C "${PROJECT_ROOT}" commit -m "chore: 태스크 상태 일괄 업데이트 (${count}건)"`,
+          { stdio: "ignore" },
+        );
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   // ── Merge ───────────────────────────────────────────
@@ -496,7 +606,11 @@ export class OrchestrateEngine extends EventEmitter {
     const success = await runMergeTask(taskId, (line) => this.log(`  ${line}`));
 
     if (success) {
-      this.postNotice("info", `${taskId} 완료`, `**${taskId}:** ${info.title}\n\n태스크가 성공적으로 완료되어 ${this.baseBranch}에 머지되었습니다.`);
+      this.postNotice(
+        "info",
+        `${taskId} 완료`,
+        `**${taskId}:** ${info.title}\n\n태스크가 성공적으로 완료되어 ${this.baseBranch}에 머지되었습니다.`,
+      );
       this.emit("task-result", { taskId, status: "success" });
       this.log(`  ✅ ${taskId} 완료 → ${this.baseBranch} 머지됨`);
     } else {
@@ -523,12 +637,27 @@ export class OrchestrateEngine extends EventEmitter {
   private cleanupWorktreeAndBranch(taskId: string) {
     const info = this.readTaskInfo(taskId);
     if (!info) return;
-    const worktreePath = info.worktree ? path.resolve(PROJECT_ROOT, info.worktree) : null;
+    const worktreePath = info.worktree
+      ? path.resolve(PROJECT_ROOT, info.worktree)
+      : null;
     if (worktreePath && fs.existsSync(worktreePath)) {
-      try { execSync(`git -C "${PROJECT_ROOT}" worktree remove "${worktreePath}" --force`, { stdio: "ignore" }); } catch { /* ignore */ }
+      try {
+        execSync(
+          `git -C "${PROJECT_ROOT}" worktree remove "${worktreePath}" --force`,
+          { stdio: "ignore" },
+        );
+      } catch {
+        /* ignore */
+      }
     }
     if (info.branch) {
-      try { execSync(`git -C "${PROJECT_ROOT}" branch -D "${info.branch}"`, { stdio: "ignore" }); } catch { /* ignore */ }
+      try {
+        execSync(`git -C "${PROJECT_ROOT}" branch -D "${info.branch}"`, {
+          stdio: "ignore",
+        });
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -558,8 +687,10 @@ export class OrchestrateEngine extends EventEmitter {
     this.processSignals();
 
     // 실행 가능한 태스크 큐
-    const queue = this.scanTasks().filter(t =>
-      (t.status === "pending" || t.status === "stopped") && this.depsSatisfied(t)
+    const queue = this.scanTasks().filter(
+      (t) =>
+        (t.status === "pending" || t.status === "stopped") &&
+        this.depsSatisfied(t),
     );
 
     // 실행 중인 것도 없고 대기 큐도 비면 대기
@@ -576,7 +707,9 @@ export class OrchestrateEngine extends EventEmitter {
       if (!this.canDispatch()) break;
 
       this.startTask(task.id);
-      this.log(`  📊 슬롯: ${this.workers.size}/${this.maxParallelTask} (대기: ${queue.length})`);
+      this.log(
+        `  📊 슬롯: ${this.workers.size}/${this.maxParallelTask} (대기: ${queue.length})`,
+      );
     }
 
     // health check (10회마다)
@@ -591,15 +724,20 @@ export class OrchestrateEngine extends EventEmitter {
   private canDispatch(): boolean {
     // 시스템 메모리 체크 (macOS)
     try {
-      const output = execSync("memory_pressure 2>/dev/null | grep -o 'The system is under .*memory pressure' | awk '{print $6}'", {
-        encoding: "utf-8",
-        timeout: 3000,
-      }).trim();
+      const output = execSync(
+        "memory_pressure 2>/dev/null | grep -o 'The system is under .*memory pressure' | awk '{print $6}'",
+        {
+          encoding: "utf-8",
+          timeout: 3000,
+        },
+      ).trim();
       if (output === "critical" || output.startsWith("warn")) {
         this.log("  🚨 메모리 압박 → 대기");
         return false;
       }
-    } catch { /* ignore - non-macOS or command failed */ }
+    } catch {
+      /* ignore - non-macOS or command failed */
+    }
     return true;
   }
 
@@ -612,7 +750,9 @@ export class OrchestrateEngine extends EventEmitter {
       const elapsed = Date.now() - entry.startedAt;
       // 30분 타임아웃
       if (elapsed > 1800000) {
-        this.log(`  ⚠️  ${taskId}: 타임아웃 (${Math.round(elapsed / 60000)}분)`);
+        this.log(
+          `  ⚠️  ${taskId}: 타임아웃 (${Math.round(elapsed / 60000)}분)`,
+        );
         entry.abortController.abort();
         this.workers.delete(taskId);
         this.markTaskFailed(taskId, "워커 타임아웃 (30분)");
@@ -638,7 +778,10 @@ export class OrchestrateEngine extends EventEmitter {
       // Node engine에서 관리 중이면 건너뛰기
       if (this.workers.has(idMatch[1])) continue;
 
-      fs.writeFileSync(filePath, raw.replace("status: in_progress", "status: stopped"));
+      fs.writeFileSync(
+        filePath,
+        raw.replace("status: in_progress", "status: stopped"),
+      );
       syncTaskFileToDb(filePath);
       cleaned++;
       this.log(`  🧹 zombie: ${idMatch[1]} in_progress → stopped`);
@@ -653,13 +796,23 @@ export class OrchestrateEngine extends EventEmitter {
     try {
       const data = JSON.stringify({ title, content, type });
       const req = http.request({
-        hostname: NOTICE_API_HOST, port: NOTICE_API_PORT, path: "/api/notices",
-        method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data) },
+        hostname: NOTICE_API_HOST,
+        port: NOTICE_API_PORT,
+        path: "/api/notices",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(data),
+        },
       });
       req.write(data);
       req.end();
-      req.on("error", () => { /* ignore */ });
-    } catch { /* ignore */ }
+      req.on("error", () => {
+        /* ignore */
+      });
+    } catch {
+      /* ignore */
+    }
   }
 
   // ── Logging ─────────────────────────────────────────

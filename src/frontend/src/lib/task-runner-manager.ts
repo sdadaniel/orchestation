@@ -23,12 +23,22 @@ import { runJobTask } from "./job-task";
 import { runJobReview } from "./job-review";
 import { runMergeTask } from "./merge-utils";
 
-export type { TaskRunStatus, TaskRunPhase, TaskRunState } from "./task-runner-types";
+export type {
+  TaskRunStatus,
+  TaskRunPhase,
+  TaskRunState,
+} from "./task-runner-types";
 
 class TaskRunnerManager {
   /** Currently running tasks keyed by task ID */
-  private runs: Map<string, { state: TaskRunState; process: ChildProcess | null; abortController?: AbortController }> =
-    new Map();
+  private runs: Map<
+    string,
+    {
+      state: TaskRunState;
+      process: ChildProcess | null;
+      abortController?: AbortController;
+    }
+  > = new Map();
 
   /** iTerm 모드 watcher (stop 시 정리용) */
   private watcherMgr = new ItermWatcherManager();
@@ -72,7 +82,9 @@ class TaskRunnerManager {
       exitCode: null,
     };
 
-    state.logs.push(`[task-runner] Starting ${taskId} at ${state.startedAt} (mode: ${workerMode})`);
+    state.logs.push(
+      `[task-runner] Starting ${taskId} at ${state.startedAt} (mode: ${workerMode})`,
+    );
     updateTaskFileStatus(taskId, "in_progress");
 
     if (workerMode === "iterm") {
@@ -82,7 +94,11 @@ class TaskRunnerManager {
   }
 
   /** 백그라운드 모드: Node.js native 실행 */
-  private runBackground(taskId: string, state: TaskRunState, signalDir: string): { success: boolean; error?: string } {
+  private runBackground(
+    taskId: string,
+    state: TaskRunState,
+    signalDir: string,
+  ): { success: boolean; error?: string } {
     const abortController = new AbortController();
     this.runs.set(taskId, { state, process: null, abortController });
 
@@ -92,13 +108,23 @@ class TaskRunnerManager {
     return { success: true };
   }
 
-  private async runBackgroundAsync(taskId: string, state: TaskRunState, signalDir: string, abortController: AbortController) {
+  private async runBackgroundAsync(
+    taskId: string,
+    state: TaskRunState,
+    signalDir: string,
+    abortController: AbortController,
+  ) {
     try {
       // 1. Task 실행
-      const taskResult = await runJobTask(taskId, signalDir, undefined, (line) => {
-        state.logs.push(line);
-        this.events.emit(`log:${taskId}`, line);
-      });
+      const taskResult = await runJobTask(
+        taskId,
+        signalDir,
+        undefined,
+        (line) => {
+          state.logs.push(line);
+          this.events.emit(`log:${taskId}`, line);
+        },
+      );
 
       if (taskResult.status === "task-rejected") {
         state.status = "completed";
@@ -203,17 +229,28 @@ class TaskRunnerManager {
   }
 
   /** iTerm 모드: iTerm 탭에서 실행 + signal 파일 폴링으로 완료 감지 */
-  private runIterm(taskId: string, state: TaskRunState, signalDir: string): { success: boolean; error?: string } {
+  private runIterm(
+    taskId: string,
+    state: TaskRunState,
+    signalDir: string,
+  ): { success: boolean; error?: string } {
     const scriptPath = path.join(PROJECT_ROOT, "scripts", "job-task.sh");
     const logFile = path.join(PROJECT_ROOT, "output", "logs", `${taskId}.log`);
-    const closeScript = path.join(PROJECT_ROOT, "scripts", "lib", "close-iterm-session.sh");
+    const closeScript = path.join(
+      PROJECT_ROOT,
+      "scripts",
+      "lib",
+      "close-iterm-session.sh",
+    );
 
     fs.mkdirSync(path.dirname(logFile), { recursive: true });
 
     const cmd = `bash '${scriptPath}' '${taskId}' '${signalDir}' 2>&1 | tee '${logFile}'; bash '${closeScript}'`;
     const opened = runInIterm(`🔧 ${taskId}`, cmd);
     if (!opened) {
-      state.logs.push("[task-runner] iTerm2가 실행 중이지 않습니다. 백그라운드로 전환합니다.");
+      state.logs.push(
+        "[task-runner] iTerm2가 실행 중이지 않습니다. 백그라운드로 전환합니다.",
+      );
       this.events.emit(`log:${taskId}`, state.logs[state.logs.length - 1]);
       return this.runBackground(taskId, state, signalDir);
     }
@@ -221,13 +258,21 @@ class TaskRunnerManager {
     state.logs.push(`[task-runner] ${taskId}: iTerm 탭에서 실행 중`);
     this.events.emit(`log:${taskId}`, state.logs[state.logs.length - 1]);
 
-    const dummy = spawn("sleep", ["999999"], { stdio: "ignore", detached: true });
+    const dummy = spawn("sleep", ["999999"], {
+      stdio: "ignore",
+      detached: true,
+    });
     dummy.unref();
     this.runs.set(taskId, { state, process: dummy });
 
     watchItermCompletion(
-      taskId, state, logFile, signalDir, dummy,
-      this.events, this.watcherMgr,
+      taskId,
+      state,
+      logFile,
+      signalDir,
+      dummy,
+      this.events,
+      this.watcherMgr,
       (tid, st, sd) => this.handleStartReviewIterm(tid, st, sd),
       (tid, st) => this.startMergeLegacy(tid, st),
     );
@@ -236,10 +281,17 @@ class TaskRunnerManager {
   }
 
   /** iTerm review 시작 (watchItermCompletion 콜백용) */
-  private handleStartReviewIterm(taskId: string, state: TaskRunState, signalDir: string): void {
+  private handleStartReviewIterm(
+    taskId: string,
+    state: TaskRunState,
+    signalDir: string,
+  ): void {
     startReviewInIterm(
-      taskId, state, signalDir,
-      this.events, this.watcherMgr,
+      taskId,
+      state,
+      signalDir,
+      this.events,
+      this.watcherMgr,
       (tid, st) => this.startReviewLegacy(tid, st),
       (tid, st) => this.startMergeLegacy(tid, st),
     );
@@ -252,22 +304,24 @@ class TaskRunnerManager {
     runJobReview(taskId, signalDir, (line) => {
       state.logs.push(line);
       this.events.emit(`log:${taskId}`, line);
-    }).then((result) => {
-      if (result.status === "review-approved") {
-        this.doMerge(taskId, state);
-      } else {
+    })
+      .then((result) => {
+        if (result.status === "review-approved") {
+          this.doMerge(taskId, state);
+        } else {
+          state.status = "failed";
+          state.exitCode = 1;
+          state.finishedAt = new Date().toISOString();
+          updateTaskFileStatus(taskId, "failed");
+          cleanupSignals(taskId);
+          this.events.emit(`done:${taskId}`, "failed");
+        }
+      })
+      .catch(() => {
         state.status = "failed";
-        state.exitCode = 1;
         state.finishedAt = new Date().toISOString();
-        updateTaskFileStatus(taskId, "failed");
-        cleanupSignals(taskId);
         this.events.emit(`done:${taskId}`, "failed");
-      }
-    }).catch(() => {
-      state.status = "failed";
-      state.finishedAt = new Date().toISOString();
-      this.events.emit(`done:${taskId}`, "failed");
-    });
+      });
   }
 
   private startMergeLegacy(taskId: string, state: TaskRunState): void {

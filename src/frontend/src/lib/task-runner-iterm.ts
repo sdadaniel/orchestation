@@ -22,7 +22,13 @@ export class ItermWatcherManager {
   closeWatchers(taskId: string): void {
     const list = this.watchers.get(taskId);
     if (list) {
-      for (const w of list) { try { w.close(); } catch { /* ignore */ } }
+      for (const w of list) {
+        try {
+          w.close();
+        } catch {
+          /* ignore */
+        }
+      }
       this.watchers.delete(taskId);
     }
   }
@@ -61,7 +67,9 @@ export function watchLogFile(
           events.emit(`log:${taskId}`, line);
         }
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   // 초기 읽기
@@ -75,7 +83,9 @@ export function watchLogFile(
 
     const watcher = fs.watch(logFile, () => readNew());
     watcherMgr.addWatcher(taskId, watcher);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 /** iTerm 모드: signal 디렉토리를 fs.watch로 감시하여 완료 감지 */
@@ -87,7 +97,11 @@ export function watchItermCompletion(
   dummy: ChildProcess,
   events: EventEmitter,
   watcherMgr: ItermWatcherManager,
-  startReviewIterm: (taskId: string, state: TaskRunState, signalDir: string) => void,
+  startReviewIterm: (
+    taskId: string,
+    state: TaskRunState,
+    signalDir: string,
+  ) => void,
   startMergeCallback: (taskId: string, state: TaskRunState) => void,
 ): void {
   // 기존 watcher 정리
@@ -110,8 +124,16 @@ export function watchItermCompletion(
 
       if (filename === `${taskId}-task-done` && fs.existsSync(doneSignal)) {
         watcherMgr.closeWatchers(taskId);
-        try { fs.unlinkSync(doneSignal); } catch { /* ignore */ }
-        try { dummy.kill(); } catch { /* ignore */ }
+        try {
+          fs.unlinkSync(doneSignal);
+        } catch {
+          /* ignore */
+        }
+        try {
+          dummy.kill();
+        } catch {
+          /* ignore */
+        }
 
         if (shouldSkipReview(taskId)) {
           const skipLine = `[task-runner] ${taskId} review 스킵 (role 기반) → 바로 merge`;
@@ -124,11 +146,21 @@ export function watchItermCompletion(
           events.emit(`log:${taskId}`, doneLine);
           startReviewIterm(taskId, state, signalDir);
         }
-
-      } else if (filename === `${taskId}-task-rejected` && fs.existsSync(rejectedSignal)) {
+      } else if (
+        filename === `${taskId}-task-rejected` &&
+        fs.existsSync(rejectedSignal)
+      ) {
         watcherMgr.closeWatchers(taskId);
-        try { fs.unlinkSync(rejectedSignal); } catch { /* ignore */ }
-        try { dummy.kill(); } catch { /* ignore */ }
+        try {
+          fs.unlinkSync(rejectedSignal);
+        } catch {
+          /* ignore */
+        }
+        try {
+          dummy.kill();
+        } catch {
+          /* ignore */
+        }
 
         state.status = "completed";
         state.phase = "done";
@@ -138,11 +170,21 @@ export function watchItermCompletion(
         state.logs.push(rejectLine);
         events.emit(`log:${taskId}`, rejectLine);
         events.emit(`done:${taskId}`, "completed");
-
-      } else if (filename === `${taskId}-task-failed` && fs.existsSync(failedSignal)) {
+      } else if (
+        filename === `${taskId}-task-failed` &&
+        fs.existsSync(failedSignal)
+      ) {
         watcherMgr.closeWatchers(taskId);
-        try { fs.unlinkSync(failedSignal); } catch { /* ignore */ }
-        try { dummy.kill(); } catch { /* ignore */ }
+        try {
+          fs.unlinkSync(failedSignal);
+        } catch {
+          /* ignore */
+        }
+        try {
+          dummy.kill();
+        } catch {
+          /* ignore */
+        }
 
         state.status = "failed";
         state.finishedAt = new Date().toISOString();
@@ -155,7 +197,9 @@ export function watchItermCompletion(
       }
     });
     watcherMgr.addWatcher(taskId, watcher);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 /** iTerm 모드: review를 iTerm 탭에서 실행 */
@@ -169,8 +213,18 @@ export function startReviewInIterm(
   startMerge: (taskId: string, state: TaskRunState) => void,
 ): void {
   const reviewScript = path.join(PROJECT_ROOT, "scripts", "job-review.sh");
-  const logFile = path.join(PROJECT_ROOT, "output", "logs", `${taskId}-review.log`);
-  const closeScript = path.join(PROJECT_ROOT, "scripts", "lib", "close-iterm-session.sh");
+  const logFile = path.join(
+    PROJECT_ROOT,
+    "output",
+    "logs",
+    `${taskId}-review.log`,
+  );
+  const closeScript = path.join(
+    PROJECT_ROOT,
+    "scripts",
+    "lib",
+    "close-iterm-session.sh",
+  );
 
   state.phase = "review";
   const cmd = `bash '${reviewScript}' '${taskId}' '${signalDir}' 2>&1 | tee '${logFile}'; bash '${closeScript}'`;
@@ -196,27 +250,46 @@ export function startReviewInIterm(
       const approvedSignal = path.join(signalDir, `${taskId}-review-approved`);
       const rejectedSignal = path.join(signalDir, `${taskId}-review-rejected`);
 
-      if (filename === `${taskId}-review-approved` && fs.existsSync(approvedSignal)) {
+      if (
+        filename === `${taskId}-review-approved` &&
+        fs.existsSync(approvedSignal)
+      ) {
         watcherMgr.closeWatchers(taskId);
-        try { fs.unlinkSync(approvedSignal); } catch { /* ignore */ }
+        try {
+          fs.unlinkSync(approvedSignal);
+        } catch {
+          /* ignore */
+        }
 
-        state.logs.push(`[task-runner] ${taskId} review 승인 (iTerm) → merge 시작`);
+        state.logs.push(
+          `[task-runner] ${taskId} review 승인 (iTerm) → merge 시작`,
+        );
         events.emit(`log:${taskId}`, state.logs[state.logs.length - 1]);
         startMerge(taskId, state);
-
-      } else if (filename === `${taskId}-review-rejected` && fs.existsSync(rejectedSignal)) {
+      } else if (
+        filename === `${taskId}-review-rejected` &&
+        fs.existsSync(rejectedSignal)
+      ) {
         watcherMgr.closeWatchers(taskId);
-        try { fs.unlinkSync(rejectedSignal); } catch { /* ignore */ }
+        try {
+          fs.unlinkSync(rejectedSignal);
+        } catch {
+          /* ignore */
+        }
 
         state.status = "failed";
         state.finishedAt = new Date().toISOString();
         updateTaskFileStatus(taskId, "failed");
         cleanupSignals(taskId);
-        state.logs.push(`[task-runner] ${taskId} review 수정요청 (iTerm) → 실패 처리`);
+        state.logs.push(
+          `[task-runner] ${taskId} review 수정요청 (iTerm) → 실패 처리`,
+        );
         events.emit(`log:${taskId}`, state.logs[state.logs.length - 1]);
         events.emit(`done:${taskId}`, "failed");
       }
     });
     watcherMgr.addWatcher(taskId, watcher);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }

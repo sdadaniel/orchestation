@@ -31,10 +31,7 @@ export function TaskBar({ task, onClick }: TaskBarProps) {
       <span className="truncate text-sm">{task.title}</span>
 
       {/* Priority badge */}
-      <PriorityBadge
-        priority={task.priority}
-        className="ml-auto shrink-0"
-      />
+      <PriorityBadge priority={task.priority} className="ml-auto shrink-0" />
 
       {/* Role tag */}
       <span className="shrink-0 text-[11px] text-muted-foreground">

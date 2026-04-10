@@ -1,6 +1,11 @@
 import fs from "fs";
 import path from "path";
-import { getInt, getString, getStringArray, parseFrontmatter } from "./frontmatter-utils";
+import {
+  getInt,
+  getString,
+  getStringArray,
+  parseFrontmatter,
+} from "./frontmatter-utils";
 import { getWritableDb } from "./db";
 import { TASKS_DIR } from "./paths";
 import { formatTimestamp } from "./date-utils";
@@ -10,7 +15,9 @@ function syncParsedTask(filePath: string, raw: string) {
   if (!db) return false;
 
   const { data, content } = parseFrontmatter(raw);
-  const fallbackId = path.basename(filePath, ".md").match(/^(TASK-\d+)/)?.[1] ?? path.basename(filePath, ".md");
+  const fallbackId =
+    path.basename(filePath, ".md").match(/^(TASK-\d+)/)?.[1] ??
+    path.basename(filePath, ".md");
   const id = getString(data, "id", fallbackId);
   const title = getString(data, "title");
   if (!id || !title) return false;
@@ -43,7 +50,7 @@ function syncParsedTask(filePath: string, raw: string) {
       sort_order=excluded.sort_order,
       content=excluded.content,
       created=excluded.created,
-      updated=excluded.updated`
+      updated=excluded.updated`,
   ).run({
     id,
     title,

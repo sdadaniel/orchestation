@@ -44,7 +44,11 @@ export const ToggleList: Story = {
     const [values, setValues] = useState({ a: true, b: false, c: true });
     return (
       <div className="space-y-3 w-80">
-        {Object.entries({ a: "TypeScript 타입 오류 수정", b: "ESLint 린트 정리", c: "코드 품질 검토" }).map(([key, label]) => (
+        {Object.entries({
+          a: "TypeScript 타입 오류 수정",
+          b: "ESLint 린트 정리",
+          c: "코드 품질 검토",
+        }).map(([key, label]) => (
           <div key={key} className="flex items-center justify-between">
             <span className="text-sm text-foreground">{label}</span>
             <Toggle

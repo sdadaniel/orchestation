@@ -33,7 +33,9 @@ export const WithRequired: Story = {
 export const WithInput: Story = {
   render: () => (
     <div className="space-y-1 w-80">
-      <Label>제목 <span className="text-red-400">*</span></Label>
+      <Label>
+        제목 <span className="text-red-400">*</span>
+      </Label>
       <Input placeholder="Task 제목을 입력하세요" />
     </div>
   ),

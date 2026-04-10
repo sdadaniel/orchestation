@@ -1,14 +1,25 @@
 import fs from "fs";
 import path from "path";
 import { TASKS_DIR } from "./paths";
-import { parseFrontmatter, getString, getInt, getStringArray } from "./frontmatter-utils";
+import {
+  parseFrontmatter,
+  getString,
+  getInt,
+  getStringArray,
+} from "./frontmatter-utils";
 import { formatDatetime, formatTime } from "./date-utils";
 import { parseAllFromDirectory } from "./parser";
 
 export interface RequestData {
   id: string;
   title: string;
-  status: "pending" | "stopped" | "in_progress" | "reviewing" | "done" | "rejected";
+  status:
+    | "pending"
+    | "stopped"
+    | "in_progress"
+    | "reviewing"
+    | "done"
+    | "rejected";
   priority: "high" | "medium" | "low";
   created: string;
   updated: string;
@@ -19,7 +30,15 @@ export interface RequestData {
   branch: string;
 }
 
-const VALID_STATUSES = ["pending", "stopped", "in_progress", "reviewing", "done", "failed", "rejected"] as const;
+const VALID_STATUSES = [
+  "pending",
+  "stopped",
+  "in_progress",
+  "reviewing",
+  "done",
+  "failed",
+  "rejected",
+] as const;
 const VALID_PRIORITIES = ["high", "medium", "low"] as const;
 
 function isValidStatus(value: string): value is RequestData["status"] {
@@ -52,21 +71,47 @@ export function parseRequestFile(filePath: string): RequestData | null {
     const timeStr = formatTime(mt);
     const rawCreated = getString(data, "created");
     const rawUpdated = getString(data, "updated");
-    const created = rawCreated ? (rawCreated.length <= 10 ? `${rawCreated} ${timeStr}` : rawCreated) : mtime;
-    const updated = rawUpdated ? (rawUpdated.length <= 10 ? `${rawUpdated} ${timeStr}` : rawUpdated) : mtime;
+    const created = rawCreated
+      ? rawCreated.length <= 10
+        ? `${rawCreated} ${timeStr}`
+        : rawCreated
+      : mtime;
+    const updated = rawUpdated
+      ? rawUpdated.length <= 10
+        ? `${rawUpdated} ${timeStr}`
+        : rawUpdated
+      : mtime;
 
     // gray-matter가 YAML 배열(inline/multiline 모두)을 자동으로 파싱
     const depends_on = getStringArray(data, "depends_on");
     const scope = getStringArray(data, "scope");
 
-    return { id, title, status, priority, created, updated, content, depends_on, scope, sort_order, branch };
+    return {
+      id,
+      title,
+      status,
+      priority,
+      created,
+      updated,
+      content,
+      depends_on,
+      scope,
+      sort_order,
+      branch,
+    };
   } catch {
     return null;
   }
 }
 
 // Sort: pending first, then reviewing, in_progress, rejected, done
-const STATUS_ORDER: Record<string, number> = { pending: 0, reviewing: 1, in_progress: 2, rejected: 3, done: 4 };
+const STATUS_ORDER: Record<string, number> = {
+  pending: 0,
+  reviewing: 1,
+  in_progress: 2,
+  rejected: 3,
+  done: 4,
+};
 
 export function parseAllRequests(): RequestData[] {
   return parseAllFromDirectory<RequestData>(
@@ -74,10 +119,11 @@ export function parseAllRequests(): RequestData[] {
     parseRequestFile,
     (f) => f.startsWith("TASK-"),
     (a, b) => {
-      const so = (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99);
+      const so =
+        (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99);
       if (so !== 0) return so;
       return a.id.localeCompare(b.id);
-    }
+    },
   );
 }
 

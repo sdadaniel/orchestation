@@ -32,7 +32,9 @@ export const Default: Story = {
         </DialogHeader>
         <div className="p-4 space-y-3">
           <div className="space-y-1">
-            <Label>제목 <span className="text-red-400">*</span></Label>
+            <Label>
+              제목 <span className="text-red-400">*</span>
+            </Label>
             <Input placeholder="Task 제목을 입력하세요" />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -55,7 +57,9 @@ export const Default: Story = {
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" size="sm">취소</Button>
+            <Button variant="ghost" size="sm">
+              취소
+            </Button>
             <Button size="sm">생성</Button>
           </div>
         </div>
@@ -76,14 +80,22 @@ export const Destructive: Story = {
         </DialogHeader>
         <div className="p-4 space-y-3">
           <DialogDescription>
-            <span className="font-mono font-semibold">TASK-001</span>를 삭제하시겠습니까?
+            <span className="font-mono font-semibold">TASK-001</span>를
+            삭제하시겠습니까?
           </DialogDescription>
           <p className="text-xs text-muted-foreground">
             이 작업은 되돌릴 수 없습니다.
           </p>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" size="sm">취소</Button>
-            <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white">삭제</Button>
+            <Button variant="ghost" size="sm">
+              취소
+            </Button>
+            <Button
+              size="sm"
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              삭제
+            </Button>
           </div>
         </div>
       </DialogContent>
@@ -102,7 +114,9 @@ export const NoCloseButton: Story = {
           <DialogTitle>Custom Dialog</DialogTitle>
         </DialogHeader>
         <div className="p-4">
-          <p className="text-sm text-muted-foreground">Close button is hidden.</p>
+          <p className="text-sm text-muted-foreground">
+            Close button is hidden.
+          </p>
         </div>
       </DialogContent>
     </Dialog>

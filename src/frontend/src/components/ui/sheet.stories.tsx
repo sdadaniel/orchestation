@@ -33,7 +33,9 @@ export const Right: Story = {
           Sheet content goes here.
         </div>
         <SheetFooter>
-          <Button variant="default" size="sm">Save</Button>
+          <Button variant="default" size="sm">
+            Save
+          </Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

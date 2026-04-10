@@ -41,9 +41,6 @@ export async function PUT(
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return NextResponse.json(
-      { error: "Failed to save" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to save" }, { status: 500 });
   }
 }

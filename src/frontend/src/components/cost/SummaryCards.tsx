@@ -14,7 +14,8 @@ export function SummaryCards({ entries, summaryByTask }: SummaryCardsProps) {
   const totalTasks = summaryByTask.length;
   const avgCostPerTask = totalTasks > 0 ? totalCost / totalTasks : 0;
   const totalTokens = entries.reduce(
-    (sum, e) => sum + e.inputTokens + e.outputTokens + e.cacheCreate + e.cacheRead,
+    (sum, e) =>
+      sum + e.inputTokens + e.outputTokens + e.cacheCreate + e.cacheRead,
     0,
   );
 
@@ -44,13 +45,21 @@ export function SummaryCards({ entries, summaryByTask }: SummaryCardsProps) {
         <div className="stat-item">
           <span className="stat-label">Phase Cost</span>
           <span className="stat-value text-[10px]">
-            <span style={{ color: "#3b82f6" }}>Task ${phaseSummary.taskCost.toFixed(2)} ({phaseSummary.taskPct}%)</span>
+            <span style={{ color: "#3b82f6" }}>
+              Task ${phaseSummary.taskCost.toFixed(2)} ({phaseSummary.taskPct}%)
+            </span>
             {" / "}
-            <span style={{ color: "#a855f7" }}>Review ${phaseSummary.reviewCost.toFixed(2)} ({phaseSummary.reviewPct}%)</span>
+            <span style={{ color: "#a855f7" }}>
+              Review ${phaseSummary.reviewCost.toFixed(2)} (
+              {phaseSummary.reviewPct}%)
+            </span>
             {phaseSummary.otherCost > 0 && (
               <>
                 {" / "}
-                <span style={{ color: "#6b7280" }}>기타 ${phaseSummary.otherCost.toFixed(2)} ({phaseSummary.otherPct}%)</span>
+                <span style={{ color: "#6b7280" }}>
+                  기타 ${phaseSummary.otherCost.toFixed(2)} (
+                  {phaseSummary.otherPct}%)
+                </span>
               </>
             )}
           </span>
@@ -77,13 +86,8 @@ export function SummaryCards({ entries, summaryByTask }: SummaryCardsProps) {
                 >
                   {m.displayName}
                 </span>
-                <span className="stat-value">
-                  ${m.totalCostUsd.toFixed(4)}
-                </span>
-                <span
-                  className="stat-label"
-                  style={{ fontSize: "10px" }}
-                >
+                <span className="stat-value">${m.totalCostUsd.toFixed(4)}</span>
+                <span className="stat-label" style={{ fontSize: "10px" }}>
                   ({pct.toFixed(1)}%)
                 </span>
               </div>

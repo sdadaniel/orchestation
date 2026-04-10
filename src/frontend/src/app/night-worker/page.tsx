@@ -11,7 +11,12 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PageLayout, PageHeader } from "@/components/ui/page-layout";
 
-type NightWorkerStatus = "idle" | "running" | "completed" | "stopped" | "failed";
+type NightWorkerStatus =
+  | "idle"
+  | "running"
+  | "completed"
+  | "stopped"
+  | "failed";
 
 const TASK_TYPES = [
   { id: "typecheck", label: "TypeScript 타입 오류 수정" },
@@ -28,7 +33,9 @@ export default function NightWorkerPage() {
   const [budget, setBudget] = useState("");
   const [unlimited, setUnlimited] = useState(true);
   const [maxTasks, setMaxTasks] = useState(10);
-  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set(["typecheck", "lint", "review"]));
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(
+    new Set(["typecheck", "lint", "review"]),
+  );
   const [status, setStatus] = useState<NightWorkerStatus>("idle");
   const [logs, setLogs] = useState<string[]>([]);
   const [tasksCreated, setTasksCreated] = useState(0);
@@ -44,7 +51,9 @@ export default function NightWorkerPage() {
       setLogs(data.logs || []);
       setTasksCreated(data.tasksCreated ?? 0);
       setTotalCost(data.totalCost ?? "0");
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {
@@ -95,7 +104,9 @@ export default function NightWorkerPage() {
     try {
       await fetch("/api/night-worker", { method: "DELETE" });
       setStatus("stopped");
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   const isRunning = status === "running";
@@ -125,20 +136,17 @@ export default function NightWorkerPage() {
       </PageHeader>
 
       <div className="space-y-4">
-
         {/* Card 1: Name + Instructions + Until */}
         <div className="space-y-4">
           {/* Name */}
           <div className="space-y-1.5">
             <Label>Name</Label>
-            <Input
-              value="Night Worker"
-              readOnly
-              className="cursor-default"
-            />
+            <Input value="Night Worker" readOnly className="cursor-default" />
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground/60 font-mono">
-                {isRunning ? `${tasksCreated} tasks created / $${totalCost}` : "코드 스캔 후 이슈 태스크 자동 생성"}
+                {isRunning
+                  ? `${tasksCreated} tasks created / $${totalCost}`
+                  : "코드 스캔 후 이슈 태스크 자동 생성"}
               </p>
               {isRunning && (
                 <span className="flex items-center gap-1.5 text-[11px] text-yellow-400">
@@ -153,7 +161,9 @@ export default function NightWorkerPage() {
                 </span>
               )}
               {status === "stopped" && (
-                <span className="text-[11px] text-muted-foreground">Stopped</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Stopped
+                </span>
               )}
             </div>
           </div>
@@ -164,7 +174,9 @@ export default function NightWorkerPage() {
             <Textarea
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              placeholder={"추가 지시가 있으면 작성하세요...\n예: src/frontend 폴더만 점검해줘"}
+              placeholder={
+                "추가 지시가 있으면 작성하세요...\n예: src/frontend 폴더만 점검해줘"
+              }
               rows={4}
               disabled={isRunning}
               className="min-h-[100px]"
@@ -210,7 +222,10 @@ export default function NightWorkerPage() {
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                 <Checkbox
                   checked={unlimited}
-                  onChange={(e) => { setUnlimited(e.target.checked); if (e.target.checked) setBudget(""); }}
+                  onChange={(e) => {
+                    setUnlimited(e.target.checked);
+                    if (e.target.checked) setBudget("");
+                  }}
                   disabled={isRunning}
                 />
                 Unlimited
@@ -219,7 +234,10 @@ export default function NightWorkerPage() {
             <Input
               type="number"
               value={budget}
-              onChange={(e) => { setBudget(e.target.value); if (e.target.value) setUnlimited(false); }}
+              onChange={(e) => {
+                setBudget(e.target.value);
+                if (e.target.value) setUnlimited(false);
+              }}
               placeholder="5.00"
               step="0.5"
               min="0"
@@ -232,7 +250,9 @@ export default function NightWorkerPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Max tasks</Label>
-              <span className="text-sm text-foreground tabular-nums">{maxTasks}</span>
+              <span className="text-sm text-foreground tabular-nums">
+                {maxTasks}
+              </span>
             </div>
             <Slider
               min={1}
@@ -269,7 +289,12 @@ export default function NightWorkerPage() {
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              Logs {logs.length > 0 && <span className="ml-1 text-[10px] text-muted-foreground">({logs.length})</span>}
+              Logs{" "}
+              {logs.length > 0 && (
+                <span className="ml-1 text-[10px] text-muted-foreground">
+                  ({logs.length})
+                </span>
+              )}
             </button>
           </div>
 
@@ -290,14 +315,18 @@ export default function NightWorkerPage() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Types</span>
                 <span className="text-right max-w-[300px]">
-                  {selectedTypes.size === 0 ? "None" : [...selectedTypes].map((id) => TASK_TYPES.find((t) => t.id === id)?.label).join(", ")}
+                  {selectedTypes.size === 0
+                    ? "None"
+                    : [...selectedTypes]
+                        .map((id) => TASK_TYPES.find((t) => t.id === id)?.label)
+                        .join(", ")}
                 </span>
               </div>
             </div>
           )}
 
-          {activeTab === "logs" && (
-            logs.length > 0 ? (
+          {activeTab === "logs" &&
+            (logs.length > 0 ? (
               <div className="rounded-md border border-border overflow-hidden">
                 <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border">
                   {isRunning && (
@@ -306,13 +335,22 @@ export default function NightWorkerPage() {
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500" />
                     </span>
                   )}
-                  <span className="text-[11px] text-muted-foreground font-mono">NIGHT WORKER</span>
-                  <span className="text-[10px] text-muted-foreground/50 ml-auto font-mono">{logs.length} lines</span>
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    NIGHT WORKER
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/50 ml-auto font-mono">
+                    {logs.length} lines
+                  </span>
                 </div>
                 <div className="overflow-y-auto max-h-[320px] font-mono text-[11px] leading-[1.7] bg-muted/20">
                   {[...logs].reverse().map((line, i) => (
-                    <div key={i} className="px-3 py-0.5 hover:bg-muted/40 text-muted-foreground">
-                      <span className="text-muted-foreground/30 select-none mr-3 inline-block w-5 text-right">{logs.length - i}</span>
+                    <div
+                      key={i}
+                      className="px-3 py-0.5 hover:bg-muted/40 text-muted-foreground"
+                    >
+                      <span className="text-muted-foreground/30 select-none mr-3 inline-block w-5 text-right">
+                        {logs.length - i}
+                      </span>
                       {line}
                     </div>
                   ))}
@@ -323,10 +361,8 @@ export default function NightWorkerPage() {
                 <Moon className="h-6 w-6 mx-auto mb-2 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">No logs yet</p>
               </div>
-            )
-          )}
+            ))}
         </div>
-
       </div>
     </PageLayout>
   );

@@ -9,7 +9,11 @@ import remarkGfm from "remark-gfm";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-export default function DocsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function DocsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const router = useRouter();
   const { doc, isLoading, refetch } = useDocDetail(id);
@@ -52,20 +56,23 @@ export default function DocsPage({ params }: { params: Promise<{ id: string }> }
     }
   }, [id, editContent, editTitle, refetch]);
 
-  const saveTitle = useCallback(async (newTitle: string) => {
-    try {
-      const res = await fetch(`/api/docs/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle }),
-      });
-      if (!res.ok) throw new Error("Failed to save title");
-      setIsEditingTitle(false);
-      await refetch();
-    } catch {
-      alert("제목 저장 실패");
-    }
-  }, [id, refetch]);
+  const saveTitle = useCallback(
+    async (newTitle: string) => {
+      try {
+        const res = await fetch(`/api/docs/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: newTitle }),
+        });
+        if (!res.ok) throw new Error("Failed to save title");
+        setIsEditingTitle(false);
+        await refetch();
+      } catch {
+        alert("제목 저장 실패");
+      }
+    },
+    [id, refetch],
+  );
 
   if (isLoading) {
     return <div className="text-xs text-muted-foreground p-4">Loading...</div>;
@@ -86,7 +93,10 @@ export default function DocsPage({ params }: { params: Promise<{ id: string }> }
         <BookOpen className="h-3 w-3 text-primary shrink-0" />
         <span className="text-muted-foreground">Docs</span>
         {doc.parentPath.map((segment, i) => (
-          <span key={i} className="flex items-center gap-1 text-muted-foreground">
+          <span
+            key={i}
+            className="flex items-center gap-1 text-muted-foreground"
+          >
             <ChevronRight className="h-2.5 w-2.5" />
             <span>{segment}</span>
           </span>
@@ -131,7 +141,9 @@ export default function DocsPage({ params }: { params: Promise<{ id: string }> }
                 type="button"
                 onClick={async () => {
                   if (!confirm("이 문서를 삭제하시겠습니까?")) return;
-                  const res = await fetch(`/api/docs/${id}`, { method: "DELETE" });
+                  const res = await fetch(`/api/docs/${id}`, {
+                    method: "DELETE",
+                  });
                   if (res.ok) router.push("/docs");
                   else alert("삭제 실패");
                 }}
@@ -160,11 +172,13 @@ export default function DocsPage({ params }: { params: Promise<{ id: string }> }
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && editTitle.trim()) saveTitle(editTitle.trim());
+              if (e.key === "Enter" && editTitle.trim())
+                saveTitle(editTitle.trim());
               if (e.key === "Escape") setIsEditingTitle(false);
             }}
             onBlur={() => {
-              if (editTitle.trim() && editTitle.trim() !== title) saveTitle(editTitle.trim());
+              if (editTitle.trim() && editTitle.trim() !== title)
+                saveTitle(editTitle.trim());
               else setIsEditingTitle(false);
             }}
             autoFocus

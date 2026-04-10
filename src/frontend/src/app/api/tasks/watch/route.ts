@@ -22,7 +22,9 @@ export async function GET() {
       const send = (event: string, data: string) => {
         if (closed) return;
         try {
-          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
+          controller.enqueue(
+            encoder.encode(`event: ${event}\ndata: ${data}\n\n`),
+          );
         } catch {
           closed = true;
         }
@@ -32,35 +34,45 @@ export async function GET() {
       let fsWatcher: fs.FSWatcher | null = null;
 
       try {
-        fsWatcher = fs.watch(TASKS_DIR, { recursive: true }, (_event, filename) => {
-          if (!filename?.endsWith(".md")) return;
+        fsWatcher = fs.watch(
+          TASKS_DIR,
+          { recursive: true },
+          (_event, filename) => {
+            if (!filename?.endsWith(".md")) return;
 
-          // 변경된 파일에서 frontmatter 파싱
-          try {
-            const filePath = path.join(TASKS_DIR, filename);
-            if (!fs.existsSync(filePath)) {
-              // 파일 삭제 시
-              const idMatch = filename.match(/^(TASK-\d+)/);
-              if (idMatch) {
-                send("task-changed", JSON.stringify({ taskId: idMatch[1], deleted: true }));
+            // 변경된 파일에서 frontmatter 파싱
+            try {
+              const filePath = path.join(TASKS_DIR, filename);
+              if (!fs.existsSync(filePath)) {
+                // 파일 삭제 시
+                const idMatch = filename.match(/^(TASK-\d+)/);
+                if (idMatch) {
+                  send(
+                    "task-changed",
+                    JSON.stringify({ taskId: idMatch[1], deleted: true }),
+                  );
+                }
+                return;
               }
-              return;
+              const content = fs.readFileSync(filePath, "utf-8");
+              const { data } = matter(content);
+              if (data.id) {
+                send(
+                  "task-changed",
+                  JSON.stringify({
+                    taskId: data.id,
+                    status: data.status ?? "pending",
+                    priority: data.priority ?? "medium",
+                    title: data.title ?? "",
+                  }),
+                );
+              }
+            } catch {
+              // 파싱 실패 시 fallback: 전체 refetch 트리거
+              send("task-changed", JSON.stringify({ full: true }));
             }
-            const content = fs.readFileSync(filePath, "utf-8");
-            const { data } = matter(content);
-            if (data.id) {
-              send("task-changed", JSON.stringify({
-                taskId: data.id,
-                status: data.status ?? "pending",
-                priority: data.priority ?? "medium",
-                title: data.title ?? "",
-              }));
-            }
-          } catch {
-            // 파싱 실패 시 fallback: 전체 refetch 트리거
-            send("task-changed", JSON.stringify({ full: true }));
-          }
-        });
+          },
+        );
       } catch {
         // TASKS_DIR 없으면 무시
       }
@@ -73,13 +85,16 @@ export async function GET() {
 
       // 연결 직후 현재 상태 전송
       const initialState = orchestrationManager.getState();
-      send("orchestration-status", JSON.stringify({
-        status: initialState.status,
-        startedAt: initialState.startedAt,
-        finishedAt: initialState.finishedAt,
-        exitCode: initialState.exitCode,
-        taskResults: initialState.taskResults,
-      }));
+      send(
+        "orchestration-status",
+        JSON.stringify({
+          status: initialState.status,
+          startedAt: initialState.startedAt,
+          finishedAt: initialState.finishedAt,
+          exitCode: initialState.exitCode,
+          taskResults: initialState.taskResults,
+        }),
+      );
 
       // ── 하트비트 (30초) — 연결 유지 ──
       const heartbeat = setInterval(() => {

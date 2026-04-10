@@ -147,7 +147,7 @@ describe("parseCostLog — multiple tasks", () => {
     expect(task1.entries).toBe(2);
     expect(task1.totalInputTokens).toBe(1500);
     expect(task1.totalTurns).toBe(3);
-    expect(task1.totalCostUsd).toBeCloseTo(0.030, 6);
+    expect(task1.totalCostUsd).toBeCloseTo(0.03, 6);
     expect(task1.models).toContain("claude-sonnet-4-20250514");
     expect(task1.models).toContain("claude-opus-4-20250514");
 

@@ -29,9 +29,11 @@ export async function GET() {
   if (isDbAvailable()) {
     const db = getDb()!;
     try {
-      const rows = db.prepare(
-        "SELECT notice_id, title, content, type, created FROM notices ORDER BY notice_id DESC"
-      ).all() as NoticeRow[];
+      const rows = db
+        .prepare(
+          "SELECT notice_id, title, content, type, created FROM notices ORDER BY notice_id DESC",
+        )
+        .all() as NoticeRow[];
 
       const notices: NoticeData[] = rows.map((row) => ({
         id: row.notice_id ?? "",
@@ -62,7 +64,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "title is required" }, { status: 400 });
     }
 
-    const noticeType = (VALID_NOTICE_TYPES as readonly string[]).includes(type) ? type : "info";
+    const noticeType = (VALID_NOTICE_TYPES as readonly string[]).includes(type)
+      ? type
+      : "info";
 
     const dir = getNoticesDir();
     if (!fs.existsSync(dir)) {
@@ -85,7 +89,8 @@ export async function POST(request: Request) {
     const nextNum = maxNum + 1;
     const noticeId = `NOTICE-${String(nextNum).padStart(3, "0")}`;
     const sanitizedTitle = title.trim();
-    const bodyContent = (content && typeof content === "string") ? content.trim() : "";
+    const bodyContent =
+      content && typeof content === "string" ? content.trim() : "";
 
     const today = new Date().toISOString().split("T")[0];
 
@@ -105,7 +110,15 @@ ${bodyContent}
     fs.writeFileSync(filePath, fileContent, "utf-8");
 
     return NextResponse.json(
-      { id: noticeId, title: sanitizedTitle, type: noticeType, read: false, created: today, updated: today, content: bodyContent },
+      {
+        id: noticeId,
+        title: sanitizedTitle,
+        type: noticeType,
+        read: false,
+        created: today,
+        updated: today,
+        content: bodyContent,
+      },
       { status: 201 },
     );
   } catch (err) {

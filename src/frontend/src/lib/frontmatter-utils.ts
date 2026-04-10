@@ -23,7 +23,7 @@ export function parseFrontmatter(raw: string): ParsedFrontmatter {
 export function getString(
   data: Record<string, unknown>,
   key: string,
-  fallback = ""
+  fallback = "",
 ): string {
   const val = data[key];
   if (val === null || val === undefined) return fallback;
@@ -42,7 +42,7 @@ export function getString(
 export function getBool(
   data: Record<string, unknown>,
   key: string,
-  fallback = false
+  fallback = false,
 ): boolean {
   const val = data[key];
   if (typeof val === "boolean") return val;
@@ -54,7 +54,7 @@ export function getBool(
 export function getInt(
   data: Record<string, unknown>,
   key: string,
-  fallback = 0
+  fallback = 0,
 ): number {
   const val = data[key];
   if (typeof val === "number") return Math.trunc(val);
@@ -68,7 +68,7 @@ export function getInt(
 /** data에서 string[] 값을 안전하게 꺼낸다. YAML 배열 및 단일 문자열 모두 처리. */
 export function getStringArray(
   data: Record<string, unknown>,
-  key: string
+  key: string,
 ): string[] {
   const val = data[key];
   if (Array.isArray(val)) return val.map(String).filter(Boolean);

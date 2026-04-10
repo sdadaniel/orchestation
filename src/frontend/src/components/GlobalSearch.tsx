@@ -187,7 +187,12 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
 
   return (
     <div className="global-search-wrapper">
-      <div className={cn("global-search", isOpen && results.length > 0 && "search-open")}>
+      <div
+        className={cn(
+          "global-search",
+          isOpen && results.length > 0 && "search-open",
+        )}
+      >
         <SearchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <input
           ref={inputRef}
@@ -224,8 +229,12 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
               const sliced = results.slice(0, 20);
               // Pre-compute indices to avoid O(n) indexOf calls
               const itemsWithIndex = sliced.map((item, idx) => ({ item, idx }));
-              const taskItems = itemsWithIndex.filter((i) => i.item.type === "task");
-              const docItems = itemsWithIndex.filter((i) => i.item.type === "doc");
+              const taskItems = itemsWithIndex.filter(
+                (i) => i.item.type === "task",
+              );
+              const docItems = itemsWithIndex.filter(
+                (i) => i.item.type === "doc",
+              );
               const hasBoth = taskItems.length > 0 && docItems.length > 0;
 
               // Reusable group renderer
@@ -236,16 +245,23 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
                 renderExtra?: (item: SearchResultItem) => React.ReactNode,
               ) => (
                 <>
-                  {groupLabel && <div className="search-group-label">{groupLabel}</div>}
+                  {groupLabel && (
+                    <div className="search-group-label">{groupLabel}</div>
+                  )}
                   {items.map(({ item, idx }) => (
                     <button
                       key={`${item.type}-${item.id}`}
-                      className={cn("search-item", idx === activeIndex && "search-item-active")}
+                      className={cn(
+                        "search-item",
+                        idx === activeIndex && "search-item-active",
+                      )}
                       onMouseEnter={() => setActiveIndex(idx)}
                       onClick={() => navigate(item)}
                     >
                       <span className="search-item-icon">{icon}</span>
-                      <span className="search-item-id font-mono">{item.displayId}</span>
+                      <span className="search-item-id font-mono">
+                        {item.displayId}
+                      </span>
                       <span className="search-item-title">{item.title}</span>
                       {renderExtra?.(item)}
                     </button>
@@ -262,7 +278,12 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
                       <ListTodoIcon className="h-3.5 w-3.5" />,
                       (item) =>
                         item.status && (
-                          <span className={cn("search-item-status", statusColors[item.status])}>
+                          <span
+                            className={cn(
+                              "search-item-status",
+                              statusColors[item.status],
+                            )}
+                          >
                             {statusLabel[item.status] || item.status}
                           </span>
                         ),
@@ -278,7 +299,9 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
               );
             })()}
             {results.length > 20 && (
-              <div className="search-more">+{results.length - 20}개 더 있음</div>
+              <div className="search-more">
+                +{results.length - 20}개 더 있음
+              </div>
             )}
           </div>
         </>

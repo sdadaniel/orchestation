@@ -11,7 +11,12 @@ import { loadSettings } from "./settings";
 // ── Template 렌더링 ────────────────────────────────────────
 
 function resolveTemplate(tplPath: string): string {
-  const orchestrationPath = path.join(PROJECT_ROOT, ".orchestration", "template", tplPath);
+  const orchestrationPath = path.join(
+    PROJECT_ROOT,
+    ".orchestration",
+    "template",
+    tplPath,
+  );
   if (fs.existsSync(orchestrationPath)) return orchestrationPath;
   const packagePath = path.join(PACKAGE_DIR, "template", tplPath);
   if (fs.existsSync(packagePath)) return packagePath;
@@ -48,7 +53,9 @@ function getDoneTaskIds(repoRoot: string): string[] {
         if (getString(data, "status") === "done") {
           results.push(file);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   }
   return results;
@@ -56,7 +63,10 @@ function getDoneTaskIds(repoRoot: string): string[] {
 
 // ── .claudeignore 생성 ─────────────────────────────────────
 
-export function setupContextFilter(worktreePath: string, repoRoot: string): void {
+export function setupContextFilter(
+  worktreePath: string,
+  repoRoot: string,
+): void {
   if (!fs.existsSync(worktreePath)) return;
 
   const ignoreFile = path.join(worktreePath, ".claudeignore");
@@ -73,17 +83,32 @@ export function setupContextFilter(worktreePath: string, repoRoot: string): void
 
   // srcPaths 기반 필터
   const settings = loadSettings();
-  const srcPaths = settings.srcPaths.map(s => s.replace(/\/$/, ""));
+  const srcPaths = settings.srcPaths.map((s) => s.replace(/\/$/, ""));
   try {
     const entries = fs.readdirSync(worktreePath, { withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
       const name = entry.name;
-      if ([".git", ".orchestration", "node_modules", "output", "docs", "scripts", "template"].includes(name)) continue;
-      const inSrc = srcPaths.some(sp => name === sp || sp.startsWith(`${name}/`));
+      if (
+        [
+          ".git",
+          ".orchestration",
+          "node_modules",
+          "output",
+          "docs",
+          "scripts",
+          "template",
+        ].includes(name)
+      )
+        continue;
+      const inSrc = srcPaths.some(
+        (sp) => name === sp || sp.startsWith(`${name}/`),
+      );
       if (!inSrc) lines.push(`${name}/`);
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   // 완료된 태스크 제외
   const doneFiles = getDoneTaskIds(repoRoot);
@@ -97,7 +122,9 @@ export function setupContextFilter(worktreePath: string, repoRoot: string): void
 
   try {
     fs.writeFileSync(ignoreFile, lines.join("\n") + "\n");
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 // ── 레이어드 컨텍스트 빌드 ─────────────────────────────────
@@ -107,10 +134,11 @@ function resolveGlob(pattern: string, worktreePath: string): string[] {
 
   if (pattern.includes("*")) {
     // glob 패턴 → 디렉토리 탐색
-    const baseDir = pattern.replace(/\*\*.*/, "").replace(/\*.*/, "").replace(/\/$/, "");
-    const searchDir = worktreePath
-      ? path.join(worktreePath, baseDir)
-      : baseDir;
+    const baseDir = pattern
+      .replace(/\*\*.*/, "")
+      .replace(/\*.*/, "")
+      .replace(/\/$/, "");
+    const searchDir = worktreePath ? path.join(worktreePath, baseDir) : baseDir;
 
     if (fs.existsSync(searchDir)) {
       collectFiles(searchDir, results, 0, 3);
@@ -124,13 +152,23 @@ function resolveGlob(pattern: string, worktreePath: string): string[] {
   return results;
 }
 
-function collectFiles(dir: string, results: string[], depth: number, maxDepth: number): void {
+function collectFiles(
+  dir: string,
+  results: string[],
+  depth: number,
+  maxDepth: number,
+): void {
   if (depth > maxDepth || results.length >= 15) return;
   try {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       if (results.length >= 15) return;
       if (entry.name === "node_modules" || entry.name === ".git") continue;
-      if (entry.name.includes(".test.") || entry.name.includes(".spec.") || entry.name.includes(".stories.")) continue;
+      if (
+        entry.name.includes(".test.") ||
+        entry.name.includes(".spec.") ||
+        entry.name.includes(".stories.")
+      )
+        continue;
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         collectFiles(full, results, depth + 1, maxDepth);
@@ -138,10 +176,15 @@ function collectFiles(dir: string, results: string[], depth: number, maxDepth: n
         results.push(full);
       }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
-export function buildLayeredContext(scope: string[], worktreePath: string): string {
+export function buildLayeredContext(
+  scope: string[],
+  worktreePath: string,
+): string {
   if (scope.length === 0) return "";
 
   const allFiles: string[] = [];
@@ -173,21 +216,29 @@ export function buildLayeredContext(scope: string[], worktreePath: string): stri
     const lines = content.split("\n").length;
 
     if (lines <= 300) {
-      parts.push(`### ${displayPath} (${lines}줄)\n\`\`\`\n${content}\n\`\`\`\n`);
+      parts.push(
+        `### ${displayPath} (${lines}줄)\n\`\`\`\n${content}\n\`\`\`\n`,
+      );
     } else if (lines <= 800) {
-      parts.push(`### ${displayPath} (${lines}줄 — 변경 최소화)\n\`\`\`\n${content}\n\`\`\`\n`);
+      parts.push(
+        `### ${displayPath} (${lines}줄 — 변경 최소화)\n\`\`\`\n${content}\n\`\`\`\n`,
+      );
     } else {
       // signature만 추출
       const sigs = content
         .split("\n")
         .map((line, i) => ({ line, num: i + 1 }))
         .filter(({ line }) =>
-          /^(export |import |function |class |interface |type |const |async |def )/.test(line)
+          /^(export |import |function |class |interface |type |const |async |def )/.test(
+            line,
+          ),
         )
         .slice(0, 60)
         .map(({ line, num }) => `${num}: ${line}`)
         .join("\n");
-      parts.push(`### ${displayPath} (${lines}줄 — 시그니처만, 필요 시 직접 읽어라)\n\`\`\`\n${sigs}\n\`\`\`\n`);
+      parts.push(
+        `### ${displayPath} (${lines}줄 — 시그니처만, 필요 시 직접 읽어라)\n\`\`\`\n${sigs}\n\`\`\`\n`,
+      );
     }
   }
 
@@ -213,7 +264,7 @@ export function buildTaskPrompt(opts: TaskPromptOptions): string {
   // scope 섹션
   let scopeSection = "";
   if (opts.scope.length > 0) {
-    const scopeList = opts.scope.map(f => `- ${f}`).join("\n");
+    const scopeList = opts.scope.map((f) => `- ${f}`).join("\n");
     const layered = buildLayeredContext(opts.scope, opts.worktreePath);
 
     scopeSection = `
@@ -230,7 +281,7 @@ ${layered}
 
   // context 섹션 (읽기 전용)
   if (opts.context.length > 0) {
-    const contextList = opts.context.map(f => `- ${f}`).join("\n");
+    const contextList = opts.context.map((f) => `- ${f}`).join("\n");
     const contextContent = buildLayeredContext(opts.context, opts.worktreePath);
 
     scopeSection += `

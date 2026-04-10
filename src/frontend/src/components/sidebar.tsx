@@ -43,9 +43,21 @@ type NavItem = {
 
 const pageNavItems: NavItem[] = [
   { label: "Task", icon: <ClipboardList className="h-3.5 w-3.5" />, href: "/" },
-  { label: "Cost", icon: <DollarSign className="h-3.5 w-3.5" />, href: "/cost" },
-  { label: "Monitor", icon: <Activity className="h-3.5 w-3.5" />, href: "/monitor" },
-  { label: "Terminal", icon: <SquareTerminal className="h-3.5 w-3.5" />, href: "/terminal" },
+  {
+    label: "Cost",
+    icon: <DollarSign className="h-3.5 w-3.5" />,
+    href: "/cost",
+  },
+  {
+    label: "Monitor",
+    icon: <Activity className="h-3.5 w-3.5" />,
+    href: "/monitor",
+  },
+  {
+    label: "Terminal",
+    icon: <SquareTerminal className="h-3.5 w-3.5" />,
+    href: "/terminal",
+  },
 ];
 
 /* ── Sidebar for IDE Task page ── */
@@ -62,10 +74,18 @@ type TaskSidebarProps = {
   docTree: DocNode[];
   filter?: SidebarFilter;
   onFilterChange?: (filter: SidebarFilter) => void;
-  onDocCreate?: (title: string, type: "doc" | "folder", parentId?: string | null) => Promise<void>;
+  onDocCreate?: (
+    title: string,
+    type: "doc" | "folder",
+    parentId?: string | null,
+  ) => Promise<void>;
   onDocDelete?: (id: string) => Promise<void>;
   onDocRename?: (id: string, title: string) => Promise<void>;
-  onDocReorder?: (nodeId: string, targetParentId: string | null, position: number) => Promise<void>;
+  onDocReorder?: (
+    nodeId: string,
+    targetParentId: string | null,
+    position: number,
+  ) => Promise<void>;
   onDocReorderError?: (error: unknown) => void;
   requestItems?: RequestItem[];
   onNewTask?: (title: string, content: string) => Promise<void>;
@@ -96,10 +116,14 @@ export function TaskSidebar({
   const noticeItems = noticeItemsProp ?? storeNotices ?? [];
   const currentPath = currentPathProp ?? pathname ?? "/";
   const handleStopTask = onStopTask ?? storeStopTask;
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
+    new Set(),
+  );
   const [docsExpanded, setDocsExpanded] = useState(false);
   const [noticesExpanded, setNoticesExpanded] = useState(true);
-  const [newRootItemType, setNewRootItemType] = useState<"doc" | "folder" | null>(null);
+  const [newRootItemType, setNewRootItemType] = useState<
+    "doc" | "folder" | null
+  >(null);
   const [showNewMenu, setShowNewMenu] = useState(false);
 
   const toggleFolder = useCallback((id: string) => {
@@ -122,12 +146,18 @@ export function TaskSidebar({
     <div className="ide-sidebar flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center px-3 h-10 border-b border-sidebar-border shrink-0">
-        <Link href="/" className="text-sm font-semibold text-sidebar-foreground no-underline hover:text-primary transition-colors">
+        <Link
+          href="/"
+          className="text-sm font-semibold text-sidebar-foreground no-underline hover:text-primary transition-colors"
+        >
           Home
         </Link>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-2" style={{ scrollbarWidth: "none" }}>
+      <div
+        className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-2"
+        style={{ scrollbarWidth: "none" }}
+      >
         {/* ── Docs (문서 트리) ── */}
         <div className="mb-2">
           <div className="px-2 mb-1.5 flex items-center justify-between">
@@ -136,11 +166,17 @@ export function TaskSidebar({
               className="flex items-center gap-1 sidebar-section-link bg-transparent border-none p-0 cursor-pointer"
               onClick={() => setDocsExpanded((v) => !v)}
             >
-              {docsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              {docsExpanded ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
               Docs
             </button>
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-muted-foreground">{docTree.length}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {docTree.length}
+              </span>
               {docsExpanded && (
                 <div className="relative">
                   <button
@@ -156,7 +192,10 @@ export function TaskSidebar({
                       <button
                         type="button"
                         className="w-full text-left px-3 py-1 text-xs hover:bg-sidebar-accent flex items-center gap-2"
-                        onClick={() => { setNewRootItemType("doc"); setShowNewMenu(false); }}
+                        onClick={() => {
+                          setNewRootItemType("doc");
+                          setShowNewMenu(false);
+                        }}
                       >
                         <FileText className="h-3 w-3" />
                         New Document
@@ -164,7 +203,10 @@ export function TaskSidebar({
                       <button
                         type="button"
                         className="w-full text-left px-3 py-1 text-xs hover:bg-sidebar-accent flex items-center gap-2"
-                        onClick={() => { setNewRootItemType("folder"); setShowNewMenu(false); }}
+                        onClick={() => {
+                          setNewRootItemType("folder");
+                          setShowNewMenu(false);
+                        }}
                       >
                         <Folder className="h-3 w-3" />
                         New Folder
@@ -177,7 +219,12 @@ export function TaskSidebar({
           </div>
 
           {/* Collapsible doc tree content */}
-          <div className={cn("sidebar-collapsible", docsExpanded && "sidebar-collapsible-open")}>
+          <div
+            className={cn(
+              "sidebar-collapsible",
+              docsExpanded && "sidebar-collapsible-open",
+            )}
+          >
             <div className="sidebar-collapsible-inner">
               {/* New root item input */}
               {newRootItemType && (
@@ -232,11 +279,18 @@ export function TaskSidebar({
             >
               <ChevronDown
                 className="h-3 w-3 transition-transform duration-200"
-                style={{ transform: noticesExpanded ? "rotate(0deg)" : "rotate(-90deg)" }}
+                style={{
+                  transform: noticesExpanded
+                    ? "rotate(0deg)"
+                    : "rotate(-90deg)",
+                }}
               />
               <Link
                 href="/notices"
-                className={cn("sidebar-section-link", currentPath === "/notices" && "active")}
+                className={cn(
+                  "sidebar-section-link",
+                  currentPath === "/notices" && "active",
+                )}
                 onClick={(e) => e.stopPropagation()}
               >
                 Notices
@@ -247,28 +301,47 @@ export function TaskSidebar({
                 {noticeItems.filter((n) => !n.read).length}
               </span>
             ) : (
-              <span className="text-[10px] text-muted-foreground">{noticeItems.length}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {noticeItems.length}
+              </span>
             )}
           </div>
 
           {/* Collapsible notices content */}
-          <div className={cn("sidebar-collapsible", noticesExpanded && "sidebar-collapsible-open")}>
+          <div
+            className={cn(
+              "sidebar-collapsible",
+              noticesExpanded && "sidebar-collapsible-open",
+            )}
+          >
             <div className="sidebar-collapsible-inner">
-              {noticeItems.filter((n) => !n.read).slice(0, 5).map((notice) => (
-                <Link
-                  key={notice.id}
-                  href="/notices"
-                  className={cn("tree-item w-full text-left no-underline text-sidebar-foreground")}
-                >
-                  <Bell className="h-3 w-3 shrink-0 text-primary" />
-                  <span className="truncate flex-1 text-xs font-medium">{notice.title}</span>
-                </Link>
-              ))}
-              {noticeItems.filter((n) => !n.read).length === 0 && noticeItems.length > 0 && (
-                <div className="px-2 py-1 text-[11px] text-muted-foreground">All read</div>
-              )}
+              {noticeItems
+                .filter((n) => !n.read)
+                .slice(0, 5)
+                .map((notice) => (
+                  <Link
+                    key={notice.id}
+                    href="/notices"
+                    className={cn(
+                      "tree-item w-full text-left no-underline text-sidebar-foreground",
+                    )}
+                  >
+                    <Bell className="h-3 w-3 shrink-0 text-primary" />
+                    <span className="truncate flex-1 text-xs font-medium">
+                      {notice.title}
+                    </span>
+                  </Link>
+                ))}
+              {noticeItems.filter((n) => !n.read).length === 0 &&
+                noticeItems.length > 0 && (
+                  <div className="px-2 py-1 text-[11px] text-muted-foreground">
+                    All read
+                  </div>
+                )}
               {noticeItems.length === 0 && (
-                <div className="px-2 py-1 text-[11px] text-muted-foreground">No notices</div>
+                <div className="px-2 py-1 text-[11px] text-muted-foreground">
+                  No notices
+                </div>
               )}
             </div>
           </div>
@@ -289,7 +362,9 @@ export function PageSidebar() {
   return (
     <aside className="flex h-screen w-48 flex-col border-r border-sidebar-border bg-sidebar">
       <div className="px-3 py-3">
-        <h1 className="text-sm font-semibold text-sidebar-foreground">Dashboard</h1>
+        <h1 className="text-sm font-semibold text-sidebar-foreground">
+          Dashboard
+        </h1>
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 px-2">
         {pageNavItems.map((item) => {

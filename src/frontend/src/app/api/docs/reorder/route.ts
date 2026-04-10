@@ -40,7 +40,10 @@ export async function PUT(request: Request) {
       // Rollback: re-insert at root
       manifest.tree.push(cloned);
       writeManifest(manifest);
-      return NextResponse.json({ error: "Target parent not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Target parent not found" },
+        { status: 404 },
+      );
     }
 
     writeManifest(manifest);

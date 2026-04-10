@@ -66,7 +66,9 @@ export const Sizes: Story = {
 export const TaskRow: Story = {
   render: () => (
     <div className="flex items-center gap-2 px-3 py-2 border border-border rounded">
-      <span className="font-mono text-[11px] text-muted-foreground">TASK-001</span>
+      <span className="font-mono text-[11px] text-muted-foreground">
+        TASK-001
+      </span>
       <span className="text-sm flex-1">Setup project infrastructure</span>
       <PriorityBadge priority="high" />
       <StatusBadge status="in_progress" />

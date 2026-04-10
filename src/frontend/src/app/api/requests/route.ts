@@ -41,11 +41,19 @@ export async function GET() {
   syncAllTaskFilesToDb();
   if (isDbAvailable()) {
     const db = getDb()!;
-    const rows = db.prepare(
-      "SELECT id, title, status, priority, created, updated, content, depends_on, scope, sort_order, branch FROM tasks ORDER BY id"
-    ).all() as RequestRow[];
+    const rows = db
+      .prepare(
+        "SELECT id, title, status, priority, created, updated, content, depends_on, scope, sort_order, branch FROM tasks ORDER BY id",
+      )
+      .all() as RequestRow[];
 
-    const statusOrder: Record<string, number> = { pending: 0, reviewing: 1, in_progress: 2, rejected: 3, done: 4 };
+    const statusOrder: Record<string, number> = {
+      pending: 0,
+      reviewing: 1,
+      in_progress: 2,
+      rejected: 3,
+      done: 4,
+    };
     const requests: RequestData[] = rows.map((row) => ({
       id: row.id,
       title: row.title,
@@ -82,7 +90,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "title is required" }, { status: 400 });
     }
 
-    const taskPriority = (VALID_PRIORITIES as readonly string[]).includes(priority) ? priority : "medium";
+    const taskPriority = (VALID_PRIORITIES as readonly string[]).includes(
+      priority,
+    )
+      ? priority
+      : "medium";
 
     const dir = getRequestsDir();
     if (!fs.existsSync(dir)) {
@@ -92,31 +104,43 @@ export async function POST(request: Request) {
     // Determine next TASK-XXX id
     const taskId = generateNextTaskId(dir);
     const sanitizedTitle = title.trim();
-    const bodyContent = (content && typeof content === "string") ? content.trim() : "";
+    const bodyContent =
+      content && typeof content === "string" ? content.trim() : "";
 
     const now = new Date();
     const today = formatTimestamp(now);
 
-    const scopeLines = Array.isArray(scope) && scope.length > 0
-      ? `scope:\n${scope.map((s: string) => `  - ${s}`).join("\n")}\n`
-      : "";
-    const contextLines = Array.isArray(context) && context.length > 0
-      ? `context:\n${context.map((s: string) => `  - ${s}`).join("\n")}\n`
-      : "";
-    const dependsOnLines = Array.isArray(depends_on) && depends_on.length > 0
-      ? `depends_on: [${depends_on.join(", ")}]\n`
-      : "";
+    const scopeLines =
+      Array.isArray(scope) && scope.length > 0
+        ? `scope:\n${scope.map((s: string) => `  - ${s}`).join("\n")}\n`
+        : "";
+    const contextLines =
+      Array.isArray(context) && context.length > 0
+        ? `context:\n${context.map((s: string) => `  - ${s}`).join("\n")}\n`
+        : "";
+    const dependsOnLines =
+      Array.isArray(depends_on) && depends_on.length > 0
+        ? `depends_on: [${depends_on.join(", ")}]\n`
+        : "";
     let validRoles: string[];
     try {
       const rolesDir = ROLES_DIR;
-      validRoles = fs.readdirSync(rolesDir)
-        .filter((f) => f.endsWith(".md") && !f.startsWith("reviewer-") && f !== "README.md")
+      validRoles = fs
+        .readdirSync(rolesDir)
+        .filter(
+          (f) =>
+            f.endsWith(".md") &&
+            !f.startsWith("reviewer-") &&
+            f !== "README.md",
+        )
         .map((f) => f.replace(".md", ""));
     } catch {
       validRoles = ["general"];
     }
-    const taskRole = typeof role === "string" && validRoles.includes(role) ? role : "";
-    const roleLine = taskRole && taskRole !== "general" ? `role: ${taskRole}\n` : "";
+    const taskRole =
+      typeof role === "string" && validRoles.includes(role) ? role : "";
+    const roleLine =
+      taskRole && taskRole !== "general" ? `role: ${taskRole}\n` : "";
 
     const fileContent = `---
 id: ${taskId}
@@ -145,7 +169,15 @@ ${bodyContent}
     syncTaskFileToDb(filePath);
 
     return NextResponse.json(
-      { id: taskId, title: sanitizedTitle, status: "pending", priority: taskPriority, created: today, updated: today, content: bodyContent },
+      {
+        id: taskId,
+        title: sanitizedTitle,
+        status: "pending",
+        priority: taskPriority,
+        created: today,
+        updated: today,
+        content: bodyContent,
+      },
       { status: 201 },
     );
   } catch (err) {

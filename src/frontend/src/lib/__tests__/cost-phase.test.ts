@@ -52,10 +52,7 @@ describe("aggregateCostByPhase", () => {
   });
 
   it("splits task and review correctly, other=0", () => {
-    const entries = [
-      makeEntry("task", 0.8),
-      makeEntry("review", 0.2),
-    ];
+    const entries = [makeEntry("task", 0.8), makeEntry("review", 0.2)];
     const result = aggregateCostByPhase(entries);
     expect(result.taskCost).toBeCloseTo(0.8);
     expect(result.reviewCost).toBeCloseTo(0.2);

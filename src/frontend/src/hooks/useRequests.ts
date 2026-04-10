@@ -7,7 +7,14 @@ import { getErrorMessage } from "@/lib/error-utils";
 export interface RequestItem {
   id: string;
   title: string;
-  status: "pending" | "stopped" | "in_progress" | "reviewing" | "done" | "failed" | "rejected";
+  status:
+    | "pending"
+    | "stopped"
+    | "in_progress"
+    | "reviewing"
+    | "done"
+    | "failed"
+    | "rejected";
   priority: "high" | "medium" | "low";
   created: string;
   updated: string;
@@ -26,7 +33,11 @@ export function useRequests() {
   const queryClient = useQueryClient();
   const queryKey = queryKeys.requests.list();
 
-  const { data: requests = [], isLoading, error } = useQuery({
+  const {
+    data: requests = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey,
     queryFn: fetchRequests,
     staleTime: 5_000,
@@ -34,7 +45,11 @@ export function useRequests() {
 
   // ── 생성
   const createMutation = useMutation({
-    mutationFn: async (vars: { title: string; content: string; priority: string }) => {
+    mutationFn: async (vars: {
+      title: string;
+      content: string;
+      priority: string;
+    }) => {
       const res = await fetch("/api/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -50,7 +65,12 @@ export function useRequests() {
 
   // ── 수정 (낙관적 업데이트)
   const updateMutation = useMutation({
-    mutationFn: async (vars: { id: string; updates: Partial<Pick<RequestItem, "status" | "title" | "content" | "priority">> }) => {
+    mutationFn: async (vars: {
+      id: string;
+      updates: Partial<
+        Pick<RequestItem, "status" | "title" | "content" | "priority">
+      >;
+    }) => {
       const res = await fetch(`/api/requests/${vars.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -118,7 +138,11 @@ export function useRequests() {
         if (!target) return prev;
         const siblings = prev
           .filter((r) => r.status === target.status)
-          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id.localeCompare(b.id));
+          .sort(
+            (a, b) =>
+              (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
+              a.id.localeCompare(b.id),
+          );
         const sibIdx = siblings.findIndex((r) => r.id === id);
         const swapSibIdx = direction === "up" ? sibIdx - 1 : sibIdx + 1;
         if (swapSibIdx < 0 || swapSibIdx >= siblings.length) return prev;
@@ -143,7 +167,8 @@ export function useRequests() {
     },
   });
 
-  const refetch = () => queryClient.invalidateQueries({ queryKey: queryKeys.requests.all });
+  const refetch = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.requests.all });
 
   const pendingCount = requests.filter((r) => r.status === "pending").length;
 
@@ -154,8 +179,12 @@ export function useRequests() {
     pendingCount,
     createRequest: (title: string, content: string, priority: string) =>
       createMutation.mutateAsync({ title, content, priority }),
-    updateRequest: (id: string, updates: Partial<Pick<RequestItem, "status" | "title" | "content" | "priority">>) =>
-      updateMutation.mutateAsync({ id, updates }),
+    updateRequest: (
+      id: string,
+      updates: Partial<
+        Pick<RequestItem, "status" | "title" | "content" | "priority">
+      >,
+    ) => updateMutation.mutateAsync({ id, updates }),
     deleteRequest: (id: string) => deleteMutation.mutateAsync(id),
     reorderRequest: (id: string, direction: "up" | "down") =>
       reorderMutation.mutateAsync({ id, direction }),

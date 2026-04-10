@@ -43,14 +43,20 @@ export async function POST(request: Request) {
     };
 
     if (!title || !type) {
-      return NextResponse.json({ error: "title and type are required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "title and type are required" },
+        { status: 400 },
+      );
     }
 
     const id = generateId(type === "folder" ? "folder" : "doc");
 
     // parentId가 prd 내부 ID이면 prd manifest에 추가
     const manifest = readManifest();
-    const isPrdParent = !parentId || parentId === "dir-prd" || !!findNodeById(manifest.tree, parentId);
+    const isPrdParent =
+      !parentId ||
+      parentId === "dir-prd" ||
+      !!findNodeById(manifest.tree, parentId);
 
     if (isPrdParent) {
       // 기존 로직: prd manifest에 추가
@@ -60,10 +66,13 @@ export async function POST(request: Request) {
         node.file = fileName;
         writeDocContent(fileName, "", title);
       }
-      const pid = parentId === "dir-prd" ? null : (parentId || null);
+      const pid = parentId === "dir-prd" ? null : parentId || null;
       const inserted = insertNode(manifest.tree, pid, node);
       if (!inserted && pid) {
-        return NextResponse.json({ error: "Parent folder not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Parent folder not found" },
+          { status: 404 },
+        );
       }
       writeManifest(manifest);
       return NextResponse.json({ ok: true, node }, { status: 201 });
@@ -81,9 +90,10 @@ export async function POST(request: Request) {
     }
 
     // fullTree 호환 ID 생성: "file-{dirRel}-{id}" (dir-xxx 형식)
-    const treeId = type === "doc"
-      ? `file-${dirRel.replace(/\//g, "-")}-${id.replace(".md", "")}`
-      : `dir-${dirRel.replace(/\//g, "-")}-${id}`;
+    const treeId =
+      type === "doc"
+        ? `file-${dirRel.replace(/\//g, "-")}-${id.replace(".md", "")}`
+        : `dir-${dirRel.replace(/\//g, "-")}-${id}`;
     const node: DocNode = { id: treeId, title, type, children: [] };
 
     if (type === "doc") {
@@ -98,6 +108,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, node }, { status: 201 });
   } catch (err) {
-    return NextResponse.json({ error: "Failed to create document" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create document" },
+      { status: 500 },
+    );
   }
 }

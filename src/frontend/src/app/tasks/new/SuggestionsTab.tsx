@@ -1,5 +1,11 @@
 import { cn } from "@/lib/utils";
-import { Loader2, Plus, Sparkles, CheckSquare, Square as SquareIcon } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Sparkles,
+  CheckSquare,
+  Square as SquareIcon,
+} from "lucide-react";
 import { PRIORITY_COLORS, CATEGORY_ICON, EFFORT_LABEL } from "./types";
 
 interface Suggestion {
@@ -38,7 +44,10 @@ export function SuggestionsTab({
 }: SuggestionsTabProps) {
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">프로젝트를 분석하여 개선이 필요한 항목을 추천합니다. 원하는 항목을 선택하여 태스크로 생성하세요.</p>
+      <p className="text-xs text-muted-foreground">
+        프로젝트를 분석하여 개선이 필요한 항목을 추천합니다. 원하는 항목을
+        선택하여 태스크로 생성하세요.
+      </p>
 
       {!suggestLoading && suggestions.length === 0 && (
         <button
@@ -65,16 +74,21 @@ export function SuggestionsTab({
       {suggestions.length > 0 && (
         <>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">{suggestions.length}개 추천 / {selectedSuggestions.size}개 선택</span>
+            <span className="text-xs text-muted-foreground">
+              {suggestions.length}개 추천 / {selectedSuggestions.size}개 선택
+            </span>
             <button
               type="button"
               onClick={() => {
-                if (selectedSuggestions.size === suggestions.length) onDeselectAll();
+                if (selectedSuggestions.size === suggestions.length)
+                  onDeselectAll();
                 else onSelectAll();
               }}
               className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
             >
-              {selectedSuggestions.size === suggestions.length ? "전체 해제" : "전체 선택"}
+              {selectedSuggestions.size === suggestions.length
+                ? "전체 해제"
+                : "전체 선택"}
             </button>
           </div>
 
@@ -101,13 +115,29 @@ export function SuggestionsTab({
                     <div className="flex items-center gap-2 mb-1">
                       <span>{CATEGORY_ICON[s.category] || "\uD83D\uDCCB"}</span>
                       <span className="text-sm font-medium">{s.title}</span>
-                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0", PRIORITY_COLORS[s.priority])}>{s.priority}</span>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{EFFORT_LABEL[s.effort] || s.effort}</span>
+                      <span
+                        className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0",
+                          PRIORITY_COLORS[s.priority],
+                        )}
+                      >
+                        {s.priority}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {EFFORT_LABEL[s.effort] || s.effort}
+                      </span>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-1.5">{s.description}</p>
+                    <p className="text-xs text-muted-foreground mb-1.5">
+                      {s.description}
+                    </p>
                     <div className="flex flex-wrap gap-1">
                       {s.scope.map((p, j) => (
-                        <span key={j} className="text-[9px] font-mono px-1 py-0.5 rounded bg-muted text-muted-foreground">{p}</span>
+                        <span
+                          key={j}
+                          className="text-[9px] font-mono px-1 py-0.5 rounded bg-muted text-muted-foreground"
+                        >
+                          {p}
+                        </span>
                       ))}
                     </div>
                   </div>
@@ -126,7 +156,11 @@ export function SuggestionsTab({
                 creatingSuggestions && "opacity-50 cursor-not-allowed",
               )}
             >
-              {creatingSuggestions ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+              {creatingSuggestions ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Plus className="h-3.5 w-3.5" />
+              )}
               선택한 {selectedSuggestions.size}개 태스크 생성
             </button>
           )}

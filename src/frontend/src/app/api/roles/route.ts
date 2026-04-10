@@ -8,8 +8,12 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const rolesDir = ROLES_DIR;
-    const roles = fs.readdirSync(rolesDir)
-      .filter((f) => f.endsWith(".md") && !f.startsWith("reviewer-") && f !== "README.md")
+    const roles = fs
+      .readdirSync(rolesDir)
+      .filter(
+        (f) =>
+          f.endsWith(".md") && !f.startsWith("reviewer-") && f !== "README.md",
+      )
       .map((f) => f.replace(".md", ""));
     return NextResponse.json(roles);
   } catch {

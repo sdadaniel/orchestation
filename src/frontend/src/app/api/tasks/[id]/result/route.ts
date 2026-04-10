@@ -34,7 +34,10 @@ export async function GET(
     }
 
     // rejection reason 파일이 있으면 rejected
-    const rejectionPath = path.join(OUTPUT_DIR, `${taskId}-rejection-reason.txt`);
+    const rejectionPath = path.join(
+      OUTPUT_DIR,
+      `${taskId}-rejection-reason.txt`,
+    );
     if (fs.existsSync(rejectionPath)) {
       status = "rejected";
     }
@@ -45,7 +48,9 @@ export async function GET(
     if (fs.existsSync(feedbackPath)) {
       try {
         reviewFeedback = fs.readFileSync(feedbackPath, "utf-8").trim();
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     return NextResponse.json({ status, result, reviewFeedback });

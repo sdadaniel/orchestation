@@ -5,7 +5,12 @@ import { pipeProcessLogs } from "./process-utils";
 import { getErrorMessage } from "./error-utils";
 import { getGlobalSingleton } from "./get-global-singleton";
 
-export type AutoImproveStatus = "idle" | "running" | "stopping" | "completed" | "failed";
+export type AutoImproveStatus =
+  | "idle"
+  | "running"
+  | "stopping"
+  | "completed"
+  | "failed";
 
 export interface AutoImproveState {
   status: AutoImproveStatus;
@@ -69,7 +74,9 @@ class AutoImproveManager {
       exitCode: null,
     };
 
-    this.appendLog(`[auto-improve] Starting auto-improve.sh at ${this.state.startedAt}`);
+    this.appendLog(
+      `[auto-improve] Starting auto-improve.sh at ${this.state.startedAt}`,
+    );
     this.appendLog(`[auto-improve] Script: ${scriptPath}`);
     this.appendLog(`[auto-improve] CWD: ${projectRoot}`);
 
@@ -98,7 +105,7 @@ class AutoImproveManager {
       this.state.status = code === 0 ? "completed" : "failed";
       this.state.finishedAt = new Date().toISOString();
       this.appendLog(
-        `[auto-improve] Process exited with code ${code} at ${this.state.finishedAt}`
+        `[auto-improve] Process exited with code ${code} at ${this.state.finishedAt}`,
       );
       this.process = null;
       // Clean up stop flag on exit
@@ -126,8 +133,14 @@ class AutoImproveManager {
 
     // Create stop flag file — the shell script checks this and exits gracefully
     try {
-      fs.writeFileSync(this.getStopFlagPath(), new Date().toISOString(), "utf-8");
-      this.appendLog(`[auto-improve] Stop flag created: ${this.getStopFlagPath()}`);
+      fs.writeFileSync(
+        this.getStopFlagPath(),
+        new Date().toISOString(),
+        "utf-8",
+      );
+      this.appendLog(
+        `[auto-improve] Stop flag created: ${this.getStopFlagPath()}`,
+      );
     } catch (err) {
       const msg = getErrorMessage(err, String(err));
       this.appendLog(`[auto-improve] Failed to create stop flag: ${msg}`);

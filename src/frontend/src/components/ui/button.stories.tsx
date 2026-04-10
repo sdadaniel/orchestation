@@ -8,7 +8,13 @@ const meta: Meta<typeof Button> = {
   argTypes: {
     variant: {
       control: "select",
-      options: ["default", "ghost", "sidebar", "sidebarActive", "sidebarDisabled"],
+      options: [
+        "default",
+        "ghost",
+        "sidebar",
+        "sidebarActive",
+        "sidebarDisabled",
+      ],
     },
     size: {
       control: "select",
@@ -146,13 +152,21 @@ export const AllVariants: Story = {
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3">
         <Button variant="default">Default</Button>
-        <Button variant="default" size="sm">Small</Button>
-        <Button variant="default" size="lg">Large</Button>
-        <Button variant="default" size="icon"><Plus className="h-4 w-4" /></Button>
+        <Button variant="default" size="sm">
+          Small
+        </Button>
+        <Button variant="default" size="lg">
+          Large
+        </Button>
+        <Button variant="default" size="icon">
+          <Plus className="h-4 w-4" />
+        </Button>
       </div>
       <div className="flex items-center gap-3">
         <Button variant="ghost">Ghost</Button>
-        <Button variant="default" disabled>Disabled</Button>
+        <Button variant="default" disabled>
+          Disabled
+        </Button>
       </div>
       <div className="w-[220px] bg-[var(--sidebar)] p-2 rounded-md flex flex-col gap-1">
         <Button variant="sidebar" size="sidebar">

@@ -4,7 +4,10 @@ import { findNoticeFile, parseNoticeFile } from "@/lib/notice-parser";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
   const filePath = findNoticeFile(id);
   if (!filePath) {
@@ -13,13 +16,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const notice = parseNoticeFile(filePath);
   if (!notice) {
-    return NextResponse.json({ error: "Failed to parse notice" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to parse notice" },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json(notice);
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
   const filePath = findNoticeFile(id);
   if (!filePath) {
@@ -41,7 +50,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     updated = updated.replace(/^type:\s*.+$/m, `type: ${body.type}`);
   }
   if (body.content !== undefined) {
-    updated = updated.replace(/(^---\n[\s\S]*?\n---\n?)[\s\S]*/, `$1${body.content}\n`);
+    updated = updated.replace(
+      /(^---\n[\s\S]*?\n---\n?)[\s\S]*/,
+      `$1${body.content}\n`,
+    );
   }
 
   // Update timestamp
@@ -54,7 +66,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   return NextResponse.json(notice);
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
   const filePath = findNoticeFile(id);
   if (!filePath) {

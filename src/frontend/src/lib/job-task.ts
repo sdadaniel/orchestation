@@ -5,8 +5,18 @@
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import { parseFrontmatter, getString, getStringArray } from "./frontmatter-utils";
-import { PROJECT_ROOT, PACKAGE_DIR, TASKS_DIR, OUTPUT_DIR, ROLES_DIR } from "./paths";
+import {
+  parseFrontmatter,
+  getString,
+  getStringArray,
+} from "./frontmatter-utils";
+import {
+  PROJECT_ROOT,
+  PACKAGE_DIR,
+  TASKS_DIR,
+  OUTPUT_DIR,
+  ROLES_DIR,
+} from "./paths";
 import { loadSettings } from "./settings";
 import { signalCreate, SignalSuffix } from "./signal";
 import { selectModel, logModelSelection } from "./model-selector";
@@ -88,7 +98,11 @@ export async function runJobTask(
 
     // 6. 모델 선택
     const tokenLogPath = path.join(OUTPUT_DIR, "token-usage.log");
-    const { model, complexity } = logModelSelection(taskFile, taskId, tokenLogPath);
+    const { model, complexity } = logModelSelection(
+      taskFile,
+      taskId,
+      tokenLogPath,
+    );
     log(`🤖 모델: ${model} (복잡도: ${complexity})`);
 
     // 7. Claude 호출
@@ -105,20 +119,29 @@ export async function runJobTask(
       onLine: (line) => log(line),
     });
 
-    log(`✅ Claude 완료 (exit=${claudeResult.exitCode}, cost=$${claudeResult.costUsd.toFixed(4)})`);
+    log(
+      `✅ Claude 완료 (exit=${claudeResult.exitCode}, cost=$${claudeResult.costUsd.toFixed(4)})`,
+    );
 
     // 8. 결과 저장
     const resultFile = path.join(OUTPUT_DIR, `${taskId}-task.json`);
-    fs.writeFileSync(resultFile, JSON.stringify({
-      taskId,
-      status: claudeResult.exitCode === 0 ? "done" : "failed",
-      result: claudeResult.result,
-      cost_usd: claudeResult.costUsd,
-      input_tokens: claudeResult.inputTokens,
-      output_tokens: claudeResult.outputTokens,
-      model,
-      duration_ms: claudeResult.durationMs,
-    }, null, 2));
+    fs.writeFileSync(
+      resultFile,
+      JSON.stringify(
+        {
+          taskId,
+          status: claudeResult.exitCode === 0 ? "done" : "failed",
+          result: claudeResult.result,
+          cost_usd: claudeResult.costUsd,
+          input_tokens: claudeResult.inputTokens,
+          output_tokens: claudeResult.outputTokens,
+          model,
+          duration_ms: claudeResult.durationMs,
+        },
+        null,
+        2,
+      ),
+    );
 
     // 9. 토큰 사용량 로깅
     logTokenUsage(taskId, "task", model, claudeResult);
@@ -128,18 +151,31 @@ export async function runJobTask(
       const ignoreFile = path.join(worktreePath, ".claudeignore");
       try {
         if (fs.existsSync(ignoreFile)) fs.unlinkSync(ignoreFile);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     // 11. 거절 확인
     if (claudeResult.result.startsWith("거절:")) {
-      const reason = claudeResult.result.split("\n")[0].replace("거절:", "").trim();
+      const reason = claudeResult.result
+        .split("\n")[0]
+        .replace("거절:", "")
+        .trim();
       log(`🚫 거절: ${reason}`);
-      const reasonFile = path.join(OUTPUT_DIR, `${taskId}-rejection-reason.txt`);
+      const reasonFile = path.join(
+        OUTPUT_DIR,
+        `${taskId}-rejection-reason.txt`,
+      );
       fs.writeFileSync(reasonFile, claudeResult.result);
       signalCreate(signalDir, taskId, "task-rejected");
       signalSent = true;
-      return { status: "task-rejected", cost: claudeResult.costUsd, model, result: claudeResult.result };
+      return {
+        status: "task-rejected",
+        cost: claudeResult.costUsd,
+        model,
+        result: claudeResult.result,
+      };
     }
 
     // 11. 실행 실패 확인
@@ -161,12 +197,21 @@ export async function runJobTask(
     signalSent = true;
     log(`✅ task-done 시그널 생성`);
 
-    return { status: "task-done", cost: claudeResult.costUsd, model, result: claudeResult.result };
+    return {
+      status: "task-done",
+      cost: claudeResult.costUsd,
+      model,
+      result: claudeResult.result,
+    };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     log(`❌ 오류: ${msg}`);
     if (!signalSent) {
-      try { signalCreate(signalDir, taskId, "task-failed"); } catch { /* ignore */ }
+      try {
+        signalCreate(signalDir, taskId, "task-failed");
+      } catch {
+        /* ignore */
+      }
     }
     return { status: "task-failed" };
   }
@@ -184,14 +229,18 @@ function ensureGitignoreEntry(worktreePath: string, entry: string): void {
     if (!content.split("\n").includes(entry)) {
       fs.appendFileSync(gitignorePath, `\n${entry}\n`);
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 function findTaskFile(taskId: string): string | null {
   // .orchestration/tasks/ 먼저
   if (fs.existsSync(TASKS_DIR)) {
     const files = fs.readdirSync(TASKS_DIR);
-    const match = files.find(f => f.startsWith(`${taskId}-`) && f.endsWith(".md"));
+    const match = files.find(
+      (f) => f.startsWith(`${taskId}-`) && f.endsWith(".md"),
+    );
     if (match) return path.join(TASKS_DIR, match);
   }
 
@@ -199,7 +248,9 @@ function findTaskFile(taskId: string): string | null {
   const docsTask = path.join(PROJECT_ROOT, "docs", "task");
   if (fs.existsSync(docsTask)) {
     const files = fs.readdirSync(docsTask);
-    const match = files.find(f => f.startsWith(`${taskId}-`) && f.endsWith(".md"));
+    const match = files.find(
+      (f) => f.startsWith(`${taskId}-`) && f.endsWith(".md"),
+    );
     if (match) return path.join(docsTask, match);
   }
 
@@ -207,14 +258,20 @@ function findTaskFile(taskId: string): string | null {
   const docsReq = path.join(PROJECT_ROOT, "docs", "requests");
   if (fs.existsSync(docsReq)) {
     const files = fs.readdirSync(docsReq);
-    const match = files.find(f => f.startsWith(`${taskId}-`) && f.endsWith(".md"));
+    const match = files.find(
+      (f) => f.startsWith(`${taskId}-`) && f.endsWith(".md"),
+    );
     if (match) return path.join(docsReq, match);
   }
 
   return null;
 }
 
-function ensureWorktree(worktreePath: string, branch: string, log: (msg: string) => void): void {
+function ensureWorktree(
+  worktreePath: string,
+  branch: string,
+  log: (msg: string) => void,
+): void {
   if (fs.existsSync(worktreePath)) {
     log(`📂 worktree 존재: ${worktreePath}`);
     return;
@@ -224,13 +281,23 @@ function ensureWorktree(worktreePath: string, branch: string, log: (msg: string)
   try {
     // 브랜치가 없으면 생성
     try {
-      execSync(`git -C "${PROJECT_ROOT}" rev-parse --verify "${branch}" 2>/dev/null`, { stdio: "ignore" });
+      execSync(
+        `git -C "${PROJECT_ROOT}" rev-parse --verify "${branch}" 2>/dev/null`,
+        { stdio: "ignore" },
+      );
     } catch {
-      execSync(`git -C "${PROJECT_ROOT}" branch "${branch}"`, { stdio: "ignore" });
+      execSync(`git -C "${PROJECT_ROOT}" branch "${branch}"`, {
+        stdio: "ignore",
+      });
     }
-    execSync(`git -C "${PROJECT_ROOT}" worktree add "${worktreePath}" "${branch}"`, { stdio: "ignore" });
+    execSync(
+      `git -C "${PROJECT_ROOT}" worktree add "${worktreePath}" "${branch}"`,
+      { stdio: "ignore" },
+    );
   } catch (err) {
-    log(`⚠️ worktree 생성 실패: ${err instanceof Error ? err.message : String(err)}`);
+    log(
+      `⚠️ worktree 생성 실패: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }
 
@@ -269,16 +336,18 @@ function validateScope(
       { encoding: "utf-8" },
     ).trim();
 
-    const allChanges = [...new Set([...diff.split("\n"), ...unstaged.split("\n")])].filter(Boolean);
+    const allChanges = [
+      ...new Set([...diff.split("\n"), ...unstaged.split("\n")]),
+    ].filter(Boolean);
     if (allChanges.length === 0) return;
 
     // 빌드 아티팩트 및 context filter 파일은 scope 검증에서 제외
     const IGNORED_FILES = [".claudeignore", ".gitignore"];
-    const changedFiles = allChanges.filter(f => !IGNORED_FILES.includes(f));
+    const changedFiles = allChanges.filter((f) => !IGNORED_FILES.includes(f));
     const outOfScope: string[] = [];
 
     for (const f of changedFiles) {
-      const inScope = scope.some(s => {
+      const inScope = scope.some((s) => {
         const base = s.replace(/\/\*\*$/, "");
         return f === s || f.startsWith(base);
       });
@@ -289,19 +358,30 @@ function validateScope(
       log(`⚠️ 스코프 외 변경 감지: ${outOfScope.join(", ")}`);
       for (const f of outOfScope) {
         try {
-          execSync(`git -C "${worktreePath}" checkout -- "${f}"`, { stdio: "ignore" });
-        } catch { /* ignore */ }
+          execSync(`git -C "${worktreePath}" checkout -- "${f}"`, {
+            stdio: "ignore",
+          });
+        } catch {
+          /* ignore */
+        }
       }
       log(`🔄 스코프 외 변경 복원 완료`);
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 function logTokenUsage(
   taskId: string,
   phase: string,
   model: string,
-  result: { costUsd: number; inputTokens: number; outputTokens: number; durationMs: number },
+  result: {
+    costUsd: number;
+    inputTokens: number;
+    outputTokens: number;
+    durationMs: number;
+  },
 ): void {
   const logLine = `[${new Date().toISOString()}] ${taskId} | phase=${phase} | model=${model} | input=${result.inputTokens} | output=${result.outputTokens} | cost=$${result.costUsd.toFixed(4)} | duration=${result.durationMs}ms\n`;
 
@@ -309,7 +389,9 @@ function logTokenUsage(
     const logPath = path.join(OUTPUT_DIR, "token-usage.log");
     fs.mkdirSync(path.dirname(logPath), { recursive: true });
     fs.appendFileSync(logPath, logLine);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   // SQLite에도 기록
   try {
@@ -317,8 +399,19 @@ function logTokenUsage(
     if (db) {
       db.prepare(
         `INSERT INTO token_usage (task_id, phase, model, input_tokens, output_tokens, cost_usd, duration_ms, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(taskId, phase, model, result.inputTokens, result.outputTokens, result.costUsd, result.durationMs, new Date().toISOString());
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        taskId,
+        phase,
+        model,
+        result.inputTokens,
+        result.outputTokens,
+        result.costUsd,
+        result.durationMs,
+        new Date().toISOString(),
+      );
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }

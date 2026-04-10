@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { findRequestFile, parseRequestFile, parseAllRequests, getRequestsDir } from "@/lib/request-parser";
+import {
+  findRequestFile,
+  parseRequestFile,
+  parseAllRequests,
+  getRequestsDir,
+} from "@/lib/request-parser";
 import { getErrorMessage } from "@/lib/error-utils";
 import { OUTPUT_DIR } from "@/lib/paths";
 import { generateSlug } from "@/lib/slug-utils";
@@ -22,7 +27,10 @@ export async function GET(
 
   const data = parseRequestFile(filePath);
   if (!data) {
-    return NextResponse.json({ error: "Failed to parse request" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to parse request" },
+      { status: 500 },
+    );
   }
 
   const taskId = id;
@@ -33,7 +41,9 @@ export async function GET(
   if (fs.existsSync(taskJsonPath)) {
     try {
       executionLog = JSON.parse(fs.readFileSync(taskJsonPath, "utf-8"));
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   // Check for review result
@@ -42,25 +52,41 @@ export async function GET(
   if (fs.existsSync(reviewJsonPath)) {
     try {
       reviewResult = JSON.parse(fs.readFileSync(reviewJsonPath, "utf-8"));
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   // Get cost info from token-usage.log
-  let costEntries: { phase: string; cost: string; duration: string; tokens: string }[] = [];
+  let costEntries: {
+    phase: string;
+    cost: string;
+    duration: string;
+    tokens: string;
+  }[] = [];
   const tokenLogPath = path.join(OUTPUT_DIR, "token-usage.log");
   if (fs.existsSync(tokenLogPath)) {
     try {
       const logContent = fs.readFileSync(tokenLogPath, "utf-8");
-      const lines = logContent.split("\n").filter((l) => l.includes(taskId) && !l.includes("model_selection"));
+      const lines = logContent
+        .split("\n")
+        .filter((l) => l.includes(taskId) && !l.includes("model_selection"));
       costEntries = lines.map((line) => {
         const phase = line.match(/phase=(\w+)/)?.[1] || "unknown";
         const cost = line.match(/cost=\$([0-9.]+)/)?.[1] || "0";
         const duration = line.match(/duration=(\d+)ms/)?.[1] || "0";
         const output = line.match(/output=(\d+)/)?.[1] || "0";
         const input = line.match(/input=(\d+)/)?.[1] || "0";
-        return { phase, cost: `$${parseFloat(cost).toFixed(4)}`, duration: `${(parseInt(duration) / 1000).toFixed(1)}s`, tokens: `in:${input} out:${output}` };
+        return {
+          phase,
+          cost: `$${parseFloat(cost).toFixed(4)}`,
+          duration: `${(parseInt(duration) / 1000).toFixed(1)}s`,
+          tokens: `in:${input} out:${output}`,
+        };
       });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   // Find tasks that depend on this task (blocked_by this task)
@@ -72,7 +98,9 @@ export async function GET(
   // Resolve depends_on with title and status
   const dependsOnResolved = data.depends_on.map((depId) => {
     const dep = allTasks.find((t) => t.id === depId);
-    return dep ? { id: dep.id, title: dep.title, status: dep.status } : { id: depId, title: "", status: "unknown" };
+    return dep
+      ? { id: dep.id, title: dep.title, status: dep.status }
+      : { id: depId, title: "", status: "unknown" };
   });
 
   return NextResponse.json({
@@ -103,14 +131,28 @@ export async function PUT(
 
     const fmMatch = existing.match(/^---\n([\s\S]*?)\n---/);
     if (!fmMatch) {
-      return NextResponse.json({ error: "Invalid file format" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Invalid file format" },
+        { status: 500 },
+      );
     }
 
     let fm = fmMatch[1];
     const oldContent = existing.replace(/^---\n[\s\S]*?\n---\n?/, "").trim();
 
     // Update frontmatter fields if provided
-    if (body.status && ["pending", "in_progress", "reviewing", "done", "rejected", "stopped", "failed"].includes(body.status)) {
+    if (
+      body.status &&
+      [
+        "pending",
+        "in_progress",
+        "reviewing",
+        "done",
+        "rejected",
+        "stopped",
+        "failed",
+      ].includes(body.status)
+    ) {
       // Dependency validation: in_progress requires all depends_on tasks to be done
       if (body.status === "in_progress") {
         const currentData = parseRequestFile(filePath);
@@ -123,10 +165,14 @@ export async function PUT(
           if (unmetDeps.length > 0) {
             const details = unmetDeps.map((depId) => {
               const dep = allTasks.find((t) => t.id === depId);
-              return dep ? `${depId} (status: ${dep.status})` : `${depId} (not found)`;
+              return dep
+                ? `${depId} (status: ${dep.status})`
+                : `${depId} (not found)`;
             });
             return NextResponse.json(
-              { error: `의존성 미충족: 선행 태스크가 완료되지 않았습니다 - ${details.join(", ")}` },
+              {
+                error: `의존성 미충족: 선행 태스크가 완료되지 않았습니다 - ${details.join(", ")}`,
+              },
               { status: 400 },
             );
           }
@@ -149,7 +195,8 @@ export async function PUT(
       fm += `\nupdated: ${now}`;
     }
 
-    const newContent = body.content !== undefined ? body.content.trim() : oldContent;
+    const newContent =
+      body.content !== undefined ? body.content.trim() : oldContent;
     const fileContent = `---\n${fm}\n---\n${newContent}\n`;
 
     // If title changed, rename file
@@ -168,7 +215,9 @@ export async function PUT(
 
     // Return updated data
     const updated = body.title
-      ? parseRequestFile(`${getRequestsDir()}/${id}-${generateSlug(body.title.trim())}.md`)
+      ? parseRequestFile(
+          `${getRequestsDir()}/${id}-${generateSlug(body.title.trim())}.md`,
+        )
       : parseRequestFile(filePath);
 
     return NextResponse.json(updated || { ok: true });

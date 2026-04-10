@@ -33,7 +33,9 @@ async function fetchMonitor(): Promise<MonitorSnapshot> {
   return res.json();
 }
 
-export function useMonitor(intervalMs = 10000): MonitorData & { error: string | null } {
+export function useMonitor(
+  intervalMs = 10000,
+): MonitorData & { error: string | null } {
   // history는 React Query 외부에서 누적 관리 (캐시에 snapshot 1개만 저장)
   const historyRef = useRef<MonitorSnapshot[]>([]);
   const [history, setHistory] = useState<MonitorSnapshot[]>([]);
@@ -58,7 +60,10 @@ export function useMonitor(intervalMs = 10000): MonitorData & { error: string | 
   // 최신 snapshot이 바뀔 때마다 history 누적
   useEffect(() => {
     if (!current) return;
-    historyRef.current = [...historyRef.current.slice(-(MAX_HISTORY - 1)), current];
+    historyRef.current = [
+      ...historyRef.current.slice(-(MAX_HISTORY - 1)),
+      current,
+    ];
     setHistory(historyRef.current);
   }, [current]);
 

@@ -10,7 +10,7 @@ import { ChildProcess } from "child_process";
 export function pipeProcessLogs(
   proc: ChildProcess,
   appendLog: (line: string) => void,
-  onStdoutLine?: (line: string) => void
+  onStdoutLine?: (line: string) => void,
 ): void {
   proc.stdout?.on("data", (data: Buffer) => {
     const lines = data.toString("utf-8").split("\n");
@@ -42,7 +42,10 @@ export function pipeProcessLogs(
  * @param proc      - The child process to terminate
  * @param timeoutMs - Milliseconds to wait before force-killing (default: 5000)
  */
-export function killProcessGracefully(proc: ChildProcess, timeoutMs = 5000): void {
+export function killProcessGracefully(
+  proc: ChildProcess,
+  timeoutMs = 5000,
+): void {
   try {
     if (proc.pid) {
       process.kill(-proc.pid, "SIGTERM");

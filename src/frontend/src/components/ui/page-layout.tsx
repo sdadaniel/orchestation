@@ -14,9 +14,7 @@ export interface PageHeaderProps {
 
 function PageLayout({ children, className }: PageLayoutProps) {
   return (
-    <div className={cn("space-y-4 pb-[500px]", className)}>
-      {children}
-    </div>
+    <div className={cn("space-y-4 pb-[500px]", className)}>{children}</div>
   );
 }
 

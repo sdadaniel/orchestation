@@ -29,14 +29,20 @@ const VALID_STATUSES: readonly TaskStatus[] = [
 const VALID_PRIORITIES: readonly TaskPriority[] = ["high", "medium", "low"];
 
 function toTaskStatus(value: unknown): TaskStatus {
-  if (typeof value === "string" && (VALID_STATUSES as readonly string[]).includes(value)) {
+  if (
+    typeof value === "string" &&
+    (VALID_STATUSES as readonly string[]).includes(value)
+  ) {
     return value as TaskStatus;
   }
   return "pending";
 }
 
 function toTaskPriority(value: unknown): TaskPriority {
-  if (typeof value === "string" && (VALID_PRIORITIES as readonly string[]).includes(value)) {
+  if (
+    typeof value === "string" &&
+    (VALID_PRIORITIES as readonly string[]).includes(value)
+  ) {
     return value as TaskPriority;
   }
   return "medium";
@@ -53,7 +59,7 @@ export function parseAllFromDirectory<T>(
   dir: string,
   parseFn: (filePath: string) => T | null,
   filterFn?: (filename: string) => boolean,
-  sortFn?: (a: T, b: T) => number
+  sortFn?: (a: T, b: T) => number,
 ): T[] {
   if (!fs.existsSync(dir)) return [];
 
@@ -111,7 +117,10 @@ export function parseAllTasks(): TaskFrontmatter[] {
     return _tasksCache;
   }
 
-  const tasks = parseAllFromDirectory<TaskFrontmatter>(TASKS_DIR, parseTaskFile);
+  const tasks = parseAllFromDirectory<TaskFrontmatter>(
+    TASKS_DIR,
+    parseTaskFile,
+  );
   _tasksCache = tasks;
   _tasksCacheTime = now;
   return tasks;
