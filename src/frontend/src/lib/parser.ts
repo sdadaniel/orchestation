@@ -42,6 +42,38 @@ function toTaskPriority(value: unknown): TaskPriority {
   return "medium";
 }
 
+/**
+ * 디렉토리에서 .md 파일을 읽어 파싱 결과 배열을 반환하는 제네릭 유틸리티.
+ * @param dir       읽을 디렉토리 경로
+ * @param parseFn   파일 경로를 받아 T | null을 반환하는 파서 함수
+ * @param filterFn  (선택) 파일명 필터 함수 (기본: .md 파일 전체)
+ * @param sortFn    (선택) 결과 배열 정렬 비교 함수
+ */
+export function parseAllFromDirectory<T>(
+  dir: string,
+  parseFn: (filePath: string) => T | null,
+  filterFn?: (filename: string) => boolean,
+  sortFn?: (a: T, b: T) => number
+): T[] {
+  if (!fs.existsSync(dir)) return [];
+
+  let files = fs.readdirSync(dir).filter((f) => f.endsWith(".md"));
+  if (filterFn) {
+    files = files.filter(filterFn);
+  }
+
+  const results: T[] = [];
+  for (const file of files) {
+    const item = parseFn(path.join(dir, file));
+    if (item) results.push(item);
+  }
+
+  if (sortFn) {
+    results.sort(sortFn);
+  }
+
+  return results;
+}
 
 export function parseTaskFile(filePath: string): TaskFrontmatter | null {
   try {
@@ -79,22 +111,7 @@ export function parseAllTasks(): TaskFrontmatter[] {
     return _tasksCache;
   }
 
-  if (!fs.existsSync(TASKS_DIR)) {
-    _tasksCache = [];
-    _tasksCacheTime = now;
-    return _tasksCache;
-  }
-
-  const files = fs.readdirSync(TASKS_DIR).filter((f) => f.endsWith(".md"));
-  const tasks: TaskFrontmatter[] = [];
-
-  for (const file of files) {
-    const task = parseTaskFile(path.join(TASKS_DIR, file));
-    if (task) {
-      tasks.push(task);
-    }
-  }
-
+  const tasks = parseAllFromDirectory<TaskFrontmatter>(TASKS_DIR, parseTaskFile);
   _tasksCache = tasks;
   _tasksCacheTime = now;
   return tasks;
