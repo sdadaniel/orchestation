@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
-import { parseAllRequests, getRequestsDir } from "@/lib/request-parser";
-import type { RequestData } from "@/lib/request-parser";
 import { getErrorMessage } from "@/lib/error-utils";
 import { ROLES_DIR } from "@/lib/paths";
-import { generateSlug } from "@/lib/slug-utils";
 import { getDb, isDbAvailable } from "@/service/db";
 import { getNextTaskId, createTask } from "@/service/task-store";
 import { formatTimestamp } from "@/lib/date-utils";
@@ -43,11 +40,11 @@ export async function GET() {
     ).all() as RequestRow[];
 
     const statusOrder: Record<string, number> = { pending: 0, reviewing: 1, in_progress: 2, rejected: 3, done: 4 };
-    const requests: RequestData[] = rows.map((row) => ({
+    const requests = rows.map((row) => ({
       id: row.id,
       title: row.title,
-      status: row.status as RequestData["status"],
-      priority: row.priority as RequestData["priority"],
+      status: row.status,
+      priority: row.priority,
       created: row.created ?? "",
       updated: row.updated ?? "",
       content: row.content ?? "",
@@ -66,8 +63,7 @@ export async function GET() {
     return NextResponse.json(requests);
   }
 
-  const requests = parseAllRequests();
-  return NextResponse.json(requests);
+  return NextResponse.json([]);
 }
 
 export async function POST(request: Request) {
@@ -82,12 +78,6 @@ export async function POST(request: Request) {
     const validPriorities = ["high", "medium", "low"];
     const taskPriority = validPriorities.includes(priority) ? priority : "medium";
 
-    const dir = getRequestsDir();
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    // Determine next TASK-XXX id
     const taskId = getNextTaskId();
     const sanitizedTitle = title.trim();
     const bodyContent = (content && typeof content === "string") ? content.trim() : "";
@@ -95,52 +85,16 @@ export async function POST(request: Request) {
     const now = new Date();
     const today = formatTimestamp(now);
 
-    const scopeLines = Array.isArray(scope) && scope.length > 0
-      ? `scope:\n${scope.map((s: string) => `  - ${s}`).join("\n")}\n`
-      : "";
-    const contextLines = Array.isArray(context) && context.length > 0
-      ? `context:\n${context.map((s: string) => `  - ${s}`).join("\n")}\n`
-      : "";
-    const dependsOnLines = Array.isArray(depends_on) && depends_on.length > 0
-      ? `depends_on: [${depends_on.join(", ")}]\n`
-      : "";
     let validRoles: string[];
     try {
-      const rolesDir = ROLES_DIR;
-      validRoles = fs.readdirSync(rolesDir)
+      validRoles = fs.readdirSync(ROLES_DIR)
         .filter((f) => f.endsWith(".md") && !f.startsWith("reviewer-") && f !== "README.md")
         .map((f) => f.replace(".md", ""));
     } catch {
       validRoles = ["general"];
     }
     const taskRole = typeof role === "string" && validRoles.includes(role) ? role : "";
-    const roleLine = taskRole && taskRole !== "general" ? `role: ${taskRole}\n` : "";
 
-    const fileContent = `---
-id: ${taskId}
-title: ${sanitizedTitle}
-status: pending
-priority: ${taskPriority}
-${roleLine}${scopeLines}${contextLines}${dependsOnLines}created: ${today}
-updated: ${today}
----
-${bodyContent}
-`;
-
-    const MAX_SLUG_LENGTH = 50;
-    const slug = generateSlug(sanitizedTitle, MAX_SLUG_LENGTH);
-
-    const fileName = `${taskId}-${slug}.md`;
-    if (fileName.length > 255) {
-      return NextResponse.json(
-        { error: "Generated filename exceeds OS limit (255 chars)" },
-        { status: 400 },
-      );
-    }
-    const filePath = `${dir}/${fileName}`;
-    fs.writeFileSync(filePath, fileContent, "utf-8");
-
-    // DB에도 생성
     createTask({
       id: taskId,
       title: sanitizedTitle,
@@ -148,6 +102,7 @@ ${bodyContent}
       priority: taskPriority,
       role: taskRole || "general",
       scope: Array.isArray(scope) ? scope : [],
+      context: Array.isArray(context) ? context : [],
       depends_on: Array.isArray(depends_on) ? depends_on : [],
       content: bodyContent,
     });
