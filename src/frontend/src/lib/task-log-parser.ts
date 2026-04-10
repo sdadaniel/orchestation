@@ -1,5 +1,5 @@
-import fs from "fs";
-import path from "path";
+import * as fs from "fs";
+import * as path from "path";
 
 export interface TaskLogEntry {
   timestamp: string;
@@ -56,8 +56,8 @@ export function taskExists(taskId: string): boolean {
     ? orchDir
     : path.join(projectRoot, "docs", "task");
   if (!fs.existsSync(tasksDir)) return false;
-  const files = fs.readdirSync(tasksDir).filter((f) => f.endsWith(".md"));
-  return files.some((f) => f.startsWith(taskId));
+  const files = fs.readdirSync(tasksDir).filter((f: string) => f.endsWith(".md"));
+  return files.some((f: string) => f.startsWith(taskId));
 }
 
 /**
