@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import taskRunnerManager from "@/engine/runner/task-runner-manager";
 import orchestrationManager from "@/engine/orchestration-manager";
-import { parseAllRequests, findRequestFile, parseRequestFile } from "@/lib/request-parser";
+import { getTask, getAllTasks, updateTaskStatus, parseDependsOn } from "@/service/task-store";
 import { PROJECT_ROOT, OUTPUT_DIR } from "@/lib/paths";
 
 const SIGNAL_DIR = path.join(PROJECT_ROOT, ".orchestration", "signals");
@@ -14,17 +14,11 @@ function isValidTaskId(id: string): boolean {
   return TASK_ID_PATTERN.test(id);
 }
 
-/** task 파일의 status를 stopped로 업데이트 */
+/** task DB의 status를 stopped로 업데이트 */
 function markTaskAsStopped(taskId: string): void {
-  const taskFile = findRequestFile(taskId);
-  if (!taskFile) return;
-  try {
-    const raw = fs.readFileSync(taskFile, "utf-8");
-    const updated = raw.replace(/^status:\s*.+$/m, "status: stopped");
-    fs.writeFileSync(taskFile, updated, "utf-8");
-  } catch {
-    // best-effort
-  }
+  const task = getTask(taskId);
+  if (!task) return;
+  updateTaskStatus(taskId, "stopped", task.status as string);
 }
 
 /** stop-request 시그널 파일 생성 (워커가 killed-by-user 인지 구분) */
@@ -58,13 +52,13 @@ export async function POST(
   }
 
   // 의존성 체크: depends_on의 모든 task가 done이어야 실행 가능
-  const taskFile = findRequestFile(id);
-  if (taskFile) {
-    const taskData = parseRequestFile(taskFile);
-    if (taskData && taskData.depends_on.length > 0) {
-      const allTasks = parseAllRequests();
-      const unmetDeps = taskData.depends_on.filter((depId) => {
-        const dep = allTasks.find((t) => t.id === depId);
+  const taskRow = getTask(id);
+  if (taskRow) {
+    const dependsOnIds = parseDependsOn(taskRow);
+    if (dependsOnIds.length > 0) {
+      const allTasks = getAllTasks();
+      const unmetDeps = dependsOnIds.filter(depId => {
+        const dep = allTasks.find(t => t.id === depId);
         return !dep || dep.status !== "done";
       });
       if (unmetDeps.length > 0) {
@@ -73,19 +67,6 @@ export async function POST(
           { status: 409 },
         );
       }
-    }
-  }
-
-  // branch/worktree 자동 추가 (없으면)
-  if (taskFile) {
-    const raw = fs.readFileSync(taskFile, "utf-8");
-    if (!raw.includes("\nbranch:")) {
-      const slug = id.toLowerCase();
-      const updated = raw.replace(
-        /^(status:\s*.+)$/m,
-        `$1\nbranch: task/${slug}\nworktree: ../repo-wt-${slug}`,
-      );
-      fs.writeFileSync(taskFile, updated, "utf-8");
     }
   }
 
@@ -154,7 +135,7 @@ export async function DELETE(
       ).trim();
 
       if (!pids) {
-        // 프로세스가 없어도 파일 상태는 stopped로 업데이트
+        // 프로세스가 없어도 DB 상태는 stopped로 업데이트
         markTaskAsStopped(id);
         return NextResponse.json(
           { error: `${id}에 대한 실행 중인 프로세스를 찾을 수 없습니다.` },
@@ -178,7 +159,7 @@ export async function DELETE(
         }
       }
     } catch {
-      // kill 실패해도 파일 상태는 stopped로 업데이트
+      // kill 실패해도 DB 상태는 stopped로 업데이트
       markTaskAsStopped(id);
       return NextResponse.json(
         { error: `${id} 중지 실패` },
@@ -187,7 +168,7 @@ export async function DELETE(
     }
   }
 
-  // 프로세스 종료 후 task 파일 상태 → stopped
+  // 프로세스 종료 후 task DB 상태 → stopped
   markTaskAsStopped(id);
 
   return NextResponse.json({ message: `Task ${id} stopped`, status: "stopped" });
