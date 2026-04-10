@@ -410,21 +410,13 @@ git commit -m "refactor: settings/page.tsx — apply FieldRow + SettingSection c
 **Files:**
 - Modify: `src/frontend/src/app/monitor/page.tsx`
 
-- [ ] **Step 1: PageLayout, PageHeader import 확인**
-
-```bash
-grep -r "PageLayout\|PageHeader" src/frontend/src/app/settings/page.tsx | head -5
-```
-위 명령으로 settings/page.tsx에서 PageLayout import 경로를 확인합니다.
-
-- [ ] **Step 2: monitor/page.tsx 수정**
+- [ ] **Step 1: monitor/page.tsx 수정**
 
 ```tsx
 "use client";
 
 import { MonitorDashboard } from "@/components/monitor/MonitorDashboard";
-import { PageLayout } from "@/components/PageLayout";     // 경로는 Step 1에서 확인
-import { PageHeader } from "@/components/PageHeader";     // 경로는 Step 1에서 확인
+import { PageLayout, PageHeader } from "@/components/ui/page-layout";
 
 export default function MonitorPage() {
   return (
@@ -436,14 +428,14 @@ export default function MonitorPage() {
 }
 ```
 
-- [ ] **Step 3: 타입 체크**
+- [ ] **Step 2: 타입 체크**
 
 ```bash
 cd src/frontend && npx tsc --noEmit 2>&1 | grep "monitor" | head -10
 ```
 Expected: no errors
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add src/frontend/src/app/monitor/page.tsx
