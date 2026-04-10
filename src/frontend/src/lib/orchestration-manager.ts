@@ -3,6 +3,7 @@ import { OrchestrateEngine, EngineStatus } from "./orchestrate-engine";
 import { appendRunHistory, type RunHistoryEntry } from "./run-history";
 import { parseCostLog } from "./cost-parser";
 import { getErrorMessage } from "./error-utils";
+import { getGlobalSingleton } from "./get-global-singleton";
 
 export type OrchestrationStatus = "idle" | "running" | "completed" | "failed";
 
@@ -203,12 +204,8 @@ class OrchestrationManager {
 }
 
 // Singleton — survives Next.js HMR by storing on globalThis
-const globalKey = "__orchestrationManager__" as keyof typeof globalThis;
-const orchestrationManager: OrchestrationManager =
-  (globalThis as Record<string, unknown>)[globalKey] as OrchestrationManager ??
-  (() => {
-    const m = new OrchestrationManager();
-    (globalThis as Record<string, unknown>)[globalKey] = m;
-    return m;
-  })();
+const orchestrationManager = getGlobalSingleton(
+  "__orchestrationManager__",
+  () => new OrchestrationManager(),
+);
 export default orchestrationManager;
