@@ -1,7 +1,7 @@
 /**
  * Shared date/time formatting utilities.
  * Centralises the repeated getFullYear/getMonth/padStart chains that were
- * duplicated across request-parser.ts, task-db-sync.ts, and route.ts.
+ * duplicated across task-db-sync.ts and route.ts.
  */
 
 /**
