@@ -2,12 +2,12 @@ import fs from "fs";
 import path from "path";
 import { PROJECT_ROOT } from "./paths";
 
-// 패키지 내부 template/ 우선, 프로젝트 루트 fallback
+// .orchestration/template/ 우선, 패키지 내부 template/ fallback
 const PACKAGE_DIR =
   process.env.PACKAGE_DIR || path.resolve(__dirname, "..", "..", "..", "..");
+const _orchTemplate = path.join(PROJECT_ROOT, ".orchestration", "template");
 const _pkgTemplate = path.join(PACKAGE_DIR, "template");
-const _projTemplate = path.join(PROJECT_ROOT, "template");
-const TEMPLATE_DIR = fs.existsSync(_pkgTemplate) ? _pkgTemplate : _projTemplate;
+const TEMPLATE_DIR = fs.existsSync(_orchTemplate) ? _orchTemplate : _pkgTemplate;
 
 /**
  * template 파일을 읽고 {{variable}} 형식의 placeholder를 치환한다.

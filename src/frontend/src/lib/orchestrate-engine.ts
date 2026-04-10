@@ -349,6 +349,13 @@ export class OrchestrateEngine extends EventEmitter {
       return false;
     }
 
+    // 빈/reserved 태스크 (title 없음) → rejected 처리 후 skip
+    if (!info.title || info.title.trim() === "") {
+      this.log(`  ⏭️  ${taskId}: 빈 태스크 파일 → 건너뜀`);
+      this.setTaskStatus(taskId, "rejected");
+      return false;
+    }
+
     // branch/worktree 자동 추가
     if (!info.branch) {
       const slug = taskId.toLowerCase();
@@ -559,12 +566,19 @@ export class OrchestrateEngine extends EventEmitter {
     if (!info) return;
 
     const raw = fs.readFileSync(info.filePath, "utf-8");
-    const updated = raw
-      .replace(/^status: .*/m, `status: ${newStatus}`)
-      .replace(
-        /^updated: .*/m,
-        `updated: ${new Date().toISOString().slice(0, 16).replace("T", " ")}`,
-      );
+    let updated: string;
+    if (/^status: /m.test(raw)) {
+      updated = raw
+        .replace(/^status: .*/m, `status: ${newStatus}`)
+        .replace(
+          /^updated: .*/m,
+          `updated: ${new Date().toISOString().slice(0, 16).replace("T", " ")}`,
+        );
+    } else {
+      // status 라인 없는 빈/reserved 파일 → 프론트매터 삽입
+      const now = new Date().toISOString().slice(0, 16).replace("T", " ");
+      updated = `---\nid: ${taskId}\ntitle: ${taskId}\nstatus: ${newStatus}\nupdated: ${now}\n---\n${raw}`;
+    }
     fs.writeFileSync(info.filePath, updated);
     syncTaskContentToDb(info.filePath, updated);
 

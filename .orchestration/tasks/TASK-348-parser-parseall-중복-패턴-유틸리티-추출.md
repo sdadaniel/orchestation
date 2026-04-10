@@ -1,7 +1,7 @@
 ---
 id: TASK-348
 title: parser-parseAll-중복-패턴-유틸리티-추출
-status: in_progress
+status: rejected
 branch: task/task-348
 worktree: ../repo-wt-task-348
 priority: medium

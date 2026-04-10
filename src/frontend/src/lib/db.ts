@@ -10,6 +10,9 @@ let _writableDb: Database.Database | null = null;
 
 export function getDb(): Database.Database | null {
   if (!fs.existsSync(DB_PATH)) return null;
+  if (_readonlyDb) {
+    try { _readonlyDb.prepare("SELECT 1").get(); } catch { _readonlyDb = null; }
+  }
   if (!_readonlyDb) {
     _readonlyDb = new Database(DB_PATH, { readonly: true });
   }
@@ -18,6 +21,9 @@ export function getDb(): Database.Database | null {
 
 export function getWritableDb(): Database.Database | null {
   if (!fs.existsSync(DB_PATH)) return null;
+  if (_writableDb) {
+    try { _writableDb.prepare("SELECT 1").get(); } catch { _writableDb = null; }
+  }
   if (!_writableDb) {
     _writableDb = new Database(DB_PATH);
   }
