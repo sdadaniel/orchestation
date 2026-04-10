@@ -86,19 +86,19 @@ function parseTokenUsageLogs(taskId: string): TaskLogEntry[] {
 
     // Extract phase
     const phaseMatch = trimmed.match(/phase=(\w+)/);
-    const phase = phaseMatch ? phaseMatch[1] : "unknown";
+    const phase = (phaseMatch?.[1] ?? "unknown");
 
     // Extract cost
     const costMatch = trimmed.match(/cost=\$([\d.]+)/);
-    const cost = costMatch ? costMatch[1] : "0";
+    const cost = (costMatch?.[1] ?? "0");
 
     // Extract duration
     const durationMatch = trimmed.match(/duration=(\d+)ms/);
-    const duration = durationMatch ? durationMatch[1] : "0";
+    const duration = (durationMatch?.[1] ?? "0");
 
     // Extract turns
     const turnsMatch = trimmed.match(/turns=(\d+)/);
-    const turns = turnsMatch ? turnsMatch[1] : "0";
+    const turns = (turnsMatch?.[1] ?? "0");
 
     const message = `phase=${phase} | turns=${turns} | duration=${duration}ms | cost=$${cost}`;
 
