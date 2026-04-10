@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { killProcessGracefully } from "./process-utils";
 import { PROJECT_ROOT } from "./paths";
+import { getGlobalSingleton } from "./get-global-singleton";
 import { TaskRunState } from "./task-runner-types";
 import {
   getWorkerMode,
@@ -306,8 +307,8 @@ class TaskRunnerManager {
 }
 
 // Use globalThis to ensure single instance across server.ts and Next.js API routes
-const globalKey = "__taskRunnerManager__";
-const taskRunnerManager: TaskRunnerManager =
-  (globalThis as Record<string, unknown>)[globalKey] as TaskRunnerManager ??
-  ((globalThis as Record<string, unknown>)[globalKey] = new TaskRunnerManager());
+const taskRunnerManager = getGlobalSingleton(
+  "__taskRunnerManager__",
+  () => new TaskRunnerManager(),
+);
 export default taskRunnerManager;
