@@ -1,13 +1,13 @@
 ---
 id: TASK-343
 title: task-log-parser regex match 배열 인덱스 타입 안전성 추가
-status: in_progress
+status: done
 branch: task/task-343
 worktree: ../repo-wt-task-343
 priority: medium
 mode: night
 created: 2026-04-06
-updated: 2026-04-11 17:17
+updated: 2026-04-11 17:22
 depends_on: []
 scope:
   - src/frontend/src/lib/task-log-parser.ts
