@@ -7,7 +7,7 @@ worktree: ../repo-wt-task-333
 priority: medium
 mode: night
 created: 2026-04-03
-updated: 2026-04-11 03:16
+updated: 2026-04-11 03:29
 depends_on: []
 scope:
   - src/frontend/src/hooks/usePrds.ts
