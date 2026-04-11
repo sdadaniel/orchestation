@@ -1,7 +1,7 @@
 ---
 id: TASK-343
 title: task-log-parser regex match 배열 인덱스 타입 안전성 추가
-status: done
+status: in_progress
 branch: task/task-343
 worktree: ../repo-wt-task-343
 priority: medium
