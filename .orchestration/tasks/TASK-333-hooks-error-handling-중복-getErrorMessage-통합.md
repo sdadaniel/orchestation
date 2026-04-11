@@ -1,13 +1,13 @@
 ---
 id: TASK-333
 title: hooks-error-handling-중복-getErrorMessage-유틸-통합
-status: done
+status: in_progress
 branch: task/task-333
 worktree: ../repo-wt-task-333
 priority: medium
 mode: night
 created: 2026-04-03
-updated: 2026-04-11 17:14
+updated: 2026-04-11 17:16
 depends_on: []
 scope:
   - src/frontend/src/hooks/usePrds.ts
