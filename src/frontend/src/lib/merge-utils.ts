@@ -31,10 +31,17 @@ export async function runMergeTask(
 
     const raw = fs.readFileSync(taskFile, "utf-8");
     const { data } = parseFrontmatter(raw);
+    const currentStatus = getString(data, "status");
     const branch = getString(data, "branch");
     const worktree = getString(data, "worktree");
     const settings = loadSettings();
     const baseBranch = settings.baseBranch;
+
+    // 이미 done 상태면 중복 실행 방지 (재호출/루프 방어)
+    if (currentStatus === "done") {
+      log("ℹ️ 이미 done 상태 — 스킵");
+      return true;
+    }
 
     if (!branch) {
       log("ℹ️ 브랜치 없음 — 머지 스킵, 상태만 업데이트");
@@ -57,24 +64,7 @@ export async function runMergeTask(
     if (hasCommits) {
       log(`🔀 ${branch} → ${baseBranch} 머지`);
 
-      // stash 보호
-      let stashed = false;
-      try {
-        const dirty = execSync(`git -C "${PROJECT_ROOT}" status --porcelain`, {
-          encoding: "utf-8",
-        }).trim();
-        if (dirty) {
-          execSync(
-            `git -C "${PROJECT_ROOT}" stash push -m "merge-${taskId}" --include-untracked`,
-            { stdio: "ignore" },
-          );
-          stashed = true;
-        }
-      } catch {
-        /* ignore */
-      }
-
-      // 머지 시도
+      // 머지 시도 (stash 없이 직접 — stash는 다른 태스크 상태 파일을 덮어쓸 위험 있음)
       let mergeFailed = false;
       try {
         execSync(
@@ -102,15 +92,6 @@ export async function runMergeTask(
         }
       }
 
-      // stash 복원
-      if (stashed) {
-        try {
-          execSync(`git -C "${PROJECT_ROOT}" stash pop`, { stdio: "ignore" });
-        } catch {
-          /* ignore */
-        }
-      }
-
       if (mergeFailed) {
         log("❌ 머지 실패");
         postNotice(
@@ -120,6 +101,9 @@ export async function runMergeTask(
         );
         return false;
       }
+    } else {
+      // 브랜치가 없거나 이미 merge됨 — done으로만 업데이트하고 종료
+      log("ℹ️ 머지할 커밋 없음 (브랜치 없거나 이미 머지됨) — 상태만 업데이트");
     }
 
     // 브랜치 삭제

@@ -1,95 +1,94 @@
-# 오류: rejected/done 태스크 재시작 → NOTICE 파일 43,494개 폭발
+# 오류: mergeAndDone 루프 → NOTICE 파일 43,494개 폭발
 
 ## 발생일
 2026-04-12 (야간 오케스트레이션 실행 중)
 
 ## 증상
 - `.orchestration/notices/` 폴더에 `NOTICE-10000` ~ `NOTICE-53493`까지 **43,494개** 파일 생성
-- TASK-333, TASK-343 실패 notice가 번갈아 반복 생성
+- TASK-333 실패 notice, TASK-343 실패 notice가 번갈아 반복 생성
+- TASK-333 파일에 `chore(TASK-333): status → done` 커밋이 **131번** 중복 생성
 - `git status` 출력이 수만 줄로 불어남
-- TASK-333, TASK-343 파일이 staged/unstaged 양쪽에서 수정됨 (status 충돌)
 
-## 근본 원인
+## 트리거
 
-### 버그: 종료된 태스크를 `in_progress`로 재시작
+2026-04-10 커밋 `57a8b088`에서 TASK-333의 status를 `done` → `in_progress`로 수동 재설정.
+이후 오케스트레이션이 재시작되면서 두 버그가 맞물려 루프 발생.
 
-커밋 상태:
-- TASK-333: `status: rejected`
-- TASK-343: `status: done`
+## 근본 원인 (버그 2개)
 
-오케스트레이션 엔진이 재실행되면서 두 태스크를 `in_progress`로 덮어씀. 이미 완료/거절된 태스크를 재시작하는 로직이 `rejected`, `done` 상태를 터미널 상태로 취급하지 않은 것이 원인.
+### 버그 1: `runMergeTask()` — done 상태 중복 실행 방어 없음
 
-### 루프 구조
+`merge-utils.ts`의 `runMergeTask()`는 호출 시 현재 태스크 상태를 확인하지 않음.
+이미 `done`인 태스크에 대해 재호출되면 다시 `updateStatusToDone()` 실행 → 중복 커밋.
 
+**코드 경로:**
 ```
-[엔진 재시작]
-  → TASK-333 status: rejected → in_progress (버그)
-  → TASK-343 status: done    → in_progress (버그)
-       ↓
-  태스크 실행 실패
-       ↓
-  markTaskFailed() 호출
-  → status: failed
-  → postNotice("error", ...) → NOTICE 파일 생성
-  → cleanupWorktreeAndBranch()
-       ↓
-  다음 루프 tick (~3초)
-  → 태스크 다시 in_progress로 재시작 (버그 반복)
-       ↓
-  ← 무한 반복 →
+handleSignal("task-done") → mergeAndDone() → runMergeTask()
+                                          ↑ 재호출 시 상태 체크 없음
 ```
 
-### 체인 (시간순)
+### 버그 2: `runMergeTask()` — stash가 다른 태스크 상태 파일 덮어씀
 
-| 시각 | 이벤트 |
-|------|--------|
-| 04:29 | 오케스트레이션 엔진 재시작 |
-| 04:29 | TASK-333(rejected), TASK-343(done) → in_progress 재시작 |
-| 04:29~07:56 | 약 3.5시간 동안 실패 루프 반복, NOTICE 43,494개 생성 |
-| 07:56 | 좀비 정리(cleanupZombies)가 stopped으로 변경 |
+merge 전 `git stash push --include-untracked`로 working directory 전체를 stash.
+이 시점에 다른 태스크들의 `setTaskStatus()`가 수정한 파일들도 stash에 포함됨.
+merge 완료 후 `git stash pop`으로 복원될 때 이미 `done`으로 커밋된 태스크 파일이
+stash 시점의 `in_progress` 값으로 되돌아감.
+
+**루프 사이클:**
+```
+TASK-333 done 커밋
+  → stash pop으로 TASK-333 파일이 in_progress로 복원
+  → cleanupZombies(): in_progress → stopped
+  → 다음 루프 tick: stopped 태스크 재실행
+  → 완료 → done 커밋 (← 반복)
+```
 
 ## 관련 코드
 
-**`src/frontend/src/lib/orchestrate-engine.ts`**
+**`src/frontend/src/lib/merge-utils.ts`**
 
 ```typescript
-// markTaskFailed — 실패할 때마다 notice 생성
-private markTaskFailed(taskId: string, reason: string) {
-  this.setTaskStatus(taskId, "failed");
-  this.cleanupWorktreeAndBranch(taskId);
-  this.postNotice("error", `${taskId} 실패`, `**${taskId}:** ${reason}`);
-  this.stopDependents(taskId);
-  this.emit("task-result", { taskId, status: "failure" });
+// [버그 1] 현재 status 확인 없이 바로 실행
+export async function runMergeTask(taskId, onLog) {
+  const { data } = parseFrontmatter(raw);
+  const branch = getString(data, "branch");
+  // currentStatus === "done" 인지 확인 안 함!
+  ...
+  updateStatusToDone(taskFile, taskId); // 중복 호출 가능
+}
+
+// [버그 2] 전체 stash — 다른 태스크 파일 포함
+execSync(`git stash push -m "merge-${taskId}" --include-untracked`);
+// merge 완료 후
+execSync(`git stash pop`); // 다른 태스크의 in_progress 복원됨
+```
+
+## 수정 내용 (`src/frontend/src/lib/merge-utils.ts`)
+
+### 버그 1 수정: done 상태 조기 반환
+
+```typescript
+const currentStatus = getString(data, "status");
+if (currentStatus === "done") {
+  log("ℹ️ 이미 done 상태 — 스킵");
+  return true;
 }
 ```
 
-`rejected`, `done` 상태를 재시작 대상에서 제외하는 가드가 누락되어 있었음.
+### 버그 2 수정: stash 제거
 
-## 정리 작업
+stash를 완전히 제거. merge conflict는 기존 `resolveMergeConflict()`가 처리.
+stash가 없으면 다른 태스크 상태 파일을 건드리지 않음.
 
-1. `find .orchestration/notices -name "NOTICE-*.md" -delete` — 43,494개 untracked 파일 삭제
-2. `git rm --cached -r .orchestration/notices/` — 104개 git-tracked notice 파일 index에서 제거
-3. `.gitignore`에 `.orchestration/notices/` 추가 — 재발 시 git 추적 방지
-4. TASK-333, TASK-343 파일을 HEAD 상태로 restore — `rejected`/`done` 복원
+## 정리 작업 (2026-04-12)
+
+1. NOTICE 파일 43,494개 전부 삭제
+2. git-tracked NOTICE 파일 104개 index에서 제거
+3. `.gitignore`에 `.orchestration/notices/` 추가 (재발 시 git 추적 방지)
+4. TASK-333, TASK-343 파일을 HEAD 상태로 restore
 
 ## 재발 방지
 
-### 즉시 조치 (완료)
-- `.orchestration/notices/` → `.gitignore` 추가
-
-### 필요한 코드 수정 (미완료 — 별도 태스크 권고)
-오케스트레이션 엔진의 태스크 시작 로직에 터미널 상태 가드 추가 필요:
-
-```typescript
-const TERMINAL_STATUSES = ["done", "rejected", "failed"];
-
-// 태스크 시작 전 체크
-if (TERMINAL_STATUSES.includes(task.status)) {
-  this.log(`  ⚠️  ${taskId} 이미 종료된 상태(${task.status}), 재시작 skip`);
-  return;
-}
-```
-
-### 추가 권고
-- notice 생성 시 동일 taskId에 대한 중복 방지 (예: 같은 태스크 실패는 1회만 notice)
-- 오케스트레이션 루프 상태 파일에 "last_error_count" 추적하여 급증 시 자동 중단
+- `.orchestration/notices/` → `.gitignore` 추가 (완료)
+- `runMergeTask()` done 상태 가드 추가 (완료)
+- stash 제거 (완료)
