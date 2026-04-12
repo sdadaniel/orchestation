@@ -13,3 +13,7 @@ src/frontend/.next/
 .orchestration/orchestration.db
 
 .claudeignore
+.orchestration/notices/
+.orchestration/orchestration.db-shm
+.orchestration/orchestration.db-wal
+.orchestration/signals/

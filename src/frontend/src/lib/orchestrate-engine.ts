@@ -697,6 +697,9 @@ export class OrchestrateEngine extends EventEmitter {
     // config 핫 리로드 (10회마다)
     if (this.loopCount % 10 === 0) this.loadConfig();
 
+    // 좀비 정리 (30회마다 = 90초)
+    if (this.loopCount % 30 === 0) this.cleanupZombies();
+
     // 시그널 처리
     this.processSignals();
 
