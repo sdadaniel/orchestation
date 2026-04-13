@@ -11,5 +11,12 @@ package-lock.json
 src/frontend/.next/
 *.tgz
 .orchestration/orchestration.db
+.orchestration/orchestration.db-shm
+.orchestration/orchestration.db-wal
+.orchestration/signals/
+.orchestration/notices/
+.orchestration/backup/
+.orchestration/retry-counts.json
+output/run-history.json
 
 .claudeignore

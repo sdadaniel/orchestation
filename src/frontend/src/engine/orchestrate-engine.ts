@@ -5,6 +5,7 @@
  * - scheduler.ts: 태스크 스케줄링 순수 함수
  * - signal-handler.ts: 시그널 처리/상태 전환
  */
+import { execSync } from "child_process";
 import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
@@ -212,6 +213,65 @@ export class OrchestrateEngine extends EventEmitter {
     }
   }
 
+  /**
+   * 주어진 이름의 로컬 브랜치가 base 와 다른 커밋을 가지고 있는지 확인한다.
+   * (브랜치 없음 또는 base 와 동일 → false)
+   */
+  private branchHasUnrelatedHistory(branchName: string): boolean {
+    try {
+      execSync(
+        `git -C "${PROJECT_ROOT}" show-ref --verify --quiet "refs/heads/${branchName}"`,
+        { stdio: "ignore" },
+      );
+    } catch {
+      return false;
+    }
+    try {
+      const commits = execSync(
+        `git -C "${PROJECT_ROOT}" log --oneline "${this.baseBranchValue}..${branchName}"`,
+        { encoding: "utf-8" },
+      ).trim();
+      return commits.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 브랜치와 연결된 worktree 를 강제로 제거한다.
+   * 정리 실패해도 throw 하지 않음 (호출자는 "정리됐다고 가정"하고 이어감).
+   */
+  private forceCleanBranchAndWorktree(branchName: string, worktreePath: string) {
+    const fullWorktreePath = path.resolve(PROJECT_ROOT, worktreePath);
+    if (fs.existsSync(fullWorktreePath)) {
+      try {
+        execSync(
+          `git -C "${PROJECT_ROOT}" worktree remove "${fullWorktreePath}" --force`,
+          { stdio: "ignore" },
+        );
+      } catch {
+        /* ignore */
+      }
+      try {
+        fs.rmSync(fullWorktreePath, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
+    }
+    try {
+      execSync(`git -C "${PROJECT_ROOT}" worktree prune`, { stdio: "ignore" });
+    } catch {
+      /* ignore */
+    }
+    try {
+      execSync(`git -C "${PROJECT_ROOT}" branch -D "${branchName}"`, {
+        stdio: "ignore",
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
   private startTask(taskId: string, feedbackFile?: string): boolean {
     const row = getTask(taskId);
     if (!row) {
@@ -219,11 +279,25 @@ export class OrchestrateEngine extends EventEmitter {
       return false;
     }
 
+    const slug = taskId.toLowerCase();
+    const branchName = row.branch || `task/${slug}`;
+    const worktreePath = row.worktree || `../repo-wt-${slug}`;
+
+    // 재사용 가드: 같은 이름의 브랜치가 base 와 다른 히스토리를 가지면
+    // 이전 작업(또는 동명의 수동 브랜치)이 남아있는 것 — 강제 정리.
+    // 이대로 두면 엔진이 무관한 커밋 위에서 작업하다 main 으로 머지할 때
+    // 대규모 충돌이 발생한다.
+    if (this.branchHasUnrelatedHistory(branchName)) {
+      this.log(
+        `  🧹 ${taskId}: 기존 브랜치 ${branchName} 에 무관 커밋 감지 → 강제 정리`,
+      );
+      this.forceCleanBranchAndWorktree(branchName, worktreePath);
+    }
+
     if (!row.branch) {
-      const slug = taskId.toLowerCase();
       updateTask(taskId, {
-        branch: `task/${slug}`,
-        worktree: `../repo-wt-${slug}`,
+        branch: branchName,
+        worktree: worktreePath,
       });
       this.log(`  📝 ${taskId}: branch/worktree 필드 자동 추가`);
     }
