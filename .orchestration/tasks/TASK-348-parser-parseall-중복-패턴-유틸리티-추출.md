@@ -1,13 +1,13 @@
 ---
 id: TASK-348
 title: parser-parseAll-중복-패턴-유틸리티-추출
-status: rejected
+status: failed
 branch: task/task-348
 worktree: ../repo-wt-task-348
 priority: medium
 mode: night
-created: 2026-04-06
-updated: 2026-04-10 07:55
+created: 2026-04-06T00:00:00.000Z
+updated: '2026-04-13 00:00'
 depends_on: []
 scope:
   - src/frontend/src/lib/parser.ts

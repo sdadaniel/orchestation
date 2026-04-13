@@ -37,7 +37,14 @@ function syncParsedTask(filePath: string, raw: string) {
     )
     ON CONFLICT(id) DO UPDATE SET
       title=excluded.title,
-      status=CASE WHEN tasks.status IN ('in_progress','reviewing','done','failed','rejected','stopped') THEN tasks.status ELSE excluded.status END,
+      -- 파일이 터미널 상태(done/failed/rejected)면 DB 방어 우회하고 항상 반영
+      -- (터미널은 되돌릴 일이 없으므로 안전. 엔진 크래시 후 파일 수동 정리 경로를 살림)
+      -- 그 외에는 DB의 전이 상태를 UI 저장으로 덮어쓰지 않도록 방어
+      status=CASE
+        WHEN excluded.status IN ('done','failed','rejected') THEN excluded.status
+        WHEN tasks.status IN ('in_progress','reviewing','done','failed','rejected','stopped') THEN tasks.status
+        ELSE excluded.status
+      END,
       priority=excluded.priority,
       branch=excluded.branch,
       worktree=excluded.worktree,

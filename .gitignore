@@ -17,3 +17,4 @@ src/frontend/.next/
 .orchestration/orchestration.db-shm
 .orchestration/orchestration.db-wal
 .orchestration/signals/
+.orchestration/backup/

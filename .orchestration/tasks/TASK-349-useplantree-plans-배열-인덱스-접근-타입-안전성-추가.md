@@ -1,27 +1,13 @@
 ---
 id: TASK-349
 title: usePlanTree-plans-배열-인덱스-접근-타입-안전성-추가
-status: rejected
+status: failed
 branch: task/task-349
 worktree: ../repo-wt-task-349
 priority: medium
 mode: night
-created: 2026-04-06
-updated: 2026-04-10 07:57
-depends_on: []
-scope:  []
----
-
-Good. The issue is clear: `usePlanTree.ts:37` passes `plans[0]` (which is `PlanFrontmatter | undefined` under `noUncheckedIndexedAccess`) to `buildPlanTree` which expects `PlanFrontmatter`.
-
----
-id: TASK-349
-title: usePlanTree-plans-배열-인덱스-접근-타입-안전성-추가
-status: pending
-priority: medium
-mode: night
-created: 2026-04-06
-updated: 2026-04-06
+created: 2026-04-06T00:00:00.000Z
+updated: '2026-04-13 00:00'
 depends_on: []
 scope:
   - src/frontend/src/hooks/usePlanTree.ts
@@ -33,7 +19,3 @@ scope:
 ## Completion Criteria
 - `npx tsc --noEmit --strict --noUncheckedIndexedAccess` 실행 시 `src/hooks/usePlanTree.ts` 관련 에러가 0건일 것
 - 기존 동작(plans가 빈 배열이면 null 반환)이 변경되지 않을 것
-
-## Completion Criteria
-
-
