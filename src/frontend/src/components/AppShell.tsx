@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { useTasks } from "@/hooks/useTasks";
 import { usePrds } from "@/hooks/usePrds";
 import { useDocTree } from "@/hooks/useDocTree";
@@ -18,6 +19,28 @@ import type { RequestItem } from "@/store/tasksStore";
 
 /* ── Home Dashboard ── */
 
+function OverviewCard({
+  label,
+  count,
+  color,
+  href,
+}: {
+  label: string;
+  count: number;
+  color: string;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="rounded-lg border border-border bg-card p-4 no-underline transition-colors hover:border-primary hover:bg-card/70"
+    >
+      <div className="text-xs text-muted-foreground mb-1">{label}</div>
+      <div className={`text-2xl font-bold ${color}`}>{count}</div>
+    </Link>
+  );
+}
+
 function HomeDashboard({ requestItems }: { requestItems: RequestItem[] }) {
   const inProgress = requestItems.filter((t) => t.status === "in_progress");
   const pending = requestItems.filter(
@@ -33,38 +56,36 @@ function HomeDashboard({ requestItems }: { requestItems: RequestItem[] }) {
       <div>
         <h2 className="text-sm font-semibold mb-3">Overview</h2>
         <div className="grid grid-cols-5 gap-3">
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="text-xs text-muted-foreground mb-1">
-              In Progress
-            </div>
-            <div className="text-2xl font-bold text-blue-500">
-              {inProgress.length}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="text-xs text-muted-foreground mb-1">Pending</div>
-            <div className="text-2xl font-bold text-yellow-500">
-              {pending.length}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="text-xs text-muted-foreground mb-1">Done</div>
-            <div className="text-2xl font-bold text-emerald-500">
-              {done.length}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="text-xs text-muted-foreground mb-1">Failed</div>
-            <div className="text-2xl font-bold text-red-500">
-              {failed.length}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="text-xs text-muted-foreground mb-1">Rejected</div>
-            <div className="text-2xl font-bold text-red-400">
-              {rejected.length}
-            </div>
-          </div>
+          <OverviewCard
+            label="In Progress"
+            count={inProgress.length}
+            color="text-blue-500"
+            href="/tasks?tab=in_progress"
+          />
+          <OverviewCard
+            label="Pending"
+            count={pending.length}
+            color="text-yellow-500"
+            href="/tasks?tab=pending"
+          />
+          <OverviewCard
+            label="Done"
+            count={done.length}
+            color="text-emerald-500"
+            href="/tasks?tab=done"
+          />
+          <OverviewCard
+            label="Failed"
+            count={failed.length}
+            color="text-red-500"
+            href="/tasks?tab=failed"
+          />
+          <OverviewCard
+            label="Rejected"
+            count={rejected.length}
+            color="text-red-400"
+            href="/tasks?tab=rejected"
+          />
         </div>
       </div>
 
