@@ -1,5 +1,10 @@
 import type { TaskStatus, TaskPriority } from "@/constants/status";
-import { getAllTasks as getAllTasksFromDb, parseScope, parseDependsOn, type TaskRow } from "../service/task-store";
+import {
+  getAllTasks as getAllTasksFromDb,
+  parseScope,
+  parseDependsOn,
+  type TaskRow,
+} from "../service/task-store";
 
 export interface TaskFrontmatter {
   id: string;
@@ -26,19 +31,24 @@ const VALID_STATUSES: readonly TaskStatus[] = [
 const VALID_PRIORITIES: readonly TaskPriority[] = ["high", "medium", "low"];
 
 function toTaskStatus(value: unknown): TaskStatus {
-  if (typeof value === "string" && (VALID_STATUSES as readonly string[]).includes(value)) {
+  if (
+    typeof value === "string" &&
+    (VALID_STATUSES as readonly string[]).includes(value)
+  ) {
     return value as TaskStatus;
   }
   return "pending";
 }
 
 function toTaskPriority(value: unknown): TaskPriority {
-  if (typeof value === "string" && (VALID_PRIORITIES as readonly string[]).includes(value)) {
+  if (
+    typeof value === "string" &&
+    (VALID_PRIORITIES as readonly string[]).includes(value)
+  ) {
     return value as TaskPriority;
   }
   return "medium";
 }
-
 
 // TTL 캐시: 3초간 유효 (폴링 결합 시 초당 수회 DB 쿼리 방지)
 let _tasksCache: TaskFrontmatter[] | null = null;

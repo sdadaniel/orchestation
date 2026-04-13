@@ -47,7 +47,9 @@ export function parseNoticeFile(filePath: string): NoticeData | null {
 export function parseAllNotices(): NoticeData[] {
   if (!fs.existsSync(NOTICES_DIR)) return [];
 
-  const files = fs.readdirSync(NOTICES_DIR).filter((f) => f.startsWith("NOTICE-") && f.endsWith(".md"));
+  const files = fs
+    .readdirSync(NOTICES_DIR)
+    .filter((f) => f.startsWith("NOTICE-") && f.endsWith(".md"));
   const notices: NoticeData[] = [];
 
   for (const file of files) {
@@ -70,13 +72,19 @@ export function getNoticesDir(): string {
   return NOTICES_DIR;
 }
 
-export function writeNotice(type: NoticeType, title: string, content: string): void {
+export function writeNotice(
+  type: NoticeType,
+  title: string,
+  content: string,
+): void {
   try {
     if (!fs.existsSync(NOTICES_DIR)) {
       fs.mkdirSync(NOTICES_DIR, { recursive: true });
     }
 
-    const files = fs.readdirSync(NOTICES_DIR).filter((f) => f.startsWith("NOTICE-") && f.endsWith(".md"));
+    const files = fs
+      .readdirSync(NOTICES_DIR)
+      .filter((f) => f.startsWith("NOTICE-") && f.endsWith(".md"));
     let maxNum = 0;
     for (const f of files) {
       const m = f.match(/NOTICE-(\d+)/);
@@ -89,7 +97,10 @@ export function writeNotice(type: NoticeType, title: string, content: string): v
     const nextNum = maxNum + 1;
     const noticeId = `NOTICE-${String(nextNum).padStart(3, "0")}`;
     const today = new Date().toISOString().split("T")[0];
-    const slug = title.toLowerCase().replace(/[^a-z0-9가-힣]+/g, "-").replace(/-+$/, "");
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9가-힣]+/g, "-")
+      .replace(/-+$/, "");
 
     const fileContent = `---
 id: ${noticeId}
@@ -102,6 +113,12 @@ updated: ${today}
 ${content.trim()}
 `;
 
-    fs.writeFileSync(path.join(NOTICES_DIR, `${noticeId}-${slug}.md`), fileContent, "utf-8");
-  } catch { /* ignore */ }
+    fs.writeFileSync(
+      path.join(NOTICES_DIR, `${noticeId}-${slug}.md`),
+      fileContent,
+      "utf-8",
+    );
+  } catch {
+    /* ignore */
+  }
 }

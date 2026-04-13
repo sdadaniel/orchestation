@@ -11,7 +11,9 @@ export async function GET() {
       return NextResponse.json({ lastMod: 0 });
     }
 
-    const row = db.prepare("SELECT MAX(updated) as maxUpdated FROM tasks").get() as { maxUpdated: string | null } | undefined;
+    const row = db
+      .prepare("SELECT MAX(updated) as maxUpdated FROM tasks")
+      .get() as { maxUpdated: string | null } | undefined;
     if (!row?.maxUpdated) {
       return NextResponse.json({ lastMod: 0 });
     }

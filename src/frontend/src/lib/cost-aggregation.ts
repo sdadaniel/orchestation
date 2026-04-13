@@ -25,7 +25,9 @@ export function shortenModelName(model: string): string {
   const lower = stripped.toLowerCase();
 
   // Match "claude-3-5-haiku" style first (version before family)
-  const altMatch = lower.match(/claude[-_](\d+(?:[-_.]\d+)?)[-_](opus|sonnet|haiku)/);
+  const altMatch = lower.match(
+    /claude[-_](\d+(?:[-_.]\d+)?)[-_](opus|sonnet|haiku)/,
+  );
   if (altMatch) {
     const version = altMatch[1].replace(/[-_]/g, ".");
     const family = altMatch[2].charAt(0).toUpperCase() + altMatch[2].slice(1);
@@ -33,9 +35,12 @@ export function shortenModelName(model: string): string {
   }
 
   // Match patterns like "opus-4-1", "sonnet-4", "haiku-3" (family before version)
-  const familyMatch = lower.match(/(opus|sonnet|haiku)[-_](\d+(?:[-_.]\d{1,2})?)/);
+  const familyMatch = lower.match(
+    /(opus|sonnet|haiku)[-_](\d+(?:[-_.]\d{1,2})?)/,
+  );
   if (familyMatch) {
-    const family = familyMatch[1].charAt(0).toUpperCase() + familyMatch[1].slice(1);
+    const family =
+      familyMatch[1].charAt(0).toUpperCase() + familyMatch[1].slice(1);
     const version = familyMatch[2].replace(/[-_]/g, ".");
     return `${family} ${version}`;
   }
@@ -67,7 +72,9 @@ export function aggregateByModel(entries: CostEntry[]): ModelCostSummary[] {
       };
       map.set(key, summary);
     }
-    summary.totalCostUsd = parseFloat((summary.totalCostUsd + e.costUsd).toFixed(6));
+    summary.totalCostUsd = parseFloat(
+      (summary.totalCostUsd + e.costUsd).toFixed(6),
+    );
     summary.totalInputTokens += e.inputTokens;
     summary.totalOutputTokens += e.outputTokens;
     summary.totalCacheCreate += e.cacheCreate;
@@ -75,5 +82,7 @@ export function aggregateByModel(entries: CostEntry[]): ModelCostSummary[] {
     summary.entries += 1;
   }
 
-  return Array.from(map.values()).sort((a, b) => b.totalCostUsd - a.totalCostUsd);
+  return Array.from(map.values()).sort(
+    (a, b) => b.totalCostUsd - a.totalCostUsd,
+  );
 }

@@ -32,7 +32,11 @@ interface RunHistoryRow {
 
 function rowToEntry(row: RunHistoryRow): RunHistoryEntry {
   let taskResults: { taskId: string; status: "success" | "failure" }[] = [];
-  try { taskResults = JSON.parse(row.task_results); } catch { /* ignore */ }
+  try {
+    taskResults = JSON.parse(row.task_results);
+  } catch {
+    /* ignore */
+  }
 
   return {
     id: row.id,
@@ -53,9 +57,9 @@ export function readRunHistory(): RunHistoryData {
   if (!db) return { runs: [] };
 
   try {
-    const rows = db.prepare(
-      "SELECT * FROM run_history ORDER BY started_at DESC"
-    ).all() as RunHistoryRow[];
+    const rows = db
+      .prepare("SELECT * FROM run_history ORDER BY started_at DESC")
+      .all() as RunHistoryRow[];
 
     return { runs: rows.map(rowToEntry) };
   } catch {
@@ -67,11 +71,13 @@ export function appendRunHistory(entry: RunHistoryEntry): void {
   const db = getWritableDb();
   if (!db) return;
 
-  db.prepare(`
+  db.prepare(
+    `
     INSERT OR REPLACE INTO run_history
       (id, started_at, finished_at, status, exit_code, task_results, total_cost_usd, total_duration_ms, tasks_completed, tasks_failed)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+  `,
+  ).run(
     entry.id,
     entry.startedAt,
     entry.finishedAt,

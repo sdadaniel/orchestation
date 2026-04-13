@@ -143,7 +143,7 @@ export function aggregateByTask(entries: CostEntry[]): TaskCostSummary[] {
     summary.totalTurns += e.turns;
     summary.totalDurationMs += e.durationMs;
     summary.totalCostUsd = parseFloat(
-      (summary.totalCostUsd + e.costUsd).toFixed(6)
+      (summary.totalCostUsd + e.costUsd).toFixed(6),
     );
     summary.entries += 1;
   }
@@ -151,7 +151,8 @@ export function aggregateByTask(entries: CostEntry[]): TaskCostSummary[] {
   // Set comma-separated model names on each summary
   for (const [taskId, summary] of map) {
     const models = modelsMap.get(taskId)!;
-    summary.models = models.size > 0 ? Array.from(models).join(", ") : "unknown";
+    summary.models =
+      models.size > 0 ? Array.from(models).join(", ") : "unknown";
   }
 
   return Array.from(map.values());

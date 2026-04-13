@@ -39,15 +39,31 @@ export function CompletedLogPanel({ taskId }: { taskId: string }) {
   }
 
   if (lines.length === 0) {
-    return <p className="text-sm text-muted-foreground">실행 로그가 없습니다.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">실행 로그가 없습니다.</p>
+    );
   }
 
   return (
-    <div className={cn("rounded-lg border border-border overflow-hidden", TERMINAL_BG)}>
-      <div className={cn("flex items-center gap-2 px-3 py-1.5 border-b border-border", TERMINAL_HEADER_BG)}>
+    <div
+      className={cn(
+        "rounded-lg border border-border overflow-hidden",
+        TERMINAL_BG,
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-center gap-2 px-3 py-1.5 border-b border-border",
+          TERMINAL_HEADER_BG,
+        )}
+      >
         <span className="inline-flex rounded-full h-2 w-2 bg-zinc-500" />
-        <span className="text-[11px] text-zinc-400 font-mono">LOG — {taskId}</span>
-        <span className="text-[10px] text-zinc-600 ml-auto font-mono">{lines.length} lines</span>
+        <span className="text-[11px] text-zinc-400 font-mono">
+          LOG — {taskId}
+        </span>
+        <span className="text-[10px] text-zinc-600 ml-auto font-mono">
+          {lines.length} lines
+        </span>
       </div>
       <div className="overflow-y-auto max-h-[500px] p-0 font-mono text-[11px] leading-[1.7] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {[...lines].reverse().map((line, i) => (
@@ -58,7 +74,9 @@ export function CompletedLogPanel({ taskId }: { taskId: string }) {
               lineColor(line),
             )}
           >
-            <span className="text-zinc-600 select-none mr-3 inline-block w-5 text-right">{lines.length - i}</span>
+            <span className="text-zinc-600 select-none mr-3 inline-block w-5 text-right">
+              {lines.length - i}
+            </span>
             {line}
           </div>
         ))}

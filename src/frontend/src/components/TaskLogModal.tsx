@@ -24,7 +24,7 @@ export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
     try {
       const res = await fetch(`/api/orchestrate/logs?since=0`);
       if (!res.ok) throw new Error("로그를 불러올 수 없습니다.");
-      const data = await res.json() as { logs?: string[] };
+      const data = (await res.json()) as { logs?: string[] };
 
       if (!data.logs || !Array.isArray(data.logs)) {
         setLogs([]);
@@ -121,8 +121,15 @@ export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
           <Terminal className="h-4 w-4 text-muted-foreground" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs text-muted-foreground">{task.id}</span>
-              <span className={cn("text-xs font-medium", statusColor[task.status] ?? "text-muted-foreground")}>
+              <span className="font-mono text-xs text-muted-foreground">
+                {task.id}
+              </span>
+              <span
+                className={cn(
+                  "text-xs font-medium",
+                  statusColor[task.status] ?? "text-muted-foreground",
+                )}
+              >
                 {statusLabel[task.status] ?? task.status}
               </span>
             </div>
@@ -191,8 +198,13 @@ export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
                   className="flex-1 overflow-y-auto p-3 font-mono text-xs leading-5 bg-zinc-950/50"
                 >
                   {logs.map((line, i) => (
-                    <div key={i} className="text-zinc-300 whitespace-pre-wrap break-all hover:bg-white/5 px-1 rounded">
-                      <span className="text-zinc-600 select-none mr-2">{String(i + 1).padStart(4)}</span>
+                    <div
+                      key={i}
+                      className="text-zinc-300 whitespace-pre-wrap break-all hover:bg-white/5 px-1 rounded"
+                    >
+                      <span className="text-zinc-600 select-none mr-2">
+                        {String(i + 1).padStart(4)}
+                      </span>
                       {line}
                     </div>
                   ))}
@@ -209,7 +221,10 @@ export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
             <div className="p-4 space-y-3 overflow-y-auto h-full">
               <InfoRow label="ID" value={task.id} />
               <InfoRow label="제목" value={task.title} />
-              <InfoRow label="상태" value={statusLabel[task.status] ?? task.status} />
+              <InfoRow
+                label="상태"
+                value={statusLabel[task.status] ?? task.status}
+              />
               <InfoRow label="우선순위" value={task.priority} />
               <InfoRow label="역할" value={task.role || "-"} />
               {task.depends_on.length > 0 && (
@@ -220,10 +235,15 @@ export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
               )}
               {task.affected_files.length > 0 && (
                 <div>
-                  <div className="text-xs text-muted-foreground mb-1">영향 파일</div>
+                  <div className="text-xs text-muted-foreground mb-1">
+                    영향 파일
+                  </div>
                   <div className="space-y-0.5">
                     {task.affected_files.map((f) => (
-                      <div key={f} className="text-xs font-mono text-foreground bg-muted/50 px-2 py-0.5 rounded">
+                      <div
+                        key={f}
+                        className="text-xs font-mono text-foreground bg-muted/50 px-2 py-0.5 rounded"
+                      >
                         {f}
                       </div>
                     ))}
@@ -241,7 +261,9 @@ export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="text-xs text-muted-foreground w-20 shrink-0">{label}</span>
+      <span className="text-xs text-muted-foreground w-20 shrink-0">
+        {label}
+      </span>
       <span className="text-sm text-foreground">{value}</span>
     </div>
   );

@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { getErrorMessage } from "@/lib/error-utils";
-import { getTask, updateTask, deleteTask, parseDependsOn, parseScope } from "@/service/task-store";
+import {
+  getTask,
+  updateTask,
+  deleteTask,
+  parseDependsOn,
+  parseScope,
+} from "@/service/task-store";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +25,10 @@ export async function PUT(
     const body = await request.json();
 
     if (!id || typeof id !== "string" || !isValidTaskId(id)) {
-      return NextResponse.json({ error: "Invalid task ID format" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid task ID format" },
+        { status: 400 },
+      );
     }
 
     const task = getTask(id);
@@ -27,7 +36,15 @@ export async function PUT(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    const validStatuses = ["pending", "stopped", "in_progress", "reviewing", "done", "failed", "rejected"];
+    const validStatuses = [
+      "pending",
+      "stopped",
+      "in_progress",
+      "reviewing",
+      "done",
+      "failed",
+      "rejected",
+    ];
     const validPriorities = ["critical", "high", "medium", "low"];
 
     const updates: Parameters<typeof updateTask>[1] = {};
@@ -53,13 +70,20 @@ export async function PUT(
               continue;
             }
             if (depTask.status !== "done") {
-              unmetDeps.push({ id: depId, status: depTask.status || "unknown" });
+              unmetDeps.push({
+                id: depId,
+                status: depTask.status || "unknown",
+              });
             }
           }
           if (unmetDeps.length > 0) {
-            const details = unmetDeps.map((d) => `${d.id} (status: ${d.status})`).join(", ");
+            const details = unmetDeps
+              .map((d) => `${d.id} (status: ${d.status})`)
+              .join(", ");
             return NextResponse.json(
-              { error: `의존성 미충족: 선행 태스크가 완료되지 않았습니다 - ${details}` },
+              {
+                error: `의존성 미충족: 선행 태스크가 완료되지 않았습니다 - ${details}`,
+              },
               { status: 400 },
             );
           }
@@ -94,7 +118,11 @@ export async function PUT(
       updates.role = body.role.trim();
     }
 
-    if (body.title !== undefined && typeof body.title === "string" && body.title.trim().length > 0) {
+    if (
+      body.title !== undefined &&
+      typeof body.title === "string" &&
+      body.title.trim().length > 0
+    ) {
       updates.title = body.title.trim();
     }
 
@@ -128,7 +156,10 @@ export async function DELETE(
     const { id } = await params;
 
     if (!id || typeof id !== "string" || !isValidTaskId(id)) {
-      return NextResponse.json({ error: "Invalid task ID format" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid task ID format" },
+        { status: 400 },
+      );
     }
 
     const task = getTask(id);

@@ -33,7 +33,9 @@ export function parsePrdFile(filePath: string): PrdData | null {
 export function parseAllPrds(): PrdData[] {
   if (!fs.existsSync(PRD_DIR)) return [];
 
-  const files = fs.readdirSync(PRD_DIR).filter((f) => f.startsWith("PRD-") && f.endsWith(".md"));
+  const files = fs
+    .readdirSync(PRD_DIR)
+    .filter((f) => f.startsWith("PRD-") && f.endsWith(".md"));
   const prds: PrdData[] = [];
 
   for (const file of files) {

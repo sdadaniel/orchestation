@@ -1,4 +1,8 @@
-import { spawnClaude, CLAUDE_DEFAULT_TIMEOUT_MS, ClaudeChildProcess } from "@/lib/claude-cli";
+import {
+  spawnClaude,
+  CLAUDE_DEFAULT_TIMEOUT_MS,
+  ClaudeChildProcess,
+} from "@/lib/claude-cli";
 import { jsonErrorResponse } from "@/lib/error-utils";
 
 export const dynamic = "force-dynamic";
@@ -25,9 +29,7 @@ export async function POST(request: Request) {
   if (history && Array.isArray(history) && history.length > 0) {
     const recent = history.slice(-10);
     contextMessages = recent
-      .map(
-        (m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`,
-      )
+      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
       .join("\n\n");
     contextMessages = `이전 대화:\n${contextMessages}\n\n`;
   }
@@ -74,9 +76,7 @@ export async function POST(request: Request) {
       let timedOut = false;
       const timeoutTimer = setTimeout(() => {
         timedOut = true;
-        safeEnqueue(
-          new TextEncoder().encode("\n[응답 시간이 초과되었습니다]"),
-        );
+        safeEnqueue(new TextEncoder().encode("\n[응답 시간이 초과되었습니다]"));
         safeClose();
       }, CLAUDE_DEFAULT_TIMEOUT_MS);
 

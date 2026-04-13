@@ -34,7 +34,9 @@ export function TaskMetadata({
           {task.status === "in_progress" ? (
             <span className="w-2 h-2 shrink-0 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" />
           ) : (
-            <span className={cn("w-2 h-2 rounded-full", STATUS_DOT[task.status])} />
+            <span
+              className={cn("w-2 h-2 rounded-full", STATUS_DOT[task.status])}
+            />
           )}
           <Select
             value={task.status}
@@ -42,12 +44,27 @@ export function TaskMetadata({
             size="inline"
             className="text-xs font-medium"
           >
-            {["pending", "stopped", "in_progress", "reviewing", "done", "failed", "rejected"].map((s) => (
-              <option key={s} value={s}>{STATUS_LABEL[s] || s}</option>
+            {[
+              "pending",
+              "stopped",
+              "in_progress",
+              "reviewing",
+              "done",
+              "failed",
+              "rejected",
+            ].map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABEL[s] || s}
+              </option>
             ))}
           </Select>
         </div>
-        <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium", PRIORITY_COLORS[task.priority])}>
+        <span
+          className={cn(
+            "text-[10px] px-1.5 py-0.5 rounded border font-medium",
+            PRIORITY_COLORS[task.priority],
+          )}
+        >
           {task.priority}
         </span>
         <span className="text-[11px] text-muted-foreground">
@@ -57,9 +74,7 @@ export function TaskMetadata({
 
         {/* Run / Stop / Delete buttons */}
         <div className="ml-auto flex items-center gap-2">
-          {runStatus === "running" && (
-            <HorseRunningIndicator />
-          )}
+          {runStatus === "running" && <HorseRunningIndicator />}
           {task.status === "pending" && (
             <button
               type="button"
@@ -83,7 +98,12 @@ export function TaskMetadata({
             <button
               type="button"
               onClick={onRun}
-              disabled={isPipelineRunning || task.status === "in_progress" || task.status === "done" || task.status === "rejected"}
+              disabled={
+                isPipelineRunning ||
+                task.status === "in_progress" ||
+                task.status === "done" ||
+                task.status === "rejected"
+              }
               title={
                 isPipelineRunning
                   ? "파이프라인 실행 중에는 개별 실행 불가"
@@ -95,7 +115,10 @@ export function TaskMetadata({
               }
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md transition-colors",
-                isPipelineRunning || task.status === "in_progress" || task.status === "done" || task.status === "rejected"
+                isPipelineRunning ||
+                  task.status === "in_progress" ||
+                  task.status === "done" ||
+                  task.status === "rejected"
                   ? "bg-muted text-muted-foreground cursor-not-allowed"
                   : "bg-muted hover:bg-muted/80 text-foreground border border-border",
               )}

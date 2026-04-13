@@ -48,10 +48,16 @@ export function loadSettings(): Settings {
     const raw = fs.readFileSync(configPath, "utf-8");
     const parsed = JSON.parse(raw);
     return {
-      apiKey: typeof parsed.apiKey === "string" ? parsed.apiKey : DEFAULTS.apiKey,
-      srcPaths: Array.isArray(parsed.srcPaths) ? parsed.srcPaths : DEFAULTS.srcPaths,
+      apiKey:
+        typeof parsed.apiKey === "string" ? parsed.apiKey : DEFAULTS.apiKey,
+      srcPaths: Array.isArray(parsed.srcPaths)
+        ? parsed.srcPaths
+        : DEFAULTS.srcPaths,
       model: typeof parsed.model === "string" ? parsed.model : DEFAULTS.model,
-      baseBranch: typeof parsed.baseBranch === "string" ? parsed.baseBranch : DEFAULTS.baseBranch,
+      baseBranch:
+        typeof parsed.baseBranch === "string"
+          ? parsed.baseBranch
+          : DEFAULTS.baseBranch,
       maxParallel:
         typeof parsed.maxParallel === "number" && parsed.maxParallel >= 1
           ? Math.floor(parsed.maxParallel)
@@ -79,16 +85,23 @@ export function loadSettings(): Settings {
 export function saveSettings(settings: Partial<Settings>): Settings {
   const current = loadSettings();
   const updated: Settings = {
-    apiKey: typeof settings.apiKey === "string" ? settings.apiKey : current.apiKey,
-    srcPaths: Array.isArray(settings.srcPaths) ? settings.srcPaths : current.srcPaths,
+    apiKey:
+      typeof settings.apiKey === "string" ? settings.apiKey : current.apiKey,
+    srcPaths: Array.isArray(settings.srcPaths)
+      ? settings.srcPaths
+      : current.srcPaths,
     model: typeof settings.model === "string" ? settings.model : current.model,
-    baseBranch: typeof settings.baseBranch === "string" ? settings.baseBranch : current.baseBranch,
+    baseBranch:
+      typeof settings.baseBranch === "string"
+        ? settings.baseBranch
+        : current.baseBranch,
     maxParallel:
       typeof settings.maxParallel === "number" && settings.maxParallel >= 1
         ? Math.floor(settings.maxParallel)
         : current.maxParallel,
     maxReviewRetry:
-      typeof settings.maxReviewRetry === "number" && settings.maxReviewRetry >= 0
+      typeof settings.maxReviewRetry === "number" &&
+      settings.maxReviewRetry >= 0
         ? Math.floor(settings.maxReviewRetry)
         : current.maxReviewRetry,
     workerMode:
@@ -103,6 +116,10 @@ export function saveSettings(settings: Partial<Settings>): Settings {
   const configPath = getConfigPath();
   const dir = path.dirname(configPath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(configPath, JSON.stringify(updated, null, 2) + "\n", "utf-8");
+  fs.writeFileSync(
+    configPath,
+    JSON.stringify(updated, null, 2) + "\n",
+    "utf-8",
+  );
   return updated;
 }

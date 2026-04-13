@@ -12,7 +12,8 @@ const options: Record<string, string | undefined> = {};
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--until" && args[i + 1]) options.until = args[++i];
   else if (args[i] === "--budget" && args[i + 1]) options.budget = args[++i];
-  else if (args[i] === "--max-tasks" && args[i + 1]) options.maxTasks = args[++i];
+  else if (args[i] === "--max-tasks" && args[i + 1])
+    options.maxTasks = args[++i];
   else if (args[i] === "--types" && args[i + 1]) options.types = args[++i];
 }
 

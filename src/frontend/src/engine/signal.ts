@@ -67,7 +67,9 @@ export function signalConsume(taskId: string): SignalSuffix | null {
       if (fs.existsSync(f)) {
         try {
           fs.unlinkSync(f);
-        } catch { /* already consumed */ }
+        } catch {
+          /* already consumed */
+        }
         return suffix;
       }
     }
@@ -89,7 +91,9 @@ function acquireLock(lockDir: string, timeoutMs: number): boolean {
     } catch {
       // 10ms 대기 후 재시도
       const waitEnd = Date.now() + 10;
-      while (Date.now() < waitEnd) { /* spin */ }
+      while (Date.now() < waitEnd) {
+        /* spin */
+      }
     }
   }
   // 타임아웃: stale 락 정리 시도
@@ -105,5 +109,7 @@ function acquireLock(lockDir: string, timeoutMs: number): boolean {
 function releaseLock(lockDir: string): void {
   try {
     fs.rmdirSync(lockDir);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }

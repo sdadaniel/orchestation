@@ -80,7 +80,10 @@ export function ChatBot() {
   useEffect(() => {
     if (!isOpen) return;
     function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
@@ -142,7 +145,8 @@ export function ChatBot() {
           return {
             ...s,
             messages: [...s.messages, userMsg],
-            title: s.messages.length === 0 ? userMsg.content.slice(0, 30) : s.title,
+            title:
+              s.messages.length === 0 ? userMsg.content.slice(0, 30) : s.title,
           };
         }),
       );
@@ -251,7 +255,10 @@ export function ChatBot() {
                 ...s,
                 messages: s.messages.map((m) =>
                   m.id === assistantMsgId
-                    ? { ...m, content: "오류가 발생했습니다. 다시 시도해주세요." }
+                    ? {
+                        ...m,
+                        content: "오류가 발생했습니다. 다시 시도해주세요.",
+                      }
                     : m,
                 ),
               }
@@ -271,16 +278,20 @@ export function ChatBot() {
   };
 
   return (
-    <div ref={containerRef} className="fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center pointer-events-none">
+    <div
+      ref={containerRef}
+      className="fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center pointer-events-none"
+    >
       {/* 채팅 메시지 패널 — 인풋바 위로 펼쳐짐 */}
       {isOpen && (
         <div className="w-full max-w-2xl mx-auto pointer-events-auto mb-0">
           <div className="flex h-[480px] bg-card border border-border border-b-0 rounded-t-xl shadow-2xl overflow-hidden">
-
             {/* 좌: 세션 목록 */}
             <div className="w-44 shrink-0 flex flex-col border-r border-border bg-sidebar">
               <div className="flex items-center justify-between h-9 px-2.5 border-b border-border shrink-0">
-                <span className="text-[11px] font-semibold text-sidebar-foreground">Sessions</span>
+                <span className="text-[11px] font-semibold text-sidebar-foreground">
+                  Sessions
+                </span>
                 <button
                   type="button"
                   onClick={newSession}
@@ -304,7 +315,10 @@ export function ChatBot() {
                     <span className="flex-1 truncate">{s.title}</span>
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteSession(s.id);
+                      }}
                       className="p-0.5 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
                     >
                       <Trash2 className="h-2.5 w-2.5" />
@@ -349,15 +363,21 @@ export function ChatBot() {
                   >
                     <div className="whitespace-pre-wrap">
                       {msg.content}
-                      {isStreaming && msg.role === "assistant" && msg.content === "" && (
-                        <span className="animate-pulse">▍</span>
-                      )}
+                      {isStreaming &&
+                        msg.role === "assistant" &&
+                        msg.content === "" && (
+                          <span className="animate-pulse">▍</span>
+                        )}
                     </div>
                   </div>
                 ))}
-                {isStreaming && activeSession?.messages.at(-1)?.role === "assistant" && (activeSession?.messages.at(-1)?.content ?? "") !== "" && (
-                  <span className="text-xs text-muted-foreground animate-pulse ml-1">▍</span>
-                )}
+                {isStreaming &&
+                  activeSession?.messages.at(-1)?.role === "assistant" &&
+                  (activeSession?.messages.at(-1)?.content ?? "") !== "" && (
+                    <span className="text-xs text-muted-foreground animate-pulse ml-1">
+                      ▍
+                    </span>
+                  )}
                 <div ref={messagesEndRef} />
               </div>
             </div>
@@ -367,10 +387,12 @@ export function ChatBot() {
 
       {/* 하단 중앙 인풋바 — 항상 표시 */}
       <div className="w-full max-w-2xl mx-auto pointer-events-auto px-4 pb-4">
-        <div className={cn(
-          "flex items-center gap-2 px-3 py-2 bg-card border border-border shadow-lg",
-          isOpen ? "rounded-b-xl" : "rounded-xl",
-        )}>
+        <div
+          className={cn(
+            "flex items-center gap-2 px-3 py-2 bg-card border border-border shadow-lg",
+            isOpen ? "rounded-b-xl" : "rounded-xl",
+          )}
+        >
           {!isOpen && (
             <button
               type="button"

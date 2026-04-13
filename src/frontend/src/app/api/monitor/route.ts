@@ -13,7 +13,9 @@ let prevTimes: { user: number; sys: number; idle: number } | null = null;
 function getWorkerPidMap(): Map<number, string> {
   const map = new Map<number, string>();
   try {
-    const pidFiles = fs.readdirSync("/tmp").filter((f) => /^worker-TASK-\w+\.pid$/.test(f));
+    const pidFiles = fs
+      .readdirSync("/tmp")
+      .filter((f) => /^worker-TASK-\w+\.pid$/.test(f));
     for (const file of pidFiles) {
       const taskId = file.replace(/^worker-/, "").replace(/\.pid$/, "");
       const raw = fs.readFileSync(`/tmp/${file}`, "utf-8").trim();
@@ -32,7 +34,10 @@ function getWorkerPidMap(): Map<number, string> {
 function getProcessTree(): Map<number, number> {
   const parentOf = new Map<number, number>();
   try {
-    const result = execSync("ps axo pid=,ppid=", { encoding: "utf-8", timeout: 3000 });
+    const result = execSync("ps axo pid=,ppid=", {
+      encoding: "utf-8",
+      timeout: 3000,
+    });
     for (const line of result.trim().split("\n")) {
       const parts = line.trim().split(/\s+/);
       if (parts.length < 2) continue;
@@ -49,7 +54,10 @@ function getProcessTree(): Map<number, number> {
 }
 
 // 특정 PID의 모든 자손 PID 목록 (사전 조회된 트리 재사용)
-function getDescendantPids(rootPid: number, parentOf: Map<number, number>): Set<number> {
+function getDescendantPids(
+  rootPid: number,
+  parentOf: Map<number, number>,
+): Set<number> {
   const descendants = new Set<number>();
   const queue = [rootPid];
   const visited = new Set([rootPid]);
@@ -71,7 +79,7 @@ function getClaudeProcesses(): ClaudeProcess[] {
     // claude CLI 프로세스만 필터 (Desktop app 제외)
     const result = execSync(
       `ps aux | grep -E '[c]laude' | grep -v 'Claude.app' | grep -v grep`,
-      { encoding: "utf-8", timeout: 3000 }
+      { encoding: "utf-8", timeout: 3000 },
     );
     const totalMem = os.totalmem();
     const lines = result.trim().split("\n").filter(Boolean);
@@ -108,7 +116,7 @@ function getClaudeProcesses(): ClaudeProcess[] {
         if (isNaN(cpu) || isNaN(mem)) return null;
 
         const command = parts.slice(10).join(" ");
-        const memMB = +((mem / 100) * totalMem / 1024 / 1024).toFixed(1);
+        const memMB = +(((mem / 100) * totalMem) / 1024 / 1024).toFixed(1);
 
         // 워커 판별: PID 트리에서 task ID가 매핑된 프로세스만 워커
         const taskIdFromTree = pidToTaskId.get(pid);
@@ -178,7 +186,10 @@ function getCpuUsage() {
 
 function getProcessCount(): number {
   try {
-    const result = execSync("ps -A | wc -l", { encoding: "utf-8", timeout: 3000 });
+    const result = execSync("ps -A | wc -l", {
+      encoding: "utf-8",
+      timeout: 3000,
+    });
     return Math.max(0, parseInt(result.trim(), 10) - 1);
   } catch {
     return 0;
@@ -187,7 +198,10 @@ function getProcessCount(): number {
 
 function getThreadCount(): number {
   try {
-    const result = execSync("ps -M -A | wc -l", { encoding: "utf-8", timeout: 3000 });
+    const result = execSync("ps -M -A | wc -l", {
+      encoding: "utf-8",
+      timeout: 3000,
+    });
     return Math.max(0, parseInt(result.trim(), 10) - 1);
   } catch {
     return 0;

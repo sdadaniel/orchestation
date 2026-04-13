@@ -24,8 +24,12 @@ export type SignalType =
   | "stopped";
 
 const SIGNAL_TYPES: SignalType[] = [
-  "task-done", "task-failed", "task-rejected",
-  "review-approved", "review-rejected", "stopped",
+  "task-done",
+  "task-failed",
+  "task-rejected",
+  "review-approved",
+  "review-rejected",
+  "stopped",
 ];
 
 const MAX_TASK_COST = 5.0;
@@ -49,11 +53,17 @@ export function processSignals(cb: SignalHandlerCallbacks): void {
 
   for (const file of files) {
     for (const suffix of SIGNAL_TYPES) {
-      const match = file.match(new RegExp(`^(TASK-\\d+)-${suffix.replace(/-/g, "\\-")}$`));
+      const match = file.match(
+        new RegExp(`^(TASK-\\d+)-${suffix.replace(/-/g, "\\-")}$`),
+      );
       if (match) {
         const taskId = match[1];
         handleSignal(taskId, suffix, cb);
-        try { fs.unlinkSync(path.join(SIGNALS_DIR, file)); } catch { /* ignore */ }
+        try {
+          fs.unlinkSync(path.join(SIGNALS_DIR, file));
+        } catch {
+          /* ignore */
+        }
       }
     }
   }
@@ -88,8 +98,12 @@ export function handleSignal(
     case "task-rejected": {
       cb.log(`  🚫 ${taskId} 거절됨`);
       let reason = "";
-      const reasonFile = path.join(OUTPUT_DIR, `${taskId}-rejection-reason.txt`);
-      if (fs.existsSync(reasonFile)) reason = fs.readFileSync(reasonFile, "utf-8").split("\n")[0];
+      const reasonFile = path.join(
+        OUTPUT_DIR,
+        `${taskId}-rejection-reason.txt`,
+      );
+      if (fs.existsSync(reasonFile))
+        reason = fs.readFileSync(reasonFile, "utf-8").split("\n")[0];
       markTaskRejected(taskId, reason, cb);
       break;
     }
@@ -112,8 +126,13 @@ export function handleSignal(
       const count = cb.getRetryCount(taskId);
       if (count < cb.maxReviewRetry()) {
         const next = cb.bumpRetryCount(taskId);
-        cb.log(`  🔄 ${taskId} review 수정요청 → retry (${next}/${cb.maxReviewRetry()})`);
-        const feedbackFile = path.join(OUTPUT_DIR, `${taskId}-review-feedback.txt`);
+        cb.log(
+          `  🔄 ${taskId} review 수정요청 → retry (${next}/${cb.maxReviewRetry()})`,
+        );
+        const feedbackFile = path.join(
+          OUTPUT_DIR,
+          `${taskId}-review-feedback.txt`,
+        );
         cb.startTask(taskId, feedbackFile);
       } else {
         cb.log(`  ❌ ${taskId} retry 상한 초과 (${cb.maxReviewRetry()})`);
@@ -124,7 +143,10 @@ export function handleSignal(
   }
 }
 
-export async function mergeAndDone(taskId: string, cb: SignalHandlerCallbacks): Promise<void> {
+export async function mergeAndDone(
+  taskId: string,
+  cb: SignalHandlerCallbacks,
+): Promise<void> {
   const info = readTaskInfo(taskId);
   if (!info) return;
 
@@ -144,7 +166,11 @@ export async function mergeAndDone(taskId: string, cb: SignalHandlerCallbacks): 
   }
 }
 
-export function markTaskFailed(taskId: string, reason: string, cb: SignalHandlerCallbacks): void {
+export function markTaskFailed(
+  taskId: string,
+  reason: string,
+  cb: SignalHandlerCallbacks,
+): void {
   setTaskStatus(taskId, "failed", cb.log);
   cleanupWorktreeAndBranch(taskId, cb.log);
   cb.clearRetryCount(taskId);
@@ -153,7 +179,11 @@ export function markTaskFailed(taskId: string, reason: string, cb: SignalHandler
   cb.emitTaskResult(taskId, "failure");
 }
 
-export function markTaskRejected(taskId: string, reason: string, cb: SignalHandlerCallbacks): void {
+export function markTaskRejected(
+  taskId: string,
+  reason: string,
+  cb: SignalHandlerCallbacks,
+): void {
   setTaskStatus(taskId, "rejected", cb.log);
   cleanupWorktreeAndBranch(taskId, cb.log);
   cb.clearRetryCount(taskId);
@@ -168,17 +198,32 @@ function checkCostLimit(taskId: string, log: (msg: string) => void): boolean {
       if (entry.taskId === taskId) total += entry.costUsd;
     }
     if (total > MAX_TASK_COST) {
-      log(`  🚨 ${taskId} 비용 상한 초과 ($${total.toFixed(2)} > $${MAX_TASK_COST})`);
+      log(
+        `  🚨 ${taskId} 비용 상한 초과 ($${total.toFixed(2)} > $${MAX_TASK_COST})`,
+      );
       return true;
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return false;
 }
 
-function setTaskStatus(taskId: string, newStatus: string, log: (msg: string) => void): void {
+function setTaskStatus(
+  taskId: string,
+  newStatus: string,
+  log: (msg: string) => void,
+): void {
   const row = getTask(taskId);
-  if (!row) { log(`  ⚠️  ${taskId}: DB에 없음`); return; }
-  updateTaskStatus(taskId, newStatus as Parameters<typeof updateTaskStatus>[1], row.status);
+  if (!row) {
+    log(`  ⚠️  ${taskId}: DB에 없음`);
+    return;
+  }
+  updateTaskStatus(
+    taskId,
+    newStatus as Parameters<typeof updateTaskStatus>[1],
+    row.status,
+  );
 }
 
 function readTaskInfo(taskId: string): TaskInfo | null {
@@ -187,19 +232,33 @@ function readTaskInfo(taskId: string): TaskInfo | null {
   return taskRowToInfo(row);
 }
 
-function cleanupWorktreeAndBranch(taskId: string, log: (msg: string) => void): void {
+function cleanupWorktreeAndBranch(
+  taskId: string,
+  log: (msg: string) => void,
+): void {
   const info = readTaskInfo(taskId);
   if (!info) return;
-  const worktreePath = info.worktree ? path.resolve(PROJECT_ROOT, info.worktree) : null;
+  const worktreePath = info.worktree
+    ? path.resolve(PROJECT_ROOT, info.worktree)
+    : null;
   if (worktreePath && fs.existsSync(worktreePath)) {
     try {
-      execSync(`git -C "${PROJECT_ROOT}" worktree remove "${worktreePath}" --force`, { stdio: "ignore" });
-    } catch { /* ignore */ }
+      execSync(
+        `git -C "${PROJECT_ROOT}" worktree remove "${worktreePath}" --force`,
+        { stdio: "ignore" },
+      );
+    } catch {
+      /* ignore */
+    }
   }
   if (info.branch) {
     try {
-      execSync(`git -C "${PROJECT_ROOT}" branch -D "${info.branch}"`, { stdio: "ignore" });
-    } catch { /* ignore */ }
+      execSync(`git -C "${PROJECT_ROOT}" branch -D "${info.branch}"`, {
+        stdio: "ignore",
+      });
+    } catch {
+      /* ignore */
+    }
   }
 }
 

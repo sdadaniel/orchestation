@@ -27,8 +27,16 @@ export interface DocTreeNodeProps {
   toggleFolder: (id: string) => void;
   onDelete?: (id: string) => Promise<void>;
   onRename?: (id: string, title: string) => Promise<void>;
-  onCreate?: (title: string, type: "doc" | "folder", parentId?: string | null) => Promise<void>;
-  onReorder?: (nodeId: string, targetParentId: string | null, position: number) => Promise<void>;
+  onCreate?: (
+    title: string,
+    type: "doc" | "folder",
+    parentId?: string | null,
+  ) => Promise<void>;
+  onReorder?: (
+    nodeId: string,
+    targetParentId: string | null,
+    position: number,
+  ) => Promise<void>;
   onReorderError?: (error: unknown) => void;
 }
 
@@ -50,7 +58,9 @@ export function DocTreeNode({
   const [isRenaming, setIsRenaming] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [newItemType, setNewItemType] = useState<"doc" | "folder" | null>(null);
-  const [dragOver, setDragOver] = useState<"above" | "inside" | "below" | null>(null);
+  const [dragOver, setDragOver] = useState<"above" | "inside" | "below" | null>(
+    null,
+  );
   const isFolder = node.type === "folder";
   const isExpanded = expandedFolders.has(node.id);
   const isActive = currentPath === `/docs/${node.id}`;
@@ -125,13 +135,14 @@ export function DocTreeNode({
 
   const paddingLeft = 8 + depth * 12;
 
-  const dropIndicator = dragOver === "above"
-    ? "border-t-2 border-primary"
-    : dragOver === "below"
-    ? "border-b-2 border-primary"
-    : dragOver === "inside"
-    ? "bg-primary/20 ring-1 ring-primary/40 rounded"
-    : "";
+  const dropIndicator =
+    dragOver === "above"
+      ? "border-t-2 border-primary"
+      : dragOver === "below"
+        ? "border-b-2 border-primary"
+        : dragOver === "inside"
+          ? "bg-primary/20 ring-1 ring-primary/40 rounded"
+          : "";
 
   return (
     <div>
@@ -155,7 +166,11 @@ export function DocTreeNode({
               type="button"
               className="shrink-0 p-0 bg-transparent border-none cursor-pointer text-muted-foreground"
             >
-              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              {isExpanded ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
             </button>
             {isExpanded ? (
               <FolderOpen className="h-3 w-3 text-primary shrink-0" />
@@ -175,7 +190,10 @@ export function DocTreeNode({
         ) : (
           <Link
             href={`/docs/${node.id}`}
-            className={cn("tree-item no-underline text-sidebar-foreground", isActive && "active")}
+            className={cn(
+              "tree-item no-underline text-sidebar-foreground",
+              isActive && "active",
+            )}
             style={{ paddingLeft }}
             draggable={false}
           >
@@ -201,7 +219,11 @@ export function DocTreeNode({
                   type="button"
                   title="New document"
                   className="p-0.5 rounded hover:bg-sidebar-accent text-muted-foreground hover:text-foreground"
-                  onClick={(e) => { e.stopPropagation(); setNewItemType("doc"); if (!isExpanded) toggleFolder(node.id); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setNewItemType("doc");
+                    if (!isExpanded) toggleFolder(node.id);
+                  }}
                 >
                   <FileText className="h-2.5 w-2.5" />
                 </button>
@@ -209,7 +231,11 @@ export function DocTreeNode({
                   type="button"
                   title="New folder"
                   className="p-0.5 rounded hover:bg-sidebar-accent text-muted-foreground hover:text-foreground"
-                  onClick={(e) => { e.stopPropagation(); setNewItemType("folder"); if (!isExpanded) toggleFolder(node.id); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setNewItemType("folder");
+                    if (!isExpanded) toggleFolder(node.id);
+                  }}
                 >
                   <Folder className="h-2.5 w-2.5" />
                 </button>
@@ -219,7 +245,11 @@ export function DocTreeNode({
               type="button"
               title="Rename"
               className="p-0.5 rounded hover:bg-sidebar-accent text-muted-foreground hover:text-foreground"
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); setIsRenaming(true); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setIsRenaming(true);
+              }}
             >
               <Pencil className="h-2.5 w-2.5" />
             </button>
@@ -227,7 +257,11 @@ export function DocTreeNode({
               type="button"
               title="Delete"
               className="p-0.5 rounded hover:bg-sidebar-accent text-muted-foreground hover:text-red-400"
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDelete(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                handleDelete();
+              }}
             >
               <Trash2 className="h-2.5 w-2.5" />
             </button>

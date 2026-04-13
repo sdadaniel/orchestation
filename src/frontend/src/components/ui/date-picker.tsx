@@ -74,16 +74,22 @@ export function DatePicker({
             classNames={{
               root: "text-foreground text-sm",
               months: "relative flex flex-col",
-              month_caption: "flex justify-center items-center h-8 font-medium text-sm px-8",
+              month_caption:
+                "flex justify-center items-center h-8 font-medium text-sm px-8",
               nav: "flex items-center justify-between absolute inset-x-0 top-0 h-8 px-1 z-10",
-              button_previous: "p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
-              button_next: "p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
+              button_previous:
+                "p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
+              button_next:
+                "p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
               weekdays: "flex mt-1",
-              weekday: "w-8 text-center text-[11px] font-medium text-muted-foreground",
+              weekday:
+                "w-8 text-center text-[11px] font-medium text-muted-foreground",
               week: "flex",
               day: "w-8 h-8 p-0 text-xs",
-              day_button: "w-full h-full flex items-center justify-center rounded hover:bg-muted cursor-pointer transition-colors",
-              selected: "bg-primary! text-primary-foreground! rounded hover:bg-primary/90!",
+              day_button:
+                "w-full h-full flex items-center justify-center rounded hover:bg-muted cursor-pointer transition-colors",
+              selected:
+                "bg-primary! text-primary-foreground! rounded hover:bg-primary/90!",
               today: "font-bold text-primary",
               outside: "opacity-30",
               disabled: "opacity-20 cursor-not-allowed pointer-events-none",

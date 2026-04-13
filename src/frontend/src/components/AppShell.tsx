@@ -255,11 +255,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   const handleDocReorder = useCallback(
-    async (
-      nodeId: string,
-      targetParentId: string | null,
-      position: number,
-    ) => {
+    async (nodeId: string, targetParentId: string | null, position: number) => {
       await reorderDoc(nodeId, targetParentId, position);
     },
     [reorderDoc],
@@ -303,8 +299,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onDocReorder={handleDocReorder}
         onDocReorderError={handleDocReorderError}
         onStopTask={async (id) => {
-          try { await fetch(`/api/tasks/${id}/run`, { method: "DELETE" }); } catch {}
-          await fetch(`/api/requests/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "stopped" }) });
+          try {
+            await fetch(`/api/tasks/${id}/run`, { method: "DELETE" });
+          } catch {}
+          await fetch(`/api/requests/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "stopped" }),
+          });
           fetchAll();
         }}
       />
@@ -313,7 +315,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Global header */}
         <div className="global-header">
-          <AutoImproveControl runningTaskCount={requestItems.filter((t) => t.status === "in_progress").length} />
+          <AutoImproveControl
+            runningTaskCount={
+              requestItems.filter((t) => t.status === "in_progress").length
+            }
+          />
           <GlobalSearch requestItems={requestItems} docTree={docTree} />
         </div>
 

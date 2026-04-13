@@ -98,7 +98,9 @@ export function SseProvider({ children }: { children: React.ReactNode }) {
 
           if (justFinished) {
             queryClient.invalidateQueries({ queryKey: queryKeys.costs.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.runHistory.all });
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.runHistory.all,
+            });
           }
         } catch {
           // JSON 파싱 실패 무시

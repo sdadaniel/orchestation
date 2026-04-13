@@ -5,9 +5,22 @@
  * orchestrate-engine.ts에서 추출. side-effect 없음 (DB read만).
  */
 import { execSync } from "child_process";
-import { getTasksByStatus, getTask, parseScope, parseDependsOn, type TaskRow } from "../service/task-store";
+import {
+  getTasksByStatus,
+  getTask,
+  parseScope,
+  parseDependsOn,
+  type TaskRow,
+} from "../service/task-store";
 
-export type TaskStatus = "pending" | "stopped" | "in_progress" | "reviewing" | "done" | "rejected" | "failed";
+export type TaskStatus =
+  | "pending"
+  | "stopped"
+  | "in_progress"
+  | "reviewing"
+  | "done"
+  | "rejected"
+  | "failed";
 
 export interface TaskInfo {
   id: string;
@@ -48,17 +61,19 @@ export function taskRowToInfo(row: TaskRow): TaskInfo {
 export function scanTasks(): TaskInfo[] {
   const rows = getTasksByStatus("pending", "stopped");
   const tasks = rows
-    .filter(r => r.status !== "done" && r.status !== "in_progress")
+    .filter((r) => r.status !== "done" && r.status !== "in_progress")
     .map(taskRowToInfo);
 
-  const statusWeight = (s: string) => s === "stopped" ? 0 : 1;
-  const priorityWeight = (p: string) => ({ high: 1, medium: 2, low: 3 }[p] ?? 4);
+  const statusWeight = (s: string) => (s === "stopped" ? 0 : 1);
+  const priorityWeight = (p: string) =>
+    ({ high: 1, medium: 2, low: 3 })[p] ?? 4;
 
-  tasks.sort((a, b) =>
-    statusWeight(a.status) - statusWeight(b.status) ||
-    priorityWeight(a.priority) - priorityWeight(b.priority) ||
-    a.sortOrder - b.sortOrder ||
-    a.id.localeCompare(b.id)
+  tasks.sort(
+    (a, b) =>
+      statusWeight(a.status) - statusWeight(b.status) ||
+      priorityWeight(a.priority) - priorityWeight(b.priority) ||
+      a.sortOrder - b.sortOrder ||
+      a.id.localeCompare(b.id),
   );
 
   return tasks;
@@ -95,7 +110,9 @@ export function scopeNotConflicting(
         const nsBase = ns.replace(/\/\*\*$/, "");
         const rsBase = rs.replace(/\/\*\*$/, "");
         if (nsBase.startsWith(rsBase) || rsBase.startsWith(nsBase)) {
-          log(`  ⚠️  ${task.id}: scope 충돌 (${ns} ↔ ${rs}) ← ${runningId} 실행 중`);
+          log(
+            `  ⚠️  ${task.id}: scope 충돌 (${ns} ↔ ${rs}) ← ${runningId} 실행 중`,
+          );
           return false;
         }
       }
@@ -111,6 +128,8 @@ export function canDispatch(): boolean {
       { encoding: "utf-8", timeout: 3000 },
     ).trim();
     if (output === "critical" || output.startsWith("warn")) return false;
-  } catch { /* non-macOS or command failed */ }
+  } catch {
+    /* non-macOS or command failed */
+  }
   return true;
 }

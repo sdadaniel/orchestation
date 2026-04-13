@@ -28,7 +28,9 @@ export const Interactive: Story = {
     return (
       <div className="w-80 space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Max parallel tasks</span>
+          <span className="text-sm text-muted-foreground">
+            Max parallel tasks
+          </span>
           <span className="text-sm text-foreground tabular-nums">{value}</span>
         </div>
         <Slider min={1} max={10} value={value} onChange={setValue} />
@@ -44,7 +46,9 @@ export const Temperature: Story = {
       <div className="w-80 space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">Temperature</span>
-          <span className="text-sm text-foreground tabular-nums">{(value / 100).toFixed(2)}</span>
+          <span className="text-sm text-foreground tabular-nums">
+            {(value / 100).toFixed(2)}
+          </span>
         </div>
         <Slider min={0} max={200} value={value} onChange={setValue} />
       </div>

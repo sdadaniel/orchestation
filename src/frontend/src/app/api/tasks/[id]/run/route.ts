@@ -4,7 +4,12 @@ import fs from "fs";
 import path from "path";
 import taskRunnerManager from "@/engine/runner/task-runner-manager";
 import orchestrationManager from "@/engine/orchestration-manager";
-import { getTask, getAllTasks, updateTaskStatus, parseDependsOn } from "@/service/task-store";
+import {
+  getTask,
+  getAllTasks,
+  updateTaskStatus,
+  parseDependsOn,
+} from "@/service/task-store";
 import { PROJECT_ROOT, OUTPUT_DIR } from "@/lib/paths";
 
 const SIGNAL_DIR = path.join(PROJECT_ROOT, ".orchestration", "signals");
@@ -39,7 +44,7 @@ export const dynamic = "force-dynamic";
 /** POST - start running a single task */
 export async function POST(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
@@ -47,7 +52,7 @@ export async function POST(
   if (orchestrationManager.isRunning()) {
     return NextResponse.json(
       { error: "파이프라인 실행 중입니다. 중지 후 다시 시도하세요." },
-      { status: 409 }
+      { status: 409 },
     );
   }
 
@@ -57,13 +62,15 @@ export async function POST(
     const dependsOnIds = parseDependsOn(taskRow);
     if (dependsOnIds.length > 0) {
       const allTasks = getAllTasks();
-      const unmetDeps = dependsOnIds.filter(depId => {
-        const dep = allTasks.find(t => t.id === depId);
+      const unmetDeps = dependsOnIds.filter((depId) => {
+        const dep = allTasks.find((t) => t.id === depId);
         return !dep || dep.status !== "done";
       });
       if (unmetDeps.length > 0) {
         return NextResponse.json(
-          { error: `의존성 미충족: ${unmetDeps.join(", ")}이(가) 아직 완료되지 않았습니다.` },
+          {
+            error: `의존성 미충족: ${unmetDeps.join(", ")}이(가) 아직 완료되지 않았습니다.`,
+          },
           { status: 409 },
         );
       }
@@ -75,7 +82,11 @@ export async function POST(
   const prevConvPath = path.join(OUTPUT_DIR, `${id}-task-conversation.jsonl`);
   const prevRejectionPath = path.join(OUTPUT_DIR, `${id}-rejection-reason.txt`);
   for (const p of [prevResultPath, prevConvPath, prevRejectionPath]) {
-    try { fs.unlinkSync(p); } catch { /* not exists */ }
+    try {
+      fs.unlinkSync(p);
+    } catch {
+      /* not exists */
+    }
   }
 
   const result = taskRunnerManager.run(id);
@@ -92,7 +103,7 @@ export async function POST(
 /** GET - get run status for a single task */
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const state = taskRunnerManager.getState(id);
@@ -111,12 +122,15 @@ export async function GET(
 /** DELETE - stop a running task */
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
   if (!id || typeof id !== "string" || !isValidTaskId(id)) {
-    return NextResponse.json({ error: "Invalid task ID format" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid task ID format" },
+      { status: 400 },
+    );
   }
 
   // stop-request 시그널 파일 생성
@@ -129,10 +143,9 @@ export async function DELETE(
   //    claude 워커 프로세스를 직접 찾아서 kill
   if (!result.success) {
     try {
-      const pids = execSync(
-        `pgrep -f "claude.*${id}" 2>/dev/null || true`,
-        { encoding: "utf-8" },
-      ).trim();
+      const pids = execSync(`pgrep -f "claude.*${id}" 2>/dev/null || true`, {
+        encoding: "utf-8",
+      }).trim();
 
       if (!pids) {
         // 프로세스가 없어도 DB 상태는 stopped로 업데이트
@@ -154,22 +167,24 @@ export async function DELETE(
             // 프로세스 그룹 kill 실패 시 개별 kill
             try {
               process.kill(parseInt(trimmedPid, 10), "SIGTERM");
-            } catch { /* already dead */ }
+            } catch {
+              /* already dead */
+            }
           }
         }
       }
     } catch {
       // kill 실패해도 DB 상태는 stopped로 업데이트
       markTaskAsStopped(id);
-      return NextResponse.json(
-        { error: `${id} 중지 실패` },
-        { status: 500 },
-      );
+      return NextResponse.json({ error: `${id} 중지 실패` }, { status: 500 });
     }
   }
 
   // 프로세스 종료 후 task DB 상태 → stopped
   markTaskAsStopped(id);
 
-  return NextResponse.json({ message: `Task ${id} stopped`, status: "stopped" });
+  return NextResponse.json({
+    message: `Task ${id} stopped`,
+    status: "stopped",
+  });
 }

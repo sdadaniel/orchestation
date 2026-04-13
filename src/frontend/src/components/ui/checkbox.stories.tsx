@@ -39,7 +39,10 @@ export const DependencyList: Story = {
   render: () => (
     <div className="max-h-32 overflow-y-auto bg-muted border border-border rounded p-2 space-y-1 w-60">
       {["TASK-001", "TASK-002", "TASK-003", "TASK-004"].map((id, i) => (
-        <label key={id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-background/50 rounded px-1 py-0.5">
+        <label
+          key={id}
+          className="flex items-center gap-2 text-xs cursor-pointer hover:bg-background/50 rounded px-1 py-0.5"
+        >
           <Checkbox defaultChecked={i < 2} />
           <span className="font-mono">{id}</span>
         </label>

@@ -72,7 +72,7 @@ function parseTokenUsageLogs(taskId: string): TaskLogEntry[] {
     // Check if this line contains the task ID
     // Format: [2026-03-23 12:15:45] TASK-029 | phase=task | ...
     const timestampMatch = trimmed.match(
-      /^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+([\w-]+)\s+\|/
+      /^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+([\w-]+)\s+\|/,
     );
     if (!timestampMatch) continue;
     if (timestampMatch[2] !== taskId) continue;
@@ -206,13 +206,17 @@ function parseSignalLogs(taskId: string): TaskLogEntry[] {
 
     // Try to extract timestamp from common log formats
     const tsMatch = trimmed.match(
-      /^\[?(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})\]?\s*(.*)/
+      /^\[?(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})\]?\s*(.*)/,
     );
 
     if (tsMatch) {
       const timestamp = (tsMatch[1] ?? "").replace("T", " ");
       const msg = tsMatch[2] ?? "";
-      const level = /error|fail|exception/i.test(msg) ? "error" : /warn/i.test(msg) ? "warn" : "info";
+      const level = /error|fail|exception/i.test(msg)
+        ? "error"
+        : /warn/i.test(msg)
+          ? "warn"
+          : "info";
       entries.push({ timestamp, level, message: msg });
     } else {
       entries.push({
@@ -264,7 +268,8 @@ export function hasLogSources(taskId: string): boolean {
     if (fs.existsSync(path.join(OUTPUT_DIR, `${taskId}${suffix}`))) return true;
   }
   // Check worker log in output/logs/
-  if (fs.existsSync(path.join(OUTPUT_DIR, "logs", `${taskId}.log`))) return true;
+  if (fs.existsSync(path.join(OUTPUT_DIR, "logs", `${taskId}.log`)))
+    return true;
 
   return false;
 }

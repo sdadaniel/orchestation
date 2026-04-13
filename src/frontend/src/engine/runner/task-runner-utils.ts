@@ -34,7 +34,9 @@ tell application "iTerm"
     end tell
   end tell
 end tell`;
-    execSync(`osascript -e '${script.replace(/'/g, "'\\''")}'`, { timeout: 5000 });
+    execSync(`osascript -e '${script.replace(/'/g, "'\\''")}'`, {
+      timeout: 5000,
+    });
     return true;
   } catch {
     return false;
@@ -74,13 +76,22 @@ export function cleanupSignals(taskId: string): void {
     if (!fs.existsSync(SIGNALS_DIR)) return;
 
     const suffixes = [
-      "task-done", "task-failed", "task-rejected",
-      "review-approved", "review-rejected",
-      "stop-request", "stopped", "start",
+      "task-done",
+      "task-failed",
+      "task-rejected",
+      "review-approved",
+      "review-rejected",
+      "stop-request",
+      "stopped",
+      "start",
     ];
     for (const suffix of suffixes) {
       const f = path.join(SIGNALS_DIR, `${taskId}-${suffix}`);
-      try { fs.unlinkSync(f); } catch { /* ignore */ }
+      try {
+        fs.unlinkSync(f);
+      } catch {
+        /* ignore */
+      }
     }
   } catch {
     // best-effort
@@ -160,10 +171,16 @@ export function killItermTask(taskId: string): void {
           try {
             process.kill(-parseInt(p, 10), "SIGTERM");
           } catch {
-            try { process.kill(parseInt(p, 10), "SIGTERM"); } catch { /* already dead */ }
+            try {
+              process.kill(parseInt(p, 10), "SIGTERM");
+            } catch {
+              /* already dead */
+            }
           }
         }
       }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }

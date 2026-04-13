@@ -74,7 +74,9 @@ export function isDbAvailable(): boolean {
   const db = getDb();
   if (!db) return false;
   try {
-    const row = db.prepare("SELECT COUNT(*) as cnt FROM tasks").get() as { cnt: number };
+    const row = db.prepare("SELECT COUNT(*) as cnt FROM tasks").get() as {
+      cnt: number;
+    };
     return row.cnt > 0;
   } catch {
     return false;

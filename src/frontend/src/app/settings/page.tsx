@@ -82,7 +82,8 @@ export default function SettingsPage() {
     }
   };
 
-  const isDirty = settings !== null && JSON.stringify(draft) !== JSON.stringify(settings);
+  const isDirty =
+    settings !== null && JSON.stringify(draft) !== JSON.stringify(settings);
 
   return (
     <PageLayout className="max-w-2xl mx-auto">
@@ -94,7 +95,11 @@ export default function SettingsPage() {
           size="sm"
           className="flex items-center gap-1"
         >
-          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          {saving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Save className="h-3.5 w-3.5" />
+          )}
           Save
         </Button>
       </PageHeader>
@@ -106,20 +111,29 @@ export default function SettingsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-
           {/* API Section */}
           <SettingSection title="API Configuration">
             <FieldRow label="Name" description="sdadaniel/orchestation">
-              <Input value="Orchestration" readOnly className="cursor-default font-mono" />
+              <Input
+                value="Orchestration"
+                readOnly
+                className="cursor-default font-mono"
+              />
             </FieldRow>
 
-            <FieldRow label="API Key" htmlFor="apiKey" description="Anthropic API key for Orchestrate Engine and Night Worker">
+            <FieldRow
+              label="API Key"
+              htmlFor="apiKey"
+              description="Anthropic API key for Orchestrate Engine and Night Worker"
+            >
               <div className="flex items-center gap-2">
                 <Input
                   id="apiKey"
                   type={showApiKey ? "text" : "password"}
                   value={draft.apiKey}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, apiKey: e.target.value }))}
+                  onChange={(e) =>
+                    setDraft((prev) => ({ ...prev, apiKey: e.target.value }))
+                  }
                   placeholder="sk-ant-api03-..."
                   className="font-mono flex-1"
                 />
@@ -129,7 +143,11 @@ export default function SettingsPage() {
                   onClick={() => setShowApiKey(!showApiKey)}
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showApiKey ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </FieldRow>
@@ -137,18 +155,27 @@ export default function SettingsPage() {
             <FieldRow label="Model">
               <Select
                 value={draft.model}
-                onChange={(e) => setDraft((prev) => ({ ...prev, model: e.target.value }))}
+                onChange={(e) =>
+                  setDraft((prev) => ({ ...prev, model: e.target.value }))
+                }
               >
-                <option value="claude-haiku-4-5-20251001">claude-haiku-4.5</option>
+                <option value="claude-haiku-4-5-20251001">
+                  claude-haiku-4.5
+                </option>
                 <option value="claude-sonnet-4-6">claude-sonnet-4.6</option>
                 <option value="claude-opus-4-6">claude-opus-4.6</option>
               </Select>
             </FieldRow>
 
-            <FieldRow label="Base branch" description="Default branch for pull requests and base comparisons">
+            <FieldRow
+              label="Base branch"
+              description="Default branch for pull requests and base comparisons"
+            >
               <Input
                 value={draft.baseBranch}
-                onChange={(e) => setDraft((prev) => ({ ...prev, baseBranch: e.target.value }))}
+                onChange={(e) =>
+                  setDraft((prev) => ({ ...prev, baseBranch: e.target.value }))
+                }
                 placeholder="main"
                 className="font-mono"
               />
@@ -174,7 +201,12 @@ export default function SettingsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setDraft((prev) => ({ ...prev, srcPaths: prev.srcPaths.filter((_, j) => j !== i) }))}
+                      onClick={() =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          srcPaths: prev.srcPaths.filter((_, j) => j !== i),
+                        }))
+                      }
                       className="text-muted-foreground hover:text-red-400"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -185,7 +217,12 @@ export default function SettingsPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setDraft((prev) => ({ ...prev, srcPaths: [...prev.srcPaths, ""] }))}
+                onClick={() =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    srcPaths: [...prev.srcPaths, ""],
+                  }))
+                }
                 className="text-muted-foreground hover:text-foreground"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -199,7 +236,12 @@ export default function SettingsPage() {
             <FieldRow label="Worker mode">
               <Select
                 value={draft.workerMode}
-                onChange={(e) => setDraft((prev) => ({ ...prev, workerMode: e.target.value as WorkerMode }))}
+                onChange={(e) =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    workerMode: e.target.value as WorkerMode,
+                  }))
+                }
               >
                 <option value="background">background</option>
                 <option value="iterm">iterm</option>
@@ -210,13 +252,17 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Max parallel tasks</Label>
-                <span className="text-sm text-foreground tabular-nums">{draft.maxParallel}</span>
+                <span className="text-sm text-foreground tabular-nums">
+                  {draft.maxParallel}
+                </span>
               </div>
               <Slider
                 min={1}
                 max={10}
                 value={draft.maxParallel}
-                onChange={(v) => setDraft((prev) => ({ ...prev, maxParallel: v }))}
+                onChange={(v) =>
+                  setDraft((prev) => ({ ...prev, maxParallel: v }))
+                }
               />
             </div>
 
@@ -224,17 +270,20 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Max review retry</Label>
-                <span className="text-sm text-foreground tabular-nums">{draft.maxReviewRetry}</span>
+                <span className="text-sm text-foreground tabular-nums">
+                  {draft.maxReviewRetry}
+                </span>
               </div>
               <Slider
                 min={0}
                 max={5}
                 value={draft.maxReviewRetry}
-                onChange={(v) => setDraft((prev) => ({ ...prev, maxReviewRetry: v }))}
+                onChange={(v) =>
+                  setDraft((prev) => ({ ...prev, maxReviewRetry: v }))
+                }
               />
             </div>
           </SettingSection>
-
         </div>
       )}
     </PageLayout>

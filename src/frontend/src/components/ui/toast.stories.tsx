@@ -21,13 +21,22 @@ function ToastDemo() {
   const { addToast } = useToast();
   return (
     <div className="flex gap-3">
-      <Button variant="default" onClick={() => addToast("Task created successfully", "success")}>
+      <Button
+        variant="default"
+        onClick={() => addToast("Task created successfully", "success")}
+      >
         Success
       </Button>
-      <Button variant="default" onClick={() => addToast("Failed to connect to server", "error")}>
+      <Button
+        variant="default"
+        onClick={() => addToast("Failed to connect to server", "error")}
+      >
         Error
       </Button>
-      <Button variant="default" onClick={() => addToast("Sprint planning starts tomorrow", "info")}>
+      <Button
+        variant="default"
+        onClick={() => addToast("Sprint planning starts tomorrow", "info")}
+      >
         Info
       </Button>
     </div>

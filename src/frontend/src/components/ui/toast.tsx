@@ -52,7 +52,8 @@ export function useToast() {
 /** Use this hook only when you need to read the toasts list (e.g. viewport). */
 export function useToastState() {
   const state = useContext(ToastStateContext);
-  if (!state) throw new Error("useToastState must be used within ToastProvider");
+  if (!state)
+    throw new Error("useToastState must be used within ToastProvider");
   return state;
 }
 
@@ -69,11 +70,7 @@ const ToastViewport = memo(function ToastViewport() {
   if (!mounted || toasts.length === 0) return null;
 
   return createPortal(
-    <div
-      className="toast-viewport"
-      role="region"
-      aria-label="Notifications"
-    >
+    <div className="toast-viewport" role="region" aria-label="Notifications">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onDismiss={removeToast} />
       ))}
@@ -109,10 +106,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 
   // State value changes only when toasts change — only viewport re-renders
-  const stateValue = useMemo<ToastStateValue>(
-    () => ({ toasts }),
-    [toasts],
-  );
+  const stateValue = useMemo<ToastStateValue>(() => ({ toasts }), [toasts]);
 
   return (
     <ToastActionsContext.Provider value={actions}>

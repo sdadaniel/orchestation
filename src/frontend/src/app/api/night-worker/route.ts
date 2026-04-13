@@ -42,7 +42,10 @@ export async function DELETE() {
   const result = nightWorkerManager.stop();
 
   if (!result.success) {
-    return NextResponse.json({ error: "실행 중인 Night Worker가 없습니다." }, { status: 409 });
+    return NextResponse.json(
+      { error: "실행 중인 Night Worker가 없습니다." },
+      { status: 409 },
+    );
   }
 
   return NextResponse.json({ message: "Night Worker 중지됨" });

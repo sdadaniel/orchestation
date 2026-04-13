@@ -2,7 +2,10 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { OrchestrationStatus, OrchestrationStatusData } from "@/engine/orchestration-manager";
+import type {
+  OrchestrationStatus,
+  OrchestrationStatusData,
+} from "@/engine/orchestration-manager";
 
 export type { OrchestrationStatus, OrchestrationStatusData };
 

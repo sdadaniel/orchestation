@@ -1,5 +1,9 @@
 import fs from "fs";
-import { spawnClaude, CLAUDE_DEFAULT_TIMEOUT_MS, ClaudeChildProcess } from "@/lib/claude-cli";
+import {
+  spawnClaude,
+  CLAUDE_DEFAULT_TIMEOUT_MS,
+  ClaudeChildProcess,
+} from "@/lib/claude-cli";
 import { renderTemplate } from "@/lib/template";
 import { ROLES_DIR } from "@/lib/paths";
 import { jsonErrorResponse } from "@/lib/error-utils";
@@ -22,8 +26,12 @@ interface AnalyzedTask {
 function getAvailableRoles(): string[] {
   try {
     const rolesDir = ROLES_DIR;
-    return fs.readdirSync(rolesDir)
-      .filter((f) => f.endsWith(".md") && !f.startsWith("reviewer-") && f !== "README.md")
+    return fs
+      .readdirSync(rolesDir)
+      .filter(
+        (f) =>
+          f.endsWith(".md") && !f.startsWith("reviewer-") && f !== "README.md",
+      )
       .map((f) => f.replace(".md", ""));
   } catch {
     return ["general"];
@@ -51,7 +59,9 @@ export async function POST(request: Request) {
 
   const prompt = renderTemplate("prompt/task-analyze.md", {
     title: title.trim(),
-    description_line: description.trim() ? `Description: ${description.trim()}` : "",
+    description_line: description.trim()
+      ? `Description: ${description.trim()}`
+      : "",
     available_roles: rolesDescription,
   });
 
@@ -73,7 +83,13 @@ export async function POST(request: Request) {
     let timedOut = false;
     const timeoutTimer = setTimeout(() => {
       timedOut = true;
-      resolve(jsonErrorResponse({ error: "Analysis timed out. Please try again.", status: 504, code: "TIMEOUT" }));
+      resolve(
+        jsonErrorResponse({
+          error: "Analysis timed out. Please try again.",
+          status: 504,
+          code: "TIMEOUT",
+        }),
+      );
     }, CLAUDE_DEFAULT_TIMEOUT_MS);
 
     child.on("close", (code) => {
@@ -81,7 +97,12 @@ export async function POST(request: Request) {
       if (timedOut) return;
 
       if (code !== 0) {
-        resolve(jsonErrorResponse({ error: "AI analysis failed. Please try again.", status: 500 }));
+        resolve(
+          jsonErrorResponse({
+            error: "AI analysis failed. Please try again.",
+            status: 500,
+          }),
+        );
         return;
       }
 
@@ -121,8 +142,7 @@ export async function POST(request: Request) {
         const tasks: AnalyzedTask[] = parsed.tasks.map(
           (t: Record<string, unknown>) => ({
             title: typeof t.title === "string" ? t.title : title.trim(),
-            description:
-              typeof t.description === "string" ? t.description : "",
+            description: typeof t.description === "string" ? t.description : "",
             priority: ["high", "medium", "low"].includes(t.priority as string)
               ? (t.priority as "high" | "medium" | "low")
               : "medium",
@@ -138,9 +158,10 @@ export async function POST(request: Request) {
             depends_on: Array.isArray(t.depends_on)
               ? t.depends_on.filter((d: unknown) => typeof d === "number")
               : [],
-            role: typeof t.role === "string" && getAvailableRoles().includes(t.role)
-              ? t.role
-              : "general",
+            role:
+              typeof t.role === "string" && getAvailableRoles().includes(t.role)
+                ? t.role
+                : "general",
           }),
         );
 

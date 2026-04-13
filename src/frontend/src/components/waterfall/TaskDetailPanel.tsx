@@ -71,9 +71,7 @@ function TaskIdList({ ids }: { ids: string[] }) {
 export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
   const open = task !== null;
 
-  const statusStyle = task
-    ? STATUS_STYLES[task.status]
-    : undefined;
+  const statusStyle = task ? STATUS_STYLES[task.status] : undefined;
   const priorityStyle = task
     ? (PRIORITY_STYLES[task.priority] ?? PRIORITY_STYLES.medium)
     : undefined;

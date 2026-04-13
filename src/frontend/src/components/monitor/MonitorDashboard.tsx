@@ -22,7 +22,9 @@ export function MonitorDashboard() {
   if (!current) {
     return (
       <div className="flex h-full items-center justify-center">
-        <span className="text-sm text-muted-foreground animate-pulse">Loading metrics...</span>
+        <span className="text-sm text-muted-foreground animate-pulse">
+          Loading metrics...
+        </span>
       </div>
     );
   }
@@ -35,9 +37,12 @@ export function MonitorDashboard() {
     <div className="space-y-3">
       {/* 상단 제목 */}
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-foreground">System Monitor</h2>
+        <h2 className="text-sm font-semibold text-foreground">
+          System Monitor
+        </h2>
         <span className="text-[10px] text-muted-foreground font-mono">
-          {current.cpuCores} cores · {memTotalGB} GB RAM · {current.processCount} processes
+          {current.cpuCores} cores · {memTotalGB} GB RAM ·{" "}
+          {current.processCount} processes
         </span>
       </div>
 

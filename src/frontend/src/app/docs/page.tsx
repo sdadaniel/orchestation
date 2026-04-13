@@ -2,7 +2,13 @@
 
 import { useDocTree, type DocNode } from "@/hooks/useDocTree";
 import Link from "next/link";
-import { Folder, FolderOpen, FileText, ChevronRight, ChevronDown } from "lucide-react";
+import {
+  Folder,
+  FolderOpen,
+  FileText,
+  ChevronRight,
+  ChevronDown,
+} from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { PageLayout, PageHeader } from "@/components/ui/page-layout";
@@ -30,7 +36,9 @@ function TreeNode({ node, depth = 0 }: { node: DocNode; depth?: number }) {
           ) : (
             <Folder className="h-4 w-4 text-blue-400 shrink-0" />
           )}
-          <span className="text-sm font-medium text-foreground">{node.title}</span>
+          <span className="text-sm font-medium text-foreground">
+            {node.title}
+          </span>
           <span className="text-[10px] text-muted-foreground ml-1">
             {node.children.length}
           </span>
@@ -65,7 +73,9 @@ export default function DocsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <span className="text-sm text-muted-foreground animate-pulse">Loading...</span>
+        <span className="text-sm text-muted-foreground animate-pulse">
+          Loading...
+        </span>
       </div>
     );
   }
@@ -76,12 +86,16 @@ export default function DocsPage() {
     <PageLayout>
       <PageHeader title="Documents" />
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-muted-foreground">{totalDocs} documents</span>
+        <span className="text-[10px] text-muted-foreground">
+          {totalDocs} documents
+        </span>
       </div>
 
       <div className="rounded-lg border border-border bg-card p-2">
         {tree.length === 0 ? (
-          <p className="text-sm text-muted-foreground p-4 text-center">No documents</p>
+          <p className="text-sm text-muted-foreground p-4 text-center">
+            No documents
+          </p>
         ) : (
           tree.map((node) => <TreeNode key={node.id} node={node} />)
         )}

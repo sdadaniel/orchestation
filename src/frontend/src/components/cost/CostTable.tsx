@@ -14,7 +14,15 @@ interface CostTableProps {
   entries: CostEntry[];
 }
 
-type SortColumn = "taskId" | "phase" | "model" | "cost" | "time" | "turns" | "tokens" | "timestamp";
+type SortColumn =
+  | "taskId"
+  | "phase"
+  | "model"
+  | "cost"
+  | "time"
+  | "turns"
+  | "tokens"
+  | "timestamp";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
@@ -24,21 +32,24 @@ function formatTimestamp(raw: string): string {
   return raw; // Already in YYYY-MM-DD HH:mm:ss format
 }
 
-
 function getTotalTokens(entry: CostEntry): number {
-  return entry.inputTokens + entry.outputTokens + entry.cacheCreate + entry.cacheRead;
+  return (
+    entry.inputTokens + entry.outputTokens + entry.cacheCreate + entry.cacheRead
+  );
 }
 
-const COMPARATORS: Record<SortColumn, (a: CostEntry, b: CostEntry) => number> = {
-  taskId: (a, b) => a.taskId.localeCompare(b.taskId, undefined, { numeric: true }),
-  phase: (a, b) => (a.phase ?? "").localeCompare(b.phase ?? ""),
-  model: (a, b) => a.model.localeCompare(b.model),
-  cost: (a, b) => a.costUsd - b.costUsd,
-  time: (a, b) => a.durationMs - b.durationMs,
-  turns: (a, b) => a.turns - b.turns,
-  tokens: (a, b) => getTotalTokens(a) - getTotalTokens(b),
-  timestamp: (a, b) => a.timestamp.localeCompare(b.timestamp),
-};
+const COMPARATORS: Record<SortColumn, (a: CostEntry, b: CostEntry) => number> =
+  {
+    taskId: (a, b) =>
+      a.taskId.localeCompare(b.taskId, undefined, { numeric: true }),
+    phase: (a, b) => (a.phase ?? "").localeCompare(b.phase ?? ""),
+    model: (a, b) => a.model.localeCompare(b.model),
+    cost: (a, b) => a.costUsd - b.costUsd,
+    time: (a, b) => a.durationMs - b.durationMs,
+    turns: (a, b) => a.turns - b.turns,
+    tokens: (a, b) => getTotalTokens(a) - getTotalTokens(b),
+    timestamp: (a, b) => a.timestamp.localeCompare(b.timestamp),
+  };
 
 export function CostTable({ entries }: CostTableProps) {
   const { sorted, sort, toggleSort } = useSortableTable<CostEntry, SortColumn>(
@@ -59,9 +70,16 @@ export function CostTable({ entries }: CostTableProps) {
   const totalItems = sorted.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const safePage = Math.min(page, totalPages);
-  const paginatedItems = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const paginatedItems = sorted.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize,
+  );
 
-  function renderSortableHeader(key: SortColumn, label: string, align?: "right") {
+  function renderSortableHeader(
+    key: SortColumn,
+    label: string,
+    align?: "right",
+  ) {
     const isActive = sort.column === key;
     return (
       <th
@@ -69,11 +87,20 @@ export function CostTable({ entries }: CostTableProps) {
         className={cn(
           "font-medium cursor-pointer select-none hover:text-foreground transition-colors",
           align === "right" && "text-right",
-          isActive && "text-foreground"
+          isActive && "text-foreground",
         )}
-        onClick={() => { toggleSort(key); setPage(1); }}
+        onClick={() => {
+          toggleSort(key);
+          setPage(1);
+        }}
         role="columnheader"
-        aria-sort={isActive ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
+        aria-sort={
+          isActive
+            ? sort.direction === "asc"
+              ? "ascending"
+              : "descending"
+            : "none"
+        }
       >
         {label}
         <SortIcon active={isActive} direction={sort.direction} />
@@ -119,7 +146,7 @@ export function CostTable({ entries }: CostTableProps) {
                     "border-b border-border last:border-b-0 transition-colors",
                     isHighest
                       ? "bg-amber-500/10 text-amber-300 font-semibold"
-                      : "hover:bg-muted/50"
+                      : "hover:bg-muted/50",
                   )}
                 >
                   <td>
@@ -127,7 +154,7 @@ export function CostTable({ entries }: CostTableProps) {
                       href={`/tasks/${entry.taskId}`}
                       className={cn(
                         "font-mono hover:underline",
-                        isHighest ? "text-amber-500" : "hover:text-foreground"
+                        isHighest ? "text-amber-500" : "hover:text-foreground",
                       )}
                     >
                       {entry.taskId}
@@ -139,7 +166,7 @@ export function CostTable({ entries }: CostTableProps) {
                         "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
                         entry.phase === "task"
                           ? "bg-blue-500/15 text-blue-400"
-                          : "bg-purple-500/15 text-purple-400"
+                          : "bg-purple-500/15 text-purple-400",
                       )}
                     >
                       {entry.phase}
@@ -156,9 +183,7 @@ export function CostTable({ entries }: CostTableProps) {
                   <td className="text-right font-mono">
                     {formatDurationMinutes(entry.durationMs)}
                   </td>
-                  <td className="text-right font-mono">
-                    {entry.turns}
-                  </td>
+                  <td className="text-right font-mono">{entry.turns}</td>
                   <td className="text-right font-mono">
                     {totalTokens.toLocaleString()}
                   </td>
@@ -182,10 +207,15 @@ export function CostTable({ entries }: CostTableProps) {
             <Select
               size="inline"
               value={pageSize}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(1);
+              }}
             >
               {PAGE_SIZE_OPTIONS.map((n) => (
-                <option key={n} value={n}>{n}개</option>
+                <option key={n} value={n}>
+                  {n}개
+                </option>
               ))}
             </Select>
           </div>
@@ -201,15 +231,24 @@ export function CostTable({ entries }: CostTableProps) {
             </button>
 
             {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+              .filter(
+                (p) =>
+                  p === 1 || p === totalPages || Math.abs(p - safePage) <= 1,
+              )
               .reduce<(number | "...")[]>((acc, p, idx, arr) => {
-                if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                if (idx > 0 && p - (arr[idx - 1] as number) > 1)
+                  acc.push("...");
                 acc.push(p);
                 return acc;
               }, [])
               .map((p, i) =>
                 p === "..." ? (
-                  <span key={`dots-${i}`} className="px-1 text-[11px] text-muted-foreground">...</span>
+                  <span
+                    key={`dots-${i}`}
+                    className="px-1 text-[11px] text-muted-foreground"
+                  >
+                    ...
+                  </span>
                 ) : (
                   <button
                     key={p}
@@ -238,7 +277,8 @@ export function CostTable({ entries }: CostTableProps) {
           </div>
 
           <span className="text-[11px] text-muted-foreground">
-            {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, totalItems)} / {totalItems}
+            {(safePage - 1) * pageSize + 1}–
+            {Math.min(safePage * pageSize, totalItems)} / {totalItems}
           </span>
         </div>
       )}

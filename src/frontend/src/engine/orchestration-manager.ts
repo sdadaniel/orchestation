@@ -62,7 +62,11 @@ class OrchestrationManager {
   // ── Public API ─────────────────────────────────────────
 
   getState(): OrchestrationState {
-    return { ...this.state, logs: [...this.state.logs], taskResults: [...this.state.taskResults] };
+    return {
+      ...this.state,
+      logs: [...this.state.logs],
+      taskResults: [...this.state.taskResults],
+    };
   }
 
   getStatus(): OrchestrationStatus {
@@ -114,10 +118,13 @@ class OrchestrationManager {
       }
     });
 
-    this.engine.on("task-result", (result: { taskId: string; status: "success" | "failure" }) => {
-      this.state.taskResults.push(result);
-      this.emitStatusChange();
-    });
+    this.engine.on(
+      "task-result",
+      (result: { taskId: string; status: "success" | "failure" }) => {
+        this.state.taskResults.push(result);
+        this.emitStatusChange();
+      },
+    );
 
     const result = this.engine.start();
     if (!result.success) {
@@ -170,15 +177,23 @@ class OrchestrationManager {
       try {
         const costData = parseCostLog();
         for (const entry of costData.entries) {
-          const entryTime = new Date(entry.timestamp.replace(" ", "T")).getTime();
+          const entryTime = new Date(
+            entry.timestamp.replace(" ", "T"),
+          ).getTime();
           if (entryTime >= startTime && entryTime <= endTime) {
             totalCostUsd += entry.costUsd;
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
 
-      const tasksCompleted = this.state.taskResults.filter((r) => r.status === "success").length;
-      const tasksFailed = this.state.taskResults.filter((r) => r.status === "failure").length;
+      const tasksCompleted = this.state.taskResults.filter(
+        (r) => r.status === "success",
+      ).length;
+      const tasksFailed = this.state.taskResults.filter(
+        (r) => r.status === "failure",
+      ).length;
 
       const entry: RunHistoryEntry = {
         id: `run-${this.state.startedAt.replace(/[^0-9]/g, "").slice(0, 14)}`,
@@ -194,7 +209,9 @@ class OrchestrationManager {
       };
 
       appendRunHistory(entry);
-      this.appendLog(`[orchestrate] Run history saved: ${entry.id} (${tasksCompleted} completed, ${tasksFailed} failed, $${totalCostUsd.toFixed(4)})`);
+      this.appendLog(
+        `[orchestrate] Run history saved: ${entry.id} (${tasksCompleted} completed, ${tasksFailed} failed, $${totalCostUsd.toFixed(4)})`,
+      );
     } catch (err) {
       const msg = getErrorMessage(err, String(err));
       this.appendLog(`[orchestrate] Failed to save run history: ${msg}`);
@@ -205,7 +222,9 @@ class OrchestrationManager {
 // Singleton — survives Next.js HMR by storing on globalThis
 const globalKey = "__orchestrationManager__" as keyof typeof globalThis;
 const orchestrationManager: OrchestrationManager =
-  (globalThis as Record<string, unknown>)[globalKey] as OrchestrationManager ??
+  ((globalThis as Record<string, unknown>)[
+    globalKey
+  ] as OrchestrationManager) ??
   (() => {
     const m = new OrchestrationManager();
     (globalThis as Record<string, unknown>)[globalKey] = m;

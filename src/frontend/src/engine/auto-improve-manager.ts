@@ -4,11 +4,24 @@ import { getErrorMessage } from "../lib/error-utils";
 import { PROJECT_ROOT, OUTPUT_DIR } from "../lib/paths";
 import { loadSettings } from "../lib/settings";
 import { runClaudeJson } from "./claude-worker";
-import { parseFrontmatter, getString, getStringArray } from "../lib/frontmatter-utils";
-import { createTask, getNextTaskId, getTasksByStatus } from "../service/task-store";
+import {
+  parseFrontmatter,
+  getString,
+  getStringArray,
+} from "../lib/frontmatter-utils";
+import {
+  createTask,
+  getNextTaskId,
+  getTasksByStatus,
+} from "../service/task-store";
 import { OrchestrateEngine } from "./orchestrate-engine";
 
-export type AutoImproveStatus = "idle" | "running" | "stopping" | "completed" | "failed";
+export type AutoImproveStatus =
+  | "idle"
+  | "running"
+  | "stopping"
+  | "completed"
+  | "failed";
 
 export interface AutoImproveState {
   status: AutoImproveStatus;
@@ -103,7 +116,9 @@ class AutoImproveManager {
       // Step 0: Run orchestration for already-pending tasks
       const pendingTasks = getTasksByStatus("pending", "stopped");
       if (pendingTasks.length > 0) {
-        this.appendLog(`[auto-improve] Found ${pendingTasks.length} pending task(s) - running orchestration...`);
+        this.appendLog(
+          `[auto-improve] Found ${pendingTasks.length} pending task(s) - running orchestration...`,
+        );
         await this.runOrchestration();
         if (this.shouldStop) break;
       }
@@ -122,7 +137,9 @@ class AutoImproveManager {
         continue;
       }
 
-      this.appendLog(`[auto-improve] Found ${pendingRequests.length} pending request(s)`);
+      this.appendLog(
+        `[auto-improve] Found ${pendingRequests.length} pending request(s)`,
+      );
 
       // Step 2: Evaluate each request
       const accepted: { file: string; id: string; evalResult: string }[] = [];
@@ -139,7 +156,10 @@ class AutoImproveManager {
         if (decision !== "accept") {
           const reason = this.parseEvalField(evalResult, "REASON");
           this.updateRequestStatus(req.file, "rejected");
-          fs.appendFileSync(req.file, `\n---\n**Rejected:** ${reason}\n**At:** ${new Date().toISOString()}\n`);
+          fs.appendFileSync(
+            req.file,
+            `\n---\n**Rejected:** ${reason}\n**At:** ${new Date().toISOString()}\n`,
+          );
           this.appendLog(`[auto-improve] Rejected ${req.id}: ${reason}`);
         } else {
           this.appendLog(`[auto-improve] Accepted ${req.id}`);
@@ -162,7 +182,9 @@ class AutoImproveManager {
       // Step 4: Run orchestration for newly created tasks
       await this.runOrchestration();
 
-      this.appendLog(`[auto-improve] Batch complete: ${accepted.length} accepted, ${pendingRequests.length - accepted.length} rejected`);
+      this.appendLog(
+        `[auto-improve] Batch complete: ${accepted.length} accepted, ${pendingRequests.length - accepted.length} rejected`,
+      );
       await this.sleep(2000);
     }
 
@@ -172,11 +194,23 @@ class AutoImproveManager {
     this.appendLog(`[auto-improve] Stopped at ${this.state.finishedAt}`);
   }
 
-  private collectPendingRequests(dir: string): { file: string; id: string; title: string; priority: string; body: string }[] {
-    const results: { file: string; id: string; title: string; priority: string; body: string }[] = [];
+  private collectPendingRequests(dir: string): {
+    file: string;
+    id: string;
+    title: string;
+    priority: string;
+    body: string;
+  }[] {
+    const results: {
+      file: string;
+      id: string;
+      title: string;
+      priority: string;
+      body: string;
+    }[] = [];
 
     try {
-      const files = fs.readdirSync(dir).filter(f => f.endsWith(".md"));
+      const files = fs.readdirSync(dir).filter((f) => f.endsWith(".md"));
       for (const file of files) {
         const filePath = path.join(dir, file);
         const content = fs.readFileSync(filePath, "utf-8");
@@ -198,12 +232,19 @@ class AutoImproveManager {
 
         results.push({ file: filePath, id, title, priority, body });
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     return results;
   }
 
-  private async evaluateRequest(req: { id: string; title: string; priority: string; body: string }): Promise<string> {
+  private async evaluateRequest(req: {
+    id: string;
+    title: string;
+    priority: string;
+    body: string;
+  }): Promise<string> {
     const prompt = `You are a software development task manager.
 
 Analyze the following improvement request and decide if it's actionable.
@@ -233,17 +274,28 @@ SCOPE: (if accept) target file paths (comma-separated, relative to src/)`;
         timeout: 60_000,
         onLine: (line) => this.appendLog(`  ${line}`),
       });
-      return result.result || "DECISION: reject\nREASON: Empty response from Claude";
+      return (
+        result.result || "DECISION: reject\nREASON: Empty response from Claude"
+      );
     } catch (err) {
       return `DECISION: reject\nREASON: Evaluation failed: ${getErrorMessage(err, "unknown")}`;
     }
   }
 
-  private enrichAndCreateTask(reqFile: string, reqId: string, evalResult: string): void {
+  private enrichAndCreateTask(
+    reqFile: string,
+    reqId: string,
+    evalResult: string,
+  ): void {
     const taskTitle = this.parseEvalField(evalResult, "TASK_TITLE") || reqId;
     const taskDesc = this.parseEvalField(evalResult, "TASK_DESCRIPTION") || "";
     const scopeLine = this.parseEvalField(evalResult, "SCOPE") || "";
-    const scope = scopeLine ? scopeLine.split(",").map(s => s.trim()).filter(Boolean) : [];
+    const scope = scopeLine
+      ? scopeLine
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
 
     const nextId = getNextTaskId();
 
@@ -267,7 +319,9 @@ SCOPE: (if accept) target file paths (comma-separated, relative to src/)`;
     this.appendLog("[auto-improve] Starting orchestration engine...");
 
     this.engine = new OrchestrateEngine();
-    this.engine.on("log", (line: string) => this.appendLog(`  [engine] ${line}`));
+    this.engine.on("log", (line: string) =>
+      this.appendLog(`  [engine] ${line}`),
+    );
 
     const result = this.engine.start();
     if (!result.success) {
@@ -279,7 +333,11 @@ SCOPE: (if accept) target file paths (comma-separated, relative to src/)`;
     // Wait for engine to finish or be stopped
     await new Promise<void>((resolve) => {
       const check = setInterval(() => {
-        if (!this.engine || this.engine.status !== "running" || this.shouldStop) {
+        if (
+          !this.engine ||
+          this.engine.status !== "running" ||
+          this.shouldStop
+        ) {
           clearInterval(check);
           if (this.engine) {
             this.engine.stop();
@@ -308,14 +366,16 @@ SCOPE: (if accept) target file paths (comma-separated, relative to src/)`;
       let content = fs.readFileSync(file, "utf-8");
       content = content.replace(/^status:\s*.*/m, `status: ${newStatus}`);
       fs.writeFileSync(file, content);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   private async sleep(ms: number): Promise<void> {
     const chunks = Math.ceil(ms / 100);
     for (let i = 0; i < chunks; i++) {
       if (this.shouldStop) return;
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
 
@@ -327,7 +387,7 @@ SCOPE: (if accept) target file paths (comma-separated, relative to src/)`;
 // Singleton
 const globalKey = "__autoImproveManager__" as keyof typeof globalThis;
 const autoImproveManager: AutoImproveManager =
-  (globalThis as Record<string, unknown>)[globalKey] as AutoImproveManager ??
+  ((globalThis as Record<string, unknown>)[globalKey] as AutoImproveManager) ??
   (() => {
     const m = new AutoImproveManager();
     (globalThis as Record<string, unknown>)[globalKey] = m;

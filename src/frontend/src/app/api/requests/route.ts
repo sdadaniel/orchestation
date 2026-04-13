@@ -35,11 +35,19 @@ function parseJsonArray(value: string | null): string[] {
 export async function GET() {
   if (isDbAvailable()) {
     const db = getDb()!;
-    const rows = db.prepare(
-      "SELECT id, title, status, priority, created, updated, content, depends_on, scope, sort_order, branch FROM tasks ORDER BY id"
-    ).all() as RequestRow[];
+    const rows = db
+      .prepare(
+        "SELECT id, title, status, priority, created, updated, content, depends_on, scope, sort_order, branch FROM tasks ORDER BY id",
+      )
+      .all() as RequestRow[];
 
-    const statusOrder: Record<string, number> = { pending: 0, reviewing: 1, in_progress: 2, rejected: 3, done: 4 };
+    const statusOrder: Record<string, number> = {
+      pending: 0,
+      reviewing: 1,
+      in_progress: 2,
+      rejected: 3,
+      done: 4,
+    };
     const requests = rows.map((row) => ({
       id: row.id,
       title: row.title,
@@ -76,24 +84,34 @@ export async function POST(request: Request) {
     }
 
     const validPriorities = ["high", "medium", "low"];
-    const taskPriority = validPriorities.includes(priority) ? priority : "medium";
+    const taskPriority = validPriorities.includes(priority)
+      ? priority
+      : "medium";
 
     const taskId = getNextTaskId();
     const sanitizedTitle = title.trim();
-    const bodyContent = (content && typeof content === "string") ? content.trim() : "";
+    const bodyContent =
+      content && typeof content === "string" ? content.trim() : "";
 
     const now = new Date();
     const today = formatTimestamp(now);
 
     let validRoles: string[];
     try {
-      validRoles = fs.readdirSync(ROLES_DIR)
-        .filter((f) => f.endsWith(".md") && !f.startsWith("reviewer-") && f !== "README.md")
+      validRoles = fs
+        .readdirSync(ROLES_DIR)
+        .filter(
+          (f) =>
+            f.endsWith(".md") &&
+            !f.startsWith("reviewer-") &&
+            f !== "README.md",
+        )
         .map((f) => f.replace(".md", ""));
     } catch {
       validRoles = ["general"];
     }
-    const taskRole = typeof role === "string" && validRoles.includes(role) ? role : "";
+    const taskRole =
+      typeof role === "string" && validRoles.includes(role) ? role : "";
 
     createTask({
       id: taskId,
@@ -108,7 +126,15 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(
-      { id: taskId, title: sanitizedTitle, status: "pending", priority: taskPriority, created: today, updated: today, content: bodyContent },
+      {
+        id: taskId,
+        title: sanitizedTitle,
+        status: "pending",
+        priority: taskPriority,
+        created: today,
+        updated: today,
+        content: bodyContent,
+      },
       { status: 201 },
     );
   } catch (err) {

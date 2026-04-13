@@ -15,16 +15,19 @@ export async function POST(
   }
 
   const allTasks = getAllTasks();
-  const target = allTasks.find(t => t.id === id);
+  const target = allTasks.find((t) => t.id === id);
   if (!target) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
 
   const siblings = allTasks
-    .filter(t => t.status === target.status)
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id.localeCompare(b.id));
+    .filter((t) => t.status === target.status)
+    .sort(
+      (a, b) =>
+        (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id.localeCompare(b.id),
+    );
 
-  const idx = siblings.findIndex(t => t.id === id);
+  const idx = siblings.findIndex((t) => t.id === id);
   if (idx === -1) {
     return NextResponse.json({ error: "Task not in group" }, { status: 400 });
   }

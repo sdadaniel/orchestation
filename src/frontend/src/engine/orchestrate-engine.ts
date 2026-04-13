@@ -8,23 +8,57 @@
 import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
-import { PROJECT_ROOT, OUTPUT_DIR, SIGNALS_DIR, CONFIG_PATH } from "../lib/paths";
+import {
+  PROJECT_ROOT,
+  OUTPUT_DIR,
+  SIGNALS_DIR,
+  CONFIG_PATH,
+} from "../lib/paths";
 import { loadSettings } from "../lib/settings";
-import { getTask, getTasksByStatus, updateTask, updateTaskStatus } from "../service/task-store";
+import {
+  getTask,
+  getTasksByStatus,
+  updateTask,
+  updateTaskStatus,
+} from "../service/task-store";
 import { runJobTask } from "./job-task";
 import { runJobReview } from "./job-review";
-import { scanTasks, depsSatisfied, scopeNotConflicting, canDispatch, type TaskInfo } from "./scheduler";
-import { processSignals, markTaskFailed, type SignalHandlerCallbacks } from "./signal-handler";
+import {
+  scanTasks,
+  depsSatisfied,
+  scopeNotConflicting,
+  canDispatch,
+  type TaskInfo,
+} from "./scheduler";
+import {
+  processSignals,
+  markTaskFailed,
+  type SignalHandlerCallbacks,
+} from "./signal-handler";
 
-const RETRY_COUNTS_FILE = path.join(PROJECT_ROOT, ".orchestration", "retry-counts.json");
+const RETRY_COUNTS_FILE = path.join(
+  PROJECT_ROOT,
+  ".orchestration",
+  "retry-counts.json",
+);
 
-export type TaskStatus = "pending" | "stopped" | "in_progress" | "reviewing" | "done" | "rejected" | "failed";
+export type TaskStatus =
+  | "pending"
+  | "stopped"
+  | "in_progress"
+  | "reviewing"
+  | "done"
+  | "rejected"
+  | "failed";
 export type EngineStatus = "idle" | "running" | "completed" | "failed";
 
 export interface EngineEvents {
   log: (line: string) => void;
   "status-changed": (status: EngineStatus) => void;
-  "task-result": (result: { taskId: string; status: "success" | "failure" }) => void;
+  "task-result": (result: {
+    taskId: string;
+    status: "success" | "failure";
+  }) => void;
 }
 
 interface WorkerEntry {
@@ -49,13 +83,21 @@ export class OrchestrateEngine extends EventEmitter {
   private maxReviewRetryValue = 3;
   private loopCount = 0;
 
-  constructor() { super(); this.setMaxListeners(50); }
+  constructor() {
+    super();
+    this.setMaxListeners(50);
+  }
 
-  get status(): EngineStatus { return this._status; }
-  get runningCount(): number { return this.workers.size; }
+  get status(): EngineStatus {
+    return this._status;
+  }
+  get runningCount(): number {
+    return this.workers.size;
+  }
 
   start(): { success: boolean; error?: string } {
-    if (this._status === "running") return { success: false, error: "Already running" };
+    if (this._status === "running")
+      return { success: false, error: "Already running" };
 
     this.loadConfig();
     this._status = "running";
@@ -63,7 +105,9 @@ export class OrchestrateEngine extends EventEmitter {
     fs.mkdirSync(SIGNALS_DIR, { recursive: true });
     this.log("🚀 Pipeline 시작 (Node.js engine)");
     this.log(`⚙️  Base Branch: ${this.baseBranchValue}`);
-    this.log(`⚙️  Max Parallel: task=${this.maxParallelTask}, review=${this.maxParallelReview}`);
+    this.log(
+      `⚙️  Max Parallel: task=${this.maxParallelTask}, review=${this.maxParallelReview}`,
+    );
     this.emit("status-changed", this._status);
     this.cleanupZombies();
     this.startSignalWatcher();
@@ -80,9 +124,19 @@ export class OrchestrateEngine extends EventEmitter {
       this.setStatus(taskId, "stopped");
     }
     this.workers.clear();
-    if (this.loopTimer) { clearInterval(this.loopTimer); this.loopTimer = null; }
-    if (this.signalWatcher) { this.signalWatcher.close(); this.signalWatcher = null; }
-    try { fs.rmSync(SIGNALS_DIR, { recursive: true, force: true }); } catch { /* ignore */ }
+    if (this.loopTimer) {
+      clearInterval(this.loopTimer);
+      this.loopTimer = null;
+    }
+    if (this.signalWatcher) {
+      this.signalWatcher.close();
+      this.signalWatcher = null;
+    }
+    try {
+      fs.rmSync(SIGNALS_DIR, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
     this._status = "failed";
     this.log("🛑 Pipeline 종료 완료");
     this.emit("status-changed", this._status);
@@ -97,7 +151,8 @@ export class OrchestrateEngine extends EventEmitter {
       if (fs.existsSync(CONFIG_PATH)) {
         const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"));
         this.maxParallelTask = cfg.maxParallel?.task ?? settings.maxParallel;
-        this.maxParallelReview = cfg.maxParallel?.review ?? settings.maxParallel;
+        this.maxParallelReview =
+          cfg.maxParallel?.review ?? settings.maxParallel;
       } else {
         this.maxParallelTask = settings.maxParallel;
         this.maxParallelReview = settings.maxParallel;
@@ -114,7 +169,8 @@ export class OrchestrateEngine extends EventEmitter {
       startTask: (taskId, feedbackFile) => this.startTask(taskId, feedbackFile),
       startReview: (taskId) => this.startReview(taskId),
       removeWorker: (taskId) => this.workers.delete(taskId),
-      emitTaskResult: (taskId, status) => this.emit("task-result", { taskId, status }),
+      emitTaskResult: (taskId, status) =>
+        this.emit("task-result", { taskId, status }),
       getRetryCount: (taskId) => this.retryCounts.get(taskId) ?? 0,
       bumpRetryCount: (taskId) => {
         const next = (this.retryCounts.get(taskId) ?? 0) + 1;
@@ -136,7 +192,9 @@ export class OrchestrateEngine extends EventEmitter {
         this.retryCounts = new Map();
         return;
       }
-      const obj = JSON.parse(fs.readFileSync(RETRY_COUNTS_FILE, "utf-8")) as Record<string, number>;
+      const obj = JSON.parse(
+        fs.readFileSync(RETRY_COUNTS_FILE, "utf-8"),
+      ) as Record<string, number>;
       this.retryCounts = new Map(Object.entries(obj));
     } catch {
       this.retryCounts = new Map();
@@ -156,11 +214,17 @@ export class OrchestrateEngine extends EventEmitter {
 
   private startTask(taskId: string, feedbackFile?: string): boolean {
     const row = getTask(taskId);
-    if (!row) { this.log(`  ❌ ${taskId}: 태스크 없음`); return false; }
+    if (!row) {
+      this.log(`  ❌ ${taskId}: 태스크 없음`);
+      return false;
+    }
 
     if (!row.branch) {
       const slug = taskId.toLowerCase();
-      updateTask(taskId, { branch: `task/${slug}`, worktree: `../repo-wt-${slug}` });
+      updateTask(taskId, {
+        branch: `task/${slug}`,
+        worktree: `../repo-wt-${slug}`,
+      });
       this.log(`  📝 ${taskId}: branch/worktree 필드 자동 추가`);
     }
 
@@ -171,14 +235,28 @@ export class OrchestrateEngine extends EventEmitter {
     const abortController = new AbortController();
     const promise = runJobTask(taskId, feedbackFile, (line) => {
       this.log(`  ${line}`);
-      try { fs.appendFileSync(logFile, line + "\n"); } catch { /* ignore */ }
-    }).then((result) => {
-      this.log(`  [${taskId}/task] 완료: ${result.status}`);
-    }).catch((err) => {
-      this.log(`  ❌ ${taskId}: task 오류: ${err instanceof Error ? err.message : String(err)}`);
-    });
+      try {
+        fs.appendFileSync(logFile, line + "\n");
+      } catch {
+        /* ignore */
+      }
+    })
+      .then((result) => {
+        this.log(`  [${taskId}/task] 완료: ${result.status}`);
+      })
+      .catch((err) => {
+        this.log(
+          `  ❌ ${taskId}: task 오류: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
 
-    this.workers.set(taskId, { abortController, promise, taskId, phase: "task", startedAt: Date.now() });
+    this.workers.set(taskId, {
+      abortController,
+      promise,
+      taskId,
+      phase: "task",
+      startedAt: Date.now(),
+    });
     this.log(`  🔧 ${taskId}: job-task 시작`);
     return true;
   }
@@ -190,22 +268,40 @@ export class OrchestrateEngine extends EventEmitter {
     const abortController = new AbortController();
     const promise = runJobReview(taskId, (line) => {
       this.log(`  ${line}`);
-      try { fs.appendFileSync(logFile, line + "\n"); } catch { /* ignore */ }
-    }).then((result) => {
-      this.log(`  [${taskId}/review] 완료: ${result.status}`);
-    }).catch((err) => {
-      this.log(`  ❌ ${taskId}: review 오류: ${err instanceof Error ? err.message : String(err)}`);
-    });
+      try {
+        fs.appendFileSync(logFile, line + "\n");
+      } catch {
+        /* ignore */
+      }
+    })
+      .then((result) => {
+        this.log(`  [${taskId}/review] 완료: ${result.status}`);
+      })
+      .catch((err) => {
+        this.log(
+          `  ❌ ${taskId}: review 오류: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
 
-    this.workers.set(taskId, { abortController, promise, taskId, phase: "review", startedAt: Date.now() });
+    this.workers.set(taskId, {
+      abortController,
+      promise,
+      taskId,
+      phase: "review",
+      startedAt: Date.now(),
+    });
     this.log(`  🔍 ${taskId}: job-review 시작`);
     return true;
   }
 
   private startSignalWatcher() {
     try {
-      this.signalWatcher = fs.watch(SIGNALS_DIR, () => { /* triggers processSignals on next loop */ });
-    } catch { /* polling fallback via mainLoop */ }
+      this.signalWatcher = fs.watch(SIGNALS_DIR, () => {
+        /* triggers processSignals on next loop */
+      });
+    } catch {
+      /* polling fallback via mainLoop */
+    }
   }
 
   private mainLoop() {
@@ -215,8 +311,9 @@ export class OrchestrateEngine extends EventEmitter {
 
     processSignals(this.buildSignalCallbacks());
 
-    const queue = scanTasks().filter(t =>
-      (t.status === "pending" || t.status === "stopped") && depsSatisfied(t)
+    const queue = scanTasks().filter(
+      (t) =>
+        (t.status === "pending" || t.status === "stopped") && depsSatisfied(t),
     );
 
     if (this.workers.size === 0 && queue.length === 0) {
@@ -227,10 +324,13 @@ export class OrchestrateEngine extends EventEmitter {
     for (const task of queue) {
       if (this.workers.size >= this.maxParallelTask) break;
       if (this.workers.has(task.id)) continue;
-      if (!scopeNotConflicting(task, this.workers, (msg) => this.log(msg))) continue;
+      if (!scopeNotConflicting(task, this.workers, (msg) => this.log(msg)))
+        continue;
       if (!canDispatch()) break;
       this.startTask(task.id);
-      this.log(`  📊 슬롯: ${this.workers.size}/${this.maxParallelTask} (대기: ${queue.length})`);
+      this.log(
+        `  📊 슬롯: ${this.workers.size}/${this.maxParallelTask} (대기: ${queue.length})`,
+      );
     }
 
     if (this.loopCount % 10 === 0) this.healthCheck();
@@ -240,10 +340,16 @@ export class OrchestrateEngine extends EventEmitter {
     for (const [taskId, entry] of this.workers) {
       const elapsed = Date.now() - entry.startedAt;
       if (elapsed > 1800000) {
-        this.log(`  ⚠️  ${taskId}: 타임아웃 (${Math.round(elapsed / 60000)}분)`);
+        this.log(
+          `  ⚠️  ${taskId}: 타임아웃 (${Math.round(elapsed / 60000)}분)`,
+        );
         entry.abortController.abort();
         this.workers.delete(taskId);
-        markTaskFailed(taskId, "워커 타임아웃 (30분)", this.buildSignalCallbacks());
+        markTaskFailed(
+          taskId,
+          "워커 타임아웃 (30분)",
+          this.buildSignalCallbacks(),
+        );
       }
     }
   }
@@ -256,7 +362,11 @@ export class OrchestrateEngine extends EventEmitter {
       if (this.workers.has(row.id)) continue;
       // 엔진이 모르는 in_progress = 프로세스 크래시/재시작으로 인한 고아 태스크.
       // 재실행하지 않도록 failed로 마킹 (무한 루프/토큰 낭비 방지)
-      markTaskFailed(row.id, "고아 상태 감지 (엔진 크래시 또는 비정상 종료 추정)", cb);
+      markTaskFailed(
+        row.id,
+        "고아 상태 감지 (엔진 크래시 또는 비정상 종료 추정)",
+        cb,
+      );
       cleaned++;
       this.log(`  🧹 zombie: ${row.id} in_progress → failed`);
     }
@@ -269,5 +379,7 @@ export class OrchestrateEngine extends EventEmitter {
     updateTaskStatus(taskId, newStatus, row.status);
   }
 
-  private log(line: string) { this.emit("log", line); }
+  private log(line: string) {
+    this.emit("log", line);
+  }
 }

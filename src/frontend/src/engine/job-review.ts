@@ -84,7 +84,10 @@ export async function runJobReview(
     const model = process.env.REVIEW_MODEL || DEFAULT_REVIEW_MODEL;
     log(`🤖 모델: ${model}`);
 
-    const convFile = path.join(OUTPUT_DIR, `${taskId}-review-conversation.jsonl`);
+    const convFile = path.join(
+      OUTPUT_DIR,
+      `${taskId}-review-conversation.jsonl`,
+    );
     fs.mkdirSync(path.dirname(convFile), { recursive: true });
 
     const claudeResult = await runClaudeStreamJson({
@@ -97,17 +100,26 @@ export async function runJobReview(
       onLine: (line) => log(line),
     });
 
-    log(`✅ Claude 리뷰 완료 (exit=${claudeResult.exitCode}, cost=$${claudeResult.costUsd.toFixed(4)})`);
+    log(
+      `✅ Claude 리뷰 완료 (exit=${claudeResult.exitCode}, cost=$${claudeResult.costUsd.toFixed(4)})`,
+    );
 
     // 7. 결과 저장
     const resultFile = path.join(OUTPUT_DIR, `${taskId}-review.json`);
-    fs.writeFileSync(resultFile, JSON.stringify({
-      taskId,
-      result: claudeResult.result,
-      cost_usd: claudeResult.costUsd,
-      model,
-      duration_ms: claudeResult.durationMs,
-    }, null, 2));
+    fs.writeFileSync(
+      resultFile,
+      JSON.stringify(
+        {
+          taskId,
+          result: claudeResult.result,
+          cost_usd: claudeResult.costUsd,
+          model,
+          duration_ms: claudeResult.durationMs,
+        },
+        null,
+        2,
+      ),
+    );
 
     // 8. 토큰 사용량 로깅
     logTokenUsage(taskId, "review", model, claudeResult);
@@ -124,19 +136,30 @@ export async function runJobReview(
       return { status: "review-approved", cost: claudeResult.costUsd };
     } else {
       // 피드백 저장
-      const feedbackFile = path.join(OUTPUT_DIR, `${taskId}-review-feedback.txt`);
+      const feedbackFile = path.join(
+        OUTPUT_DIR,
+        `${taskId}-review-feedback.txt`,
+      );
       fs.writeFileSync(feedbackFile, claudeResult.result);
 
       signalCreate(taskId, "review-rejected");
       signalSent = true;
-      return { status: "review-rejected", feedback: claudeResult.result, cost: claudeResult.costUsd };
+      return {
+        status: "review-rejected",
+        feedback: claudeResult.result,
+        cost: claudeResult.costUsd,
+      };
     }
   } catch (err) {
     cleanupTmpTaskFile(taskId);
     const msg = err instanceof Error ? err.message : String(err);
     log(`❌ 오류: ${msg}`);
     if (!signalSent) {
-      try { signalCreate(taskId, "review-rejected"); } catch { /* ignore */ }
+      try {
+        signalCreate(taskId, "review-rejected");
+      } catch {
+        /* ignore */
+      }
     }
     return { status: "review-rejected" };
   }
@@ -149,7 +172,9 @@ function cleanupTmpTaskFile(taskId: string): void {
   try {
     const tmpFile = path.join(OUTPUT_DIR, `${taskId}-review-tmp.md`);
     if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 function loadReviewerRole(role: string): string {
@@ -177,11 +202,11 @@ function parseDecision(result: string): "approved" | "rejected" {
   if (/\*\*Decision\*\*:\s*APPROVE/i.test(result)) return "approved";
 
   // 레거시 한국어: "승인" 포함 + "수정요청" 미포함
-  if (result.includes("승인") && !result.includes("수정요청")) return "approved";
+  if (result.includes("승인") && !result.includes("수정요청"))
+    return "approved";
 
   // REJECT 명시
   if (/\*\*Decision\*\*:\s*REJECT/i.test(result)) return "rejected";
 
   return "rejected";
 }
-

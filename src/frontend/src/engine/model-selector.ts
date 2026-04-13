@@ -3,20 +3,49 @@
  * scripts/lib/model-selector.sh의 Node.js 포팅
  */
 import fs from "fs";
-import { parseFrontmatter, getString, getStringArray } from "../lib/frontmatter-utils";
+import {
+  parseFrontmatter,
+  getString,
+  getStringArray,
+} from "../lib/frontmatter-utils";
 
 const MODEL_SIMPLE = "claude-haiku-4-5";
 const MODEL_COMPLEX = "claude-sonnet-4-6";
 
 const COMPLEX_KEYWORDS = [
-  "리팩토링", "refactor", "신규기능", "new feature", "architecture",
-  "마이그레이션", "migration", "multi-file", "통합", "integration",
-  "redesign", "implement", "engine", "pipeline", "system",
+  "리팩토링",
+  "refactor",
+  "신규기능",
+  "new feature",
+  "architecture",
+  "마이그레이션",
+  "migration",
+  "multi-file",
+  "통합",
+  "integration",
+  "redesign",
+  "implement",
+  "engine",
+  "pipeline",
+  "system",
 ];
 
 const SIMPLE_KEYWORDS = [
-  "docs", "readme", "typo", "config", "comment", "version",
-  "bump", "rename", "format", "lint", "cleanup", "문서", "오타", "설정", "주석",
+  "docs",
+  "readme",
+  "typo",
+  "config",
+  "comment",
+  "version",
+  "bump",
+  "rename",
+  "format",
+  "lint",
+  "cleanup",
+  "문서",
+  "오타",
+  "설정",
+  "주석",
 ];
 
 export type Complexity = "simple" | "complex";
@@ -40,8 +69,8 @@ export function determineComplexity(taskFilePath: string): Complexity {
   const title = getString(data, "title").toLowerCase();
 
   // 3. keyword matching
-  const complexHits = COMPLEX_KEYWORDS.filter(k => title.includes(k)).length;
-  const simpleHits = SIMPLE_KEYWORDS.filter(k => title.includes(k)).length;
+  const complexHits = COMPLEX_KEYWORDS.filter((k) => title.includes(k)).length;
+  const simpleHits = SIMPLE_KEYWORDS.filter((k) => title.includes(k)).length;
 
   // Decision rules
   if (scopeCount >= 4) return "complex";
@@ -71,7 +100,7 @@ export function selectModel(taskFilePath: string): string {
 export function logModelSelection(
   taskFilePath: string,
   taskId: string,
-  tokenLogPath: string
+  tokenLogPath: string,
 ): { model: string; complexity: Complexity } {
   if (process.env.MODEL_OVERRIDE) {
     const model = process.env.MODEL_OVERRIDE;
@@ -80,7 +109,9 @@ export function logModelSelection(
     try {
       fs.mkdirSync(require("path").dirname(tokenLogPath), { recursive: true });
       fs.appendFileSync(tokenLogPath, logLine);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return { model, complexity };
   }
   const complexity = determineComplexity(taskFilePath);
@@ -90,7 +121,9 @@ export function logModelSelection(
   try {
     fs.mkdirSync(require("path").dirname(tokenLogPath), { recursive: true });
     fs.appendFileSync(tokenLogPath, logLine);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   return { model, complexity };
 }

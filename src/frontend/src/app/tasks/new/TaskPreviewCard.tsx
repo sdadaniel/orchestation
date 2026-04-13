@@ -63,7 +63,11 @@ export function TaskPreviewCard({
           className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
           title={isEditing ? "Done editing" : "Edit"}
         >
-          {isEditing ? <Check className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
+          {isEditing ? (
+            <Check className="h-3 w-3" />
+          ) : (
+            <Pencil className="h-3 w-3" />
+          )}
         </button>
         {totalTasks > 1 && (
           <button
@@ -97,7 +101,9 @@ export function TaskPreviewCard({
               size="inline"
               value={task.priority}
               onChange={(e) =>
-                onUpdate({ priority: e.target.value as AnalyzedTask["priority"] })
+                onUpdate({
+                  priority: e.target.value as AnalyzedTask["priority"],
+                })
               }
             >
               <option value="high">High</option>
@@ -110,14 +116,19 @@ export function TaskPreviewCard({
               onChange={(e) => onUpdate({ role: e.target.value })}
             >
               {(availableRoles ?? ["general"]).map((r) => (
-                <option key={r} value={r}>{r}</option>
+                <option key={r} value={r}>
+                  {r}
+                </option>
               ))}
             </Select>
           </div>
 
           {/* Depends On (external) - edit */}
           <div>
-            <Label size="sm" className="block mb-1 flex items-center gap-1 text-[11px]">
+            <Label
+              size="sm"
+              className="block mb-1 flex items-center gap-1 text-[11px]"
+            >
               <GitMerge className="h-3 w-3" />
               Depends On (existing tasks)
             </Label>
@@ -136,31 +147,33 @@ export function TaskPreviewCard({
                 Within-batch dependencies
               </Label>
               <div className="flex flex-wrap gap-1.5">
-                {Array.from({ length: totalTasks }, (_, i) => i).filter((i) => i !== index).map((i) => {
-                  const checked = (task.depends_on ?? []).includes(i);
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => {
-                        const cur = task.depends_on ?? [];
-                        onUpdate({
-                          depends_on: checked
-                            ? cur.filter((d) => d !== i)
-                            : [...cur, i].sort((a, b) => a - b),
-                        });
-                      }}
-                      className={cn(
-                        "text-[11px] px-2 py-0.5 rounded border transition-colors",
-                        checked
-                          ? "bg-primary/15 text-primary border-primary/30"
-                          : "bg-muted text-muted-foreground border-border hover:border-primary/40",
-                      )}
-                    >
-                      Step {i + 1}
-                    </button>
-                  );
-                })}
+                {Array.from({ length: totalTasks }, (_, i) => i)
+                  .filter((i) => i !== index)
+                  .map((i) => {
+                    const checked = (task.depends_on ?? []).includes(i);
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          const cur = task.depends_on ?? [];
+                          onUpdate({
+                            depends_on: checked
+                              ? cur.filter((d) => d !== i)
+                              : [...cur, i].sort((a, b) => a - b),
+                          });
+                        }}
+                        className={cn(
+                          "text-[11px] px-2 py-0.5 rounded border transition-colors",
+                          checked
+                            ? "bg-primary/15 text-primary border-primary/30"
+                            : "bg-muted text-muted-foreground border-border hover:border-primary/40",
+                        )}
+                      >
+                        Step {i + 1}
+                      </button>
+                    );
+                  })}
               </div>
             </div>
           )}
@@ -186,7 +199,9 @@ export function TaskPreviewCard({
                 <button
                   type="button"
                   onClick={() => {
-                    const newCriteria = task.criteria.filter((_, i) => i !== ci);
+                    const newCriteria = task.criteria.filter(
+                      (_, i) => i !== ci,
+                    );
                     onUpdate({ criteria: newCriteria });
                   }}
                   className="p-0.5 text-muted-foreground hover:text-red-400"
@@ -225,7 +240,9 @@ export function TaskPreviewCard({
                 <button
                   type="button"
                   onClick={() => {
-                    const newScope = (task.scope ?? []).filter((_, i) => i !== si);
+                    const newScope = (task.scope ?? []).filter(
+                      (_, i) => i !== si,
+                    );
                     onUpdate({ scope: newScope });
                   }}
                   className="p-0.5 text-muted-foreground hover:text-red-400"
@@ -248,7 +265,9 @@ export function TaskPreviewCard({
         <div>
           <h3 className="text-sm font-medium">{task.title || "(Untitled)"}</h3>
           {task.description && (
-            <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {task.description}
+            </p>
           )}
 
           {/* Depends On - view mode */}
@@ -284,7 +303,10 @@ export function TaskPreviewCard({
               </span>
               <ul className="mt-1 space-y-0.5">
                 {task.criteria.map((c, ci) => (
-                  <li key={ci} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                  <li
+                    key={ci}
+                    className="text-xs text-muted-foreground flex items-start gap-1.5"
+                  >
                     <span className="mt-0.5 shrink-0">-</span>
                     <span>{c}</span>
                   </li>
@@ -299,7 +321,10 @@ export function TaskPreviewCard({
               </span>
               <ul className="mt-1 space-y-0.5">
                 {(task.scope ?? []).map((s, si) => (
-                  <li key={si} className="text-xs text-muted-foreground font-mono flex items-start gap-1.5">
+                  <li
+                    key={si}
+                    className="text-xs text-muted-foreground font-mono flex items-start gap-1.5"
+                  >
                     <span className="mt-0.5 shrink-0">-</span>
                     <span>{s}</span>
                   </li>

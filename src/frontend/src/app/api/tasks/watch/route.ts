@@ -21,7 +21,9 @@ export async function GET() {
       const send = (event: string, data: string) => {
         if (closed) return;
         try {
-          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
+          controller.enqueue(
+            encoder.encode(`event: ${event}\ndata: ${data}\n\n`),
+          );
         } catch {
           closed = true;
         }
@@ -32,7 +34,9 @@ export async function GET() {
       try {
         const db = getDb();
         if (db) {
-          const row = db.prepare("SELECT MAX(updated) as maxUpdated FROM tasks").get() as { maxUpdated: string | null } | undefined;
+          const row = db
+            .prepare("SELECT MAX(updated) as maxUpdated FROM tasks")
+            .get() as { maxUpdated: string | null } | undefined;
           lastMaxUpdated = row?.maxUpdated ?? "";
         }
       } catch {
@@ -44,7 +48,9 @@ export async function GET() {
         try {
           const db = getDb();
           if (!db) return;
-          const row = db.prepare("SELECT MAX(updated) as maxUpdated FROM tasks").get() as { maxUpdated: string | null } | undefined;
+          const row = db
+            .prepare("SELECT MAX(updated) as maxUpdated FROM tasks")
+            .get() as { maxUpdated: string | null } | undefined;
           const current = row?.maxUpdated ?? "";
           if (current && current !== lastMaxUpdated) {
             lastMaxUpdated = current;
@@ -63,13 +69,16 @@ export async function GET() {
 
       // 연결 직후 현재 상태 전송
       const initialState = orchestrationManager.getState();
-      send("orchestration-status", JSON.stringify({
-        status: initialState.status,
-        startedAt: initialState.startedAt,
-        finishedAt: initialState.finishedAt,
-        exitCode: initialState.exitCode,
-        taskResults: initialState.taskResults,
-      }));
+      send(
+        "orchestration-status",
+        JSON.stringify({
+          status: initialState.status,
+          startedAt: initialState.startedAt,
+          finishedAt: initialState.finishedAt,
+          exitCode: initialState.exitCode,
+          taskResults: initialState.taskResults,
+        }),
+      );
 
       // ── 하트비트 (30초) — 연결 유지 ──
       const heartbeat = setInterval(() => {

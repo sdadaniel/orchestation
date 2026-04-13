@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import type { TaskFrontmatter } from "@/parser/parser";
 import { getErrorMessage } from "@/lib/error-utils";
-import { getAllTasks, createTask, getNextTaskId, parseScope, parseDependsOn } from "@/service/task-store";
+import {
+  getAllTasks,
+  createTask,
+  getNextTaskId,
+  parseScope,
+  parseDependsOn,
+} from "@/service/task-store";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +33,7 @@ export async function POST(request: Request) {
     const { title, priority, role, depends_on, scope } = body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0) {
-      return NextResponse.json(
-        { error: "title is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "title is required" }, { status: 400 });
     }
 
     const validPriorities = ["critical", "high", "medium", "low"];
@@ -40,8 +43,7 @@ export async function POST(request: Request) {
 
     const taskId = getNextTaskId();
     const sanitizedTitle = title.trim();
-    const taskRole =
-      role && typeof role === "string" ? role.trim() : "general";
+    const taskRole = role && typeof role === "string" ? role.trim() : "general";
 
     const depsArray = Array.isArray(depends_on)
       ? depends_on.filter(

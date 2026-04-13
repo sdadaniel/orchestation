@@ -14,7 +14,10 @@ describe("parser", () => {
   describe("parseAllTasks", () => {
     it("should return cached result within TTL", () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readdirSync).mockReturnValue(["task1.md", "task2.md"] as any);
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        "task1.md",
+        "task2.md",
+      ] as any);
       vi.mocked(fs.readFileSync).mockReturnValue(`---
 id: TASK-001
 title: Task

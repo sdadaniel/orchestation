@@ -1,7 +1,4 @@
-import type {
-  WaterfallGroup,
-  WaterfallTask,
-} from "@/types/waterfall";
+import type { WaterfallGroup, WaterfallTask } from "@/types/waterfall";
 import type { TaskFrontmatter } from "@/parser/parser";
 import type { TaskStatus } from "@/constants/status";
 

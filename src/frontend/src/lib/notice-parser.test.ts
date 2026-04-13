@@ -124,7 +124,7 @@ created: 2026-03-01
     const types = ["info", "warning", "error", "request"] as const;
     for (const t of types) {
       mockReadFileSync.mockReturnValue(
-        `---\nid: N\ntitle: T\ntype: ${t}\ncreated: 2026-01-01\n---\n`
+        `---\nid: N\ntitle: T\ntype: ${t}\ncreated: 2026-01-01\n---\n`,
       );
       expect(parseNoticeFile("/n.md")!.type).toBe(t);
     }
@@ -148,7 +148,11 @@ describe("parseAllNotices", () => {
 
   it("ignores files not matching NOTICE-*.md pattern", () => {
     mockExistsSync.mockReturnValue(true);
-    mockReaddirSync.mockReturnValue(["README.md", "other-file.md", "NOTICE-001.md"]);
+    mockReaddirSync.mockReturnValue([
+      "README.md",
+      "other-file.md",
+      "NOTICE-001.md",
+    ]);
     mockReadFileSync.mockReturnValue(VALID_NOTICE_MD);
 
     const notices = parseAllNotices();
@@ -168,11 +172,21 @@ describe("parseAllNotices", () => {
 
   it("sorts notices newest ID first", () => {
     mockExistsSync.mockReturnValue(true);
-    mockReaddirSync.mockReturnValue(["NOTICE-001.md", "NOTICE-003.md", "NOTICE-002.md"]);
+    mockReaddirSync.mockReturnValue([
+      "NOTICE-001.md",
+      "NOTICE-003.md",
+      "NOTICE-002.md",
+    ]);
     mockReadFileSync
-      .mockReturnValueOnce(`---\nid: NOTICE-001\ntitle: T1\ntype: info\ncreated: 2026-01-01\n---\n`)
-      .mockReturnValueOnce(`---\nid: NOTICE-003\ntitle: T3\ntype: info\ncreated: 2026-01-03\n---\n`)
-      .mockReturnValueOnce(`---\nid: NOTICE-002\ntitle: T2\ntype: info\ncreated: 2026-01-02\n---\n`);
+      .mockReturnValueOnce(
+        `---\nid: NOTICE-001\ntitle: T1\ntype: info\ncreated: 2026-01-01\n---\n`,
+      )
+      .mockReturnValueOnce(
+        `---\nid: NOTICE-003\ntitle: T3\ntype: info\ncreated: 2026-01-03\n---\n`,
+      )
+      .mockReturnValueOnce(
+        `---\nid: NOTICE-002\ntitle: T2\ntype: info\ncreated: 2026-01-02\n---\n`,
+      );
 
     const notices = parseAllNotices();
     expect(notices[0].id).toBe("NOTICE-003");

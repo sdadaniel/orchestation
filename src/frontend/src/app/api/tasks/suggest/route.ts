@@ -32,7 +32,10 @@ export async function POST() {
       timedOut = true;
       resolve(
         NextResponse.json(
-          { suggestions: [], error: "추천 요청이 타임아웃되었습니다. 다시 시도해주세요." },
+          {
+            suggestions: [],
+            error: "추천 요청이 타임아웃되었습니다. 다시 시도해주세요.",
+          },
           { status: 504 },
         ),
       );

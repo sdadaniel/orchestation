@@ -22,12 +22,22 @@ import { runJobTask } from "../job-task";
 import { runJobReview } from "../job-review";
 import { runMergeTask } from "../merge-utils";
 
-export type { TaskRunStatus, TaskRunPhase, TaskRunState } from "./task-runner-types";
+export type {
+  TaskRunStatus,
+  TaskRunPhase,
+  TaskRunState,
+} from "./task-runner-types";
 
 class TaskRunnerManager {
   /** Currently running tasks keyed by task ID */
-  private runs: Map<string, { state: TaskRunState; process: ChildProcess | null; abortController?: AbortController }> =
-    new Map();
+  private runs: Map<
+    string,
+    {
+      state: TaskRunState;
+      process: ChildProcess | null;
+      abortController?: AbortController;
+    }
+  > = new Map();
 
   /** iTerm 모드 watcher (stop 시 정리용) */
   private watcherMgr = new ItermWatcherManager();
@@ -70,7 +80,9 @@ class TaskRunnerManager {
       exitCode: null,
     };
 
-    state.logs.push(`[task-runner] Starting ${taskId} at ${state.startedAt} (mode: ${workerMode})`);
+    state.logs.push(
+      `[task-runner] Starting ${taskId} at ${state.startedAt} (mode: ${workerMode})`,
+    );
     updateTaskFileStatus(taskId, "in_progress");
 
     if (workerMode === "iterm") {
@@ -80,7 +92,10 @@ class TaskRunnerManager {
   }
 
   /** 백그라운드 모드: Node.js native 실행 */
-  private runBackground(taskId: string, state: TaskRunState): { success: boolean; error?: string } {
+  private runBackground(
+    taskId: string,
+    state: TaskRunState,
+  ): { success: boolean; error?: string } {
     const abortController = new AbortController();
     this.runs.set(taskId, { state, process: null, abortController });
 
@@ -90,7 +105,11 @@ class TaskRunnerManager {
     return { success: true };
   }
 
-  private async runBackgroundAsync(taskId: string, state: TaskRunState, abortController: AbortController) {
+  private async runBackgroundAsync(
+    taskId: string,
+    state: TaskRunState,
+    abortController: AbortController,
+  ) {
     // 로그 파일 생성 (UI Terminal/로그 탭 file watch용)
     const logFile = path.join(LOGS_DIR, `${taskId}.log`);
     fs.mkdirSync(LOGS_DIR, { recursive: true });
@@ -98,7 +117,11 @@ class TaskRunnerManager {
     const appendLog = (line: string) => {
       state.logs.push(line);
       this.events.emit(`log:${taskId}`, line);
-      try { fs.appendFileSync(logFile, line + "\n"); } catch { /* ignore */ }
+      try {
+        fs.appendFileSync(logFile, line + "\n");
+      } catch {
+        /* ignore */
+      }
     };
 
     try {
@@ -129,7 +152,9 @@ class TaskRunnerManager {
 
       // 2. Review 스킵 여부 확인
       if (shouldSkipReview(taskId)) {
-        appendLog(`[task-runner] ${taskId} review 스킵 (role 기반) → 바로 merge`);
+        appendLog(
+          `[task-runner] ${taskId} review 스킵 (role 기반) → 바로 merge`,
+        );
         await this.doMerge(taskId, state);
         return;
       }
@@ -168,7 +193,11 @@ class TaskRunnerManager {
       state.logs.push(line);
       this.events.emit(`log:${taskId}`, line);
       const logFile = path.join(LOGS_DIR, `${taskId}.log`);
-      try { fs.appendFileSync(logFile, line + "\n"); } catch { /* ignore */ }
+      try {
+        fs.appendFileSync(logFile, line + "\n");
+      } catch {
+        /* ignore */
+      }
     };
     appendLog(`[task-runner] ${taskId} review 승인 → merge 시작`);
 
@@ -193,7 +222,10 @@ class TaskRunnerManager {
   }
 
   /** iTerm 모드: iTerm 탭에서 실행 + signal 파일 폴링으로 완료 감지 */
-  private runIterm(taskId: string, state: TaskRunState): { success: boolean; error?: string } {
+  private runIterm(
+    taskId: string,
+    state: TaskRunState,
+  ): { success: boolean; error?: string } {
     const frontendDir = path.join(PROJECT_ROOT, "src", "frontend");
     const tsxBin = path.join(frontendDir, "node_modules", ".bin", "tsx");
     const taskScript = path.join(frontendDir, "src", "cli", "run-task.ts");
@@ -204,7 +236,9 @@ class TaskRunnerManager {
     const cmd = `cd '${frontendDir}' && PROJECT_ROOT='${PROJECT_ROOT}' '${tsxBin}' '${taskScript}' '${taskId}' 2>&1 | tee '${logFile}'; exit`;
     const opened = runInIterm(`🔧 ${taskId}`, cmd);
     if (!opened) {
-      state.logs.push("[task-runner] iTerm2가 실행 중이지 않습니다. 백그라운드로 전환합니다.");
+      state.logs.push(
+        "[task-runner] iTerm2가 실행 중이지 않습니다. 백그라운드로 전환합니다.",
+      );
       this.events.emit(`log:${taskId}`, state.logs[state.logs.length - 1]);
       return this.runBackground(taskId, state);
     }
@@ -212,13 +246,20 @@ class TaskRunnerManager {
     state.logs.push(`[task-runner] ${taskId}: iTerm 탭에서 실행 중`);
     this.events.emit(`log:${taskId}`, state.logs[state.logs.length - 1]);
 
-    const dummy = spawn("sleep", ["999999"], { stdio: "ignore", detached: true });
+    const dummy = spawn("sleep", ["999999"], {
+      stdio: "ignore",
+      detached: true,
+    });
     dummy.unref();
     this.runs.set(taskId, { state, process: dummy });
 
     watchItermCompletion(
-      taskId, state, logFile, dummy,
-      this.events, this.watcherMgr,
+      taskId,
+      state,
+      logFile,
+      dummy,
+      this.events,
+      this.watcherMgr,
       (tid, st) => this.handleStartReviewIterm(tid, st),
       (tid, st) => this.startMergeLegacy(tid, st),
     );
@@ -229,8 +270,10 @@ class TaskRunnerManager {
   /** iTerm review 시작 (watchItermCompletion 콜백용) */
   private handleStartReviewIterm(taskId: string, state: TaskRunState): void {
     startReviewInIterm(
-      taskId, state,
-      this.events, this.watcherMgr,
+      taskId,
+      state,
+      this.events,
+      this.watcherMgr,
       (tid, st) => this.startReviewLegacy(tid, st),
       (tid, st) => this.startMergeLegacy(tid, st),
     );
@@ -242,22 +285,24 @@ class TaskRunnerManager {
     runJobReview(taskId, (line) => {
       state.logs.push(line);
       this.events.emit(`log:${taskId}`, line);
-    }).then((result) => {
-      if (result.status === "review-approved") {
-        this.doMerge(taskId, state);
-      } else {
+    })
+      .then((result) => {
+        if (result.status === "review-approved") {
+          this.doMerge(taskId, state);
+        } else {
+          state.status = "failed";
+          state.exitCode = 1;
+          state.finishedAt = new Date().toISOString();
+          updateTaskFileStatus(taskId, "failed");
+          cleanupSignals(taskId);
+          this.events.emit(`done:${taskId}`, "failed");
+        }
+      })
+      .catch(() => {
         state.status = "failed";
-        state.exitCode = 1;
         state.finishedAt = new Date().toISOString();
-        updateTaskFileStatus(taskId, "failed");
-        cleanupSignals(taskId);
         this.events.emit(`done:${taskId}`, "failed");
-      }
-    }).catch(() => {
-      state.status = "failed";
-      state.finishedAt = new Date().toISOString();
-      this.events.emit(`done:${taskId}`, "failed");
-    });
+      });
   }
 
   private startMergeLegacy(taskId: string, state: TaskRunState): void {
@@ -299,6 +344,7 @@ class TaskRunnerManager {
 // Use globalThis to ensure single instance across server.ts and Next.js API routes
 const globalKey = "__taskRunnerManager__";
 const taskRunnerManager: TaskRunnerManager =
-  (globalThis as Record<string, unknown>)[globalKey] as TaskRunnerManager ??
-  ((globalThis as Record<string, unknown>)[globalKey] = new TaskRunnerManager());
+  ((globalThis as Record<string, unknown>)[globalKey] as TaskRunnerManager) ??
+  ((globalThis as Record<string, unknown>)[globalKey] =
+    new TaskRunnerManager());
 export default taskRunnerManager;

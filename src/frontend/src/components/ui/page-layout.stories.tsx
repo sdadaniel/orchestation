@@ -28,7 +28,9 @@ export const WithoutAction: Story = {
     <PageLayout>
       <PageHeader title="Documents" />
       <div className="rounded-lg border border-border bg-card p-4">
-        <p className="text-sm text-muted-foreground">No action button in header</p>
+        <p className="text-sm text-muted-foreground">
+          No action button in header
+        </p>
       </div>
     </PageLayout>
   ),
@@ -42,12 +44,20 @@ export const SettingsStyle: Story = {
       </PageHeader>
       <div className="rounded-lg border border-border bg-card p-4 space-y-4">
         <div>
-          <label className="text-sm font-medium text-muted-foreground">API Key</label>
-          <div className="mt-1.5 bg-muted border border-border rounded-md px-3 py-2.5 text-sm">sk-ant-***</div>
+          <label className="text-sm font-medium text-muted-foreground">
+            API Key
+          </label>
+          <div className="mt-1.5 bg-muted border border-border rounded-md px-3 py-2.5 text-sm">
+            sk-ant-***
+          </div>
         </div>
         <div>
-          <label className="text-sm font-medium text-muted-foreground">Model</label>
-          <div className="mt-1.5 bg-muted border border-border rounded-md px-3 py-2.5 text-sm">claude-sonnet-4.6</div>
+          <label className="text-sm font-medium text-muted-foreground">
+            Model
+          </label>
+          <div className="mt-1.5 bg-muted border border-border rounded-md px-3 py-2.5 text-sm">
+            claude-sonnet-4.6
+          </div>
         </div>
       </div>
     </PageLayout>

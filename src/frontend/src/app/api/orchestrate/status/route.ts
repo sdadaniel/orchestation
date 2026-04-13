@@ -7,10 +7,13 @@ export const dynamic = "force-dynamic";
 /** CLI/터미널에서 직접 실행된 orchestrate engine 감지 */
 function isOrchestrateRunningExternally(): boolean {
   try {
-    const result = execSync('pgrep -f "run-engine\\.ts" 2>/dev/null | head -1', {
-      encoding: "utf-8",
-      timeout: 2000,
-    }).trim();
+    const result = execSync(
+      'pgrep -f "run-engine\\.ts" 2>/dev/null | head -1',
+      {
+        encoding: "utf-8",
+        timeout: 2000,
+      },
+    ).trim();
     return result.length > 0;
   } catch {
     return false;

@@ -9,14 +9,18 @@ import { PROJECT_ROOT, OUTPUT_DIR, TEMPLATE_DIR } from "../lib/paths";
 import { writeNotice } from "../parser/notice-parser";
 import { loadSettings } from "../lib/settings";
 import { runClaudeJson } from "./claude-worker";
-import { parseFrontmatter, getString, getStringArray } from "../lib/frontmatter-utils";
+import {
+  parseFrontmatter,
+  getString,
+  getStringArray,
+} from "../lib/frontmatter-utils";
 import { createTask, getNextTaskId } from "../service/task-store";
 
 export interface NightWorkerOptions {
-  until?: string;       // HH:MM (기본 07:00)
+  until?: string; // HH:MM (기본 07:00)
   budget?: number | null;
-  maxTasks?: number;    // 기본 10
-  types?: string;       // 쉼표 구분 (typecheck,lint,review)
+  maxTasks?: number; // 기본 10
+  types?: string; // 쉼표 구분 (typecheck,lint,review)
   instructions?: string;
 }
 
@@ -35,12 +39,15 @@ export interface NightWorkerState {
 
 // 스캔 타입별 프롬프트
 const TYPE_PROMPTS: Record<string, string> = {
-  typecheck: "TypeScript 타입 오류를 찾아서 수정 태스크를 만들어주세요. strict 모드 기준으로 검사하세요.",
+  typecheck:
+    "TypeScript 타입 오류를 찾아서 수정 태스크를 만들어주세요. strict 모드 기준으로 검사하세요.",
   lint: "ESLint 위반, 코드 스타일 문제를 찾아서 수정 태스크를 만들어주세요.",
-  unused: "사용하지 않는 import, 변수, 함수, 파일을 찾아서 정리 태스크를 만들어주세요.",
+  unused:
+    "사용하지 않는 import, 변수, 함수, 파일을 찾아서 정리 태스크를 만들어주세요.",
   docs: "코드 분석 후 docs/todo/ 에 분석 보고서를 작성하는 태스크를 만들어주세요.",
   test: "테스트 커버리지가 부족한 부분을 찾아서 테스트 작성 태스크를 만들어주세요.",
-  review: "코드 품질 문제(복잡도, 중복, 안티패턴)를 찾아서 검토 보고서 태스크를 만들어주세요.",
+  review:
+    "코드 품질 문제(복잡도, 중복, 안티패턴)를 찾아서 검토 보고서 태스크를 만들어주세요.",
 };
 
 class NightWorkerManager {
@@ -86,7 +93,10 @@ class NightWorkerManager {
     return this.doRun(options);
   }
 
-  private doRun(options: NightWorkerOptions): { success: boolean; error?: string } {
+  private doRun(options: NightWorkerOptions): {
+    success: boolean;
+    error?: string;
+  } {
     const settings = loadSettings();
     this.shouldStop = false;
 
@@ -112,8 +122,10 @@ class NightWorkerManager {
     this.saveState();
 
     // 비동기 루프 시작
-    this.loopPromise = this.runLoop(options.instructions).catch(err => {
-      this.log(`❌ 루프 오류: ${err instanceof Error ? err.message : String(err)}`);
+    this.loopPromise = this.runLoop(options.instructions).catch((err) => {
+      this.log(
+        `❌ 루프 오류: ${err instanceof Error ? err.message : String(err)}`,
+      );
       this._state.status = "failed";
       this.saveState();
     });
@@ -136,7 +148,10 @@ class NightWorkerManager {
   // ── 메인 루프 ───────────────────────────────────────
 
   private async runLoop(instructions?: string): Promise<void> {
-    const types = this._state.types.split(",").map(t => t.trim()).filter(Boolean);
+    const types = this._state.types
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
     let typeIndex = 0;
 
     while (!this.shouldStop) {
@@ -146,7 +161,9 @@ class NightWorkerManager {
       const currentType = types[typeIndex % types.length];
       typeIndex++;
 
-      this.log(`\n🔍 스캔: ${currentType} (${this._state.tasksCreated}/${this._state.maxTasks})`);
+      this.log(
+        `\n🔍 스캔: ${currentType} (${this._state.tasksCreated}/${this._state.maxTasks})`,
+      );
 
       try {
         const created = await this.scanAndCreateTask(currentType, instructions);
@@ -155,7 +172,9 @@ class NightWorkerManager {
           this.saveState();
         }
       } catch (err) {
-        this.log(`⚠️ 스캔 오류: ${err instanceof Error ? err.message : String(err)}`);
+        this.log(
+          `⚠️ 스캔 오류: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
 
       // 타입 로테이션 완료 시 60초 대기, 아닌 경우 5초
@@ -166,12 +185,17 @@ class NightWorkerManager {
     if (this._state.status === "running") {
       this._state.status = "completed";
     }
-    this.log(`\n🌙 Night Worker 종료 (태스크 ${this._state.tasksCreated}개 생성, 비용 $${this._state.totalCost.toFixed(4)})`);
+    this.log(
+      `\n🌙 Night Worker 종료 (태스크 ${this._state.tasksCreated}개 생성, 비용 $${this._state.totalCost.toFixed(4)})`,
+    );
     this.saveState();
     this.postCompletionNotice();
   }
 
-  private async scanAndCreateTask(type: string, instructions?: string): Promise<boolean> {
+  private async scanAndCreateTask(
+    type: string,
+    instructions?: string,
+  ): Promise<boolean> {
     const settings = loadSettings();
     const srcPaths = settings.srcPaths.join(", ");
     const typePrompt = TYPE_PROMPTS[type] ?? TYPE_PROMPTS.review;
@@ -185,7 +209,10 @@ class NightWorkerManager {
     const prompt = nightScanTemplate
       .replace("{{src_paths}}", `스캔 대상: ${srcPaths}`)
       .replace("{{type_prompt}}", typePrompt)
-      .replace("{{instructions}}", instructions ? `\n추가 지시: ${instructions}` : "")
+      .replace(
+        "{{instructions}}",
+        instructions ? `\n추가 지시: ${instructions}` : "",
+      )
       .replace(/\{\{task_id\}\}/g, nextId)
       .replace(/\{\{date\}\}/g, date);
 
@@ -235,7 +262,9 @@ class NightWorkerManager {
     if (!title) {
       // markdown heading에서 추출
       const headingMatch = taskContent.match(/^#+\s+(.+)/m);
-      title = headingMatch ? headingMatch[1].trim() : `${type}-auto-${Date.now()}`;
+      title = headingMatch
+        ? headingMatch[1].trim()
+        : `${type}-auto-${Date.now()}`;
     }
 
     // DB에 태스크 생성
@@ -267,8 +296,13 @@ class NightWorkerManager {
     }
 
     // 예산 제한
-    if (this._state.budget !== null && this._state.totalCost >= this._state.budget) {
-      this.log(`💰 예산 초과 ($${this._state.totalCost.toFixed(2)} >= $${this._state.budget})`);
+    if (
+      this._state.budget !== null &&
+      this._state.totalCost >= this._state.budget
+    ) {
+      this.log(
+        `💰 예산 초과 ($${this._state.totalCost.toFixed(2)} >= $${this._state.budget})`,
+      );
       return true;
     }
 
@@ -322,27 +356,42 @@ class NightWorkerManager {
       const logFile = path.join(OUTPUT_DIR, "logs", "night-worker.log");
       fs.mkdirSync(path.dirname(logFile), { recursive: true });
       fs.appendFileSync(logFile, line + "\n");
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   private saveState(): void {
     try {
-      const projHash = crypto.createHash("md5").update(PROJECT_ROOT).digest("hex").slice(0, 8);
+      const projHash = crypto
+        .createHash("md5")
+        .update(PROJECT_ROOT)
+        .digest("hex")
+        .slice(0, 8);
       const stateDir = path.join("/tmp", `orchestrate-${projHash}`);
       fs.mkdirSync(stateDir, { recursive: true });
       const stateFile = path.join(stateDir, "night-worker.state");
-      fs.writeFileSync(stateFile, JSON.stringify({
-        status: this._state.status,
-        startedAt: this._state.startedAt,
-        until: this._state.until,
-        budget: this._state.budget,
-        maxTasks: this._state.maxTasks,
-        types: this._state.types,
-        tasksCreated: this._state.tasksCreated,
-        totalCost: this._state.totalCost,
-        pid: process.pid,
-      }, null, 2));
-    } catch { /* ignore */ }
+      fs.writeFileSync(
+        stateFile,
+        JSON.stringify(
+          {
+            status: this._state.status,
+            startedAt: this._state.startedAt,
+            until: this._state.until,
+            budget: this._state.budget,
+            maxTasks: this._state.maxTasks,
+            types: this._state.types,
+            tasksCreated: this._state.tasksCreated,
+            totalCost: this._state.totalCost,
+            pid: process.pid,
+          },
+          null,
+          2,
+        ),
+      );
+    } catch {
+      /* ignore */
+    }
   }
 
   private async sleep(ms: number): Promise<void> {
@@ -350,7 +399,7 @@ class NightWorkerManager {
     const chunks = Math.ceil(ms / 100);
     for (let i = 0; i < chunks; i++) {
       if (this.shouldStop) return;
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
 
@@ -366,7 +415,8 @@ class NightWorkerManager {
 // 싱글톤
 const globalKey = "__nightWorkerManager__";
 const nightWorkerManager: NightWorkerManager =
-  (globalThis as Record<string, unknown>)[globalKey] as NightWorkerManager ??
-  ((globalThis as Record<string, unknown>)[globalKey] = new NightWorkerManager());
+  ((globalThis as Record<string, unknown>)[globalKey] as NightWorkerManager) ??
+  ((globalThis as Record<string, unknown>)[globalKey] =
+    new NightWorkerManager());
 
 export default nightWorkerManager;

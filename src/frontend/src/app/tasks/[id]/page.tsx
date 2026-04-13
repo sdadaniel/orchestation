@@ -4,25 +4,49 @@ import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { getErrorMessage } from "@/lib/error-utils";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Loader2, FileText, Terminal, Monitor, CheckCircle2, DollarSign } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  FileText,
+  Terminal,
+  Monitor,
+  CheckCircle2,
+  DollarSign,
+} from "lucide-react";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 import { useTasksStore, type RequestItem } from "@/store/tasksStore";
 import { TaskDetail } from "./types";
 import { TaskMetadata } from "./TaskMetadata";
 import { DependencyFlow } from "./DependencyFlow";
-import { DetailTab, ScopeTab, AiResultTab, CostTab, LogsTab } from "./TaskTabContent";
+import {
+  DetailTab,
+  ScopeTab,
+  AiResultTab,
+  CostTab,
+  LogsTab,
+} from "./TaskTabContent";
 import { LiveTerminalPanel } from "@/components/task-detail/LiveTerminalPanel";
 
-export default function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function TaskDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const router = useRouter();
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"detail" | "scope" | "cost" | "ai-result" | "logs" | "terminal">("detail");
-  const [aiResult, setAiResult] = useState<{ status: string; result: string } | null | "empty">(null);
+  const [activeTab, setActiveTab] = useState<
+    "detail" | "scope" | "cost" | "ai-result" | "logs" | "terminal"
+  >("detail");
+  const [aiResult, setAiResult] = useState<
+    { status: string; result: string } | null | "empty"
+  >(null);
   const [aiResultLoading, setAiResultLoading] = useState(false);
-  const [runStatus, setRunStatus] = useState<"idle" | "running" | "completed" | "failed">("idle");
+  const [runStatus, setRunStatus] = useState<
+    "idle" | "running" | "completed" | "failed"
+  >("idle");
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
 
   const fetchTask = useCallback(async () => {
@@ -39,7 +63,9 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   }, [id]);
 
   // 초기 로드
-  useEffect(() => { fetchTask(); }, [fetchTask]);
+  useEffect(() => {
+    fetchTask();
+  }, [fetchTask]);
 
   // SseProvider가 store를 업데이트하면 자동 refetch (중복 EventSource 방지)
   const storeRequests = useTasksStore((s) => s.requests);
@@ -55,7 +81,10 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
     if (activeTab === "ai-result" && aiResult === null && !aiResultLoading) {
       setAiResultLoading(true);
       fetch(`/api/tasks/${id}/result`)
-        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
         .then((data) => setAiResult(data.status ? data : "empty"))
         .catch(() => setAiResult("empty"))
         .finally(() => setAiResultLoading(false));
@@ -101,22 +130,31 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   }, [id, task]);
 
   // Refetch task data when run finishes (status 반영)
-  const handleRunStatusChange = useCallback(async (status: string) => {
-    if (status === "completed" || status === "failed") {
-      setRunStatus(status as "completed" | "failed");
-      try {
-        const taskRes = await fetch(`/api/requests/${id}`);
-        if (taskRes.ok) setTask(await taskRes.json());
-      } catch {
-        // silently ignore refetch errors
+  const handleRunStatusChange = useCallback(
+    async (status: string) => {
+      if (status === "completed" || status === "failed") {
+        setRunStatus(status as "completed" | "failed");
+        try {
+          const taskRes = await fetch(`/api/requests/${id}`);
+          if (taskRes.ok) setTask(await taskRes.json());
+        } catch {
+          // silently ignore refetch errors
+        }
       }
-    }
-  }, [id]);
+    },
+    [id],
+  );
 
   const handleStatusChange = async (newStatus: string) => {
     // 사이드바 즉시 반영
-    useTasksStore.getState().patchRequest(id, { status: newStatus as RequestItem["status"] });
-    await fetch(`/api/requests/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
+    useTasksStore
+      .getState()
+      .patchRequest(id, { status: newStatus as RequestItem["status"] });
+    await fetch(`/api/requests/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
     const res = await fetch(`/api/requests/${id}`);
     if (res.ok) setTask(await res.json());
   };
@@ -146,7 +184,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       const res = await fetch(`/api/tasks/${id}/run`, { method: "DELETE" });
       // 응답 성공 여부와 관계없이 UI 즉시 반영
       setRunStatus("idle");
-      setTask((prev) => prev ? { ...prev, status: "stopped" } : null);
+      setTask((prev) => (prev ? { ...prev, status: "stopped" } : null));
       // 사이드바 즉시 반영
       useTasksStore.getState().patchRequest(id, { status: "stopped" });
       // 파일 상태도 반영된 최신 데이터로 refetch
@@ -162,7 +200,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
     } catch {
       // 네트워크 오류도 UI는 즉시 반영
       setRunStatus("idle");
-      setTask((prev) => prev ? { ...prev, status: "stopped" } : null);
+      setTask((prev) => (prev ? { ...prev, status: "stopped" } : null));
       useTasksStore.getState().patchRequest(id, { status: "stopped" });
     }
   };
@@ -207,7 +245,9 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <span className="font-mono text-xs text-muted-foreground">{task.id}</span>
+        <span className="font-mono text-xs text-muted-foreground">
+          {task.id}
+        </span>
         <h1 className="text-lg font-semibold flex-1">{task.title}</h1>
       </div>
 
@@ -226,14 +266,14 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-border">
-        {([
+        {[
           { key: "detail" as const, label: "Content", icon: FileText },
           { key: "scope" as const, label: "Scope", icon: FileText },
           { key: "cost" as const, label: "Cost", icon: DollarSign },
           { key: "logs" as const, label: "로그", icon: Terminal },
           { key: "terminal" as const, label: "Terminal", icon: Monitor },
           { key: "ai-result" as const, label: "AI Result", icon: CheckCircle2 },
-        ]).map((tab) => (
+        ].map((tab) => (
           <button
             key={tab.key}
             type="button"
@@ -254,7 +294,13 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       {/* Tab Content */}
       {activeTab === "detail" && <DetailTab task={task} />}
       {activeTab === "scope" && <ScopeTab scope={task.scope} />}
-      {activeTab === "ai-result" && <AiResultTab aiResult={aiResult === "empty" ? null : aiResult} aiResultLoading={aiResultLoading} taskStatus={task.status} />}
+      {activeTab === "ai-result" && (
+        <AiResultTab
+          aiResult={aiResult === "empty" ? null : aiResult}
+          aiResultLoading={aiResultLoading}
+          taskStatus={task.status}
+        />
+      )}
       {activeTab === "cost" && <CostTab task={task} />}
       {activeTab === "logs" && (
         <LogsTab
@@ -265,9 +311,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           onStatusChange={handleRunStatusChange}
         />
       )}
-      {activeTab === "terminal" && (
-        <LiveTerminalPanel taskId={id} />
-      )}
+      {activeTab === "terminal" && <LiveTerminalPanel taskId={id} />}
     </div>
   );
 }

@@ -14,8 +14,8 @@ export interface TaskRow {
   worktree: string | null;
   role: string;
   reviewer_role: string | null;
-  scope: string;    // JSON array string
-  context: string;  // JSON array string
+  scope: string; // JSON array string
+  context: string; // JSON array string
   depends_on: string; // JSON array string
   complexity: string | null;
   sort_order: number;
@@ -33,29 +33,40 @@ function now(): string {
 export function getTask(taskId: string): TaskRow | null {
   const db = getDb();
   if (!db) return null;
-  return db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId) as TaskRow | undefined ?? null;
+  return (
+    (db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId) as
+      | TaskRow
+      | undefined) ?? null
+  );
 }
 
 export function getAllTasks(): TaskRow[] {
   const db = getDb();
   if (!db) return [];
-  return db.prepare("SELECT * FROM tasks ORDER BY sort_order, id").all() as TaskRow[];
+  return db
+    .prepare("SELECT * FROM tasks ORDER BY sort_order, id")
+    .all() as TaskRow[];
 }
 
 export function getTasksByStatus(...statuses: string[]): TaskRow[] {
   const db = getDb();
   if (!db) return [];
   const placeholders = statuses.map(() => "?").join(",");
-  return db.prepare(`SELECT * FROM tasks WHERE status IN (${placeholders}) ORDER BY sort_order, id`).all(...statuses) as TaskRow[];
+  return db
+    .prepare(
+      `SELECT * FROM tasks WHERE status IN (${placeholders}) ORDER BY sort_order, id`,
+    )
+    .all(...statuses) as TaskRow[];
 }
-
 
 export function getNextTaskId(): string {
   const db = getDb();
   if (!db) return "TASK-001";
-  const row = db.prepare(
-    "SELECT id FROM tasks ORDER BY CAST(SUBSTR(id, 6) AS INTEGER) DESC LIMIT 1"
-  ).get() as { id: string } | undefined;
+  const row = db
+    .prepare(
+      "SELECT id FROM tasks ORDER BY CAST(SUBSTR(id, 6) AS INTEGER) DESC LIMIT 1",
+    )
+    .get() as { id: string } | undefined;
   if (!row) return "TASK-001";
   const num = parseInt(row.id.replace("TASK-", ""), 10);
   return `TASK-${String(num + 1).padStart(3, "0")}`;
@@ -87,7 +98,7 @@ export function createTask(task: {
     `INSERT INTO tasks (id, title, status, priority, branch, worktree, role, reviewer_role,
       scope, context, depends_on, complexity, sort_order, content, created, updated)
      VALUES (@id, @title, @status, @priority, @branch, @worktree, @role, @reviewer_role,
-      @scope, @context, @depends_on, @complexity, @sort_order, @content, @created, @updated)`
+      @scope, @context, @depends_on, @complexity, @sort_order, @content, @created, @updated)`,
   ).run({
     id: task.id,
     title: task.title,
@@ -110,21 +121,24 @@ export function createTask(task: {
   return getTask(task.id)!;
 }
 
-export function updateTask(taskId: string, fields: Partial<{
-  title: string;
-  status: string;
-  priority: string;
-  branch: string;
-  worktree: string;
-  role: string;
-  reviewer_role: string;
-  scope: string[];
-  context: string[];
-  depends_on: string[];
-  complexity: string;
-  sort_order: number;
-  content: string;
-}>): boolean {
+export function updateTask(
+  taskId: string,
+  fields: Partial<{
+    title: string;
+    status: string;
+    priority: string;
+    branch: string;
+    worktree: string;
+    role: string;
+    reviewer_role: string;
+    scope: string[];
+    context: string[];
+    depends_on: string[];
+    complexity: string;
+    sort_order: number;
+    content: string;
+  }>,
+): boolean {
   const db = getWritableDb();
   if (!db) return false;
 
@@ -150,15 +164,23 @@ export function updateTask(taskId: string, fields: Partial<{
   return true;
 }
 
-export function updateTaskStatus(taskId: string, newStatus: string, fromStatus?: string): boolean {
+export function updateTaskStatus(
+  taskId: string,
+  newStatus: string,
+  fromStatus?: string,
+): boolean {
   const db = getWritableDb();
   if (!db) return false;
 
-  db.prepare("UPDATE tasks SET status = ?, updated = ? WHERE id = ?").run(newStatus, now(), taskId);
+  db.prepare("UPDATE tasks SET status = ?, updated = ? WHERE id = ?").run(
+    newStatus,
+    now(),
+    taskId,
+  );
 
   // 이벤트 기록
   db.prepare(
-    "INSERT INTO task_events (task_id, event_type, from_status, to_status, timestamp) VALUES (?, 'status_change', ?, ?, ?)"
+    "INSERT INTO task_events (task_id, event_type, from_status, to_status, timestamp) VALUES (?, 'status_change', ?, ?, ?)",
   ).run(taskId, fromStatus ?? null, newStatus, now());
 
   return true;
@@ -174,15 +196,27 @@ export function deleteTask(taskId: string): boolean {
 // ── Helpers ───────────────────────────────────────────
 
 export function parseScope(task: TaskRow): string[] {
-  try { return JSON.parse(task.scope); } catch { return []; }
+  try {
+    return JSON.parse(task.scope);
+  } catch {
+    return [];
+  }
 }
 
 export function parseDependsOn(task: TaskRow): string[] {
-  try { return JSON.parse(task.depends_on); } catch { return []; }
+  try {
+    return JSON.parse(task.depends_on);
+  } catch {
+    return [];
+  }
 }
 
 export function parseContext(task: TaskRow): string[] {
-  try { return JSON.parse(task.context); } catch { return []; }
+  try {
+    return JSON.parse(task.context);
+  } catch {
+    return [];
+  }
 }
 
 /** TaskRow를 마크다운 frontmatter 문자열로 변환 (임시 파일 생성용) */

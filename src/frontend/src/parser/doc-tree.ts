@@ -43,13 +43,20 @@ function titleFromFile(filePath: string): string {
     const { data } = matter(raw);
     if (data.title) return data.title;
     if (data.id) return data.id;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return path.basename(filePath, ".md");
 }
 
-function scanDirectory(dirPath: string, relDir: string, isReadonly: boolean): DocNode[] {
+function scanDirectory(
+  dirPath: string,
+  relDir: string,
+  isReadonly: boolean,
+): DocNode[] {
   if (!fs.existsSync(dirPath)) return [];
-  const entries = fs.readdirSync(dirPath, { withFileTypes: true })
+  const entries = fs
+    .readdirSync(dirPath, { withFileTypes: true })
     .filter((e) => !IGNORED.has(e.name) && !e.name.startsWith("."))
     .sort((a, b) => {
       // folders first, then files
@@ -95,7 +102,8 @@ export function readFullTree(): Manifest {
 
   if (!fs.existsSync(DOCS_DIR)) return { tree };
 
-  const topEntries = fs.readdirSync(DOCS_DIR, { withFileTypes: true })
+  const topEntries = fs
+    .readdirSync(DOCS_DIR, { withFileTypes: true })
     .filter((e) => !IGNORED.has(e.name) && !e.name.startsWith("."))
     .filter((e) => !e.isDirectory() || !EXCLUDED_DIRS.has(e.name))
     .sort((a, b) => {
@@ -156,7 +164,9 @@ export function readPrdManifest(): Manifest {
     try {
       const raw = fs.readFileSync(MANIFEST_PATH, "utf-8");
       return JSON.parse(raw) as Manifest;
-    } catch { /* corrupt manifest, regenerate */ }
+    } catch {
+      /* corrupt manifest, regenerate */
+    }
   }
 
   const manifest = generateManifestFromFiles();
@@ -170,7 +180,11 @@ export function readManifest(): Manifest {
 }
 
 export function writeManifest(manifest: Manifest): void {
-  fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n", "utf-8");
+  fs.writeFileSync(
+    MANIFEST_PATH,
+    JSON.stringify(manifest, null, 2) + "\n",
+    "utf-8",
+  );
 }
 
 function generateManifestFromFiles(): Manifest {
@@ -199,10 +213,17 @@ export function findNodeById(tree: DocNode[], id: string): DocNode | null {
   return null;
 }
 
-export function findParentPath(tree: DocNode[], targetId: string, breadcrumb: string[] = []): string[] | null {
+export function findParentPath(
+  tree: DocNode[],
+  targetId: string,
+  breadcrumb: string[] = [],
+): string[] | null {
   for (const node of tree) {
     if (node.id === targetId) return breadcrumb;
-    const found = findParentPath(node.children, targetId, [...breadcrumb, node.title]);
+    const found = findParentPath(node.children, targetId, [
+      ...breadcrumb,
+      node.title,
+    ]);
     if (found) return found;
   }
   return null;
@@ -219,7 +240,12 @@ export function removeNodeById(tree: DocNode[], id: string): boolean {
   return false;
 }
 
-export function insertNode(tree: DocNode[], parentId: string | null, node: DocNode, index?: number): boolean {
+export function insertNode(
+  tree: DocNode[],
+  parentId: string | null,
+  node: DocNode,
+  index?: number,
+): boolean {
   if (!parentId) {
     if (index !== undefined) {
       tree.splice(index, 0, node);
@@ -258,7 +284,11 @@ export function readDocContent(fileRelPath: string): string {
 }
 
 /** Write doc content */
-export function writeDocContent(fileName: string, content: string, title?: string): void {
+export function writeDocContent(
+  fileName: string,
+  content: string,
+  title?: string,
+): void {
   // DOCS_DIR 기준으로 먼저 시도, 없으면 PRD_DIR 폴백
   let filePath = path.join(DOCS_DIR, fileName);
   if (!fs.existsSync(filePath)) {

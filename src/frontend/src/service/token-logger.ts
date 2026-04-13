@@ -22,15 +22,28 @@ export function logTokenUsage(
     const logPath = path.join(OUTPUT_DIR, "token-usage.log");
     fs.mkdirSync(path.dirname(logPath), { recursive: true });
     fs.appendFileSync(logPath, logLine);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   try {
     const db = getDb();
     if (db) {
       db.prepare(
         `INSERT INTO token_usage (task_id, phase, model, input_tokens, output_tokens, cost_usd, duration_ms, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(taskId, phase, model, result.inputTokens, result.outputTokens, result.costUsd, result.durationMs, new Date().toISOString());
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        taskId,
+        phase,
+        model,
+        result.inputTokens,
+        result.outputTokens,
+        result.costUsd,
+        result.durationMs,
+        new Date().toISOString(),
+      );
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }

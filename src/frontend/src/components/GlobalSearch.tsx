@@ -187,7 +187,12 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
 
   return (
     <div className="global-search-wrapper">
-      <div className={cn("global-search", isOpen && results.length > 0 && "search-open")}>
+      <div
+        className={cn(
+          "global-search",
+          isOpen && results.length > 0 && "search-open",
+        )}
+      >
         <SearchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <input
           ref={inputRef}
@@ -231,24 +236,38 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
                 <>
                   {taskItems.length > 0 && (
                     <>
-                      {hasBoth && <div className="search-group-label">Tasks</div>}
+                      {hasBoth && (
+                        <div className="search-group-label">Tasks</div>
+                      )}
                       {taskItems.map((item) => {
                         const idx = sliced.indexOf(item);
                         globalIdx++;
                         return (
                           <button
                             key={`task-${item.id}`}
-                            className={cn("search-item", idx === activeIndex && "search-item-active")}
+                            className={cn(
+                              "search-item",
+                              idx === activeIndex && "search-item-active",
+                            )}
                             onMouseEnter={() => setActiveIndex(idx)}
                             onClick={() => navigate(item)}
                           >
                             <span className="search-item-icon">
                               <ListTodoIcon className="h-3.5 w-3.5" />
                             </span>
-                            <span className="search-item-id font-mono">{item.displayId}</span>
-                            <span className="search-item-title">{item.title}</span>
+                            <span className="search-item-id font-mono">
+                              {item.displayId}
+                            </span>
+                            <span className="search-item-title">
+                              {item.title}
+                            </span>
                             {item.status && (
-                              <span className={cn("search-item-status", statusColors[item.status])}>
+                              <span
+                                className={cn(
+                                  "search-item-status",
+                                  statusColors[item.status],
+                                )}
+                              >
                                 {statusLabel[item.status] || item.status}
                               </span>
                             )}
@@ -259,21 +278,30 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
                   )}
                   {docItems.length > 0 && (
                     <>
-                      {hasBoth && <div className="search-group-label">Docs</div>}
+                      {hasBoth && (
+                        <div className="search-group-label">Docs</div>
+                      )}
                       {docItems.map((item) => {
                         const idx = sliced.indexOf(item);
                         return (
                           <button
                             key={`doc-${item.id}`}
-                            className={cn("search-item", idx === activeIndex && "search-item-active")}
+                            className={cn(
+                              "search-item",
+                              idx === activeIndex && "search-item-active",
+                            )}
                             onMouseEnter={() => setActiveIndex(idx)}
                             onClick={() => navigate(item)}
                           >
                             <span className="search-item-icon">
                               <FileTextIcon className="h-3.5 w-3.5" />
                             </span>
-                            <span className="search-item-id font-mono">{item.displayId}</span>
-                            <span className="search-item-title">{item.title}</span>
+                            <span className="search-item-id font-mono">
+                              {item.displayId}
+                            </span>
+                            <span className="search-item-title">
+                              {item.title}
+                            </span>
                             <span className="search-item-type">Doc</span>
                           </button>
                         );
@@ -284,7 +312,9 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
               );
             })()}
             {results.length > 20 && (
-              <div className="search-more">+{results.length - 20}개 더 있음</div>
+              <div className="search-more">
+                +{results.length - 20}개 더 있음
+              </div>
             )}
           </div>
         </>

@@ -27,7 +27,11 @@ export default function AutoImproveControl({
   // isStarting 해제: running으로 바뀔 때만 해제
   const prevStatusRef = useRef(orchestrationStatus);
   useEffect(() => {
-    if (isStarting && prevStatusRef.current !== "running" && orchestrationStatus === "running") {
+    if (
+      isStarting &&
+      prevStatusRef.current !== "running" &&
+      orchestrationStatus === "running"
+    ) {
       setIsStarting(false);
     }
     prevStatusRef.current = orchestrationStatus;
@@ -47,11 +51,18 @@ export default function AutoImproveControl({
     }
   }, [isStopping, orchestrationStatus]);
 
-  const status = isStarting ? "starting" : isStopping ? "stopping" : orchestrationStatus;
+  const status = isStarting
+    ? "starting"
+    : isStopping
+      ? "stopping"
+      : orchestrationStatus;
 
   // failed 상태일 때 에러 메시지 표시 (Stop에 의한 종료(130)는 제외)
   const showError =
-    orchestrationStatus === "failed" && exitCode != null && exitCode !== 130 && !isStopping;
+    orchestrationStatus === "failed" &&
+    exitCode != null &&
+    exitCode !== 130 &&
+    !isStopping;
 
   const handleRun = async () => {
     setIsStarting(true);
@@ -104,10 +115,13 @@ export default function AutoImproveControl({
           <div className="running-indicator">
             <span className="running-indicator-spinner" />
             <span className="running-indicator-text">
-              Running<span className="running-indicator-dots" />
+              Running
+              <span className="running-indicator-dots" />
             </span>
             {runningTaskCount > 0 && (
-              <span className="running-indicator-count">{runningTaskCount}</span>
+              <span className="running-indicator-count">
+                {runningTaskCount}
+              </span>
             )}
           </div>
           <button

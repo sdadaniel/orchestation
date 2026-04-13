@@ -64,7 +64,9 @@ export function MetricCard({
       <div className="px-3 pt-2.5 pb-1">
         <div className="text-xs font-medium text-foreground">
           {title}
-          {unit && <span className="text-muted-foreground font-normal"> ({unit})</span>}
+          {unit && (
+            <span className="text-muted-foreground font-normal"> ({unit})</span>
+          )}
         </div>
         {!large && (
           <div className="flex items-baseline gap-2 mt-0.5">
@@ -72,17 +74,25 @@ export function MetricCard({
               {value}
             </span>
             {subtitle && (
-              <span className="text-[10px] text-muted-foreground">{subtitle}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {subtitle}
+              </span>
             )}
           </div>
         )}
       </div>
 
       {/* 차트 */}
-      <div style={{ height: chartHeight }} className={large ? "px-2 pb-2" : "px-1 pb-1"}>
+      <div
+        style={{ height: chartHeight }}
+        className={large ? "px-2 pb-2" : "px-1 pb-1"}
+      >
         <ResponsiveContainer width="100%" height="100%">
           {large ? (
-            <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+            <LineChart
+              data={data}
+              margin={{ top: 8, right: 12, bottom: 4, left: 4 }}
+            >
               <CartesianGrid
                 strokeDasharray="3 3"
                 stroke="hsl(var(--border))"
@@ -114,9 +124,14 @@ export function MetricCard({
                 }}
                 itemStyle={{ color: "#fff", padding: "2px 0" }}
                 labelStyle={{ color: "#aaa", marginBottom: "4px" }}
-                formatter={(v: TooltipValueType | undefined, name: string | number | undefined) => {
+                formatter={(
+                  v: TooltipValueType | undefined,
+                  name: string | number | undefined,
+                ) => {
                   const label = legend
-                    ? name === "primary" ? legend[0] : legend[1]
+                    ? name === "primary"
+                      ? legend[0]
+                      : legend[1]
                     : title;
                   return [
                     `${typeof v === "number" ? v.toFixed(2) : v}${unit ? ` ${unit}` : ""}`,
@@ -160,9 +175,18 @@ export function MetricCard({
               )}
             </LineChart>
           ) : (
-            <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+            <AreaChart
+              data={data}
+              margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+            >
               <defs>
-                <linearGradient id={`grad-${title}`} x1="0" y1="0" x2="0" y2="1">
+                <linearGradient
+                  id={`grad-${title}`}
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
                   <stop offset="0%" stopColor={color} stopOpacity={0.25} />
                   <stop offset="100%" stopColor={color} stopOpacity={0.02} />
                 </linearGradient>
