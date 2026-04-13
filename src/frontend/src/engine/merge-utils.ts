@@ -28,6 +28,12 @@ export async function runMergeTask(
       return false;
     }
 
+    // 이미 done 상태면 중복 실행 방지 (재호출/시그널 루프 방어)
+    if (task.status === "done") {
+      log("ℹ️ 이미 done 상태 — 스킵");
+      return true;
+    }
+
     const branch = task.branch;
     const worktree = task.worktree;
     const settings = loadSettings();

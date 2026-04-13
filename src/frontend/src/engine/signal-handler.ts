@@ -36,7 +36,9 @@ export interface SignalHandlerCallbacks {
   startReview: (taskId: string) => boolean;
   removeWorker: (taskId: string) => void;
   emitTaskResult: (taskId: string, status: "success" | "failure") => void;
-  getRetryCounts: () => Map<string, number>;
+  getRetryCount: (taskId: string) => number;
+  bumpRetryCount: (taskId: string) => number;
+  clearRetryCount: (taskId: string) => void;
   maxReviewRetry: () => number;
   baseBranch: () => string;
 }
@@ -88,7 +90,7 @@ export function handleSignal(
       let reason = "";
       const reasonFile = path.join(OUTPUT_DIR, `${taskId}-rejection-reason.txt`);
       if (fs.existsSync(reasonFile)) reason = fs.readFileSync(reasonFile, "utf-8").split("\n")[0];
-      markTaskRejected(taskId, reason, cb.log);
+      markTaskRejected(taskId, reason, cb);
       break;
     }
 
@@ -107,11 +109,10 @@ export function handleSignal(
         markTaskFailed(taskId, "비용 상한 초과", cb);
         break;
       }
-      const retryCounts = cb.getRetryCounts();
-      const count = retryCounts.get(taskId) ?? 0;
+      const count = cb.getRetryCount(taskId);
       if (count < cb.maxReviewRetry()) {
-        retryCounts.set(taskId, count + 1);
-        cb.log(`  🔄 ${taskId} review 수정요청 → retry (${count + 1}/${cb.maxReviewRetry()})`);
+        const next = cb.bumpRetryCount(taskId);
+        cb.log(`  🔄 ${taskId} review 수정요청 → retry (${next}/${cb.maxReviewRetry()})`);
         const feedbackFile = path.join(OUTPUT_DIR, `${taskId}-review-feedback.txt`);
         cb.startTask(taskId, feedbackFile);
       } else {
@@ -130,6 +131,7 @@ export async function mergeAndDone(taskId: string, cb: SignalHandlerCallbacks): 
   const success = await runMergeTask(taskId, (line) => cb.log(`  ${line}`));
 
   if (success) {
+    cb.clearRetryCount(taskId);
     writeNotice(
       "info",
       `${taskId} 완료`,
@@ -145,14 +147,16 @@ export async function mergeAndDone(taskId: string, cb: SignalHandlerCallbacks): 
 export function markTaskFailed(taskId: string, reason: string, cb: SignalHandlerCallbacks): void {
   setTaskStatus(taskId, "failed", cb.log);
   cleanupWorktreeAndBranch(taskId, cb.log);
+  cb.clearRetryCount(taskId);
   writeNotice("error", `${taskId} 실패`, `**${taskId}:** ${reason}`);
   stopDependents(taskId, cb.log);
   cb.emitTaskResult(taskId, "failure");
 }
 
-export function markTaskRejected(taskId: string, reason: string, log: (msg: string) => void): void {
-  setTaskStatus(taskId, "rejected", log);
-  cleanupWorktreeAndBranch(taskId, log);
+export function markTaskRejected(taskId: string, reason: string, cb: SignalHandlerCallbacks): void {
+  setTaskStatus(taskId, "rejected", cb.log);
+  cleanupWorktreeAndBranch(taskId, cb.log);
+  cb.clearRetryCount(taskId);
   writeNotice("warning", `${taskId} 거절`, `**${taskId}:** ${reason}`);
 }
 

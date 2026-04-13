@@ -16,6 +16,8 @@ import { runJobReview } from "./job-review";
 import { scanTasks, depsSatisfied, scopeNotConflicting, canDispatch, type TaskInfo } from "./scheduler";
 import { processSignals, markTaskFailed, type SignalHandlerCallbacks } from "./signal-handler";
 
+const RETRY_COUNTS_FILE = path.join(PROJECT_ROOT, ".orchestration", "retry-counts.json");
+
 export type TaskStatus = "pending" | "stopped" | "in_progress" | "reviewing" | "done" | "rejected" | "failed";
 export type EngineStatus = "idle" | "running" | "completed" | "failed";
 
@@ -57,7 +59,7 @@ export class OrchestrateEngine extends EventEmitter {
 
     this.loadConfig();
     this._status = "running";
-    this.retryCounts.clear();
+    this.loadRetryCounts();
     fs.mkdirSync(SIGNALS_DIR, { recursive: true });
     this.log("🚀 Pipeline 시작 (Node.js engine)");
     this.log(`⚙️  Base Branch: ${this.baseBranchValue}`);
@@ -113,10 +115,43 @@ export class OrchestrateEngine extends EventEmitter {
       startReview: (taskId) => this.startReview(taskId),
       removeWorker: (taskId) => this.workers.delete(taskId),
       emitTaskResult: (taskId, status) => this.emit("task-result", { taskId, status }),
-      getRetryCounts: () => this.retryCounts,
+      getRetryCount: (taskId) => this.retryCounts.get(taskId) ?? 0,
+      bumpRetryCount: (taskId) => {
+        const next = (this.retryCounts.get(taskId) ?? 0) + 1;
+        this.retryCounts.set(taskId, next);
+        this.saveRetryCounts();
+        return next;
+      },
+      clearRetryCount: (taskId) => {
+        if (this.retryCounts.delete(taskId)) this.saveRetryCounts();
+      },
       maxReviewRetry: () => this.maxReviewRetryValue,
       baseBranch: () => this.baseBranchValue,
     };
+  }
+
+  private loadRetryCounts() {
+    try {
+      if (!fs.existsSync(RETRY_COUNTS_FILE)) {
+        this.retryCounts = new Map();
+        return;
+      }
+      const obj = JSON.parse(fs.readFileSync(RETRY_COUNTS_FILE, "utf-8")) as Record<string, number>;
+      this.retryCounts = new Map(Object.entries(obj));
+    } catch {
+      this.retryCounts = new Map();
+    }
+  }
+
+  private saveRetryCounts() {
+    try {
+      fs.mkdirSync(path.dirname(RETRY_COUNTS_FILE), { recursive: true });
+      const obj: Record<string, number> = {};
+      for (const [k, v] of this.retryCounts) obj[k] = v;
+      fs.writeFileSync(RETRY_COUNTS_FILE, JSON.stringify(obj, null, 2));
+    } catch {
+      /* ignore */
+    }
   }
 
   private startTask(taskId: string, feedbackFile?: string): boolean {
@@ -216,13 +251,16 @@ export class OrchestrateEngine extends EventEmitter {
   private cleanupZombies() {
     const zombies = getTasksByStatus("in_progress");
     let cleaned = 0;
+    const cb = this.buildSignalCallbacks();
     for (const row of zombies) {
       if (this.workers.has(row.id)) continue;
-      updateTaskStatus(row.id, "stopped", "in_progress");
+      // 엔진이 모르는 in_progress = 프로세스 크래시/재시작으로 인한 고아 태스크.
+      // 재실행하지 않도록 failed로 마킹 (무한 루프/토큰 낭비 방지)
+      markTaskFailed(row.id, "고아 상태 감지 (엔진 크래시 또는 비정상 종료 추정)", cb);
       cleaned++;
-      this.log(`  🧹 zombie: ${row.id} in_progress → stopped`);
+      this.log(`  🧹 zombie: ${row.id} in_progress → failed`);
     }
-    if (cleaned > 0) this.log(`  🧹 ${cleaned}개 좀비 태스크 정리`);
+    if (cleaned > 0) this.log(`  🧹 ${cleaned}개 좀비 태스크 failed 처리`);
   }
 
   private setStatus(taskId: string, newStatus: TaskStatus) {
