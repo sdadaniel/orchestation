@@ -37,7 +37,7 @@ function syncParsedTask(filePath: string, raw: string) {
     )
     ON CONFLICT(id) DO UPDATE SET
       title=excluded.title,
-      status=CASE WHEN tasks.status IN ('in_progress','reviewing','done','rejected','stopped') THEN tasks.status ELSE excluded.status END,
+      status=CASE WHEN tasks.status IN ('in_progress','reviewing','done','failed','rejected','stopped') THEN tasks.status ELSE excluded.status END,
       priority=excluded.priority,
       branch=excluded.branch,
       worktree=excluded.worktree,

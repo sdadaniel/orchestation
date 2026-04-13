@@ -27,8 +27,10 @@
 - Shell 스크립트에서 `claude` CLI 호출 시 full PATH 사용 또는 사전 resolve
 
 ## Task Management
-- 유효한 태스크 상태: `pending`, `stopped`, `in_progress`, `reviewing`, `done`, `rejected`
+- 유효한 태스크 상태: `pending`, `stopped`, `in_progress`, `reviewing`, `done`, `failed`, `rejected`
 - 새 태스크 생성 시 status는 반드시 `pending`
+- `failed`/`rejected`/`done`은 터미널 상태로, 큐가 재픽업하지 않는다 (수동 복구 필요)
+- `failed`는 엔진 크래시·리뷰 retry 상한 초과·비용 상한 초과·머지 실패 등 비의도적 종료에 사용
 - Sprint 개념은 삭제됨 — 사용하지 않는다
 
 ## Design System (Frontend)

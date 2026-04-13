@@ -113,10 +113,46 @@ export class OrchestrateEngine extends EventEmitter {
   private maxReviewRetry = 3;
   private loopCount = 0;
 
+  private retryCountsFile: string;
+
   constructor() {
     super();
     this.setMaxListeners(50);
     this.signalDir = path.join(PROJECT_ROOT, ".orchestration", "signals");
+    this.retryCountsFile = path.join(
+      PROJECT_ROOT,
+      ".orchestration",
+      "retry-counts.json",
+    );
+  }
+
+  private loadRetryCounts() {
+    try {
+      if (!fs.existsSync(this.retryCountsFile)) {
+        this.retryCounts = new Map();
+        return;
+      }
+      const raw = fs.readFileSync(this.retryCountsFile, "utf-8");
+      const obj = JSON.parse(raw) as Record<string, number>;
+      this.retryCounts = new Map(Object.entries(obj));
+    } catch {
+      this.retryCounts = new Map();
+    }
+  }
+
+  private saveRetryCounts() {
+    try {
+      fs.mkdirSync(path.dirname(this.retryCountsFile), { recursive: true });
+      const obj: Record<string, number> = {};
+      for (const [k, v] of this.retryCounts) obj[k] = v;
+      fs.writeFileSync(this.retryCountsFile, JSON.stringify(obj, null, 2));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  private clearRetryCount(taskId: string) {
+    if (this.retryCounts.delete(taskId)) this.saveRetryCounts();
   }
 
   // ── Public API ──────────────────────────────────────
@@ -135,7 +171,7 @@ export class OrchestrateEngine extends EventEmitter {
 
     this.loadConfig();
     this._status = "running";
-    this.retryCounts.clear();
+    this.loadRetryCounts();
 
     // 시그널 디렉토리 생성
     fs.mkdirSync(this.signalDir, { recursive: true });
@@ -523,6 +559,7 @@ export class OrchestrateEngine extends EventEmitter {
         const count = this.retryCounts.get(taskId) ?? 0;
         if (count < this.maxReviewRetry) {
           this.retryCounts.set(taskId, count + 1);
+          this.saveRetryCounts();
           this.log(
             `  🔄 ${taskId} review 수정요청 → retry (${count + 1}/${this.maxReviewRetry})`,
           );
@@ -620,6 +657,7 @@ export class OrchestrateEngine extends EventEmitter {
     const success = await runMergeTask(taskId, (line) => this.log(`  ${line}`));
 
     if (success) {
+      this.clearRetryCount(taskId);
       this.postNotice(
         "info",
         `${taskId} 완료`,
@@ -637,6 +675,7 @@ export class OrchestrateEngine extends EventEmitter {
   private markTaskFailed(taskId: string, reason: string) {
     this.setTaskStatus(taskId, "failed");
     this.cleanupWorktreeAndBranch(taskId);
+    this.clearRetryCount(taskId);
     this.postNotice("error", `${taskId} 실패`, `**${taskId}:** ${reason}`);
     this.stopDependents(taskId);
     this.emit("task-result", { taskId, status: "failure" });
@@ -645,6 +684,7 @@ export class OrchestrateEngine extends EventEmitter {
   private markTaskRejected(taskId: string, reason: string) {
     this.setTaskStatus(taskId, "rejected");
     this.cleanupWorktreeAndBranch(taskId);
+    this.clearRetryCount(taskId);
     this.postNotice("warning", `${taskId} 거절`, `**${taskId}:** ${reason}`);
   }
 
@@ -790,21 +830,23 @@ export class OrchestrateEngine extends EventEmitter {
       if (!raw.includes("status: in_progress")) continue;
 
       const idMatch = file.match(/^(TASK-\d+)/);
-      if (!idMatch) continue;
+      const zombieId = idMatch?.[1];
+      if (!zombieId) continue;
 
       // Node engine에서 관리 중이면 건너뛰기
-      if (this.workers.has(idMatch[1])) continue;
+      if (this.workers.has(zombieId)) continue;
 
-      fs.writeFileSync(
-        filePath,
-        raw.replace("status: in_progress", "status: stopped"),
+      // 엔진이 모르는 in_progress = 프로세스 크래시/재시작으로 인한 고아 태스크.
+      // 재실행하지 않도록 failed로 마킹 (무한 루프/토큰 낭비 방지)
+      this.markTaskFailed(
+        zombieId,
+        "고아 상태 감지 (엔진 크래시 또는 비정상 종료 추정)",
       );
-      syncTaskFileToDb(filePath);
       cleaned++;
-      this.log(`  🧹 zombie: ${idMatch[1]} in_progress → stopped`);
+      this.log(`  🧹 zombie: ${zombieId} in_progress → failed`);
     }
 
-    if (cleaned > 0) this.log(`  🧹 ${cleaned}개 좀비 태스크 정리`);
+    if (cleaned > 0) this.log(`  🧹 ${cleaned}개 좀비 태스크 failed 처리`);
   }
 
   // ── Notice ──────────────────────────────────────────
