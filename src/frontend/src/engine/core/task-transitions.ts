@@ -78,7 +78,33 @@ export async function onReviewFinished(
   result: JobReviewResult,
   ctx: TransitionContext,
 ): Promise<void> {
-  throw new Error("not implemented");
+  if (result.status === "review-approved") {
+    ctx.log(`  ✅ ${taskId} review 승인 → 머지`);
+    await mergeAndDone(taskId, ctx);
+    return;
+  }
+
+  // review-rejected
+  if (isCostOverLimit(taskId, ctx.log)) {
+    markTaskFailed(taskId, "비용 상한 초과", ctx);
+    return;
+  }
+
+  const count = ctx.getRetryCount(taskId);
+  if (canRetryReview(count, ctx.maxReviewRetry())) {
+    const next = ctx.bumpRetryCount(taskId);
+    ctx.log(
+      `  🔄 ${taskId} review 수정요청 → retry (${next}/${ctx.maxReviewRetry()})`,
+    );
+    const feedbackFile = path.join(
+      OUTPUT_DIR,
+      `${taskId}-review-feedback.txt`,
+    );
+    ctx.startTask(taskId, feedbackFile);
+  } else {
+    ctx.log(`  ❌ ${taskId} retry 상한 초과 (${ctx.maxReviewRetry()})`);
+    markTaskFailed(taskId, "review retry 상한 초과", ctx);
+  }
 }
 
 // ── 상태 전이 primitive ─────────────────────────────────
