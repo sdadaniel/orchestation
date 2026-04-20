@@ -39,7 +39,38 @@ export async function onTaskFinished(
   result: JobTaskResult,
   ctx: TransitionContext,
 ): Promise<void> {
-  throw new Error("not implemented");
+  switch (result.status) {
+    case "task-done": {
+      const info = readTaskInfo(taskId);
+      const role = info?.role ?? "";
+      if (SKIP_REVIEW_ROLES.includes(role)) {
+        ctx.log(`  ✅ ${taskId} task 완료 → review 스킵 → 머지`);
+        await mergeAndDone(taskId, ctx);
+      } else {
+        ctx.log(`  ✅ ${taskId} task 완료 → review 시작`);
+        ctx.startReview(taskId);
+      }
+      return;
+    }
+
+    case "task-rejected": {
+      ctx.log(`  🚫 ${taskId} 거절됨`);
+      let reason = "";
+      const reasonFile = path.join(
+        OUTPUT_DIR,
+        `${taskId}-rejection-reason.txt`,
+      );
+      if (fs.existsSync(reasonFile))
+        reason = fs.readFileSync(reasonFile, "utf-8").split("\n")[0];
+      markTaskRejected(taskId, reason, ctx);
+      return;
+    }
+
+    case "task-failed":
+      ctx.log(`  ❌ ${taskId} task 실행 실패`);
+      markTaskFailed(taskId, "task 실행 실패", ctx);
+      return;
+  }
 }
 
 export async function onReviewFinished(
