@@ -3,7 +3,7 @@
  *
  * 오케스트레이션 메인 엔진 (얇은 조율자).
  * - scheduler.ts: 태스크 스케줄링 순수 함수
- * - signal-handler.ts: 시그널 처리/상태 전환
+ * - task-transitions.ts: 태스크 상태 전이
  */
 import { execSync } from "child_process";
 import { EventEmitter } from "events";
@@ -30,12 +30,9 @@ import {
   canDispatch,
 } from "./scheduler";
 import {
-  markTaskFailed,
-  type SignalHandlerCallbacks,
-} from "./signal-handler";
-import {
   onTaskFinished,
   onReviewFinished,
+  markTaskFailed,
   type TransitionContext,
 } from "./task-transitions";
 
@@ -159,31 +156,7 @@ export class OrchestrateEngine extends EventEmitter {
     }
   }
 
-  /** markTaskFailed 가 엔진 내부에 접근할 때 쓰는 콜백 묶음. */
-  private buildSignalCallbacks(): SignalHandlerCallbacks {
-    return {
-      log: (msg) => this.log(msg),
-      startTask: (taskId, feedbackFile) => this.startTask(taskId, feedbackFile),
-      startReview: (taskId) => this.startReview(taskId),
-      removeWorker: (taskId) => this.workers.delete(taskId),
-      emitTaskResult: (taskId, status) =>
-        this.emit("task-result", { taskId, status }),
-      getRetryCount: (taskId) => this.retryCounts.get(taskId) ?? 0,
-      bumpRetryCount: (taskId) => {
-        const next = (this.retryCounts.get(taskId) ?? 0) + 1;
-        this.retryCounts.set(taskId, next);
-        this.saveRetryCounts();
-        return next;
-      },
-      clearRetryCount: (taskId) => {
-        if (this.retryCounts.delete(taskId)) this.saveRetryCounts();
-      },
-      maxReviewRetry: () => this.maxReviewRetryValue,
-      baseBranch: () => this.baseBranchValue,
-    };
-  }
-
-  /** task-transitions 용 컨텍스트. buildSignalCallbacks의 부분집합 + removeWorker 뺌. */
+  /** task-transitions 용 컨텍스트. */
   private buildTransitionContext(): TransitionContext {
     return {
       log: (msg) => this.log(msg),
@@ -447,7 +420,7 @@ export class OrchestrateEngine extends EventEmitter {
         markTaskFailed(
           taskId,
           "워커 타임아웃 (30분)",
-          this.buildSignalCallbacks(),
+          this.buildTransitionContext(),
         );
       }
     }
@@ -456,7 +429,7 @@ export class OrchestrateEngine extends EventEmitter {
   private cleanupZombies() {
     const zombies = getTasksByStatus("in_progress");
     let cleaned = 0;
-    const cb = this.buildSignalCallbacks();
+    const ctx = this.buildTransitionContext();
     for (const row of zombies) {
       if (this.workers.has(row.id)) continue;
       // 엔진이 모르는 in_progress = 프로세스 크래시/재시작으로 인한 고아 태스크.
@@ -464,7 +437,7 @@ export class OrchestrateEngine extends EventEmitter {
       markTaskFailed(
         row.id,
         "고아 상태 감지 (엔진 크래시 또는 비정상 종료 추정)",
-        cb,
+        ctx,
       );
       cleaned++;
       this.log(`  🧹 zombie: ${row.id} in_progress → failed`);
