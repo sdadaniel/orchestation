@@ -12,7 +12,6 @@ import path from "path";
 import {
   PROJECT_ROOT,
   OUTPUT_DIR,
-  SIGNALS_DIR,
   CONFIG_PATH,
 } from "../../lib/paths";
 import { loadSettings } from "../../lib/settings";
@@ -32,7 +31,6 @@ import {
   type TaskInfo,
 } from "./scheduler";
 import {
-  processSignals,
   markTaskFailed,
   type SignalHandlerCallbacks,
 } from "./signal-handler";
@@ -86,7 +84,6 @@ export class OrchestrateEngine extends EventEmitter {
   private workers = new Map<string, WorkerEntry>();
   private retryCounts = new Map<string, number>();
   private loopTimer: ReturnType<typeof setInterval> | null = null;
-  private signalWatcher: fs.FSWatcher | null = null;
   private _status: EngineStatus = "idle";
   private baseBranchValue = "main";
   private maxParallelTask = 2;
@@ -113,8 +110,6 @@ export class OrchestrateEngine extends EventEmitter {
     this.loadConfig();
     this._status = "running";
     this.loadRetryCounts();
-    // 워커가 task-done 등 시그널 파일을 쓰는 디렉터리. 없으면 생성.
-    fs.mkdirSync(SIGNALS_DIR, { recursive: true });
     this.log("🚀 Pipeline 시작 (Node.js engine)");
     this.log(`⚙️  Base Branch: ${this.baseBranchValue}`);
     this.log(
@@ -122,7 +117,6 @@ export class OrchestrateEngine extends EventEmitter {
     );
     this.emit("status-changed", this._status);
     this.cleanupZombies();
-    this.startSignalWatcher();
     this.loopTimer = setInterval(() => this.mainLoop(), LOOP_INTERVAL_MS);
     this.mainLoop(); // 첫 턴도 즉시 실행
     return { success: true };
@@ -139,15 +133,6 @@ export class OrchestrateEngine extends EventEmitter {
     if (this.loopTimer) {
       clearInterval(this.loopTimer);
       this.loopTimer = null;
-    }
-    if (this.signalWatcher) {
-      this.signalWatcher.close();
-      this.signalWatcher = null;
-    }
-    try {
-      fs.rmSync(SIGNALS_DIR, { recursive: true, force: true });
-    } catch {
-      /* ignore */
     }
     this._status = "idle";
     this.log("🛑 Pipeline 종료 완료");
@@ -175,7 +160,7 @@ export class OrchestrateEngine extends EventEmitter {
     }
   }
 
-  /** processSignals / markTaskFailed 가 엔진 내부에 접근할 때 쓰는 콜백 묶음. */
+  /** markTaskFailed 가 엔진 내부에 접근할 때 쓰는 콜백 묶음. */
   private buildSignalCallbacks(): SignalHandlerCallbacks {
     return {
       log: (msg) => this.log(msg),
@@ -419,32 +404,11 @@ export class OrchestrateEngine extends EventEmitter {
     return true;
   }
 
-  /**
-   * SIGNALS_DIR 변경 감지용. 실제 시그널 처리는 mainLoop 의 processSignals 가
-   * 매 루프마다 수행한다(watch 실패 시에도 동일).
-   */
-  private startSignalWatcher() {
-    try {
-      this.signalWatcher = fs.watch(SIGNALS_DIR, () => {
-        /* 다음 mainLoop 에서 processSignals 가 읽음 */
-      });
-    } catch {
-      /* fs.watch 불가 시에도 mainLoop 폴링으로 동작 */
-    }
-  }
-
-  /**
-   * running 동안 LOOP_INTERVAL_MS 마다 호출.
-   * 1) 시그널 디렉터리 확인 → 태스크 상태 반영
-   * 2) 실행 가능한 pending/stopped 큐에서 슬롯 있으면 startTask
-   * 3) 주기적으로 설정 리로드·워커 타임아웃 검사
-   */
+  /** running 동안 LOOP_INTERVAL_MS 마다 호출. 실행 가능한 큐 디스패치 + 주기적 설정 리로드/워커 타임아웃 검사. */
   private mainLoop() {
     if (this._status !== "running") return;
     this.loopCount++;
     if (this.loopCount % CONFIG_AND_HEALTH_EVERY_N_LOOPS === 0) this.loadConfig();
-
-    processSignals(this.buildSignalCallbacks());
 
     const queue = scanTasks().filter(
       (t) => (t.status === "pending" || t.status === "stopped") && depsSatisfied(t),
