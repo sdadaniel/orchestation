@@ -192,4 +192,3 @@ function parseDecision(result: string): "approved" | "rejected" {
 
   return "rejected";
 }
-

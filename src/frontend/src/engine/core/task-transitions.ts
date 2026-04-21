@@ -96,10 +96,7 @@ export async function onReviewFinished(
     ctx.log(
       `  🔄 ${taskId} review 수정요청 → retry (${next}/${ctx.maxReviewRetry()})`,
     );
-    const feedbackFile = path.join(
-      OUTPUT_DIR,
-      `${taskId}-review-feedback.txt`,
-    );
+    const feedbackFile = path.join(OUTPUT_DIR, `${taskId}-review-feedback.txt`);
     ctx.startTask(taskId, feedbackFile);
   } else {
     ctx.log(`  ❌ ${taskId} retry 상한 초과 (${ctx.maxReviewRetry()})`);
@@ -159,7 +156,10 @@ export function markTaskRejected(
 // ── pure helpers (테스트 대상) ─────────────────────────
 
 /** 지금까지 누적 비용이 MAX_TASK_COST 초과면 true. 파일 I/O 있으나 순수에 가깝게 설계. */
-export function isCostOverLimit(taskId: string, log: (msg: string) => void): boolean {
+export function isCostOverLimit(
+  taskId: string,
+  log: (msg: string) => void,
+): boolean {
   try {
     const costData = parseCostLog();
     let total = 0;

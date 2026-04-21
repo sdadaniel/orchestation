@@ -9,11 +9,7 @@ import { execSync } from "child_process";
 import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
-import {
-  PROJECT_ROOT,
-  OUTPUT_DIR,
-  CONFIG_PATH,
-} from "../../lib/paths";
+import { PROJECT_ROOT, OUTPUT_DIR, CONFIG_PATH } from "../../lib/paths";
 import { loadSettings } from "../../lib/settings";
 import {
   getTask,
@@ -233,7 +229,10 @@ export class OrchestrateEngine extends EventEmitter {
    * 브랜치와 연결된 worktree 를 강제로 제거한다.
    * 정리 실패해도 throw 하지 않음 (호출자는 "정리됐다고 가정"하고 이어감).
    */
-  private forceCleanBranchAndWorktree(branchName: string, worktreePath: string) {
+  private forceCleanBranchAndWorktree(
+    branchName: string,
+    worktreePath: string,
+  ) {
     const fullWorktreePath = path.resolve(PROJECT_ROOT, worktreePath);
     if (fs.existsSync(fullWorktreePath)) {
       try {
@@ -380,10 +379,12 @@ export class OrchestrateEngine extends EventEmitter {
   private mainLoop() {
     if (this._status !== "running") return;
     this.loopCount++;
-    if (this.loopCount % CONFIG_AND_HEALTH_EVERY_N_LOOPS === 0) this.loadConfig();
+    if (this.loopCount % CONFIG_AND_HEALTH_EVERY_N_LOOPS === 0)
+      this.loadConfig();
 
     const queue = scanTasks().filter(
-      (t) => (t.status === "pending" || t.status === "stopped") && depsSatisfied(t),
+      (t) =>
+        (t.status === "pending" || t.status === "stopped") && depsSatisfied(t),
     );
 
     if (this.workers.size === 0 && queue.length === 0) {
@@ -404,7 +405,8 @@ export class OrchestrateEngine extends EventEmitter {
       );
     }
 
-    if (this.loopCount % CONFIG_AND_HEALTH_EVERY_N_LOOPS === 0) this.healthCheck();
+    if (this.loopCount % CONFIG_AND_HEALTH_EVERY_N_LOOPS === 0)
+      this.healthCheck();
   }
 
   /** 너무 오래 도는 워커 중단 및 태스크 failed 처리. */
@@ -455,4 +457,3 @@ export class OrchestrateEngine extends EventEmitter {
     this.emit("log", line);
   }
 }
-

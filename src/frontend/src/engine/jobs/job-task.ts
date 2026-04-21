@@ -10,10 +10,7 @@ import { loadSettings } from "../../lib/settings";
 import { logModelSelection } from "../ops/model-selector";
 import { setupContextFilter, buildTaskPrompt } from "../ops/context-builder";
 import { runClaudeStreamJson } from "../claude/claude-worker";
-import {
-  getTask,
-  taskRowToMarkdown,
-} from "../../service/task-store";
+import { getTask, taskRowToMarkdown } from "../../service/task-store";
 import { parseContext, parseScope } from "../../lib/task-row-parsers";
 import { logTokenUsage } from "../../service/token-logger";
 
@@ -90,7 +87,11 @@ export async function runJobTask(
 
     // 6. 모델 선택
     const tokenLogPath = path.join(OUTPUT_DIR, "token-usage.log");
-    const { model, complexity } = logModelSelection(taskFile, taskId, tokenLogPath);
+    const { model, complexity } = logModelSelection(
+      taskFile,
+      taskId,
+      tokenLogPath,
+    );
     log(`🤖 모델: ${model} (복잡도: ${complexity})`);
 
     // 7. Claude 호출
@@ -151,7 +152,10 @@ export async function runJobTask(
         .replace("거절:", "")
         .trim();
       log(`🚫 거절: ${reason}`);
-      const reasonFile = path.join(OUTPUT_DIR, `${taskId}-rejection-reason.txt`);
+      const reasonFile = path.join(
+        OUTPUT_DIR,
+        `${taskId}-rejection-reason.txt`,
+      );
       fs.writeFileSync(reasonFile, claudeResult.result);
       cleanupTmpTaskFile(taskId);
       return {
@@ -289,7 +293,9 @@ function validateScope(
       { encoding: "utf-8" },
     ).trim();
 
-    const allChanges = [...new Set([...diff.split("\n"), ...unstaged.split("\n")])].filter(Boolean);
+    const allChanges = [
+      ...new Set([...diff.split("\n"), ...unstaged.split("\n")]),
+    ].filter(Boolean);
     if (allChanges.length === 0) return;
 
     // 빌드 아티팩트 및 context filter 파일은 scope 검증에서 제외
@@ -322,4 +328,3 @@ function validateScope(
     /* ignore */
   }
 }
-
