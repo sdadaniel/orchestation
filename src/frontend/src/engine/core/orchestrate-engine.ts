@@ -391,12 +391,20 @@ export class OrchestrateEngine extends EventEmitter {
         /* ignore */
       }
     })
-      .then((result) => {
+      .then(async (result) => {
         this.log(`  [${taskId}/review] 완료: ${result.status}`);
+        this.workers.delete(taskId);
+        await onReviewFinished(taskId, result, this.buildTransitionContext());
       })
-      .catch((err) => {
+      .catch(async (err) => {
         this.log(
           `  ❌ ${taskId}: review 오류: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        this.workers.delete(taskId);
+        await onReviewFinished(
+          taskId,
+          { status: "review-rejected" },
+          this.buildTransitionContext(),
         );
       });
 
