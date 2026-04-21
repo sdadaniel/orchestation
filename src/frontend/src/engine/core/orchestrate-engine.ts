@@ -28,7 +28,6 @@ import {
   depsSatisfied,
   scopeNotConflicting,
   canDispatch,
-  type TaskInfo,
 } from "./scheduler";
 import {
   markTaskFailed,
