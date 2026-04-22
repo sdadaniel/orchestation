@@ -13,6 +13,9 @@ export const dynamic = "force-dynamic";
 
 interface TokenUsageRow {
   task_id: string;
+  step_id: string | null;
+  step_key: string | null;
+  step_type: string | null;
   phase: string;
   turns: number;
   duration_ms: number;
@@ -22,6 +25,9 @@ interface TokenUsageRow {
 
 interface TaskEventRow {
   task_id: string;
+  step_id: string | null;
+  step_key: string | null;
+  step_type: string | null;
   event_type: string;
   from_status: string | null;
   to_status: string | null;
@@ -46,15 +52,23 @@ function getLogsFromDb(taskId: string): TaskLogEntry[] | null {
   try {
     const tokenRows = db
       .prepare(
-        "SELECT task_id, phase, turns, duration_ms, cost_usd, timestamp FROM token_usage WHERE task_id = ? ORDER BY timestamp",
+        `SELECT u.task_id, u.step_id, s.step_key, s.step_type, u.phase, u.turns, u.duration_ms, u.cost_usd, u.timestamp
+         FROM token_usage u
+         LEFT JOIN task_steps s ON s.id = u.step_id
+         WHERE u.task_id = ?
+         ORDER BY u.timestamp`,
       )
       .all(taskId) as TokenUsageRow[];
 
     for (const row of tokenRows) {
+      const stepPart =
+        row.step_key || row.step_type
+          ? `step=${row.step_key ?? "?"}(${row.step_type ?? "?"}) | `
+          : "";
       entries.push({
         timestamp: row.timestamp,
         level: "info",
-        message: `phase=${row.phase} | turns=${row.turns} | duration=${row.duration_ms}ms | cost=$${row.cost_usd}`,
+        message: `${stepPart}phase=${row.phase} | turns=${row.turns} | duration=${row.duration_ms}ms | cost=$${row.cost_usd}`,
       });
     }
   } catch {
@@ -65,12 +79,20 @@ function getLogsFromDb(taskId: string): TaskLogEntry[] | null {
   try {
     const eventRows = db
       .prepare(
-        "SELECT task_id, event_type, from_status, to_status, detail, timestamp FROM task_events WHERE task_id = ? ORDER BY timestamp",
+        `SELECT e.task_id, e.step_id, s.step_key, s.step_type, e.event_type, e.from_status, e.to_status, e.detail, e.timestamp
+         FROM task_events e
+         LEFT JOIN task_steps s ON s.id = e.step_id
+         WHERE e.task_id = ?
+         ORDER BY e.timestamp`,
       )
       .all(taskId) as TaskEventRow[];
 
     for (const row of eventRows) {
-      const parts = [`[${row.event_type}]`];
+      const stepTag =
+        row.step_key || row.step_type
+          ? `${row.step_key ?? "?"}(${row.step_type ?? "?"}) `
+          : "";
+      const parts = [`[${stepTag}${row.event_type}]`];
       if (row.from_status && row.to_status) {
         parts.push(`${row.from_status} → ${row.to_status}`);
       }
