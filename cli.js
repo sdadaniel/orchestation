@@ -5,7 +5,8 @@ const path = require("path");
 const fs = require("fs");
 
 const ORCH_DIR = ".orchestration";
-const FRONTEND_DIR = path.join(__dirname, "src", "frontend");
+const FRONTEND_DIR = path.join(__dirname, "apps", "dashboard");
+const RUNTIME_DIR = path.join(__dirname, "packages", "orchestration-runtime");
 
 const command = process.argv[2];
 const args = process.argv.slice(3);
@@ -184,6 +185,21 @@ switch (command) {
       }
     }
 
+    const runtimeNodeModules = path.join(RUNTIME_DIR, "node_modules");
+    if (!fs.existsSync(runtimeNodeModules)) {
+      console.log("Installing orchestration runtime dependencies (first run)...");
+      try {
+        execSync("npm install --production=false", {
+          cwd: RUNTIME_DIR,
+          stdio: "inherit",
+        });
+        console.log("  Runtime dependencies installed.\n");
+      } catch (err) {
+        console.error("Failed to install runtime dependencies.");
+        process.exit(1);
+      }
+    }
+
     // Port: -p flag > find available port starting from 3000
     const net = require("net");
     let requestedPort = 3000;
@@ -282,8 +298,24 @@ switch (command) {
   case "run": {
     ensureOrchDir();
 
-    const tsxBin = path.join(FRONTEND_DIR, "node_modules", ".bin", "tsx");
-    const engineScript = path.join(FRONTEND_DIR, "src", "cli", "run-engine.ts");
+    const runtimeNodeModulesRun = path.join(RUNTIME_DIR, "node_modules");
+    if (!fs.existsSync(runtimeNodeModulesRun)) {
+      console.log("Installing orchestration runtime dependencies (first run)...");
+      try {
+        execSync("npm install --production=false", {
+          cwd: RUNTIME_DIR,
+          stdio: "inherit",
+        });
+      } catch (err) {
+        console.error("Failed to install runtime dependencies.");
+        process.exit(1);
+      }
+    }
+
+    const tsxInRuntime = path.join(RUNTIME_DIR, "node_modules", ".bin", "tsx");
+    const tsxInDashboard = path.join(FRONTEND_DIR, "node_modules", ".bin", "tsx");
+    const tsxBin = fs.existsSync(tsxInRuntime) ? tsxInRuntime : tsxInDashboard;
+    const engineScript = path.join(RUNTIME_DIR, "src", "cli", "run-engine.ts");
 
     if (!fs.existsSync(engineScript)) {
       console.error("Error: run-engine.ts not found at", engineScript);
@@ -292,7 +324,7 @@ switch (command) {
 
     console.log("Running orchestration pipeline (Node.js engine)...");
     const runProc = spawn(tsxBin, [engineScript, ...args], {
-      cwd: FRONTEND_DIR,
+      cwd: RUNTIME_DIR,
       stdio: "inherit",
       env: { ...process.env, PACKAGE_DIR: __dirname, PROJECT_ROOT: process.cwd() },
     });
@@ -307,8 +339,24 @@ switch (command) {
   case "night": {
     ensureOrchDir();
 
-    const nightTsxBin = path.join(FRONTEND_DIR, "node_modules", ".bin", "tsx");
-    const nightScript = path.join(FRONTEND_DIR, "src", "cli", "run-night-worker.ts");
+    const runtimeNodeModulesNight = path.join(RUNTIME_DIR, "node_modules");
+    if (!fs.existsSync(runtimeNodeModulesNight)) {
+      console.log("Installing orchestration runtime dependencies (first run)...");
+      try {
+        execSync("npm install --production=false", {
+          cwd: RUNTIME_DIR,
+          stdio: "inherit",
+        });
+      } catch (err) {
+        console.error("Failed to install runtime dependencies.");
+        process.exit(1);
+      }
+    }
+
+    const nightTsxRuntime = path.join(RUNTIME_DIR, "node_modules", ".bin", "tsx");
+    const nightTsxDashboard = path.join(FRONTEND_DIR, "node_modules", ".bin", "tsx");
+    const nightTsxBin = fs.existsSync(nightTsxRuntime) ? nightTsxRuntime : nightTsxDashboard;
+    const nightScript = path.join(RUNTIME_DIR, "src", "cli", "run-night-worker.ts");
 
     if (!fs.existsSync(nightScript)) {
       console.error("Error: run-night-worker.ts not found at", nightScript);
@@ -317,7 +365,7 @@ switch (command) {
 
     console.log("Starting Night Worker (Node.js)...");
     const nightProc = spawn(nightTsxBin, [nightScript, ...args], {
-      cwd: FRONTEND_DIR,
+      cwd: RUNTIME_DIR,
       stdio: "inherit",
       env: { ...process.env, PACKAGE_DIR: __dirname, PROJECT_ROOT: process.cwd() },
     });

@@ -1,0 +1,69 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/types/plan": [
+        "../../packages/orchestration-runtime/src/types/plan.ts"
+      ],
+      "@/types/waterfall": [
+        "../../packages/orchestration-runtime/src/types/waterfall.ts"
+      ],
+      "@/lib/query-client": [
+        "./src/lib/query-client.ts"
+      ],
+      "@/lib/utils": [
+        "./src/lib/utils.ts"
+      ],
+      "@/lib/*": [
+        "../../packages/orchestration-runtime/src/lib/*"
+      ],
+      "@/service/*": [
+        "../../packages/orchestration-runtime/src/service/*"
+      ],
+      "@/parser/*": [
+        "../../packages/orchestration-runtime/src/parser/*"
+      ],
+      "@/engine/*": [
+        "../../packages/orchestration-runtime/src/engine/*"
+      ],
+      "@/constants/*": [
+        "../../packages/orchestration-runtime/src/constants/*"
+      ],
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "baseUrl": "."
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

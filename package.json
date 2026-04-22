@@ -14,7 +14,8 @@
     "cli.js",
     "docs/roles/",
     "config.json",
-    "src/frontend/"
+    "apps/dashboard/",
+    "packages/orchestration-runtime/"
   ],
   "bundledDependencies": false,
   "engines": {

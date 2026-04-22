@@ -1,0 +1,20 @@
+{
+  "name": "@orchestration/runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Orchestration engine, CLI entry scripts, parsers, and shared server utilities",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "gray-matter": "^4.0.3",
+    "tsx": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3"
+  }
+}

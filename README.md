@@ -58,9 +58,21 @@ project/
     run-worker.sh           # 개별 태스크 워커
     night-worker.sh         # Night Worker
     lib/                    # 유틸리티
-  src/frontend/             # 대시보드 (Next.js)
+  apps/dashboard/          # 대시보드 (Next.js)
+  packages/orchestration-runtime/  # 엔진, CLI 스크립트, 파서, 공유 서버 유틸
   cli.js                    # CLI 엔트리포인트
 ```
+
+## 로컬 개발
+
+대시보드와 오케스트레이션 런타임은 서로 다른 `package.json`을 쓰므로, 클론 후 각각 한 번씩 설치합니다.
+
+```bash
+cd apps/dashboard && npm install
+cd ../../packages/orchestration-runtime && npm install
+```
+
+대시보드만 띄울 때는 `apps/dashboard`에서 `npm run dev`를 실행합니다.
 
 ## 설정 (.orchestration/config.json)
 

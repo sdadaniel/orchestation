@@ -19,10 +19,13 @@ docs/task/
 docs/todo/
 docs/README.md
 
-# 프론트엔드: 소스만 포함, 빌드/런타임 산출물 제외
-src/frontend/node_modules/
-src/frontend/.next/
-src/frontend/test-results/
-src/frontend/playwright-report/
-src/frontend/e2e/
-src/frontend/tsconfig.tsbuildinfo
+# 대시보드: 소스만 포함, 빌드/런타임 산출물 제외
+apps/dashboard/node_modules/
+apps/dashboard/.next/
+apps/dashboard/test-results/
+apps/dashboard/playwright-report/
+apps/dashboard/e2e/
+apps/dashboard/tsconfig.tsbuildinfo
+
+# 오케스트레이션 런타임 패키지
+packages/orchestration-runtime/node_modules/
