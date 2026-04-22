@@ -4,7 +4,11 @@
  */
 import { getWritableDb, getDb } from "./db";
 import { formatTimestamp } from "../lib/date-utils";
-import { parseContext, parseDependsOn, parseScope } from "../lib/task-row-parsers";
+import {
+  parseContext,
+  parseDependsOn,
+  parseScope,
+} from "../lib/task-row-parsers";
 
 export interface TaskRow {
   id: string;
@@ -21,6 +25,22 @@ export interface TaskRow {
   complexity: string | null;
   sort_order: number;
   content: string;
+  created: string;
+  updated: string;
+}
+
+export interface TaskStepRow {
+  id: string;
+  task_id: string;
+  step_key: string;
+  step_type: string;
+  status: string;
+  attempt: number;
+  max_attempts: number | null;
+  inputs: string; // JSON object string
+  outputs: string; // JSON object string
+  started_at: string | null;
+  finished_at: string | null;
   created: string;
   updated: string;
 }
@@ -58,6 +78,59 @@ export function getTasksByStatus(...statuses: string[]): TaskRow[] {
       `SELECT * FROM tasks WHERE status IN (${placeholders}) ORDER BY sort_order, id`,
     )
     .all(...statuses) as TaskRow[];
+}
+
+export function getTaskSteps(taskId: string): TaskStepRow[] {
+  const db = getDb();
+  if (!db) return [];
+  return db
+    .prepare(
+      "SELECT * FROM task_steps WHERE task_id = ? ORDER BY created ASC, step_key ASC",
+    )
+    .all(taskId) as TaskStepRow[];
+}
+
+export function getTaskStep(stepId: string): TaskStepRow | null {
+  const db = getDb();
+  if (!db) return null;
+  return (
+    (db.prepare("SELECT * FROM task_steps WHERE id = ?").get(stepId) as
+      | TaskStepRow
+      | undefined) ?? null
+  );
+}
+
+export function updateTaskStep(
+  stepId: string,
+  patch: Partial<
+    Pick<
+      TaskStepRow,
+      | "status"
+      | "attempt"
+      | "max_attempts"
+      | "inputs"
+      | "outputs"
+      | "started_at"
+      | "finished_at"
+    >
+  >,
+): void {
+  const db = getWritableDb();
+  if (!db) throw new Error("Database not available");
+
+  const fields: string[] = [];
+  const params: Record<string, unknown> = { id: stepId, updated: now() };
+
+  for (const [k, v] of Object.entries(patch)) {
+    fields.push(`${k} = @${k}`);
+    params[k] = v;
+  }
+  fields.push("updated = @updated");
+
+  if (fields.length === 0) return;
+  db.prepare(`UPDATE task_steps SET ${fields.join(", ")} WHERE id = @id`).run(
+    params,
+  );
 }
 
 export function getNextTaskId(): string {
@@ -122,6 +195,54 @@ export function createTask(task: {
   return getTask(task.id)!;
 }
 
+export function ensureTaskSteps(
+  taskId: string,
+  steps: { key: string; type: string; maxAttempts?: number }[],
+): void {
+  const db = getWritableDb();
+  if (!db) throw new Error("Database not available");
+
+  const ts = now();
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO task_steps
+      (id, task_id, step_key, step_type, status, attempt, max_attempts, inputs, outputs, created, updated)
+     VALUES
+      (@id, @task_id, @step_key, @step_type, @status, @attempt, @max_attempts, @inputs, @outputs, @created, @updated)`,
+  );
+
+  const txn = db.transaction((defs: typeof steps) => {
+    for (const def of defs) {
+      const stepId = `${taskId}:${def.key}`;
+      insert.run({
+        id: stepId,
+        task_id: taskId,
+        step_key: def.key,
+        step_type: def.type,
+        status: "pending",
+        attempt: 0,
+        max_attempts: def.maxAttempts ?? null,
+        inputs: "{}",
+        outputs: "{}",
+        created: ts,
+        updated: ts,
+      });
+    }
+  });
+  txn(steps);
+}
+
+export function getNextPendingStep(taskId: string): TaskStepRow | null {
+  const db = getDb();
+  if (!db) return null;
+  return (
+    (db
+      .prepare(
+        "SELECT * FROM task_steps WHERE task_id = ? AND status = 'pending' ORDER BY created ASC, step_key ASC LIMIT 1",
+      )
+      .get(taskId) as TaskStepRow | undefined) ?? null
+  );
+}
+
 export function updateTask(
   taskId: string,
   fields: Partial<{
@@ -163,6 +284,19 @@ export function updateTask(
 
   db.prepare(`UPDATE tasks SET ${sets.join(", ")} WHERE id = @id`).run(values);
   return true;
+}
+
+export function recordStepEvent(
+  taskId: string,
+  stepId: string,
+  eventType: string,
+  detail?: string,
+): void {
+  const db = getWritableDb();
+  if (!db) return;
+  db.prepare(
+    "INSERT INTO task_events (task_id, step_id, event_type, detail, timestamp) VALUES (?, ?, ?, ?, ?)",
+  ).run(taskId, stepId, eventType, detail ?? null, now());
 }
 
 export function updateTaskStatus(

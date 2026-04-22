@@ -13,12 +13,17 @@ import { PROJECT_ROOT, OUTPUT_DIR, CONFIG_PATH } from "../../lib/paths";
 import { loadSettings } from "../../lib/settings";
 import {
   getTask,
+  getTaskStep,
+  getNextPendingStep,
+  ensureTaskSteps,
   getTasksByStatus,
+  recordStepEvent,
   updateTask,
   updateTaskStatus,
+  updateTaskStep,
 } from "../../service/task-store";
-import { runJobTask } from "../jobs/job-task";
-import { runJobReview } from "../jobs/job-review";
+import { parseWorkflowFromTaskContent } from "../workflow";
+import { runStep } from "../runner/step-runner";
 import {
   scanTasks,
   depsSatisfied,
@@ -26,17 +31,10 @@ import {
   canDispatch,
 } from "./scheduler";
 import {
-  onTaskFinished,
-  onReviewFinished,
+  onStepFinished,
   markTaskFailed,
   type TransitionContext,
 } from "./task-transitions";
-
-const RETRY_COUNTS_FILE = path.join(
-  PROJECT_ROOT,
-  ".orchestration",
-  "retry-counts.json",
-);
 
 export type TaskStatus =
   | "pending"
@@ -61,7 +59,8 @@ interface WorkerEntry {
   abortController: AbortController;
   promise: Promise<void>;
   taskId: string;
-  phase: "task" | "review";
+  stepId: string;
+  stepType: string;
   startedAt: number;
 }
 
@@ -74,7 +73,6 @@ const IDLE_LOG_EVERY_N_LOOPS = 5;
 
 export class OrchestrateEngine extends EventEmitter {
   private workers = new Map<string, WorkerEntry>();
-  private retryCounts = new Map<string, number>();
   private loopTimer: ReturnType<typeof setInterval> | null = null;
   private _status: EngineStatus = "idle";
   private baseBranchValue = "main";
@@ -101,7 +99,7 @@ export class OrchestrateEngine extends EventEmitter {
 
     this.loadConfig();
     this._status = "running";
-    this.loadRetryCounts();
+    this.logInfo("Engine started");
     this.log("🚀 Pipeline 시작 (Node.js engine)");
     this.log(`⚙️  Base Branch: ${this.baseBranchValue}`);
     this.log(
@@ -115,6 +113,7 @@ export class OrchestrateEngine extends EventEmitter {
   }
 
   stop(): { success: boolean } {
+    this.logInfo("Stop requested");
     this.log("🛑 Pipeline 종료 요청");
     for (const [taskId, entry] of this.workers) {
       this.log(`  🛑 ${taskId}: 워커 종료`);
@@ -127,6 +126,7 @@ export class OrchestrateEngine extends EventEmitter {
       this.loopTimer = null;
     }
     this._status = "idle";
+    this.logInfo("Engine stopped");
     this.log("🛑 Pipeline 종료 완료");
     this.emit("status-changed", this._status);
     return { success: true };
@@ -156,49 +156,12 @@ export class OrchestrateEngine extends EventEmitter {
   private buildTransitionContext(): TransitionContext {
     return {
       log: (msg) => this.log(msg),
-      startTask: (taskId, feedbackFile) => this.startTask(taskId, feedbackFile),
-      startReview: (taskId) => this.startReview(taskId),
+      startStep: (taskId, stepId, opts) => this.startStep(taskId, stepId, opts),
       emitTaskResult: (taskId, status) =>
         this.emit("task-result", { taskId, status }),
-      getRetryCount: (taskId) => this.retryCounts.get(taskId) ?? 0,
-      bumpRetryCount: (taskId) => {
-        const next = (this.retryCounts.get(taskId) ?? 0) + 1;
-        this.retryCounts.set(taskId, next);
-        this.saveRetryCounts();
-        return next;
-      },
-      clearRetryCount: (taskId) => {
-        if (this.retryCounts.delete(taskId)) this.saveRetryCounts();
-      },
       maxReviewRetry: () => this.maxReviewRetryValue,
       baseBranch: () => this.baseBranchValue,
     };
-  }
-
-  private loadRetryCounts() {
-    try {
-      if (!fs.existsSync(RETRY_COUNTS_FILE)) {
-        this.retryCounts = new Map();
-        return;
-      }
-      const obj = JSON.parse(
-        fs.readFileSync(RETRY_COUNTS_FILE, "utf-8"),
-      ) as Record<string, number>;
-      this.retryCounts = new Map(Object.entries(obj));
-    } catch {
-      this.retryCounts = new Map();
-    }
-  }
-
-  private saveRetryCounts() {
-    try {
-      fs.mkdirSync(path.dirname(RETRY_COUNTS_FILE), { recursive: true });
-      const obj: Record<string, number> = {};
-      for (const [k, v] of this.retryCounts) obj[k] = v;
-      fs.writeFileSync(RETRY_COUNTS_FILE, JSON.stringify(obj, null, 2));
-    } catch {
-      /* ignore */
-    }
   }
 
   /**
@@ -263,10 +226,20 @@ export class OrchestrateEngine extends EventEmitter {
     }
   }
 
-  private startTask(taskId: string, feedbackFile?: string): boolean {
+  private startStep(
+    taskId: string,
+    stepId: string,
+    opts?: { feedbackFile?: string },
+  ): boolean {
     const row = getTask(taskId);
     if (!row) {
       this.log(`  ❌ ${taskId}: 태스크 없음`);
+      return false;
+    }
+
+    const step = getTaskStep(stepId);
+    if (!step) {
+      this.log(`  ❌ ${taskId}: step 없음: ${stepId}`);
       return false;
     }
 
@@ -293,85 +266,89 @@ export class OrchestrateEngine extends EventEmitter {
       this.log(`  📝 ${taskId}: branch/worktree 필드 자동 추가`);
     }
 
-    this.setStatus(taskId, "in_progress");
-    const logFile = path.join(OUTPUT_DIR, "logs", `${taskId}.log`);
+    this.setStatus(
+      taskId,
+      step.step_type === "review" ? "reviewing" : "in_progress",
+    );
+    updateTaskStep(stepId, {
+      status: "in_progress",
+      started_at: new Date().toISOString(),
+    });
+    recordStepEvent(taskId, stepId, "step_start", step.step_key);
+    const logFile = path.join(
+      OUTPUT_DIR,
+      "logs",
+      `${taskId}-${step.step_key}.log`,
+    );
     fs.mkdirSync(path.dirname(logFile), { recursive: true });
 
     const abortController = new AbortController();
-    const promise = runJobTask(taskId, feedbackFile, (line) => {
+    const writeLine = (line: string) => {
       this.log(`  ${line}`);
       try {
         fs.appendFileSync(logFile, line + "\n");
       } catch {
         /* ignore */
       }
-    })
+    };
+
+    const promise = runStep({
+      stepType: step.step_type,
+      taskId,
+      stepId,
+      feedbackFile: opts?.feedbackFile,
+      log: writeLine,
+    });
+
+    const workerKey = `${taskId}:${stepId}`;
+    const wrapped = promise
       .then(async (result) => {
-        this.log(`  [${taskId}/task] 완료: ${result.status}`);
-        this.workers.delete(taskId);
-        await onTaskFinished(taskId, result, this.buildTransitionContext());
+        this.log(`  [${taskId}/${step.step_key}] 완료`);
+        this.workers.delete(workerKey);
+        await onStepFinished(
+          taskId,
+          stepId,
+          step.step_type,
+          (result as { raw: unknown }).raw as never,
+          this.buildTransitionContext(),
+        );
       })
       .catch(async (err) => {
         this.log(
-          `  ❌ ${taskId}: task 오류: ${err instanceof Error ? err.message : String(err)}`,
+          `  ❌ ${taskId}: step 오류(${step.step_key}): ${err instanceof Error ? err.message : String(err)}`,
         );
-        this.workers.delete(taskId);
-        await onTaskFinished(
-          taskId,
-          { status: "task-failed" },
-          this.buildTransitionContext(),
-        );
+        this.workers.delete(workerKey);
+        if (step.step_type === "review") {
+          await onStepFinished(
+            taskId,
+            stepId,
+            step.step_type,
+            { status: "review-rejected" } as never,
+            this.buildTransitionContext(),
+          );
+        } else {
+          await onStepFinished(
+            taskId,
+            stepId,
+            step.step_type,
+            { status: "task-failed" } as never,
+            this.buildTransitionContext(),
+          );
+        }
       });
 
-    this.workers.set(taskId, {
+    this.workers.set(workerKey, {
       abortController,
-      promise,
+      promise: wrapped,
       taskId,
-      phase: "task",
+      stepId,
+      stepType: step.step_type,
       startedAt: Date.now(),
     });
-    this.log(`  🔧 ${taskId}: job-task 시작`);
-    return true;
-  }
 
-  private startReview(taskId: string): boolean {
-    const logFile = path.join(OUTPUT_DIR, "logs", `${taskId}-review.log`);
-    fs.mkdirSync(path.dirname(logFile), { recursive: true });
-
-    const abortController = new AbortController();
-    const promise = runJobReview(taskId, (line) => {
-      this.log(`  ${line}`);
-      try {
-        fs.appendFileSync(logFile, line + "\n");
-      } catch {
-        /* ignore */
-      }
-    })
-      .then(async (result) => {
-        this.log(`  [${taskId}/review] 완료: ${result.status}`);
-        this.workers.delete(taskId);
-        await onReviewFinished(taskId, result, this.buildTransitionContext());
-      })
-      .catch(async (err) => {
-        this.log(
-          `  ❌ ${taskId}: review 오류: ${err instanceof Error ? err.message : String(err)}`,
-        );
-        this.workers.delete(taskId);
-        await onReviewFinished(
-          taskId,
-          { status: "review-rejected" },
-          this.buildTransitionContext(),
-        );
-      });
-
-    this.workers.set(taskId, {
-      abortController,
-      promise,
-      taskId,
-      phase: "review",
-      startedAt: Date.now(),
-    });
-    this.log(`  🔍 ${taskId}: job-review 시작`);
+    this.log(
+      `  ▶️  ${taskId}: step 시작: ${step.step_key} (${step.step_type})`,
+    );
     return true;
   }
 
@@ -395,11 +372,24 @@ export class OrchestrateEngine extends EventEmitter {
 
     for (const task of queue) {
       if (this.workers.size >= this.maxParallelTask) break;
-      if (this.workers.has(task.id)) continue;
+      // One active worker per task at a time (even if multiple steps exist)
+      if ([...this.workers.values()].some((w) => w.taskId === task.id))
+        continue;
       if (!scopeNotConflicting(task, this.workers, (msg) => this.log(msg)))
         continue;
       if (!canDispatch()) break;
-      this.startTask(task.id);
+
+      // Ensure workflow/steps exist, then start next pending step
+      const row = getTask(task.id);
+      if (!row) continue;
+      const defs = parseWorkflowFromTaskContent(row.content || "");
+      ensureTaskSteps(task.id, defs);
+      const next = getNextPendingStep(task.id);
+      if (!next) {
+        this.log(`  ⚠️  ${task.id}: 실행할 step 없음`);
+        continue;
+      }
+      this.startStep(task.id, next.id);
       this.log(
         `  📊 슬롯: ${this.workers.size}/${this.maxParallelTask} (대기: ${queue.length})`,
       );
@@ -455,5 +445,14 @@ export class OrchestrateEngine extends EventEmitter {
 
   private log(line: string) {
     this.emit("log", line);
+  }
+
+  private logInfo(message: string) {
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    const ss = String(d.getSeconds()).padStart(2, "0");
+    // OpenClaw 스타일: HH:MM:SS + level(info) + source + message
+    this.emit("log", `${hh}:${mm}:${ss} info engine ${message}`);
   }
 }

@@ -29,6 +29,7 @@ export async function runJobTask(
   taskId: string,
   feedbackFile?: string,
   onLog?: (line: string) => void,
+  stepId?: string,
 ): Promise<JobTaskResult> {
   const log = (msg: string) => onLog?.(`[${taskId}] ${msg}`);
 
@@ -133,7 +134,7 @@ export async function runJobTask(
     );
 
     // 9. 토큰 사용량 로깅
-    logTokenUsage(taskId, "task", model, claudeResult);
+    logTokenUsage(taskId, "task", model, claudeResult, stepId);
 
     // 10. .claudeignore 정리 (워크트리에 생성된 파일)
     if (worktreePath) {

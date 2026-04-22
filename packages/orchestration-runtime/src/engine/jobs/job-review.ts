@@ -26,6 +26,7 @@ export interface JobReviewResult {
 export async function runJobReview(
   taskId: string,
   onLog?: (line: string) => void,
+  stepId?: string,
 ): Promise<JobReviewResult> {
   const log = (msg: string) => onLog?.(`[${taskId}/review] ${msg}`);
 
@@ -115,7 +116,7 @@ export async function runJobReview(
     );
 
     // 8. 토큰 사용량 로깅
-    logTokenUsage(taskId, "review", model, claudeResult);
+    logTokenUsage(taskId, "review", model, claudeResult, stepId);
 
     // 9. 승인/거절 판정
     const decision = parseDecision(claudeResult.result);

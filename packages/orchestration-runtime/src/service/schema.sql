@@ -21,10 +21,29 @@ CREATE TABLE IF NOT EXISTS tasks (
   updated TEXT DEFAULT (datetime('now','localtime'))
 );
 
+-- Task steps (per-task workflow instances: work/review/qa/etc)
+CREATE TABLE IF NOT EXISTS task_steps (
+  id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL,
+  step_key TEXT NOT NULL,       -- stable key inside a task (e.g. "work", "review")
+  step_type TEXT NOT NULL,      -- semantic type (e.g. "task", "review", "check")
+  status TEXT NOT NULL DEFAULT 'pending', -- pending, in_progress, done, failed, skipped
+  attempt INTEGER DEFAULT 0,
+  max_attempts INTEGER,
+  inputs TEXT DEFAULT '{}',     -- JSON object
+  outputs TEXT DEFAULT '{}',    -- JSON object
+  started_at TEXT,
+  finished_at TEXT,
+  created TEXT DEFAULT (datetime('now','localtime')),
+  updated TEXT DEFAULT (datetime('now','localtime')),
+  FOREIGN KEY (task_id) REFERENCES tasks(id)
+);
+
 -- Task events (status changes, signals, dispatches)
 CREATE TABLE IF NOT EXISTS task_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   task_id TEXT NOT NULL,
+  step_id TEXT,                 -- nullable (task-level event if null)
   event_type TEXT NOT NULL,     -- status_change, dispatch, review_start, review_result, merge, signal
   from_status TEXT,
   to_status TEXT,
@@ -37,6 +56,7 @@ CREATE TABLE IF NOT EXISTS task_events (
 CREATE TABLE IF NOT EXISTS token_usage (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   task_id TEXT NOT NULL,
+  step_id TEXT,                 -- nullable (task-level token usage if null)
   phase TEXT NOT NULL,           -- task, review, model_selection
   model TEXT,
   input_tokens INTEGER DEFAULT 0,
@@ -54,6 +74,7 @@ CREATE TABLE IF NOT EXISTS token_usage (
 CREATE TABLE IF NOT EXISTS conversations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   task_id TEXT NOT NULL,
+  step_id TEXT,                 -- nullable (task-level conversation if null)
   phase TEXT NOT NULL,           -- task, review
   line_number INTEGER,
   type TEXT,                     -- system, assistant, user, result
@@ -100,7 +121,11 @@ CREATE TABLE IF NOT EXISTS run_history (
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_task_events_task_id ON task_events(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_events_step_id ON task_events(step_id);
 CREATE INDEX IF NOT EXISTS idx_token_usage_task_id ON token_usage(task_id);
+CREATE INDEX IF NOT EXISTS idx_token_usage_step_id ON token_usage(step_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_task_id ON conversations(task_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_step_id ON conversations(step_id);
 CREATE INDEX IF NOT EXISTS idx_notices_notice_id ON notices(notice_id);
 CREATE INDEX IF NOT EXISTS idx_docs_category ON docs(category);
+CREATE INDEX IF NOT EXISTS idx_task_steps_task_id ON task_steps(task_id);

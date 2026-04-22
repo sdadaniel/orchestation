@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { OUTPUT_DIR } from "../lib/paths";
-import { getDb } from "./db";
+import { getWritableDb } from "./db";
 
 export interface TokenUsageResult {
   costUsd: number;
@@ -15,6 +15,7 @@ export function logTokenUsage(
   phase: string,
   model: string,
   result: TokenUsageResult,
+  stepId?: string,
 ): void {
   const logLine = `[${new Date().toISOString()}] ${taskId} | phase=${phase} | model=${model} | input=${result.inputTokens} | output=${result.outputTokens} | cost=$${result.costUsd.toFixed(4)} | duration=${result.durationMs}ms\n`;
 
@@ -27,13 +28,14 @@ export function logTokenUsage(
   }
 
   try {
-    const db = getDb();
+    const db = getWritableDb();
     if (db) {
       db.prepare(
-        `INSERT INTO token_usage (task_id, phase, model, input_tokens, output_tokens, cost_usd, duration_ms, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO token_usage (task_id, step_id, phase, model, input_tokens, output_tokens, cost_usd, duration_ms, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         taskId,
+        stepId ?? null,
         phase,
         model,
         result.inputTokens,

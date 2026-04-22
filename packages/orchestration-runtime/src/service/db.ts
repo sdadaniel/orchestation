@@ -1,9 +1,12 @@
 import Database from "better-sqlite3";
 import { resolve } from "path";
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { PROJECT_ROOT, DB_DIR } from "../lib/paths";
 
 const DB_PATH = resolve(DB_DIR, "orchestration.db");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_PATH = resolve(__dirname, "schema.sql");
 
 let _readonlyDb: Database.Database | null = null;
@@ -23,19 +26,61 @@ function ensureDb(): void {
   if (isNew && fs.existsSync(SCHEMA_PATH)) {
     db.exec(fs.readFileSync(SCHEMA_PATH, "utf-8"));
   } else if (!isNew) {
-    // Migrate: create missing tables on existing DBs
+    // Migrate: create missing tables / columns on existing DBs
+    const schema = fs.existsSync(SCHEMA_PATH)
+      ? fs.readFileSync(SCHEMA_PATH, "utf-8")
+      : "";
+
+    // 1) Ensure tables exist (CREATE TABLE IF NOT EXISTS)
+    if (schema) {
+      const createOnly = schema
+        .split(";\n")
+        .filter((stmt) => stmt.trim().toUpperCase().startsWith("CREATE TABLE"))
+        .join(";\n");
+      if (createOnly.trim()) db.exec(createOnly + ";\n");
+    }
+
+    // 2) Ensure new columns exist (SQLite has no ADD COLUMN IF NOT EXISTS)
+    function hasColumn(table: string, col: string): boolean {
+      try {
+        const rows = db.pragma(`table_info(${table})`) as Array<{
+          name: string;
+        }>;
+        return rows.some((r) => r.name === col);
+      } catch {
+        return false;
+      }
+    }
+
+    function addColumn(table: string, colDef: string) {
+      const colName = colDef.trim().split(/\s+/)[0] ?? "";
+      if (!colName) return;
+      if (hasColumn(table, colName)) return;
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef}`);
+    }
+
+    // task_events.step_id / token_usage.step_id / conversations.step_id
+    addColumn("task_events", "step_id TEXT");
+    addColumn("token_usage", "step_id TEXT");
+    addColumn("conversations", "step_id TEXT");
+
+    // task_steps table might exist only on newer installs: create if missing
     db.exec(`
-      CREATE TABLE IF NOT EXISTS run_history (
+      CREATE TABLE IF NOT EXISTS task_steps (
         id TEXT PRIMARY KEY,
-        started_at TEXT NOT NULL,
-        finished_at TEXT NOT NULL,
-        status TEXT NOT NULL,
-        exit_code INTEGER,
-        task_results TEXT DEFAULT '[]',
-        total_cost_usd REAL DEFAULT 0,
-        total_duration_ms INTEGER DEFAULT 0,
-        tasks_completed INTEGER DEFAULT 0,
-        tasks_failed INTEGER DEFAULT 0
+        task_id TEXT NOT NULL,
+        step_key TEXT NOT NULL,
+        step_type TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        attempt INTEGER DEFAULT 0,
+        max_attempts INTEGER,
+        inputs TEXT DEFAULT '{}',
+        outputs TEXT DEFAULT '{}',
+        started_at TEXT,
+        finished_at TEXT,
+        created TEXT DEFAULT (datetime('now','localtime')),
+        updated TEXT DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (task_id) REFERENCES tasks(id)
       )
     `);
   }
