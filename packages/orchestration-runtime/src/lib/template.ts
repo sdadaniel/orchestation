@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-import { DASHBOARD_DIR } from "./paths";
+import { DASHBOARD_DIR } from "./config/paths";
 
 const TEMPLATE_DIR = path.join(DASHBOARD_DIR, "template");
 

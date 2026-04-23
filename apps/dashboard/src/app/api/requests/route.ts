@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
-import { getErrorMessage } from "@/lib/error-utils";
-import { ROLES_DIR } from "@/lib/paths";
+import { getErrorMessage } from "@/lib/errors/error-utils";
+import { ROLES_DIR } from "@/lib/config/paths";
 import { getDb, isDbAvailable } from "@/service/db";
 import { getNextTaskId, createTask } from "@/service/task-store";
-import { formatTimestamp } from "@/lib/date-utils";
+import { formatTimestamp } from "@/lib/time/date-utils";
 
 export const dynamic = "force-dynamic";
 

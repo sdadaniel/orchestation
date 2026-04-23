@@ -1,10 +1,9 @@
 import { spawn, execSync, ChildProcess } from "child_process";
-import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
-import { pipeProcessLogs } from "../../lib/process-utils";
-import { getErrorMessage } from "../../lib/error-utils";
-import { PROJECT_ROOT, CONFIG_PATH, SIGNALS_DIR } from "../../lib/paths";
+import { pipeProcessLogs } from "../../lib/process/process-utils";
+import { getErrorMessage } from "../../lib/errors/error-utils";
+import { PROJECT_ROOT, CONFIG_PATH, SIGNALS_DIR } from "../../lib/config/paths";
 import { TaskRunState } from "./task-runner-types";
 import { getTask, updateTaskStatus } from "../../service/task-store";
 
@@ -110,12 +109,14 @@ export function spawnJobProcess(opts: {
   args: string[];
   taskId: string;
   state: TaskRunState;
-  events: EventEmitter;
+  onLog: (line: string) => void;
+  onDone: (status: "completed" | "failed") => void;
   label: string;
   env?: Record<string, string | undefined>;
   onClose: (code: number | null) => void;
 }): ChildProcess | null {
-  const { scriptPath, args, taskId, state, events, label, env, onClose } = opts;
+  const { scriptPath, args, taskId, state, onLog, onDone, label, env, onClose } =
+    opts;
 
   let proc: ChildProcess;
   try {
@@ -131,13 +132,13 @@ export function spawnJobProcess(opts: {
     state.status = "failed";
     state.finishedAt = new Date().toISOString();
     updateTaskFileStatus(taskId, "failed");
-    events.emit(`done:${taskId}`, "failed");
+    onDone("failed");
     return null;
   }
 
   pipeProcessLogs(proc, (line) => {
     state.logs.push(line);
-    events.emit(`log:${taskId}`, line);
+    onLog(line);
   });
 
   proc.on("close", onClose);
@@ -145,11 +146,11 @@ export function spawnJobProcess(opts: {
   proc.on("error", (err: Error) => {
     const errLine = `[task-runner] ${label} process error: ${err.message}`;
     state.logs.push(errLine);
-    events.emit(`log:${taskId}`, errLine);
+    onLog(errLine);
     state.status = "failed";
     state.finishedAt = new Date().toISOString();
     updateTaskFileStatus(taskId, "failed");
-    events.emit(`done:${taskId}`, "failed");
+    onDone("failed");
   });
 
   return proc;

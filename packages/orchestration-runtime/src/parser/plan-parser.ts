@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 
-import { PROJECT_ROOT } from "../lib/paths";
+import { PROJECT_ROOT } from "../lib/config/paths";
 
 export interface PlanFrontmatter {
   id: string;

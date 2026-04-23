@@ -3,7 +3,11 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   turbopack: {
-    root: path.resolve(__dirname),
+    // Allow importing runtime sources via tsconfig paths (../../packages/*)
+    root: path.resolve(__dirname, "../.."),
+  },
+  experimental: {
+    externalDir: true,
   },
 };
 

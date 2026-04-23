@@ -2,8 +2,8 @@ import {
   spawnClaude,
   CLAUDE_DEFAULT_TIMEOUT_MS,
   ClaudeChildProcess,
-} from "@/lib/claude-cli";
-import { jsonErrorResponse } from "@/lib/error-utils";
+} from "@/lib/ai/claude-cli";
+import { jsonErrorResponse } from "@/lib/errors/error-utils";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;

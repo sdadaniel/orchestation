@@ -3,7 +3,7 @@ import { resolve } from "path";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { PROJECT_ROOT, DB_DIR } from "../lib/paths";
+import { PROJECT_ROOT, DB_DIR } from "../lib/config/paths";
 
 const DB_PATH = resolve(DB_DIR, "orchestration.db");
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

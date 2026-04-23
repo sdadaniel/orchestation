@@ -3,7 +3,7 @@
  * 마크다운 파일 대신 SQLite를 source of truth로 사용
  */
 import { getWritableDb, getDb } from "./db";
-import { formatTimestamp } from "../lib/date-utils";
+import { formatTimestamp } from "../lib/time/date-utils";
 import {
   parseContext,
   parseDependsOn,

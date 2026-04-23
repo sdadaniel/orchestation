@@ -8,7 +8,7 @@
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import { PROJECT_ROOT, OUTPUT_DIR } from "../../lib/paths";
+import { PROJECT_ROOT, OUTPUT_DIR } from "../../lib/config/paths";
 import { writeNotice } from "../../parser/notice-parser";
 import { parseCostLog } from "../../parser/cost-parser";
 import {

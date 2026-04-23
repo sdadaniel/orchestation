@@ -1,6 +1,6 @@
 import fs from "fs";
 import { NextResponse } from "next/server";
-import { ROLES_DIR } from "@/lib/paths";
+import { ROLES_DIR } from "@/lib/config/paths";
 
 export const dynamic = "force-dynamic";
 

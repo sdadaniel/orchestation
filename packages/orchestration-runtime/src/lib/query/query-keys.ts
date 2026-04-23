@@ -77,3 +77,4 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.plans.all, id] as const,
   },
 } as const;
+

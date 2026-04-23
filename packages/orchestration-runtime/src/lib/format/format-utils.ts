@@ -27,3 +27,4 @@ export function formatDuration(
 export function formatDurationMinutes(ms: number): string {
   return formatDuration(ms, "minutes");
 }
+

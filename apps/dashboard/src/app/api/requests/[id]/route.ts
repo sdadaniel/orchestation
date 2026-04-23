@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { getErrorMessage } from "@/lib/error-utils";
-import { OUTPUT_DIR } from "@/lib/paths";
+import { getErrorMessage } from "@/lib/errors/error-utils";
+import { OUTPUT_DIR } from "@/lib/config/paths";
 import { parseDependsOn, parseScope } from "@/lib/task-row-parsers";
 import {
   getTask,

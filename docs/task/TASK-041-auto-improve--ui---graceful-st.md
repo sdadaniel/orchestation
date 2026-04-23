@@ -1,5 +1,6 @@
 ---
-id: TASK-041
+
+## id: TASK-041
 title: auto-improve 웹 UI 중단 버튼 (graceful stop)
 status: done
 priority: medium
@@ -9,7 +10,6 @@ branch: task/TASK-041-auto-improve--ui---graceful-st
 worktree: ../repo-wt-TASK-041
 role: general
 reviewer_role: reviewer-general
----
 
 # TASK-041: auto-improve 웹 UI 중단 버튼 (graceful stop)
 
@@ -37,3 +37,4 @@ reviewer_role: reviewer-general
   - running 상태: 스피너 + "Stop" 버튼
   - stopping 상태: "Stopping..." 텍스트 (버튼 비활성화)
 - 프로세스 종료 시 stop flag 파일 자동 삭제
+

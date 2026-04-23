@@ -4,7 +4,7 @@
  */
 import fs from "fs";
 import path from "path";
-import { SIGNALS_DIR } from "../../lib/paths";
+import { SIGNALS_DIR } from "../../lib/config/paths";
 
 export type SignalSuffix =
   | "task-done"

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
-import { getErrorMessage } from "@/lib/error-utils";
+import { getErrorMessage } from "@/lib/errors/error-utils";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -235,7 +235,7 @@ export default function TaskDetailPage({
   }
 
   return (
-    <div className="space-y-5 max-w-3xl mx-auto pb-[500px]">
+    <div className="space-y-5 max-w-3xl mx-auto pb-[300px]">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button

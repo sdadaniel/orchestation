@@ -6,7 +6,9 @@ import * as pty from "node-pty";
 import os from "os";
 import { resolve } from "path";
 import taskRunnerManager from "@/engine/runner/task-runner-manager";
-import { getErrorMessage } from "@/lib/error-utils";
+import orchestrationManager from "@/engine/orchestration-manager";
+import { getErrorMessage } from "@/lib/errors/error-utils";
+import { subscribe } from "@/lib/sse";
 
 const _PROJECT_ROOT = process.env.PROJECT_ROOT || resolve(process.cwd(), "../..");
 const CRASH_LOG = resolve(_PROJECT_ROOT, ".orchestration/output/crash.log");
@@ -53,12 +55,17 @@ app.prepare().then(() => {
   const wss = new WebSocketServer({ noServer: true });
   const wssTaskLogs = new WebSocketServer({ noServer: true });
   const wssTaskTerminal = new WebSocketServer({ noServer: true });
+  const wssOrchestrate = new WebSocketServer({ noServer: true });
 
   // Upgrade handler: route to correct WebSocket server
   server.on("upgrade", (req, socket, head) => {
     if (req.url === "/ws/terminal") {
       wss.handleUpgrade(req, socket, head, (ws) => {
         wss.emit("connection", ws, req);
+      });
+    } else if (req.url === "/ws/orchestrate") {
+      wssOrchestrate.handleUpgrade(req, socket, head, (ws) => {
+        wssOrchestrate.emit("connection", ws, req);
       });
     } else if (req.url?.startsWith("/ws/task-terminal/")) {
       wssTaskTerminal.handleUpgrade(req, socket, head, (ws) => {
@@ -74,6 +81,76 @@ app.prepare().then(() => {
 
   const PROJECT_ROOT = _PROJECT_ROOT;
   const OUTPUT_DIR = resolve(PROJECT_ROOT, "output");
+
+  // ── Orchestrate Control WebSocket (run/stop without HTTP APIs) ─────────────
+  wssOrchestrate.on("connection", (ws: WebSocket) => {
+    console.log(`[ws:orchestrate] connected`);
+
+    const send = (obj: unknown) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(obj));
+      }
+    };
+
+    // Hello/ready
+    send({ type: "ready", status: orchestrationManager.getStatus() });
+
+    ws.on("message", (msg: Buffer | string) => {
+      try {
+        const raw = typeof msg === "string" ? msg : msg.toString("utf-8");
+        const parsed = JSON.parse(raw) as {
+          type?: "req";
+          id?: string;
+          method?: string;
+        };
+        const id = typeof parsed.id === "string" ? parsed.id : null;
+        const method = typeof parsed.method === "string" ? parsed.method : null;
+
+        if (parsed.type !== "req" || !id || !method) {
+          send({ type: "res", id: id ?? "unknown", ok: false, error: "bad-request" });
+          return;
+        }
+
+        if (method === "orchestrate.run") {
+          if (orchestrationManager.isRunning()) {
+            send({ type: "res", id, ok: false, error: "already-running" });
+            return;
+          }
+
+          const result = orchestrationManager.run();
+          if (!result.success) {
+            send({ type: "res", id, ok: false, error: result.error ?? "run-failed" });
+            return;
+          }
+          send({ type: "res", id, ok: true, status: orchestrationManager.getStatus() });
+          return;
+        }
+
+        if (method === "orchestrate.stop") {
+          if (!orchestrationManager.isRunning()) {
+            send({ type: "res", id, ok: false, error: "not-running" });
+            return;
+          }
+          const result = orchestrationManager.stop();
+          if (!result.success) {
+            send({ type: "res", id, ok: false, error: result.error ?? "stop-failed" });
+            return;
+          }
+          send({ type: "res", id, ok: true, status: orchestrationManager.getStatus() });
+          return;
+        }
+
+        send({ type: "res", id, ok: false, error: "unknown-method" });
+      } catch (err) {
+        send({ type: "res", id: "unknown", ok: false, error: getErrorMessage(err) });
+      }
+    });
+
+    ws.on("close", () => console.log(`[ws:orchestrate] disconnected`));
+    ws.on("error", (err: Error) =>
+      console.error(`[ws:orchestrate] error: ${err.message}`),
+    );
+  });
 
   // ── Task Terminal WebSocket (JSONL conversation stream) ──────
   wssTaskTerminal.on("connection", (ws: WebSocket, req) => {
@@ -165,20 +242,21 @@ app.prepare().then(() => {
       }
     }
 
-    // Subscribe to new log lines
-    const onLog = (line: string) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "log", line }));
+    // Subscribe to SSE bus events (task-scoped)
+    const unsubscribe = subscribe((env) => {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      if (env.type === "log") {
+        const d = env.data as any;
+        if (d?.scope === "task" && d?.taskId === taskId && typeof d?.line === "string") {
+          ws.send(JSON.stringify({ type: "log", line: d.line }));
+        }
+      } else if (env.type === "task-result") {
+        const d = env.data as any;
+        if (d?.taskId === taskId && typeof d?.status === "string") {
+          ws.send(JSON.stringify({ type: "status", status: d.status }));
+        }
       }
-    };
-    const onDone = (status: string) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "status", status }));
-      }
-    };
-
-    taskRunnerManager.events.on(`log:${taskId}`, onLog);
-    taskRunnerManager.events.on(`done:${taskId}`, onDone);
+    });
 
     // ── Source 2: File-based logs (orchestrate.sh pipeline runs) ──
     // Watch multiple log sources across both output directories
@@ -227,8 +305,7 @@ app.prepare().then(() => {
 
     // ── Cleanup ──
     const cleanup = () => {
-      taskRunnerManager.events.off(`log:${taskId}`, onLog);
-      taskRunnerManager.events.off(`done:${taskId}`, onDone);
+      unsubscribe();
       for (const f of watchedFiles) unwatchFile(f);
     };
 

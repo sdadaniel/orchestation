@@ -3,7 +3,7 @@
 import { Save, Loader2, Plus, X, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
-import type { WorkerMode } from "@/lib/settings";
+import type { WorkerMode } from "@/lib/config/settings";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";

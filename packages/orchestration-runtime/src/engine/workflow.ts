@@ -1,4 +1,4 @@
-import { parseFrontmatter } from "../lib/frontmatter-utils";
+import { parseFrontmatter } from "../lib/content/frontmatter-utils";
 
 export interface WorkflowStepDef {
   /** stable key within a task (e.g. "work", "review") */

@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
-import { getErrorMessage } from "@/lib/error-utils";
+import { queryKeys } from "@/lib/query/query-keys";
+import { getErrorMessage } from "@/lib/errors/error-utils";
 
 export interface RequestItem {
   id: string;

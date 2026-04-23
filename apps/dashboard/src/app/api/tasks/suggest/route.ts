@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { spawnClaude, ClaudeChildProcess } from "@/lib/claude-cli";
+import { spawnClaude, ClaudeChildProcess } from "@/lib/ai/claude-cli";
 import { readTemplate } from "@/lib/template";
 
 export const dynamic = "force-dynamic";

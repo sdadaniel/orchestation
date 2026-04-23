@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getErrorMessage } from "@/lib/error-utils";
+import { getErrorMessage } from "@/lib/errors/error-utils";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -212,7 +212,7 @@ export default function NewTaskPage() {
     !confirming && tasks.length > 0 && tasks.every((t) => t.title.trim());
 
   return (
-    <div className="space-y-4 max-w-3xl mx-auto pb-[500px]">
+    <div className="space-y-4 max-w-3xl mx-auto pb-[300px]">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button

@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { useSortableTable } from "./useSortableTable";
 import { SortIcon } from "./SortIcon";
-import { formatDuration } from "@/lib/format-utils";
+import { formatDuration } from "@/lib/format/format-utils";
 
 interface RunHistoryProps {
   runs: RunHistoryEntry[];

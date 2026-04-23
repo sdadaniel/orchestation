@@ -4,8 +4,8 @@
  */
 import fs from "fs";
 import path from "path";
-import { DASHBOARD_DIR, PROJECT_ROOT, TEMPLATE_DIR } from "../../lib/paths";
-import { loadSettings } from "../../lib/settings";
+import { DASHBOARD_DIR, PROJECT_ROOT, TEMPLATE_DIR } from "../../lib/config/paths";
+import { loadSettings } from "../../lib/config/settings";
 import { getTasksByStatus } from "../../service/task-store";
 
 // ── Template 렌더링 ────────────────────────────────────────

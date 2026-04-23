@@ -43,3 +43,4 @@ export function formatTime(date: Date): string {
     `${String(date.getMinutes()).padStart(2, "0")}`
   );
 }
+

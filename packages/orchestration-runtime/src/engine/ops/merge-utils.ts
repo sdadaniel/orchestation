@@ -5,9 +5,9 @@
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import { PROJECT_ROOT } from "../../lib/paths";
+import { PROJECT_ROOT } from "../../lib/config/paths";
 import { writeNotice } from "../../parser/notice-parser";
-import { loadSettings } from "../../lib/settings";
+import { loadSettings } from "../../lib/config/settings";
 import { runClaudeJson } from "../claude/claude-worker";
 import { getTask, updateTaskStatus } from "../../service/task-store";
 

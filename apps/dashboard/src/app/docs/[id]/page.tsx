@@ -87,7 +87,7 @@ export default function DocsPage({
   }
 
   return (
-    <div className="max-w-3xl mx-auto pb-[500px]">
+    <div className="max-w-3xl mx-auto pb-[300px]">
       {/* Breadcrumb — 항상 표시 */}
       <div className="flex items-center gap-1 mb-3 text-[11px]">
         <BookOpen className="h-3 w-3 text-primary shrink-0" />

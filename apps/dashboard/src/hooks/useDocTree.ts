@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query/query-keys";
 import type { DocNode, DocDetail } from "@/parser/doc-tree";
-import { getErrorMessage } from "@/lib/error-utils";
+import { getErrorMessage } from "@/lib/errors/error-utils";
 
 export type { DocNode, DocDetail };
 

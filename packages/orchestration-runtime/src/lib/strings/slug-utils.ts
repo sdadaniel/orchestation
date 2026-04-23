@@ -18,3 +18,4 @@ export function generateSlug(text: string, maxLength?: number): string {
 
   return slug;
 }
+

@@ -3,10 +3,10 @@ import {
   spawnClaude,
   CLAUDE_DEFAULT_TIMEOUT_MS,
   ClaudeChildProcess,
-} from "@/lib/claude-cli";
+} from "@/lib/ai/claude-cli";
 import { renderTemplate } from "@/lib/template";
-import { ROLES_DIR } from "@/lib/paths";
-import { jsonErrorResponse } from "@/lib/error-utils";
+import { ROLES_DIR } from "@/lib/config/paths";
+import { jsonErrorResponse } from "@/lib/errors/error-utils";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;

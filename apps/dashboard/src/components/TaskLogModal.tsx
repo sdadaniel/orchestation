@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { getErrorMessage } from "@/lib/error-utils";
+import { getErrorMessage } from "@/lib/errors/error-utils";
 import { X, Terminal, Loader2, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WaterfallTask } from "@/types/waterfall";
@@ -19,46 +19,55 @@ export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
   const logContainerRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
 
-  // Fetch logs filtered by task ID
-  const fetchLogs = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/orchestrate/logs?since=0`);
-      if (!res.ok) throw new Error("로그를 불러올 수 없습니다.");
-      const data = (await res.json()) as { logs?: string[] };
-
-      if (!data.logs || !Array.isArray(data.logs)) {
-        setLogs([]);
-        return;
-      }
-
-      // Filter logs relevant to this task
-      const taskId = task.id;
-      const filtered = data.logs.filter((line: string) => {
-        const lower = line.toLowerCase();
-        const taskIdLower = taskId.toLowerCase();
-        return (
-          lower.includes(taskIdLower) ||
-          lower.includes(taskIdLower.replace("-", "_"))
-        );
-      });
-
-      setLogs(filtered.length > 0 ? filtered : []);
-      setError(null);
-    } catch (err) {
-      setError(getErrorMessage(err, "알 수 없는 오류"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [task.id]);
-
   useEffect(() => {
-    fetchLogs();
-    // Poll every 3 seconds if task is in progress
-    if (task.status === "in_progress") {
-      const interval = setInterval(fetchLogs, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [fetchLogs, task.status]);
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+    setLogs([]);
+
+    const proto = window.location.protocol === "https:" ? "wss" : "ws";
+    const url = `${proto}://${window.location.host}/ws/task-logs/${task.id}`;
+    const ws = new WebSocket(url);
+
+    ws.onopen = () => {
+      if (cancelled) return;
+      setIsLoading(false);
+    };
+
+    ws.onmessage = (e) => {
+      if (cancelled) return;
+      try {
+        const msg = JSON.parse(String(e.data ?? "")) as
+          | { type: "log"; line: string }
+          | { type: "status"; status: string };
+        if (msg.type === "log") {
+          setLogs((prev) => [...prev, msg.line]);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    ws.onerror = () => {
+      if (cancelled) return;
+      setError("로그 스트림 연결에 실패했습니다.");
+      setIsLoading(false);
+    };
+
+    ws.onclose = () => {
+      if (cancelled) return;
+      // keep existing logs, just stop streaming
+    };
+
+    return () => {
+      cancelled = true;
+      try {
+        ws.close();
+      } catch {
+        /* ignore */
+      }
+    };
+  }, [task.id]);
 
   // Auto-scroll to bottom
   useEffect(() => {

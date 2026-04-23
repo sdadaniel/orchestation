@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { OUTPUT_DIR } from "../lib/paths";
+import { OUTPUT_DIR } from "../lib/config/paths";
 import { getTask } from "../service/task-store";
 
 export interface TaskLogEntry {

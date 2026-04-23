@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { NOTICES_DIR } from "../lib/paths";
-import { parseFrontmatter, getString, getBool } from "../lib/frontmatter-utils";
+import { NOTICES_DIR } from "../lib/config/paths";
+import { parseFrontmatter, getString, getBool } from "../lib/content/frontmatter-utils";
 
 export type NoticeType = "info" | "warning" | "error" | "request";
 

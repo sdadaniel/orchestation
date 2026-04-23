@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { parseFrontmatter, getString } from "../lib/frontmatter-utils";
-import { PROJECT_ROOT } from "../lib/paths";
+import { parseFrontmatter, getString } from "../lib/content/frontmatter-utils";
+import { PROJECT_ROOT } from "../lib/config/paths";
 
 export interface PrdData {
   id: string;

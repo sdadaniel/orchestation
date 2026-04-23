@@ -1,14 +1,14 @@
 import fs from "fs";
 import path from "path";
-import { getErrorMessage } from "../lib/error-utils";
-import { PROJECT_ROOT, OUTPUT_DIR } from "../lib/paths";
-import { loadSettings } from "../lib/settings";
+import { getErrorMessage } from "../lib/errors/error-utils";
+import { PROJECT_ROOT, OUTPUT_DIR } from "../lib/config/paths";
+import { loadSettings } from "../lib/config/settings";
 import { runClaudeJson } from "./claude-worker";
 import {
   parseFrontmatter,
   getString,
   getStringArray,
-} from "../lib/frontmatter-utils";
+} from "../lib/content/frontmatter-utils";
 import {
   createTask,
   getNextTaskId,
@@ -318,10 +318,9 @@ SCOPE: (if accept) target file paths (comma-separated, relative to src/)`;
   private async runOrchestration(): Promise<void> {
     this.appendLog("[auto-improve] Starting orchestration engine...");
 
-    this.engine = new OrchestrateEngine();
-    this.engine.on("log", (line: string) =>
-      this.appendLog(`  [engine] ${line}`),
-    );
+    this.engine = new OrchestrateEngine({
+      onLog: (line) => this.appendLog(`  [engine] ${line}`),
+    });
 
     const result = this.engine.start();
     if (!result.success) {

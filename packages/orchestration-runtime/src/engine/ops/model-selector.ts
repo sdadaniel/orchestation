@@ -7,7 +7,7 @@ import {
   parseFrontmatter,
   getString,
   getStringArray,
-} from "../../lib/frontmatter-utils";
+} from "../../lib/content/frontmatter-utils";
 
 const MODEL_SIMPLE = "claude-haiku-4-5";
 const MODEL_COMPLEX = "claude-sonnet-4-6";

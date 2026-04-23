@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { TaskFrontmatter } from "@/parser/parser";
-import { getErrorMessage } from "@/lib/error-utils";
+import { getErrorMessage } from "@/lib/errors/error-utils";
 import { parseDependsOn, parseScope } from "@/lib/task-row-parsers";
 import {
   getAllTasks,

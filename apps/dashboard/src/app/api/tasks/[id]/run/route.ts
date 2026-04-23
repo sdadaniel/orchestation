@@ -10,7 +10,7 @@ import {
   getAllTasks,
   updateTaskStatus,
 } from "@/service/task-store";
-import { PROJECT_ROOT, OUTPUT_DIR } from "@/lib/paths";
+import { PROJECT_ROOT, OUTPUT_DIR } from "@/lib/config/paths";
 
 const SIGNAL_DIR = path.join(PROJECT_ROOT, ".orchestration", "signals");
 const TASK_ID_PATTERN = /^TASK-\d{3}$/;

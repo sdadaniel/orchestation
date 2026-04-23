@@ -1,6 +1,6 @@
 import { spawn, spawnSync, ChildProcess } from "child_process";
 import { Readable, Writable } from "stream";
-import { PROJECT_ROOT } from "./paths";
+import { PROJECT_ROOT } from "../config/paths";
 
 /** stdio: ["pipe","pipe","pipe"] 로 spawn된 프로세스 — 스트림이 항상 non-null */
 export interface ClaudeChildProcess extends ChildProcess {
@@ -113,3 +113,4 @@ export function runClaudeSync(
 
   return result.stdout ?? "";
 }
+

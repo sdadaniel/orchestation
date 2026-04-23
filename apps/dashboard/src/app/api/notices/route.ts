@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import { parseAllNotices, getNoticesDir } from "@/parser/notice-parser";
 import type { NoticeData, NoticeType } from "@/parser/notice-parser";
-import { getErrorMessage } from "@/lib/error-utils";
-import { generateSlug } from "@/lib/slug-utils";
+import { getErrorMessage } from "@/lib/errors/error-utils";
+import { generateSlug } from "@/lib/strings/slug-utils";
 import { getDb, isDbAvailable } from "@/service/db";
 
 export const dynamic = "force-dynamic";

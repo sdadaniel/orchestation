@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { OUTPUT_DIR } from "../lib/paths";
+import { OUTPUT_DIR } from "../lib/config/paths";
 import { getWritableDb } from "./db";
 
 export interface TokenUsageResult {

@@ -3,9 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRef, useEffect, useState } from "react";
 import type { QueryKey } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query/query-keys";
 import type { ClaudeProcess } from "@/types/monitor-types";
-import { getErrorMessage } from "@/lib/error-utils";
+import { getErrorMessage } from "@/lib/errors/error-utils";
 
 export type { ClaudeProcess };
 

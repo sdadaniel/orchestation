@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import Link from "next/link";
-import { formatDurationMinutes } from "@/lib/format-utils";
+import { formatDurationMinutes } from "@/lib/format/format-utils";
 
 interface CostTableProps {
   entries: CostEntry[];

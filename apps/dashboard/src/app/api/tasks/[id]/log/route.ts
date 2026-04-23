@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { PROJECT_ROOT } from "@/lib/paths";
+import { PROJECT_ROOT } from "@/lib/config/paths";
 
 export const dynamic = "force-dynamic";
 

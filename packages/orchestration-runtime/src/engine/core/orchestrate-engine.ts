@@ -6,11 +6,10 @@
  * - task-transitions.ts: 태스크 상태 전이
  */
 import { execSync } from "child_process";
-import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
-import { PROJECT_ROOT, OUTPUT_DIR, CONFIG_PATH } from "../../lib/paths";
-import { loadSettings } from "../../lib/settings";
+import { PROJECT_ROOT, OUTPUT_DIR, CONFIG_PATH } from "../../lib/config/paths";
+import { loadSettings } from "../../lib/config/settings";
 import {
   getTask,
   getTaskStep,
@@ -35,6 +34,7 @@ import {
   markTaskFailed,
   type TransitionContext,
 } from "./task-transitions";
+import { formatLogLine } from "../../lib/sse/logging/log-format";
 
 export type TaskStatus =
   | "pending"
@@ -55,6 +55,12 @@ export interface EngineEvents {
   }) => void;
 }
 
+export type EngineHooks = {
+  onLog?: (line: string) => void;
+  onStatusChanged?: (status: EngineStatus) => void;
+  onTaskResult?: (result: { taskId: string; status: "success" | "failure" }) => void;
+};
+
 interface WorkerEntry {
   abortController: AbortController;
   promise: Promise<void>;
@@ -71,7 +77,7 @@ const CONFIG_AND_HEALTH_EVERY_N_LOOPS = 10;
 /** 할 일·워커가 모두 없을 때 대기 로그를 몇 루프마다 찍을지. */
 const IDLE_LOG_EVERY_N_LOOPS = 5;
 
-export class OrchestrateEngine extends EventEmitter {
+export class OrchestrateEngine {
   private workers = new Map<string, WorkerEntry>();
   private loopTimer: ReturnType<typeof setInterval> | null = null;
   private _status: EngineStatus = "idle";
@@ -81,9 +87,24 @@ export class OrchestrateEngine extends EventEmitter {
   private maxReviewRetryValue = 3;
   private loopCount = 0;
 
-  constructor() {
-    super();
-    this.setMaxListeners(50);
+  private hooks: Required<EngineHooks>;
+
+  constructor(hooks?: EngineHooks) {
+    this.hooks = {
+      onLog: hooks?.onLog ?? (() => {}),
+      onStatusChanged: hooks?.onStatusChanged ?? (() => {}),
+      onTaskResult: hooks?.onTaskResult ?? (() => {}),
+    };
+  }
+
+  private emitLog(line: string) {
+    this.hooks.onLog(line);
+  }
+  private emitStatusChanged(status: EngineStatus) {
+    this.hooks.onStatusChanged(status);
+  }
+  private emitTaskResult(taskId: string, status: "success" | "failure") {
+    this.hooks.onTaskResult({ taskId, status });
   }
 
   get status(): EngineStatus {
@@ -100,12 +121,7 @@ export class OrchestrateEngine extends EventEmitter {
     this.loadConfig();
     this._status = "running";
     this.logInfo("Engine started");
-    this.log("🚀 Pipeline 시작 (Node.js engine)");
-    this.log(`⚙️  Base Branch: ${this.baseBranchValue}`);
-    this.log(
-      `⚙️  Max Parallel: task=${this.maxParallelTask}, review=${this.maxParallelReview}`,
-    );
-    this.emit("status-changed", this._status);
+    this.emitStatusChanged(this._status);
     this.cleanupZombies();
     this.loopTimer = setInterval(() => this.mainLoop(), LOOP_INTERVAL_MS);
     this.mainLoop(); // 첫 턴도 즉시 실행
@@ -113,10 +129,8 @@ export class OrchestrateEngine extends EventEmitter {
   }
 
   stop(): { success: boolean } {
-    this.logInfo("Stop requested");
-    this.log("🛑 Pipeline 종료 요청");
+    // Keep stop quiet; the manager will emit a single final log line.
     for (const [taskId, entry] of this.workers) {
-      this.log(`  🛑 ${taskId}: 워커 종료`);
       entry.abortController.abort();
       this.setStatus(taskId, "stopped");
     }
@@ -126,9 +140,7 @@ export class OrchestrateEngine extends EventEmitter {
       this.loopTimer = null;
     }
     this._status = "idle";
-    this.logInfo("Engine stopped");
-    this.log("🛑 Pipeline 종료 완료");
-    this.emit("status-changed", this._status);
+    this.emitStatusChanged(this._status);
     return { success: true };
   }
 
@@ -158,7 +170,7 @@ export class OrchestrateEngine extends EventEmitter {
       log: (msg) => this.log(msg),
       startStep: (taskId, stepId, opts) => this.startStep(taskId, stepId, opts),
       emitTaskResult: (taskId, status) =>
-        this.emit("task-result", { taskId, status }),
+        this.emitTaskResult(taskId, status),
       maxReviewRetry: () => this.maxReviewRetryValue,
       baseBranch: () => this.baseBranchValue,
     };
@@ -444,15 +456,15 @@ export class OrchestrateEngine extends EventEmitter {
   }
 
   private log(line: string) {
-    this.emit("log", line);
+    this.emitLog(line);
   }
 
   private logInfo(message: string) {
-    const d = new Date();
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    const ss = String(d.getSeconds()).padStart(2, "0");
-    // OpenClaw 스타일: HH:MM:SS + level(info) + source + message
-    this.emit("log", `${hh}:${mm}:${ss} info engine ${message}`);
+    this.emitLog(
+      formatLogLine({
+        source: "engine",
+        message,
+      }),
+    );
   }
 }

@@ -1,17 +1,15 @@
 {
-  "apiKey": "",
-  "srcPaths": [
-    "src/"
-  ],
-  "model": "claude-sonnet-4-6",
-  "baseBranch": "main",
-  "maxParallel": 3,
-  "maxReviewRetry": 2,
-  "workerMode": "background",
-  "nightWorker": {
-    "until": "07:00",
-    "budget": null,
-    "maxTasks": 10,
-    "types": "typecheck,lint,review"
-  }
+    "apiKey": "",
+    "srcPaths": ["src/"],
+    "model": "claude-sonnet-4-6",
+    "baseBranch": "main",
+    "maxParallel": 3,
+    "maxReviewRetry": 2,
+    "workerMode": "background",
+    "nightWorker": {
+        "until": "07:00",
+        "budget": null,
+        "maxTasks": 10,
+        "types": "typecheck,lint,review"
+    }
 }

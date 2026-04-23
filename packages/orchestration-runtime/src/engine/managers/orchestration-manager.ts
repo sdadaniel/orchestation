@@ -1,8 +1,8 @@
-import { EventEmitter } from "events";
 import { OrchestrateEngine, EngineStatus } from "../core/orchestrate-engine";
 import { appendRunHistory, type RunHistoryEntry } from "../../service/run-history";
 import { parseCostLog } from "../../parser/cost-parser";
-import { getErrorMessage } from "../../lib/error-utils";
+import { getErrorMessage } from "../../lib/errors/error-utils";
+import { formatLogLine, normalizeLogLine, publish } from "../../lib/sse";
 
 export type OrchestrationStatus = "idle" | "running" | "completed" | "failed";
 
@@ -36,9 +36,6 @@ const MAX_STATE_LOG_LINES = 200;
 class OrchestrationManager {
   private engine: OrchestrateEngine | null = null;
 
-  /** SSE 클라이언트에게 상태 변경을 알리기 위한 이벤트 버스 */
-  public readonly events = new EventEmitter();
-
   private lastEmittedSnapshotJson: string | null = null;
 
   private state: OrchestrationState = {
@@ -51,12 +48,11 @@ class OrchestrationManager {
     exitCode: null,
   };
 
-  constructor() {
-    this.events.setMaxListeners(50);
-  }
+  constructor() {}
 
   /** 상태 변경 시 SSE 클라이언트에 알림 */
-  private emitStatusChange() {
+  private emitStatusChange(opts?: { log?: boolean }) {
+    const log = opts?.log ?? true;
     const state = this.getState();
     const snapshot: OrchestrationStatusData = {
       status: state.status,
@@ -65,8 +61,8 @@ class OrchestrationManager {
       exitCode: state.exitCode,
       taskResults: state.taskResults,
     };
-    this.logStatusChangeIfNeeded(snapshot);
-    this.events.emit("status-changed", snapshot);
+    if (log) this.logStatusChangeIfNeeded(snapshot);
+    publish("orchestration-status", snapshot);
   }
 
   // ── Public API ─────────────────────────────────────────
@@ -116,32 +112,25 @@ class OrchestrationManager {
     this.state.exitCode = null;
 
     this.appendLog("[orchestrate] Starting Node.js engine");
-    this.emitStatusChange();
+    this.emitStatusChange({ log: false });
 
-    // 엔진 생성 및 이벤트 연결
-    this.engine = new OrchestrateEngine();
-
-    this.engine.on("log", (line: string) => {
-      this.appendLog(line);
-    });
-
-    this.engine.on("status-changed", (status: EngineStatus) => {
-      if (status === "idle" || status === "completed") {
-        this.state.status = status;
-        this.state.finishedAt = new Date().toISOString();
-        this.state.exitCode = 0;
-        this.saveRunHistory();
-        this.emitStatusChange();
-      }
-    });
-
-    this.engine.on(
-      "task-result",
-      (result: { taskId: string; status: "success" | "failure" }) => {
-        this.state.taskResults.push(result);
-        this.emitStatusChange();
+    // 엔진 생성 및 hooks 연결 (EventEmitter 제거)
+    this.engine = new OrchestrateEngine({
+      onLog: (line) => this.appendLog(line),
+      onStatusChanged: (status: EngineStatus) => {
+        if (status === "idle" || status === "completed") {
+          this.state.status = status;
+          this.state.finishedAt = new Date().toISOString();
+          this.state.exitCode = 0;
+          this.saveRunHistory();
+          this.emitStatusChange({ log: false });
+        }
       },
-    );
+      onTaskResult: (result) => {
+        this.state.taskResults.push(result);
+        this.emitStatusChange({ log: false });
+      },
+    });
 
     const result = this.engine.start();
     if (!result.success) {
@@ -158,11 +147,8 @@ class OrchestrationManager {
   // ── Stop ───────────────────────────────────────────────
 
   stop(): { success: boolean; error?: string } {
-    this.appendLog("[orchestrate] Stop requested");
-
     if (this.engine) {
       this.engine.stop();
-      this.engine.removeAllListeners();
       this.engine = null;
     } else if (this.state.status === "running") {
       this.state.status = "idle";
@@ -172,22 +158,16 @@ class OrchestrationManager {
     }
 
     this.appendLog("[orchestrate] 전체 종료 완료");
-    this.emitStatusChange();
+    this.emitStatusChange({ log: false });
     return { success: true };
   }
 
   // ── Internal ───────────────────────────────────────────
 
   private appendLog(line: string) {
-    const trimmed = line.trim();
-    const looksLikeHmsInfo = /^\d{2}:\d{2}:\d{2}\s+info\s+\S+\s+/i.test(trimmed);
-    const looksLikeIsoInfo = /^\d{4}-\d{2}-\d{2}T[^\s]+\s+INFO\s+/i.test(trimmed);
-    const normalized =
-      looksLikeHmsInfo || looksLikeIsoInfo
-        ? trimmed
-        : `${new Date().toISOString()} INFO ${trimmed}`;
-
+    const normalized = normalizeLogLine(line, { defaultSource: "orchestrate" });
     this.state.logs.push(normalized);
+    publish("log", { scope: "orchestrate", line: normalized });
     if (this.state.logs.length > MAX_STATE_LOG_LINES) {
       const drop = this.state.logs.length - MAX_STATE_LOG_LINES;
       this.state.logs.splice(0, drop);
@@ -199,12 +179,6 @@ class OrchestrationManager {
     const stable = JSON.stringify(snapshot);
     if (this.lastEmittedSnapshotJson === stable) return;
     this.lastEmittedSnapshotJson = stable;
-
-    const d = new Date();
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    const ss = String(d.getSeconds()).padStart(2, "0");
-    const ts = `${hh}:${mm}:${ss}`;
 
     // OpenClaw-ish: HH:MM:SS info orchestrate message
     // Keep it human-readable but include key fields for future extensibility.
@@ -218,7 +192,10 @@ class OrchestrationManager {
     const counts = snapshot.taskResults.length > 0 ? ` ok=${ok} fail=${fail}` : "";
 
     this.appendLog(
-      `${ts} info orchestrate status=${snapshot.status}${timing}${exit}${counts}`,
+      formatLogLine({
+        source: "orchestrate",
+        message: `status=${snapshot.status}${timing}${exit}${counts}`,
+      }),
     );
   }
 
@@ -267,12 +244,10 @@ class OrchestrationManager {
       };
 
       appendRunHistory(entry);
-      this.appendLog(
-        `[orchestrate] Run history saved: ${entry.id} (${tasksCompleted} completed, ${tasksFailed} failed, $${totalCostUsd.toFixed(4)})`,
-      );
     } catch (err) {
       const msg = getErrorMessage(err, String(err));
-      this.appendLog(`[orchestrate] Failed to save run history: ${msg}`);
+      // Keep history failures out of orchestrate logs to avoid noise.
+      console.error(`[orchestrate] Failed to save run history: ${msg}`);
     }
   }
 }

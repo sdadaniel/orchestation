@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getErrorMessage } from "@/lib/error-utils";
+import { getErrorMessage } from "@/lib/errors/error-utils";
 import {
   isValidTaskId,
   taskExists,

@@ -1,10 +1,10 @@
 import { ChildProcess, spawn } from "child_process";
-import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
-import { killProcessGracefully } from "../../lib/process-utils";
-import { PROJECT_ROOT, LOGS_DIR } from "../../lib/paths";
+import { killProcessGracefully } from "../../lib/process/process-utils";
+import { PROJECT_ROOT, LOGS_DIR } from "../../lib/config/paths";
 import { TaskRunState } from "./task-runner-types";
+import { publish } from "../../lib/sse";
 import {
   getWorkerMode,
   runInIterm,
@@ -41,9 +41,6 @@ class TaskRunnerManager {
 
   /** iTerm 모드 watcher (stop 시 정리용) */
   private watcherMgr = new ItermWatcherManager();
-
-  /** Event emitter for log streaming: emits "log:<taskId>" with line string, "done:<taskId>" on finish */
-  public events = new EventEmitter();
 
   getState(taskId: string): TaskRunState | null {
     const run = this.runs.get(taskId);
@@ -116,7 +113,7 @@ class TaskRunnerManager {
 
     const appendLog = (line: string) => {
       state.logs.push(line);
-      this.events.emit(`log:${taskId}`, line);
+      publish("log", { scope: "task", taskId, line });
       try {
         fs.appendFileSync(logFile, line + "\n");
       } catch {
@@ -135,7 +132,7 @@ class TaskRunnerManager {
         state.finishedAt = new Date().toISOString();
         cleanupSignals(taskId);
         appendLog(`[task-runner] ${taskId} 거절됨 → 완료 처리 (review 스킵)`);
-        this.events.emit(`done:${taskId}`, "completed");
+        publish("task-result", { taskId, status: "completed" });
         return;
       }
 
@@ -146,7 +143,7 @@ class TaskRunnerManager {
         updateTaskFileStatus(taskId, "failed");
         cleanupSignals(taskId);
         appendLog(`[task-runner] ${taskId} task 실패`);
-        this.events.emit(`done:${taskId}`, "failed");
+        publish("task-result", { taskId, status: "failed" });
         return;
       }
 
@@ -174,7 +171,7 @@ class TaskRunnerManager {
         updateTaskFileStatus(taskId, "failed");
         cleanupSignals(taskId);
         appendLog(`[task-runner] ${taskId} review 수정요청 → 실패 처리`);
-        this.events.emit(`done:${taskId}`, "failed");
+        publish("task-result", { taskId, status: "failed" });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -183,7 +180,7 @@ class TaskRunnerManager {
       state.finishedAt = new Date().toISOString();
       updateTaskFileStatus(taskId, "failed");
       appendLog(`[task-runner] ${taskId} 오류: ${msg}`);
-      this.events.emit(`done:${taskId}`, "failed");
+      publish("task-result", { taskId, status: "failed" });
     }
   }
 
@@ -191,7 +188,7 @@ class TaskRunnerManager {
     state.phase = "merge";
     const appendLog = (line: string) => {
       state.logs.push(line);
-      this.events.emit(`log:${taskId}`, line);
+      publish("log", { scope: "task", taskId, line });
       const logFile = path.join(LOGS_DIR, `${taskId}.log`);
       try {
         fs.appendFileSync(logFile, line + "\n");
@@ -211,13 +208,13 @@ class TaskRunnerManager {
       state.phase = "done";
       state.exitCode = 0;
       appendLog(`[task-runner] ${taskId} merge 완료 → done`);
-      this.events.emit(`done:${taskId}`, "completed");
+      publish("task-result", { taskId, status: "completed" });
     } else {
       state.status = "failed";
       state.exitCode = 1;
       updateTaskFileStatus(taskId, "failed");
       appendLog(`[task-runner] ${taskId} merge 실패`);
-      this.events.emit(`done:${taskId}`, "failed");
+      publish("task-result", { taskId, status: "failed" });
     }
   }
 
@@ -239,12 +236,12 @@ class TaskRunnerManager {
       state.logs.push(
         "[task-runner] iTerm2가 실행 중이지 않습니다. 백그라운드로 전환합니다.",
       );
-      this.events.emit(`log:${taskId}`, state.logs[state.logs.length - 1]);
+      publish("log", { scope: "task", taskId, line: state.logs[state.logs.length - 1] });
       return this.runBackground(taskId, state);
     }
 
     state.logs.push(`[task-runner] ${taskId}: iTerm 탭에서 실행 중`);
-    this.events.emit(`log:${taskId}`, state.logs[state.logs.length - 1]);
+    publish("log", { scope: "task", taskId, line: state.logs[state.logs.length - 1] });
 
     const dummy = spawn("sleep", ["999999"], {
       stdio: "ignore",
@@ -258,7 +255,8 @@ class TaskRunnerManager {
       state,
       logFile,
       dummy,
-      this.events,
+      (line) => publish("log", { scope: "task", taskId, line }),
+      (status) => publish("task-result", { taskId, status }),
       this.watcherMgr,
       (tid, st) => this.handleStartReviewIterm(tid, st),
       (tid, st) => this.startMergeLegacy(tid, st),
@@ -272,7 +270,8 @@ class TaskRunnerManager {
     startReviewInIterm(
       taskId,
       state,
-      this.events,
+      (line) => publish("log", { scope: "task", taskId, line }),
+      (status) => publish("task-result", { taskId, status }),
       this.watcherMgr,
       (tid, st) => this.startReviewLegacy(tid, st),
       (tid, st) => this.startMergeLegacy(tid, st),
@@ -284,7 +283,7 @@ class TaskRunnerManager {
 
     runJobReview(taskId, (line) => {
       state.logs.push(line);
-      this.events.emit(`log:${taskId}`, line);
+      publish("log", { scope: "task", taskId, line });
     })
       .then((result) => {
         if (result.status === "review-approved") {
@@ -295,13 +294,13 @@ class TaskRunnerManager {
           state.finishedAt = new Date().toISOString();
           updateTaskFileStatus(taskId, "failed");
           cleanupSignals(taskId);
-          this.events.emit(`done:${taskId}`, "failed");
+          publish("task-result", { taskId, status: "failed" });
         }
       })
       .catch(() => {
         state.status = "failed";
         state.finishedAt = new Date().toISOString();
-        this.events.emit(`done:${taskId}`, "failed");
+        publish("task-result", { taskId, status: "failed" });
       });
   }
 
@@ -335,7 +334,7 @@ class TaskRunnerManager {
     run.state.finishedAt = new Date().toISOString();
     updateTaskFileStatus(taskId, "stopped");
     cleanupSignals(taskId);
-    this.events.emit(`done:${taskId}`, "failed");
+    publish("task-result", { taskId, status: "failed" });
 
     return { success: true };
   }

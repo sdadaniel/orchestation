@@ -1,35 +1,52 @@
 import { getDb } from "@/service/db";
 import orchestrationManager from "@/engine/orchestration-manager";
+import { publish, replayAfter, subscribe, type SseEventEnvelope } from "@/lib/sse";
 
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/tasks/watch — SSE 엔드포인트
- *
- * 이벤트:
- * - event: task-changed          → { full: true } (DB 변경 감지 시 전체 refetch 트리거)
- * - event: orchestration-status  → 오케스트레이션 상태 (JSON)
- *
- * DB polling 방식: 1초마다 MAX(updated) 확인하여 변경 감지
- */
-export async function GET() {
+function sseFrame(env: SseEventEnvelope): string {
+  return `id: ${env.id}\nevent: ${env.type}\ndata: ${JSON.stringify(env.data)}\n\n`;
+}
+
+export async function GET(request: Request) {
   const encoder = new TextEncoder();
   let closed = false;
 
+  const url = new URL(request.url);
+  const lastIdHeader = request.headers.get("Last-Event-ID");
+  const lastIdQuery = url.searchParams.get("lastEventId");
+  const rawLastId = lastIdHeader ?? lastIdQuery ?? "0";
+  const lastId = rawLastId ? parseInt(rawLastId, 10) : 0;
+  const afterId = Number.isFinite(lastId) && lastId >= 0 ? lastId : 0;
+
   const stream = new ReadableStream({
     start(controller) {
-      const send = (event: string, data: string) => {
+      const send = (env: SseEventEnvelope) => {
         if (closed) return;
         try {
-          controller.enqueue(
-            encoder.encode(`event: ${event}\ndata: ${data}\n\n`),
-          );
+          controller.enqueue(encoder.encode(sseFrame(env)));
         } catch {
           closed = true;
         }
       };
 
-      // ── DB polling으로 태스크 변경 감지 ──
+      // 1) Replay missed events (best-effort, limited by store retention)
+      const replay = replayAfter(afterId, 10_000);
+      for (const env of replay) send(env);
+
+      // 2) Push current orchestration snapshot right after connect
+      publish("orchestration-status", {
+        status: orchestrationManager.getStatus(),
+        startedAt: orchestrationManager.getState().startedAt,
+        finishedAt: orchestrationManager.getState().finishedAt,
+        exitCode: orchestrationManager.getState().exitCode,
+        taskResults: orchestrationManager.getState().taskResults,
+      });
+
+      // 3) Subscribe live
+      const unsubscribe = subscribe((env) => send(env));
+
+      // 4) DB polling for task changes (publish to store for reliability)
       let lastMaxUpdated = "";
       try {
         const db = getDb();
@@ -40,7 +57,7 @@ export async function GET() {
           lastMaxUpdated = row?.maxUpdated ?? "";
         }
       } catch {
-        // ignore
+        /* ignore */
       }
 
       const pollInterval = setInterval(() => {
@@ -54,33 +71,14 @@ export async function GET() {
           const current = row?.maxUpdated ?? "";
           if (current && current !== lastMaxUpdated) {
             lastMaxUpdated = current;
-            send("task-changed", JSON.stringify({ full: true }));
+            publish("task-changed", { full: true });
           }
         } catch {
-          // ignore polling errors
+          /* ignore */
         }
       }, 1_000);
 
-      // ── 오케스트레이션 상태 변경 감지 ──
-      const onStatusChanged = (data: unknown) => {
-        send("orchestration-status", JSON.stringify(data));
-      };
-      orchestrationManager.events.on("status-changed", onStatusChanged);
-
-      // 연결 직후 현재 상태 전송
-      const initialState = orchestrationManager.getState();
-      send(
-        "orchestration-status",
-        JSON.stringify({
-          status: initialState.status,
-          startedAt: initialState.startedAt,
-          finishedAt: initialState.finishedAt,
-          exitCode: initialState.exitCode,
-          taskResults: initialState.taskResults,
-        }),
-      );
-
-      // ── 하트비트 (30초) — 연결 유지 ──
+      // 5) Keepalive
       const heartbeat = setInterval(() => {
         if (closed) return;
         try {
@@ -90,13 +88,12 @@ export async function GET() {
         }
       }, 30_000);
 
-      // ── 정리 ──
       controller.close = new Proxy(controller.close, {
         apply(target, thisArg, args) {
           closed = true;
           clearInterval(pollInterval);
-          orchestrationManager.events.off("status-changed", onStatusChanged);
           clearInterval(heartbeat);
+          unsubscribe();
           return Reflect.apply(target, thisArg, args);
         },
       });
@@ -114,3 +111,4 @@ export async function GET() {
     },
   });
 }
+

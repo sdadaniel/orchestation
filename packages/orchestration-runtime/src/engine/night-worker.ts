@@ -5,15 +5,20 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { DASHBOARD_DIR, PROJECT_ROOT, OUTPUT_DIR, TEMPLATE_DIR } from "../lib/paths";
+import {
+  DASHBOARD_DIR,
+  PROJECT_ROOT,
+  OUTPUT_DIR,
+  TEMPLATE_DIR,
+} from "../lib/config/paths";
 import { writeNotice } from "../parser/notice-parser";
-import { loadSettings } from "../lib/settings";
+import { loadSettings } from "../lib/config/settings";
 import { runClaudeJson } from "./claude-worker";
 import {
   parseFrontmatter,
   getString,
   getStringArray,
-} from "../lib/frontmatter-utils";
+} from "../lib/content/frontmatter-utils";
 import { createTask, getNextTaskId } from "../service/task-store";
 
 export interface NightWorkerOptions {

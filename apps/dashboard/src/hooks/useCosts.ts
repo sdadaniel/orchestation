@@ -2,8 +2,8 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CostData } from "@/parser/cost-parser";
-import { queryKeys } from "@/lib/query-keys";
-import { getErrorMessage } from "@/lib/error-utils";
+import { queryKeys } from "@/lib/query/query-keys";
+import { getErrorMessage } from "@/lib/errors/error-utils";
 
 type UseCostsResult = {
   data: CostData | null;

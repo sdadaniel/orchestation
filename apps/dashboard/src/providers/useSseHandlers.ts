@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import type { QueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query/query-keys";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 import { useTasksStore } from "@/store/tasksStore";
 import type { OrchestrationStatusData } from "@/engine/orchestration-manager";

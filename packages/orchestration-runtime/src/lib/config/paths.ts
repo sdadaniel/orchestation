@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** packages/orchestration-runtime (이 패키지 루트) */
-const RUNTIME_ROOT = path.resolve(__dirname, "..", "..");
+const RUNTIME_ROOT = path.resolve(__dirname, "..", "..", "..");
 
 /**
  * orchestration CLI 배포 루트 (cli.js, apps/, packages/)
@@ -41,3 +41,4 @@ export const ROLES_DIR = (() => {
   if (fs.existsSync(pkg)) return pkg;
   return path.join(PROJECT_ROOT, "docs", "roles");
 })();
+

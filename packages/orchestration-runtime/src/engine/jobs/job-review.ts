@@ -4,8 +4,8 @@
  */
 import fs from "fs";
 import path from "path";
-import { PROJECT_ROOT, OUTPUT_DIR, ROLES_DIR } from "../../lib/paths";
-import { loadSettings } from "../../lib/settings";
+import { PROJECT_ROOT, OUTPUT_DIR, ROLES_DIR } from "../../lib/config/paths";
+import { loadSettings } from "../../lib/config/settings";
 import { setupContextFilter, buildReviewPrompt } from "../ops/context-builder";
 import { runClaudeStreamJson } from "../claude/claude-worker";
 import { getTask, taskRowToMarkdown } from "../../service/task-store";

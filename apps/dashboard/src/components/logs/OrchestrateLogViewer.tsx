@@ -3,14 +3,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { connectSse } from "@/sse/client";
 
 const MAX_LOG_LINES = 200;
 
 type StreamEvent = {
+  type?: "log" | "status" | "ping";
   logs?: string[];
+  log?: string;
+  id?: number;
   total?: number;
   status?: string;
   finishedAt?: string;
+  taskResults?: unknown;
 };
 
 type LogLine = {
@@ -94,6 +99,8 @@ export function OrchestrateLogViewer({ title }: { title?: string }) {
   const lastStatusRef = useRef<string>("idle");
   const knownIdsRef = useRef<Set<number>>(new Set());
   const lastTotalRef = useRef<number | null>(null);
+  const lastMessageAtRef = useRef<number>(0);
+  const maxSeenIdRef = useRef<number>(-1);
 
   const lineCount = lines.length;
   const canClear = lineCount > 0;
@@ -113,6 +120,7 @@ export function OrchestrateLogViewer({ title }: { title?: string }) {
           disabled={!canClear}
           onClick={() => {
             knownIdsRef.current = new Set();
+            maxSeenIdRef.current = -1;
             setLines([]);
           }}
           className={cn(
@@ -129,54 +137,6 @@ export function OrchestrateLogViewer({ title }: { title?: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let reconnectAttempt = 0;
-    let es: EventSource | null = null;
-
-    async function loadInitial() {
-      try {
-        const res = await fetch("/api/orchestrate/logs?since=0");
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          logs?: string[];
-          status?: string;
-          total?: number;
-        };
-        if (cancelled) return;
-
-        const initialLines = Array.isArray(data.logs) ? data.logs : [];
-        if (typeof data.status === "string") {
-          lastStatusRef.current = data.status;
-          setStatus(data.status);
-        }
-        if (initialLines.length > 0) {
-          const receivedAtIso = new Date().toISOString();
-          const capped =
-            initialLines.length > MAX_LOG_LINES
-              ? initialLines.slice(initialLines.length - MAX_LOG_LINES)
-              : initialLines;
-          const total = typeof data.total === "number" ? data.total : initialLines.length;
-          const startId = Math.max(0, total - capped.length);
-          const entries = capped.map((line, idx) => ({
-            id: startId + idx,
-            receivedAtIso,
-            line,
-          }));
-          // 최신 로그가 위로 오도록(내림차순) 초기 로딩도 reverse 한다.
-          setLines(entries.reverse());
-          // SSE dedupe와 동일한 기준으로 초기 로딩분을 known set에 넣어둔다.
-          const nextKnown = new Set<number>();
-          for (const e of entries) nextKnown.add(e.id);
-          knownIdsRef.current = nextKnown;
-          lastTotalRef.current = total;
-        } else {
-          const total = typeof data.total === "number" ? data.total : 0;
-          lastTotalRef.current = total;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
 
     const applyIncoming = (payload: { logs?: string[]; total?: number }) => {
       const newLogs = Array.isArray(payload.logs) ? payload.logs : [];
@@ -196,11 +156,10 @@ export function OrchestrateLogViewer({ title }: { title?: string }) {
 
       setLines((prev) => {
         const receivedAtIso = new Date().toISOString();
-        const startId =
-          total !== null ? Math.max(0, total - newLogs.length) : Date.now();
+        const startId = total !== null ? Math.max(0, total - newLogs.length) : -1;
 
         const nextEntries: LogLine[] = newLogs.map((line, i) => {
-          const id = startId + i;
+          const id = startId >= 0 ? startId + i : Date.now() + i;
           return { id, receivedAtIso, line };
         });
 
@@ -210,7 +169,27 @@ export function OrchestrateLogViewer({ title }: { title?: string }) {
           const nextKnown = new Set<number>();
           for (const e of nextEntries) nextKnown.add(e.id);
           knownIdsRef.current = nextKnown;
+          maxSeenIdRef.current = Math.max(
+            maxSeenIdRef.current,
+            nextEntries[nextEntries.length - 1]!.id,
+          );
           return nextEntries.slice().reverse();
+        }
+
+        const maxIncomingId = nextEntries[nextEntries.length - 1]!.id;
+        const newOnes = nextEntries.filter((e) => e.id > maxSeenIdRef.current);
+        if (newOnes.length > 0) {
+          maxSeenIdRef.current = Math.max(maxSeenIdRef.current, maxIncomingId);
+          // knownIds가 꼬여 있어도 maxSeenId 기준으로는 새 로그이므로 강제 반영한다.
+          const merged = [...newOnes.slice().reverse(), ...prev];
+          const clipped =
+            merged.length > MAX_LOG_LINES
+              ? merged.slice(0, MAX_LOG_LINES)
+              : merged;
+          const nextKnown = new Set<number>();
+          for (const l of clipped) nextKnown.add(l.id);
+          knownIdsRef.current = nextKnown;
+          return clipped;
         }
 
         const fresh: LogLine[] = [];
@@ -218,6 +197,23 @@ export function OrchestrateLogViewer({ title }: { title?: string }) {
           if (knownIdsRef.current.has(e.id)) continue;
           knownIdsRef.current.add(e.id);
           fresh.push(e);
+        }
+
+        // 메시지는 들어왔는데 fresh가 0이면, knownIds가 꼬여 "새 로그"를 다 버리고 있는 상태일 수 있다.
+        // 이때 incoming id가 현재 최상단보다 더 최신이면(=진짜 새 로그), dedupe 상태를 재동기화한다.
+        if (fresh.length === 0) {
+          const currentTopId = prev[0]?.id ?? -1;
+          if (maxIncomingId > currentTopId) {
+            const newer = nextEntries.filter((e) => e.id > currentTopId);
+            const nextKnown = new Set<number>(knownIdsRef.current);
+            for (const e of newer) nextKnown.add(e.id);
+            knownIdsRef.current = nextKnown;
+
+            const merged = [...newer.slice().reverse(), ...prev];
+            return merged.length > MAX_LOG_LINES
+              ? merged.slice(0, MAX_LOG_LINES)
+              : merged;
+          }
         }
 
         const merged = [...fresh.reverse(), ...prev];
@@ -230,73 +226,52 @@ export function OrchestrateLogViewer({ title }: { title?: string }) {
           knownIdsRef.current = nextKnown;
         }
 
+        if (fresh.length > 0) {
+          maxSeenIdRef.current = Math.max(maxSeenIdRef.current, maxIncomingId);
+        }
         return clipped;
       });
-
     };
 
-    loadInitial();
-
-    const scheduleReconnect = () => {
-      if (cancelled) return;
-      if (reconnectTimer) return;
-      reconnectAttempt += 1;
-      const ms = Math.min(10_000, 500 * 2 ** Math.min(6, reconnectAttempt));
-      reconnectTimer = setTimeout(() => {
-        reconnectTimer = null;
-        connect();
-      }, ms);
+    const applyIncomingLine = (id: string, line: string) => {
+      const n = Number(id);
+      const numeric = Number.isFinite(n) ? n : undefined;
+      applyIncoming({ logs: [line], total: numeric !== undefined ? numeric + 1 : undefined });
     };
 
-    const connect = () => {
-      if (cancelled) return;
+    const disconnect = connectSse({
+      url: "/sse",
+      lastEventIdKey: "lastOrchestrateLogEventId",
+      onEvent: (evt) => {
+        if (cancelled) return;
+        if (evt.type === "orchestration-status") {
+          const d = evt.data as any;
+          if (typeof d?.status === "string") setStatus(d.status);
+          return;
+        }
+        if (evt.type !== "log") return;
+        const d = evt.data as any;
+        if (d?.scope !== "orchestrate" || typeof d?.line !== "string") return;
+        applyIncomingLine(evt.id, d.line);
+      },
+    });
+
+    async function loadInitial() {
       try {
-        es?.close();
+        // Initial hydration is handled via SSE replay (Last-Event-ID).
+        // Keep this function for future extensibility but do nothing now.
+        return;
       } catch {
         /* ignore */
       }
+    }
 
-      es = new EventSource("/api/orchestrate/logs?stream=true");
-      es.onopen = () => {
-        reconnectAttempt = 0;
-        setConnected(true);
-      };
-
-      es.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data) as StreamEvent;
-          if (typeof data.status === "string") {
-            lastStatusRef.current = data.status;
-            setStatus(data.status);
-          }
-          applyIncoming({ logs: data.logs, total: data.total });
-        } catch {
-          // ignore parse failures
-        }
-      };
-
-      es.onerror = () => {
-        setConnected(false);
-        // 기존 로그는 그대로 두고 재연결을 시도한다.
-        try {
-          es?.close();
-        } catch {
-          /* ignore */
-        }
-        scheduleReconnect();
-      };
-    };
-
-    connect();
+    loadInitial();
+    setConnected(true);
 
     return () => {
       cancelled = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      try {
-        es?.close();
-      } catch {
-        /* ignore */
-      }
+      disconnect();
     };
   }, []);
 

@@ -5,16 +5,13 @@
  */
 import { OrchestrateEngine } from "../engine/orchestrate-engine";
 
-const engine = new OrchestrateEngine();
-
-engine.on("log", (line: string) => {
-  console.log(line);
-});
-
-engine.on("status-changed", (status: string) => {
-  if (status === "completed" || status === "idle") {
-    process.exit(0);
-  }
+const engine = new OrchestrateEngine({
+  onLog: (line) => console.log(line),
+  onStatusChanged: (status) => {
+    if (status === "completed" || status === "idle") {
+      process.exit(0);
+    }
+  },
 });
 
 // Graceful shutdown

@@ -5,8 +5,8 @@ import type { PlanFrontmatter } from "@/parser/plan-parser";
 import type { TaskFrontmatter } from "@/parser/parser";
 import { buildPlanTree } from "@/parser/plan-tree";
 import type { PlanTreeData } from "@/types/plan";
-import { queryKeys } from "@/lib/query-keys";
-import { getErrorMessage } from "@/lib/error-utils";
+import { queryKeys } from "@/lib/query/query-keys";
+import { getErrorMessage } from "@/lib/errors/error-utils";
 
 type PlanTreeResult = {
   data: PlanTreeData | null;
