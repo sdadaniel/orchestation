@@ -5,7 +5,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/query-keys";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 import { useTasksStore } from "@/store/tasksStore";
-import type { OrchestrationStatusData } from "@/engine/orchestration-manager";
+import type { OrchestrationStatusData } from "@/gateway/orchestration-manager";
 
 export function useSseHandlers(
   queryClient: QueryClient,

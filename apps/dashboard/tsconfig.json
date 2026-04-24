@@ -44,8 +44,8 @@
       "@/parser/*": [
         "../../packages/orchestration-runtime/src/parser/*"
       ],
-      "@/engine/*": [
-        "../../packages/orchestration-runtime/src/engine/*"
+      "@/gateway/*": [
+        "../../packages/orchestration-runtime/src/gateway/*"
       ],
       "@/constants/*": [
         "../../packages/orchestration-runtime/src/constants/*"

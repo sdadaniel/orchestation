@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import taskRunnerManager from "@/engine/runner/task-runner-manager";
-import orchestrationManager from "@/engine/orchestration-manager";
+import taskRunnerManager from "@/gateway/runner/task-runner-manager";
+import orchestrationManager from "@/gateway/orchestration-manager";
 import { parseDependsOn } from "@/lib/task-row-parsers";
 import {
   getTask,

@@ -5,8 +5,8 @@ import { WebSocketServer, WebSocket } from "ws";
 import * as pty from "node-pty";
 import os from "os";
 import { resolve } from "path";
-import taskRunnerManager from "@/engine/runner/task-runner-manager";
-import orchestrationManager from "@/engine/orchestration-manager";
+import taskRunnerManager from "@/gateway/runner/task-runner-manager";
+import orchestrationManager from "@/gateway/orchestration-manager";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 import { subscribe } from "@/lib/sse";
 

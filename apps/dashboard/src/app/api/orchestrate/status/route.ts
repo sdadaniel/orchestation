@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { execSync } from "child_process";
-import orchestrationManager from "@/engine/orchestration-manager";
+import orchestrationManager from "@/gateway/orchestration-manager";
 
 export const dynamic = "force-dynamic";
 
