@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/gateway/*": ["../orchestration-runtime/src/gateway/*"],
+      "@/bus/*":     ["../orchestration-runtime/src/bus/*"],
+      "@/lib/*":     ["../orchestration-runtime/src/lib/*"],
+      "@/service/*": ["../orchestration-runtime/src/service/*"],
+      "@/constants/*": ["../orchestration-runtime/src/constants/*"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}
