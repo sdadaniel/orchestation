@@ -7,6 +7,7 @@ const fs = require("fs");
 const ORCH_DIR = ".orchestration";
 const FRONTEND_DIR = path.join(__dirname, "apps", "dashboard");
 const RUNTIME_DIR = path.join(__dirname, "packages", "orchestration-runtime");
+const GATEWAY_DIR = path.join(__dirname, "packages", "gateway-host");
 
 const command = process.argv[2];
 const args = process.argv.slice(3);
@@ -196,6 +197,21 @@ switch (command) {
         console.log("  Runtime dependencies installed.\n");
       } catch (err) {
         console.error("Failed to install runtime dependencies.");
+        process.exit(1);
+      }
+    }
+
+    const gatewayNodeModules = path.join(GATEWAY_DIR, "node_modules");
+    if (fs.existsSync(GATEWAY_DIR) && !fs.existsSync(gatewayNodeModules)) {
+      console.log("Installing gateway-host dependencies (first run)...");
+      try {
+        execSync("npm install --production=false", {
+          cwd: GATEWAY_DIR,
+          stdio: "inherit",
+        });
+        console.log("  Gateway-host dependencies installed.\n");
+      } catch (err) {
+        console.error("Failed to install gateway-host dependencies.");
         process.exit(1);
       }
     }
