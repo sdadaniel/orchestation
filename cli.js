@@ -272,7 +272,8 @@ switch (command) {
     break;
   }
 
-  case "dashboard": {
+  case "dashboard":
+  case "gateway": {
     ensureOrchDir();
 
     const frontendPkg = path.join(FRONTEND_DIR, "package.json");
