@@ -4,6 +4,7 @@
   "private": true,
   "main": "src/server.ts",
   "scripts": {
+    "postinstall": "node -e \"const fs=require('fs'),p=require('path');try{const d='node_modules/node-pty/prebuilds';fs.readdirSync(d).forEach(s=>{const f=p.join(d,s,'spawn-helper');try{fs.chmodSync(f,0o755)}catch{}})}catch{}\"",
     "typecheck": "tsc --noEmit",
     "dev": "tsx src/server.ts"
   },
@@ -20,6 +21,5 @@
     "@types/node": "^25.5.0",
     "@types/ws": "^8.18.1",
     "typescript": "^5.9.3"
-  },
-  "postinstall": "node -e \"const fs=require('fs'),p=require('path');try{const d='node_modules/node-pty/prebuilds';fs.readdirSync(d).forEach(s=>{const f=p.join(d,s,'spawn-helper');try{fs.chmodSync(f,0o755)}catch{}})}catch{}\""
+  }
 }
