@@ -16,7 +16,7 @@
       "@/parser/*": ["./src/parser/*"],
       "@/lib/*": ["./src/lib/*"],
       "@/service/*": ["./src/service/*"],
-      "@/engine/*": ["./src/engine/*"]
+      "@/gateway/*": ["./src/gateway/*"]
     }
   },
   "include": ["src/**/*.ts"],
