@@ -4,7 +4,7 @@ import path from "path";
 import { killProcessGracefully } from "../../lib/process/process-utils";
 import { PROJECT_ROOT, LOGS_DIR } from "../../lib/config/paths";
 import { TaskRunState } from "./task-runner-types";
-import { publish } from "../../lib/sse";
+import { publish } from "../../bus";
 import {
   getWorkerMode,
   runInIterm,

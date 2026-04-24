@@ -1,6 +1,6 @@
 import { getDb } from "@/service/db";
 import orchestrationManager from "@/gateway/orchestration-manager";
-import { publish, replayAfter, subscribe, type SseEventEnvelope } from "@/lib/sse";
+import { publish, replayAfter, subscribe, type SseEventEnvelope } from "@/bus/index";
 
 export const dynamic = "force-dynamic";
 

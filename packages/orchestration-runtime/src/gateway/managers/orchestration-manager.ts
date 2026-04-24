@@ -2,7 +2,7 @@ import { OrchestrateEngine, EngineStatus } from "../core/orchestrate-engine";
 import { appendRunHistory, type RunHistoryEntry } from "../../service/run-history";
 import { parseCostLog } from "../../parser/cost-parser";
 import { getErrorMessage } from "../../lib/errors/error-utils";
-import { formatLogLine, normalizeLogLine, publish } from "../../lib/sse";
+import { formatLogLine, normalizeLogLine, publish } from "../../bus";
 
 export type OrchestrationStatus = "idle" | "running" | "completed" | "failed";
 

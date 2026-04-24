@@ -34,7 +34,7 @@ import {
   markTaskFailed,
   type TransitionContext,
 } from "./task-transitions";
-import { formatLogLine } from "../../lib/sse/logging/log-format";
+import { formatLogLine } from "../../bus/logging/log-format";
 
 export type TaskStatus =
   | "pending"

@@ -29,6 +29,9 @@
       "@/types/waterfall": [
         "../../packages/orchestration-runtime/src/types/waterfall.ts"
       ],
+      "@/bus/*": [
+        "../../packages/orchestration-runtime/src/bus/*"
+      ],
       "@/lib/query-client": [
         "./src/lib/query-client.ts"
       ],

@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { PROJECT_ROOT } from "../../config/paths";
+import { PROJECT_ROOT } from "../../lib/config/paths";
 import type { SseEventEnvelope } from "../types";
 
 const SSE_DIR = path.join(PROJECT_ROOT, ".orchestration", "sse");

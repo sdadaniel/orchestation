@@ -9,7 +9,7 @@ import path from "path";
 import taskRunnerManager from "@/gateway/runner/task-runner-manager";
 import orchestrationManager from "@/gateway/orchestration-manager";
 import { getErrorMessage } from "@/lib/errors/error-utils";
-import { subscribe } from "@/lib/sse";
+import { subscribe } from "@/bus/index";
 
 const PACKAGE_DIR = path.resolve(__dirname, "..");             // packages/gateway-host
 const WORKSPACE_ROOT = path.resolve(PACKAGE_DIR, "..", "..");  // repo root

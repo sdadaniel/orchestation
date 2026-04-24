@@ -11,6 +11,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@/bus/*": ["./src/bus/*"],
       "@/constants/*": ["./src/constants/*"],
       "@/types/*": ["./src/types/*"],
       "@/parser/*": ["./src/parser/*"],
