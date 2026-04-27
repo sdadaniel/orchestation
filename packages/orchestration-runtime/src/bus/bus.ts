@@ -7,9 +7,9 @@ const listeners = new Set<Listener>();
 
 export function publish<T>(type: BusEventType, data: T): BusEventEnvelope<T> {
   const env = eventStore.append(type, data);
-  try { fileEventStore.appendRaw(env); } catch { /* ignore */ }
+  fileEventStore.appendRaw(env);
   for (const l of listeners) {
-    try { l(env); } catch { /* ignore */ }
+    l(env);
   }
   return env;
 }
