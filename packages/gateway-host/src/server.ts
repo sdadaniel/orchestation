@@ -11,6 +11,7 @@ import { getErrorMessage } from "@/lib/errors/error-utils";
 import { subscribe } from "@/bus/index";
 import "./rpc/methods/orchestrate"; // side-effect: registers orchestrate.run and orchestrate.stop
 import { attachGatewayChannel } from "./ws/gateway-channel";
+import { verifyOrigin } from "./ws/verify-origin";
 
 const PACKAGE_DIR = path.resolve(__dirname, "..");             // packages/gateway-host
 const WORKSPACE_ROOT = path.resolve(PACKAGE_DIR, "..", "..");  // repo root
@@ -67,6 +68,12 @@ app.prepare().then(() => {
 
   // Upgrade handler: route to correct WebSocket server
   server.on("upgrade", (req, socket, head) => {
+    if (!verifyOrigin(req, port)) {
+      socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+
     if (req.url === "/ws/terminal") {
       wss.handleUpgrade(req, socket, head, (ws) => {
         wss.emit("connection", ws, req);
