@@ -189,7 +189,7 @@ app.prepare().then(() => {
       }
     }
 
-    // Subscribe to SSE bus events (task-scoped)
+    // Subscribe to event bus events (task-scoped)
     const unsubscribe = subscribe((env) => {
       if (ws.readyState !== WebSocket.OPEN) return;
       if (env.type === "log") {

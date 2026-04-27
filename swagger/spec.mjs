@@ -270,13 +270,13 @@ export default {
     "/tasks/watch": {
       get: {
         tags: ["Tasks"],
-        summary: "태스크 변경 감지 (SSE)",
+        summary: "태스크 변경 감지 (deprecated: SSE 제거됨)",
         description:
-          "Server-Sent Events 스트림으로 태스크 파일 변경 이벤트를 실시간 전달",
+          "과거 SSE 기반 watch 엔드포인트. 현재는 브라우저 푸시는 WebSocket(/ws/gateway) 이벤트로 통합됨.",
         responses: {
           200: {
-            description: "SSE 스트림",
-            content: { "text/event-stream": {} },
+            description: "deprecated",
+            content: { "application/json": {} },
           },
         },
       },
@@ -722,12 +722,12 @@ export default {
             name: "stream",
             in: "query",
             schema: { type: "string", enum: ["true"] },
-            description: "SSE 스트리밍 모드 활성화",
+            description: "deprecated (SSE 스트리밍 모드 제거됨)",
           },
         ],
         responses: {
           200: {
-            description: "로그 데이터 (JSON 또는 SSE 스트림)",
+            description: "로그 데이터 (JSON). 실시간은 WebSocket(/ws/gateway) 이벤트 사용.",
             content: {
               "application/json": {
                 schema: {
@@ -741,7 +741,6 @@ export default {
                   },
                 },
               },
-              "text/event-stream": {},
             },
           },
         },

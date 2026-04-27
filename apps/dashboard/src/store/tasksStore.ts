@@ -232,4 +232,4 @@ export const useTasksStore = create<TasksState>()(
   ),
 );
 
-// 변경 감지는 SseProvider(전역 SSE 연결)가 담당 — 중복 폴링 제거됨
+// 변경 감지는 Gateway WS 이벤트가 담당 — 중복 폴링 제거됨

@@ -170,7 +170,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   } = useDocTree();
   const { addToast } = useToast();
 
-  // 초기 데이터 로드 — 이후 변경 감지는 SseProvider가 SSE로 처리
+  // 초기 데이터 로드 — 이후 변경 감지는 Gateway WS 이벤트로 처리
   useEffect(() => {
     useTasksStore.getState().fetchAll();
   }, []);

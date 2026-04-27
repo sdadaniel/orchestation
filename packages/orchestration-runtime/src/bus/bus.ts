@@ -1,11 +1,11 @@
-import type { SseEventEnvelope, SseEventType } from "./types";
+import type { BusEventEnvelope, BusEventType } from "./types";
 import { eventStore } from "./event-store";
 import { fileEventStore } from "./store/file-event-store";
 
-type Listener = (env: SseEventEnvelope) => void;
+type Listener = (env: BusEventEnvelope) => void;
 const listeners = new Set<Listener>();
 
-export function publish<T>(type: SseEventType, data: T): SseEventEnvelope<T> {
+export function publish<T>(type: BusEventType, data: T): BusEventEnvelope<T> {
   const env = eventStore.append(type, data);
   try { fileEventStore.appendRaw(env); } catch { /* ignore */ }
   for (const l of listeners) {
@@ -19,7 +19,7 @@ export function subscribe(listener: Listener): () => void {
   return () => { listeners.delete(listener); };
 }
 
-export function replayAfter(lastSeq: number, _limit?: number): SseEventEnvelope[] {
+export function replayAfter(lastSeq: number, _limit?: number): BusEventEnvelope[] {
   return eventStore.readAfter(lastSeq);
 }
 

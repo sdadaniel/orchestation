@@ -67,7 +67,7 @@ export default function TaskDetailPage({
     fetchTask();
   }, [fetchTask]);
 
-  // SseProvider가 store를 업데이트하면 자동 refetch (중복 EventSource 방지)
+  // Gateway WS가 store를 업데이트하면 자동 refetch (중복 연결 방지)
   const storeRequests = useTasksStore((s) => s.requests);
   useEffect(() => {
     const match = storeRequests.find((r) => r.id === id);

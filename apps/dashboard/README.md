@@ -113,7 +113,7 @@ src/
 │
 ├── providers/                    # React Context Providers
 │   ├── QueryProvider.tsx         #   TanStack Query
-│   └── SseProvider.tsx           #   SSE 실시간 업데이트
+│   └── GatewayWsProvider.tsx     #   WS 실시간 업데이트
 │
 ├── constants/                    # 상수 정의
 │   ├── status.ts                 #   태스크 상태/우선순위
@@ -150,7 +150,7 @@ lib/ (순수 유틸)  <--  parser/  <--  service/  <--  engine/
 | `/api/orchestrate/run` | POST | 파이프라인 시작 |
 | `/api/orchestrate/stop` | POST | 파이프라인 중지 |
 | `/api/orchestrate/status` | GET | 파이프라인 상태 |
-| `/api/orchestrate/logs` | GET | 파이프라인 로그 (SSE) |
+| `/ws/gateway` | WS | 파이프라인 상태/이벤트 스트림 |
 | `/api/run-history` | GET | 실행 이력 |
 | `/api/costs` | GET | 비용 데이터 |
 | `/api/night-worker` | GET, POST, DELETE | 야간 작업자 |

@@ -1,16 +1,16 @@
 import fs from "fs";
 import path from "path";
 import { PROJECT_ROOT } from "../../lib/config/paths";
-import type { SseEventEnvelope } from "../types";
+import type { BusEventEnvelope } from "../types";
 
-const SSE_DIR = path.join(PROJECT_ROOT, ".orchestration", "sse");
-const META_PATH = path.join(SSE_DIR, "meta.json");
+const EVENTS_DIR = path.join(PROJECT_ROOT, ".orchestration", "events");
+const META_PATH = path.join(EVENTS_DIR, "meta.json");
 const RETENTION_DAYS = 7;
 
 type Meta = { lastId: number };
 
 function ensureDir() {
-  fs.mkdirSync(SSE_DIR, { recursive: true });
+  fs.mkdirSync(EVENTS_DIR, { recursive: true });
 }
 
 function isoDay(d: Date): string {
@@ -21,7 +21,7 @@ function isoDay(d: Date): string {
 }
 
 function filePathForDay(day: string): string {
-  return path.join(SSE_DIR, `${day}.jsonl`);
+  return path.join(EVENTS_DIR, `${day}.jsonl`);
 }
 
 function readMeta(): Meta {
@@ -49,7 +49,7 @@ function cleanupOldFiles(now: Date) {
 
   try {
     ensureDir();
-    const files = fs.readdirSync(SSE_DIR);
+    const files = fs.readdirSync(EVENTS_DIR);
     const cutoffMs = nowMs - RETENTION_DAYS * 24 * 60 * 60 * 1000;
     for (const f of files) {
       const m = f.match(/^(\d{4}-\d{2}-\d{2})\.jsonl$/);
@@ -58,7 +58,7 @@ function cleanupOldFiles(now: Date) {
       const t = new Date(`${day}T00:00:00.000Z`).getTime();
       if (Number.isFinite(t) && t < cutoffMs) {
         try {
-          fs.unlinkSync(path.join(SSE_DIR, f));
+          fs.unlinkSync(path.join(EVENTS_DIR, f));
         } catch {
           /* ignore */
         }
@@ -85,11 +85,11 @@ export class FileEventStore {
     return this.meta.lastId;
   }
 
-  append<T>(type: string, data: T, at: Date = new Date()): SseEventEnvelope<T> {
+  append<T>(type: string, data: T, at: Date = new Date()): BusEventEnvelope<T> {
     ensureDir();
     cleanupOldFiles(at);
 
-    const env: SseEventEnvelope<T> = {
+    const env: BusEventEnvelope<T> = {
       id: this.nextId(),
       atIso: at.toISOString(),
       type: type as any,
@@ -102,7 +102,7 @@ export class FileEventStore {
     return env;
   }
 
-  appendRaw(env: SseEventEnvelope): void {
+  appendRaw(env: BusEventEnvelope): void {
     const at = new Date(env.atIso);
     ensureDir();
     cleanupOldFiles(at);
@@ -115,17 +115,17 @@ export class FileEventStore {
    * Read events strictly after `afterId` (exclusive), in ascending order.
    * This scans the retained day files (7 days) and returns up to `limit` events.
    */
-  readAfter(afterId: number, limit: number): SseEventEnvelope[] {
+  readAfter(afterId: number, limit: number): BusEventEnvelope[] {
     ensureDir();
-    const out: SseEventEnvelope[] = [];
+    const out: BusEventEnvelope[] = [];
 
     const files = fs
-      .readdirSync(SSE_DIR)
+      .readdirSync(EVENTS_DIR)
       .filter((f) => /^\d{4}-\d{2}-\d{2}\.jsonl$/.test(f))
       .sort(); // day ascending
 
     for (const f of files) {
-      const fp = path.join(SSE_DIR, f);
+      const fp = path.join(EVENTS_DIR, f);
       let raw = "";
       try {
         raw = fs.readFileSync(fp, "utf-8");
@@ -136,7 +136,7 @@ export class FileEventStore {
       for (const line of lines) {
         if (!line.trim()) continue;
         try {
-          const env = JSON.parse(line) as SseEventEnvelope;
+          const env = JSON.parse(line) as BusEventEnvelope;
           if (typeof env?.id !== "number") continue;
           if (env.id <= afterId) continue;
           out.push(env);

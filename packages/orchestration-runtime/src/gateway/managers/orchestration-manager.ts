@@ -28,7 +28,7 @@ class OrchestrationManager {
 
   constructor() {}
 
-  /** 상태 변경 시 SSE 클라이언트에 알림 */
+  /** 상태 변경 시 이벤트 버스에 발행 (WS gateway channel이 구독해 클라이언트로 전달) */
   private emitStatusChange(opts?: { log?: boolean }) {
     const log = opts?.log ?? true;
     const state = this.getState();

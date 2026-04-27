@@ -37,4 +37,4 @@ export const useOrchestrationStore = create<OrchestrationState>()(
   ),
 );
 
-// 상태 업데이트는 SseProvider가 SSE 이벤트로 처리 — 클라이언트 폴링 제거됨
+// 상태 업데이트는 Gateway WS 이벤트로 처리 — 클라이언트 폴링 제거됨

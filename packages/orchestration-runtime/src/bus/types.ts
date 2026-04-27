@@ -1,13 +1,13 @@
-export type SseEventType =
+export type BusEventType =
   | "log"
   | "orchestration-status"
   | "task-result"
   | "task-changed"
   | "task-terminal";
 
-export type SseEventEnvelope<T = unknown> = {
+export type BusEventEnvelope<T = unknown> = {
   id: number;
   atIso: string;
-  type: SseEventType;
+  type: BusEventType;
   data: T;
 };

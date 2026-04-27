@@ -458,35 +458,35 @@ git commit -am "refactor: update imports lib/sse → bus"
 - [ ] **Step 1: `event-store.ts` 작성**
 
 ```ts
-import type { SseEventEnvelope, SseEventType } from "./types";
+import type { BusEventEnvelope, BusEventType } from "./types";
 
 const DEFAULT_CAPACITY = 5000;
 
 export interface EventStore {
-  append<T>(type: SseEventType, data: T): SseEventEnvelope<T>;
-  readAfter(lastSeq: number): SseEventEnvelope[];
+  append<T>(type: BusEventType, data: T): BusEventEnvelope<T>;
+  readAfter(lastSeq: number): BusEventEnvelope[];
   head(): number; // latest seq
   tail(): number; // oldest retained seq
 }
 
 export function createRingEventStore(capacity = DEFAULT_CAPACITY): EventStore {
-  const buf: SseEventEnvelope[] = [];
+  const buf: BusEventEnvelope[] = [];
   let seqCounter = 0;
 
   return {
-    append<T>(type: SseEventType, data: T): SseEventEnvelope<T> {
+    append<T>(type: BusEventType, data: T): BusEventEnvelope<T> {
       seqCounter += 1;
-      const env: SseEventEnvelope<T> = {
+      const env: BusEventEnvelope<T> = {
         id: seqCounter,
         atIso: new Date().toISOString(),
         type,
         data,
       };
-      buf.push(env as SseEventEnvelope);
+      buf.push(env as BusEventEnvelope);
       if (buf.length > capacity) buf.shift();
       return env;
     },
-    readAfter(lastSeq: number): SseEventEnvelope[] {
+    readAfter(lastSeq: number): BusEventEnvelope[] {
       if (buf.length === 0) return [];
       const oldest = buf[0].id;
       if (lastSeq < oldest - 1) return []; // gap: caller must fallback to snapshot
@@ -510,15 +510,15 @@ export const eventStore = createRingEventStore();
 `publish()`가 파일 스토어 대신(혹은 병행) 인메모리 링버퍼에도 append:
 
 ```ts
-import type { SseEventEnvelope, SseEventType } from "./types";
+import type { BusEventEnvelope, BusEventType } from "./types";
 import { eventStore } from "./event-store";
 // 파일 스토어는 감사 로그 용도 유지
 import { fileEventStore } from "./store/file-event-store";
 
-type Listener = (env: SseEventEnvelope) => void;
+type Listener = (env: BusEventEnvelope) => void;
 const listeners = new Set<Listener>();
 
-export function publish<T>(type: SseEventType, data: T): SseEventEnvelope<T> {
+export function publish<T>(type: BusEventType, data: T): BusEventEnvelope<T> {
   const env = eventStore.append(type, data);
   // 파일 저장은 best-effort
   try { fileEventStore.append(type, data, new Date(env.atIso)); } catch { /* ignore */ }
@@ -534,7 +534,7 @@ export function subscribe(listener: Listener): () => void {
 }
 
 // replay는 인메모리에서만
-export function replayAfter(lastSeq: number): SseEventEnvelope[] {
+export function replayAfter(lastSeq: number): BusEventEnvelope[] {
   return eventStore.readAfter(lastSeq);
 }
 
@@ -563,7 +563,7 @@ grep -rn "replayAfter" packages/orchestration-runtime apps/dashboard
 기존은 `replayAfter(afterId, limit)` 시그니처. `apps/dashboard/src/app/sse/route.ts`만 사용. Phase 3에서 해당 파일 자체를 제거하므로 호환 시그니처(두 번째 인자 무시) 유지:
 
 ```ts
-export function replayAfter(lastSeq: number, _limit?: number): SseEventEnvelope[] {
+export function replayAfter(lastSeq: number, _limit?: number): BusEventEnvelope[] {
   return eventStore.readAfter(lastSeq);
 }
 ```

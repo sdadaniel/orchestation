@@ -1,32 +1,32 @@
-import type { SseEventEnvelope, SseEventType } from "./types";
+import type { BusEventEnvelope, BusEventType } from "./types";
 
 const DEFAULT_CAPACITY = 5000;
 
 export interface EventStore {
-  append<T>(type: SseEventType, data: T): SseEventEnvelope<T>;
-  readAfter(lastSeq: number): SseEventEnvelope[];
+  append<T>(type: BusEventType, data: T): BusEventEnvelope<T>;
+  readAfter(lastSeq: number): BusEventEnvelope[];
   head(): number;
   tail(): number;
 }
 
 export function createRingEventStore(capacity = DEFAULT_CAPACITY): EventStore {
-  const buf: SseEventEnvelope[] = [];
+  const buf: BusEventEnvelope[] = [];
   let seqCounter = 0;
 
   return {
-    append<T>(type: SseEventType, data: T): SseEventEnvelope<T> {
+    append<T>(type: BusEventType, data: T): BusEventEnvelope<T> {
       seqCounter += 1;
-      const env: SseEventEnvelope<T> = {
+      const env: BusEventEnvelope<T> = {
         id: seqCounter,
         atIso: new Date().toISOString(),
         type,
         data,
       };
-      buf.push(env as SseEventEnvelope);
+      buf.push(env as BusEventEnvelope);
       if (buf.length > capacity) buf.shift();
       return env;
     },
-    readAfter(lastSeq: number): SseEventEnvelope[] {
+    readAfter(lastSeq: number): BusEventEnvelope[] {
       if (buf.length === 0) return [];
       const oldest = buf[0].id;
       if (lastSeq < oldest - 1) return []; // gap: caller must fallback to snapshot

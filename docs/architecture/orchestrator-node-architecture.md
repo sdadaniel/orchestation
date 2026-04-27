@@ -99,7 +99,7 @@ flowchart TB
 flowchart LR
   publisher["bus.publish(type, data)\n어디서나 호출 가능"]
   ring["eventStore\n링 버퍼 (기본 5000개)\n각 이벤트에 단조 증가 seq(id) 부여"]
-  file_store["fileEventStore\n.orchestration/sse/*.jsonl\n(디스크 지속)"]
+  file_store["fileEventStore\n.orchestration/events/*.jsonl\n(디스크 지속)"]
   listeners["subscribe() 콜백 Set\n→ WS 리스너에 즉시 push"]
 
   publisher --> ring
