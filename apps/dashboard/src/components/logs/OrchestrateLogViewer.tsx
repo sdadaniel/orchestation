@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { connectSse } from "@/sse/client";
+import { subscribeGatewayEvent } from "@/gateway-ws/provider";
 
 const MAX_LOG_LINES = 200;
 
@@ -239,39 +239,24 @@ export function OrchestrateLogViewer({ title }: { title?: string }) {
       applyIncoming({ logs: [line], total: numeric !== undefined ? numeric + 1 : undefined });
     };
 
-    const disconnect = connectSse({
-      url: "/sse",
-      lastEventIdKey: "lastOrchestrateLogEventId",
-      onEvent: (evt) => {
-        if (cancelled) return;
-        if (evt.type === "orchestration-status") {
-          const d = evt.data as any;
-          if (typeof d?.status === "string") setStatus(d.status);
-          return;
-        }
-        if (evt.type !== "log") return;
-        const d = evt.data as any;
-        if (d?.scope !== "orchestrate" || typeof d?.line !== "string") return;
-        applyIncomingLine(evt.id, d.line);
-      },
+    const off = subscribeGatewayEvent((event, data, seq) => {
+      if (cancelled) return;
+      if (event === "orchestration-status") {
+        const d = data as { status?: string };
+        if (typeof d?.status === "string") setStatus(d.status);
+        return;
+      }
+      if (event !== "log") return;
+      const d = data as { scope?: string; line?: string };
+      if (d?.scope !== "orchestrate" || typeof d?.line !== "string") return;
+      applyIncomingLine(String(seq), d.line);
     });
 
-    async function loadInitial() {
-      try {
-        // Initial hydration is handled via SSE replay (Last-Event-ID).
-        // Keep this function for future extensibility but do nothing now.
-        return;
-      } catch {
-        /* ignore */
-      }
-    }
-
-    loadInitial();
     setConnected(true);
 
     return () => {
       cancelled = true;
-      disconnect();
+      off();
     };
   }, []);
 
