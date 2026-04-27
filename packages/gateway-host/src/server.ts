@@ -7,9 +7,10 @@ import os from "os";
 import { resolve } from "path";
 import path from "path";
 import taskRunnerManager from "@/gateway/runner/task-runner-manager";
-import orchestrationManager from "@/gateway/orchestration-manager";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 import { subscribe } from "@/bus/index";
+import "./rpc/methods/orchestrate"; // side-effect: registers orchestrate.run and orchestrate.stop
+import { attachGatewayChannel } from "./ws/gateway-channel";
 
 const PACKAGE_DIR = path.resolve(__dirname, "..");             // packages/gateway-host
 const WORKSPACE_ROOT = path.resolve(PACKAGE_DIR, "..", "..");  // repo root
@@ -62,7 +63,7 @@ app.prepare().then(() => {
   const wss = new WebSocketServer({ noServer: true });
   const wssTaskLogs = new WebSocketServer({ noServer: true });
   const wssTaskTerminal = new WebSocketServer({ noServer: true });
-  const wssOrchestrate = new WebSocketServer({ noServer: true });
+  const wssGateway = new WebSocketServer({ noServer: true });
 
   // Upgrade handler: route to correct WebSocket server
   server.on("upgrade", (req, socket, head) => {
@@ -70,9 +71,9 @@ app.prepare().then(() => {
       wss.handleUpgrade(req, socket, head, (ws) => {
         wss.emit("connection", ws, req);
       });
-    } else if (req.url === "/ws/orchestrate") {
-      wssOrchestrate.handleUpgrade(req, socket, head, (ws) => {
-        wssOrchestrate.emit("connection", ws, req);
+    } else if (req.url === "/ws/gateway") {
+      wssGateway.handleUpgrade(req, socket, head, (ws) => {
+        wssGateway.emit("connection", ws, req);
       });
     } else if (req.url?.startsWith("/ws/task-terminal/")) {
       wssTaskTerminal.handleUpgrade(req, socket, head, (ws) => {
@@ -88,75 +89,7 @@ app.prepare().then(() => {
 
   const OUTPUT_DIR = resolve(PROJECT_ROOT, "output");
 
-  // ── Orchestrate Control WebSocket (run/stop without HTTP APIs) ─────────────
-  wssOrchestrate.on("connection", (ws: WebSocket) => {
-    console.log(`[ws:orchestrate] connected`);
-
-    const send = (obj: unknown) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(obj));
-      }
-    };
-
-    // Hello/ready
-    send({ type: "ready", status: orchestrationManager.getStatus() });
-
-    ws.on("message", (msg: Buffer | string) => {
-      try {
-        const raw = typeof msg === "string" ? msg : msg.toString("utf-8");
-        const parsed = JSON.parse(raw) as {
-          type?: "req";
-          id?: string;
-          method?: string;
-        };
-        const id = typeof parsed.id === "string" ? parsed.id : null;
-        const method = typeof parsed.method === "string" ? parsed.method : null;
-
-        if (parsed.type !== "req" || !id || !method) {
-          send({ type: "res", id: id ?? "unknown", ok: false, error: "bad-request" });
-          return;
-        }
-
-        if (method === "orchestrate.run") {
-          if (orchestrationManager.isRunning()) {
-            send({ type: "res", id, ok: false, error: "already-running" });
-            return;
-          }
-
-          const result = orchestrationManager.run();
-          if (!result.success) {
-            send({ type: "res", id, ok: false, error: result.error ?? "run-failed" });
-            return;
-          }
-          send({ type: "res", id, ok: true, status: orchestrationManager.getStatus() });
-          return;
-        }
-
-        if (method === "orchestrate.stop") {
-          if (!orchestrationManager.isRunning()) {
-            send({ type: "res", id, ok: false, error: "not-running" });
-            return;
-          }
-          const result = orchestrationManager.stop();
-          if (!result.success) {
-            send({ type: "res", id, ok: false, error: result.error ?? "stop-failed" });
-            return;
-          }
-          send({ type: "res", id, ok: true, status: orchestrationManager.getStatus() });
-          return;
-        }
-
-        send({ type: "res", id, ok: false, error: "unknown-method" });
-      } catch (err) {
-        send({ type: "res", id: "unknown", ok: false, error: getErrorMessage(err) });
-      }
-    });
-
-    ws.on("close", () => console.log(`[ws:orchestrate] disconnected`));
-    ws.on("error", (err: Error) =>
-      console.error(`[ws:orchestrate] error: ${err.message}`),
-    );
-  });
+  attachGatewayChannel(wssGateway);
 
   // ── Task Terminal WebSocket (JSONL conversation stream) ──────
   wssTaskTerminal.on("connection", (ws: WebSocket, req) => {
