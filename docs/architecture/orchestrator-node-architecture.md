@@ -1,98 +1,88 @@
-# 오케스트레이터 아키텍처 (Node.js 관점)
+# 오케스트레이터 아키텍처 (게이트웨이 통합 이후)
 
-> 기준: `OrchestrateEngine`이 메인 파이프라인을 담당하며, 예전 `orchestrate.sh` 감독 역할은 Node 엔진으로 이전된 상태를 기준으로 한다.
->
-> **⚠ 마이그레이션 중**: 본 문서는 **현재(engine 네이밍 + SSE) 상태**를 설명한다. 게이트웨이 통합 아키텍처(`docs/architecture/gateway-unified-architecture-plan.md`, 2026-04-23 확정) 시행 후 본 문서는 전면 재작성 예정(`docs/superpowers/plans/2026-04-23-gateway-unification.md` Phase 6). 주요 변화: `engine` → `gateway`, SSE 제거(→ `/ws/gateway`), `packages/gateway-host` 신설.
+> 기준: `gateway-unification` 완료 상태. `packages/gateway-host`가 단일 HTTP + WS 호스트 프로세스를 담당하며, `apps/dashboard`는 순수 Next.js 앱(서버 코드 없음)으로 분리된 상태를 기준으로 한다.
 
 ## 1. 프로세스 경계
 
-동일한 `OrchestrateEngine` 클래스를 쓰지만, **시작 경로에 따라 프로세스가 갈린다.**
+단일 `gateway-host` 프로세스가 Next.js 렌더링, WebSocket 업그레이드, 오케스트레이션 엔진을 모두 담당한다.
 
 ```mermaid
 flowchart TB
-  subgraph cli["CLI 프로세스 (별도 Node)"]
-    cli_js["cli.js run"]
-    run_engine["src/cli/run-engine.ts"]
-    engine_cli["OrchestrateEngine"]
-    cli_js --> run_engine --> engine_cli
+  subgraph gw["gateway-host 프로세스 (packages/gateway-host)"]
+    server["server.ts\nHTTP createServer"]
+    next_handler["Next.js handle(req, res)\n→ apps/dashboard 렌더링"]
+    upgrade["upgrade 이벤트\n→ verifyOrigin 검사"]
+
+    server --> next_handler
+    server --> upgrade
+
+    subgraph ws_endpoints["WebSocket 엔드포인트"]
+      wss_terminal["/ws/terminal\nPTY 셸"]
+      wss_task_terminal["/ws/task-terminal/:id\nJSONL 대화 스트림"]
+      wss_task_logs["/ws/task-logs/:id\n태스크 로그"]
+      wss_gateway["/ws/gateway\n이벤트 + RPC 멀티플렉서"]
+    end
+
+    upgrade --> ws_endpoints
   end
 
-  subgraph next["Next.js 서버 프로세스"]
-    api_run["POST /api/orchestrate/run"]
-    mgr["OrchestrationManager\n(globalThis 싱글톤)"]
-    engine_web["OrchestrateEngine"]
-    api_run --> mgr --> engine_web
-  end
-
-  subgraph shared["공통 의존성 (두 프로세스 모두)"]
-    core["engine/core/*"]
-    jobs["engine/jobs/*"]
-    ops["engine/ops/*"]
+  subgraph runtime["orchestration-runtime (패키지)"]
+    engine["gateway/core/orchestrate-engine.ts"]
+    bus["bus/ (publish / subscribe / replayAfter)"]
     store["service/task-store (SQLite)"]
-    orch_fs[".orchestration/*\nconfig, signals, output"]
   end
 
-  engine_cli --> core
-  engine_web --> core
-  core --> jobs --> ops
-  core --> store
-  core --> orch_fs
+  gw --> runtime
+  wss_gateway --> bus
+  engine --> bus
+  engine --> store
 ```
 
-
-
-
-| 진입점                                 | 역할                                                         |
-| ----------------------------------- | ---------------------------------------------------------- |
-| `node cli.js run` → `run-engine.ts` | 터미널에서 단독 실행. `OrchestrationManager` 없이 엔진만 기동.             |
-| `POST /api/orchestrate/run`         | 대시보드에서 실행. `OrchestrationManager`가 로그·실행 이력·SSE용 이벤트를 감싼다. |
-
+| 진입점 | 역할 |
+|--------|------|
+| `packages/gateway-host/src/server.ts` | HTTP 서버 기동, Next.js 앱 연결, WS 업그레이드 라우팅 |
+| `apps/dashboard` | 순수 Next.js 앱 (API Routes 포함). `server.ts` 없음 |
+| `/ws/gateway` | 이벤트 구독 + RPC 단일 채널 |
 
 ---
 
-## 2. 엔진 내부 레이어
+## 2. 내부 레이어
 
-`OrchestrateEngine`은 **얇은 조율자**이고, 스케줄·시그널·실제 작업은 아래 모듈로 나뉜다.
+`OrchestrateEngine`은 얇은 조율자이고, 스케줄·잡·실행은 아래 모듈로 나뉜다.
 
 ```mermaid
 flowchart TB
-  subgraph engine["OrchestrateEngine (core/orchestrate-engine.ts)"]
-    loop["mainLoop (주기적 폴링)"]
-    workers["workers Map: taskId → WorkerEntry\nphase: task | review"]
-    watcher["fs.watch(SIGNALS_DIR)\n→ 다음 루프에서 처리"]
-    loop --> workers
-    loop --> watcher
+  subgraph engine_layer["gateway/core/ (orchestration-runtime)"]
+    main_loop["orchestrate-engine.ts\nmainLoop — 폴링"]
+    scheduler["scheduler.ts\nscanTasks / depsSatisfied\nscopeNotConflicting / canDispatch"]
+    transitions["task-transitions.ts\n상태 전이 규칙"]
+    main_loop --> scheduler
+    main_loop --> transitions
   end
 
-  sched["scheduler.ts\nscanTasks, depsSatisfied,\nscopeNotConflicting, canDispatch"]
-  sig["signal-handler.ts\nprocessSignals, markTaskFailed"]
-  jt["jobs/job-task.ts\nrunJobTask"]
-  jr["jobs/job-review.ts\nrunJobReview"]
-
-  loop --> sched
-  loop --> sig
-
-  workers --> jt
-  workers --> jr
-
-  subgraph ops_layer["engine/ops/*"]
-    ctx["context-builder"]
-    model["model-selector"]
-    merge["merge-utils"]
-    sigop["signal (signalCreate 등)"]
+  subgraph jobs_layer["gateway/jobs/"]
+    job_task["job-task.ts"]
+    job_review["job-review.ts"]
   end
 
-  jt --> ops_layer
-  jt --> cw["claude/claude-worker\n(runClaudeStreamJson)"]
-  jr --> cw
+  subgraph ops_layer["gateway/ops/"]
+    ctx["context-builder.ts"]
+    model["model-selector.ts"]
+    merge["merge-utils.ts"]
+    signal["signal.ts"]
+  end
 
-  store["task-store\nSQLite tasks 테이블"]
-  sched --> store
-  sig --> store
-  jt --> store
+  subgraph runner_layer["gateway/runner/"]
+    runner_mgr["task-runner-manager.ts"]
+    runner_iterm["task-runner-iterm.ts"]
+    step_runner["step-runner.ts"]
+  end
+
+  main_loop --> jobs_layer
+  jobs_layer --> ops_layer
+  jobs_layer --> runner_layer
+  jobs_layer --> store2["task-store (SQLite)"]
 ```
-
-
 
 **주기 동작 요약**
 
@@ -103,71 +93,104 @@ flowchart TB
 
 ---
 
-## 3. 데이터와 진실 공급원
+## 3. 이벤트 버스
 
 ```mermaid
 flowchart LR
-  sqlite[("SQLite\ntasks")]
-  md[".orchestration/tasks/*.md\n(레거시/동기화 경로가 있을 수 있음)"]
-  signals[".orchestration/signals/\n작업·리뷰 완료 등 시그널 파일"]
-  config[".orchestration/config.json\nmaxParallel, baseBranch 등"]
-  retry[".orchestration/retry-counts.json"]
-  logs[".orchestration/output/logs/*.log"]
+  publisher["bus.publish(type, data)\n어디서나 호출 가능"]
+  ring["eventStore\n링 버퍼 (기본 5000개)\n각 이벤트에 단조 증가 seq(id) 부여"]
+  file_store["fileEventStore\n.orchestration/sse/*.jsonl\n(디스크 지속)"]
+  listeners["subscribe() 콜백 Set\n→ WS 리스너에 즉시 push"]
 
-  engine["OrchestrateEngine"] --> sqlite
-  engine --> signals
-  engine --> config
-  engine --> retry
-  jt2["job-task / job-review"] --> logs
-  jt2 --> sqlite
+  publisher --> ring
+  publisher --> file_store
+  publisher --> listeners
 ```
 
+**링 버퍼 특성**
 
-
-엔진과 잡은 `**task-store`의 SQLite**를 읽고 태스크 상태를 갱신한다. 시그널 디렉터리는 리뷰 재시도·완료 통지 등 **파일 기반 핸드셰이크**에 사용된다.
+- 이벤트 ID(`seq`)는 단조 증가 정수. `head()` = 최신 ID, `tail()` = 버퍼 내 가장 오래된 ID.
+- `readAfter(lastSeq)`: `lastSeq` 이후 이벤트 배열 반환. 버퍼 밖이면 빈 배열(클라이언트가 스냅샷 재요청해야 함).
+- 버퍼 용량 초과 시 가장 오래된 이벤트부터 만료(`buf.shift()`).
 
 ---
 
-## 4. UI ↔ 서버 이벤트 (Next 프로세스만)
+## 4. UI ↔ 서버 통신 (`/ws/gateway`)
 
-대시보드가 같은 Node 프로세스에 있을 때:
+`/ws/gateway` 단일 채널이 이벤트 스트림과 RPC를 모두 처리한다.
 
 ```mermaid
 sequenceDiagram
-  participant UI as Dashboard
-  participant API as /api/orchestrate/*
-  participant M as OrchestrationManager
-  participant E as OrchestrateEngine
+  participant UI as Dashboard (브라우저)
+  participant GW as /ws/gateway (gateway-channel.ts)
+  participant Bus as bus (publish/subscribe)
+  participant Eng as OrchestrateEngine
 
-  UI->>API: POST /api/orchestrate/run
-  API->>M: run()
-  M->>E: start()
-  E-->>M: log / task-result / status-changed
-  M->>M: events.emit("status-changed")
-  UI->>API: GET /api/tasks/watch (SSE)
-  API-->>UI: orchestration-status
+  UI->>GW: WebSocket 연결
+  GW-->>UI: { type:"snapshot", seq:N, data:{...} }
+  Note over GW: subscribe() 등록 — 이후 이벤트 push
+
+  Bus-->>GW: publish() 호출 (Eng이 상태 변경 시)
+  GW-->>UI: { type:"event", seq:N, event:"...", data:{...} }
+
+  UI->>GW: { type:"hello", lastSeq:N }
+  alt 버퍼 내 재생 가능
+    GW-->>UI: { type:"replay", events:[...] }
+  else 버퍼 범위 초과
+    GW-->>UI: { type:"replay-gap", head:N }
+    UI->>GW: (재연결 → snapshot 재수신)
+  end
+
+  UI->>GW: { type:"req", id:"abc", method:"orchestrate.run", params:{...} }
+  GW->>GW: zod paramsSchema.safeParse(params)
+  GW->>Eng: handler(params)
+  GW-->>UI: { type:"res", id:"abc", ok:true, payload:{...} }
+
+  UI->>GW: { type:"ping" }
+  GW-->>UI: { type:"pong" }
 ```
 
+**메시지 타입 요약**
 
+| 방향 | 타입 | 설명 |
+|------|------|------|
+| 서버→클라 | `snapshot` | 연결 직후 현재 전체 상태 + 최신 seq |
+| 서버→클라 | `event` | 실시간 이벤트 (bus.publish 발생 즉시) |
+| 서버→클라 | `replay` | hello 응답 — 놓친 이벤트 배열 |
+| 서버→클라 | `replay-gap` | 버퍼 범위 초과 — 클라이언트 스냅샷 재요청 필요 |
+| 서버→클라 | `res` | RPC 응답 (id 매핑) |
+| 서버→클라 | `pong` | ping 응답 |
+| 클라→서버 | `hello` | 재연결 시 `lastSeq` 전달 |
+| 클라→서버 | `req` | RPC 호출 `{ type, id, method, params }` |
+| 클라→서버 | `ping` | keep-alive |
 
-CLI로만 `run-engine.ts`를 띄운 경우에는 이 SSE 경로 없이 **표준 출력 로그**로만 관찰한다.
+**Origin 검증**
+
+모든 WS 업그레이드 요청은 `verifyOrigin`을 통과해야 한다. 허용 Origin: `http://localhost:PORT` / `http://127.0.0.1:PORT`. Origin 헤더가 없는 경우 개발 환경에서만 허용(프로덕션 차단).
 
 ---
 
-## 5. 관련 소스 경로 (빠른 탐색)
+## 5. 소스 경로 테이블
 
-
-| 영역          | 경로                                                                     |
-| ----------- | ---------------------------------------------------------------------- |
-| 엔진 코어       | `packages/orchestration-runtime/src/engine/core/orchestrate-engine.ts` |
-| 스케줄러        | `packages/orchestration-runtime/src/engine/core/scheduler.ts`          |
-| 시그널 처리      | (시그널 파일 제거 진행중 — `docs/superpowers/plans/2026-04-20-remove-signal-files.md`) |
-| 태스크/리뷰 잡    | `packages/orchestration-runtime/src/engine/jobs/job-task.ts`, `job-review.ts` |
-| Claude 실행   | `packages/orchestration-runtime/src/engine/claude/claude-worker.ts`    |
-| OPS 유틸      | `packages/orchestration-runtime/src/engine/ops/*`                      |
-| API 래퍼      | `packages/orchestration-runtime/src/engine/orchestration-manager.ts` (루트 버전. `managers/` 하위 동명 파일 있으나 `server.ts`는 루트를 사용) |
-| CLI 엔트리     | `packages/orchestration-runtime/src/cli/run-engine.ts`                 |
-| WS 호스트(현재)  | `apps/dashboard/server.ts` (→ `packages/gateway-host/src/server.ts` 이전 예정) |
-| 오케스트레이션 WS | `apps/dashboard/server.ts`의 `/ws/orchestrate` (run/stop RPC. → `/ws/gateway`로 통합 예정) |
-
-
+| 영역 | 경로 |
+|------|------|
+| HTTP + WS 호스트 진입점 | `packages/gateway-host/src/server.ts` |
+| `/ws/gateway` 채널 | `packages/gateway-host/src/ws/gateway-channel.ts` |
+| Origin 검증 | `packages/gateway-host/src/ws/verify-origin.ts` |
+| RPC 타입 정의 | `packages/gateway-host/src/rpc/types.ts` |
+| RPC 레지스트리 | `packages/gateway-host/src/rpc/registry.ts` |
+| RPC 메서드 (orchestrate) | `packages/gateway-host/src/rpc/methods/orchestrate.ts` |
+| 버스 진입점 | `packages/orchestration-runtime/src/bus/index.ts` |
+| 버스 pub/sub 구현 | `packages/orchestration-runtime/src/bus/bus.ts` |
+| 링 버퍼 이벤트 스토어 | `packages/orchestration-runtime/src/bus/event-store.ts` |
+| 버스 타입 | `packages/orchestration-runtime/src/bus/types.ts` |
+| 파일 이벤트 스토어 | `packages/orchestration-runtime/src/bus/store/file-event-store.ts` |
+| 엔진 코어 | `packages/orchestration-runtime/src/gateway/core/orchestrate-engine.ts` |
+| 스케줄러 | `packages/orchestration-runtime/src/gateway/core/scheduler.ts` |
+| 상태 전이 | `packages/orchestration-runtime/src/gateway/core/task-transitions.ts` |
+| 태스크/리뷰 잡 | `packages/orchestration-runtime/src/gateway/jobs/job-task.ts`, `job-review.ts` |
+| OPS 유틸 | `packages/orchestration-runtime/src/gateway/ops/*` |
+| 러너 (TaskRunnerManager) | `packages/orchestration-runtime/src/gateway/runner/task-runner-manager.ts` |
+| OrchestrationManager | `packages/orchestration-runtime/src/gateway/managers/orchestration-manager.ts` |
+| 태스크 스토어 (SQLite) | `packages/orchestration-runtime/src/service/task-store.ts` |
+| Dashboard (Next.js 앱) | `apps/dashboard/` (서버 코드 없음 — 순수 Next.js) |
