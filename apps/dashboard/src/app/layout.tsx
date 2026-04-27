@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
 import { ToastProvider } from "@/components/ui/toast";
 import { QueryProvider } from "@/providers/QueryProvider";
-import { SseProvider } from "@/providers/SseProvider";
+import { GatewayWsProvider } from "@/gateway-ws/provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,11 +19,11 @@ export default function RootLayout({
     <html lang="ko">
       <body className="h-screen overflow-hidden">
         <QueryProvider>
-          <SseProvider>
+          <GatewayWsProvider>
             <ToastProvider>
               <AppShell>{children}</AppShell>
             </ToastProvider>
-          </SseProvider>
+          </GatewayWsProvider>
         </QueryProvider>
       </body>
     </html>
