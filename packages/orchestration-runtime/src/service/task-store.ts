@@ -9,6 +9,7 @@ import {
   parseDependsOn,
   parseScope,
 } from "../lib/task-row-parsers";
+import { publish } from "../bus";
 
 export interface TaskRow {
   id: string;
@@ -47,6 +48,13 @@ export interface TaskStepRow {
 
 function now(): string {
   return formatTimestamp(new Date());
+}
+
+function notifyTaskChanged(
+  taskId?: string,
+  extra?: Record<string, unknown>,
+): void {
+  publish("task-changed", { full: true, ...(taskId ? { taskId } : {}), ...extra });
 }
 
 // ── Read ──────────────────────────────────────────────
@@ -192,7 +200,9 @@ export function createTask(task: {
     updated: ts,
   });
 
-  return getTask(task.id)!;
+  const created = getTask(task.id)!;
+  notifyTaskChanged(task.id, { status: created.status });
+  return created;
 }
 
 export function ensureTaskSteps(
@@ -283,6 +293,11 @@ export function updateTask(
   values.updated = now();
 
   db.prepare(`UPDATE tasks SET ${sets.join(", ")} WHERE id = @id`).run(values);
+  notifyTaskChanged(taskId, {
+    ...(fields.status ? { status: fields.status } : {}),
+    ...(fields.priority ? { priority: fields.priority } : {}),
+    ...(fields.title ? { title: fields.title } : {}),
+  });
   return true;
 }
 
@@ -318,6 +333,7 @@ export function updateTaskStatus(
     "INSERT INTO task_events (task_id, event_type, from_status, to_status, timestamp) VALUES (?, 'status_change', ?, ?, ?)",
   ).run(taskId, fromStatus ?? null, newStatus, now());
 
+  notifyTaskChanged(taskId, { status: newStatus });
   return true;
 }
 
@@ -325,6 +341,9 @@ export function deleteTask(taskId: string): boolean {
   const db = getWritableDb();
   if (!db) return false;
   const result = db.prepare("DELETE FROM tasks WHERE id = ?").run(taskId);
+  if (result.changes > 0) {
+    notifyTaskChanged(taskId, { deleted: true });
+  }
   return result.changes > 0;
 }
 
