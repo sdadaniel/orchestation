@@ -5,31 +5,17 @@ import { cn } from "@/lib/utils";
 import { Play, Square, Loader2 } from "lucide-react";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
-
-type OrchestrateWsReq = {
-  type: "req";
-  id: string;
-  method: "orchestrate.run" | "orchestrate.stop";
-};
-
-type OrchestrateWsRes = {
-  type: "res";
-  id: string;
-  ok: boolean;
-  error?: string;
-  status?: string;
-};
+import { useGatewayClient } from "@/gateway-ws/provider";
 
 export default function AutoImproveControl({
   runningTaskCount = 0,
 }: {
   runningTaskCount?: number;
 } = {}) {
+  const gateway = useGatewayClient();
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
-  const pendingRef = useRef<Map<string, (res: OrchestrateWsRes) => void>>(new Map());
 
   // Orchestration 상태를 store에서 직접 구독 (별도 polling 제거)
   const orchestrationStatus = useOrchestrationStore((s) => s.data.status);
@@ -75,100 +61,15 @@ export default function AutoImproveControl({
     exitCode !== 130 &&
     !isStopping;
 
-  useEffect(() => {
-    let cancelled = false;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const connect = () => {
-      if (cancelled) return;
-      try {
-        wsRef.current?.close();
-      } catch {
-        /* ignore */
-      }
-
-      const proto = window.location.protocol === "https:" ? "wss" : "ws";
-      const url = `${proto}://${window.location.host}/ws/orchestrate`;
-      const ws = new WebSocket(url);
-      wsRef.current = ws;
-
-      ws.onmessage = (e) => {
-        try {
-          const data = JSON.parse(String(e.data ?? "")) as OrchestrateWsRes;
-          if (data?.type !== "res" || typeof data.id !== "string") return;
-          const resolve = pendingRef.current.get(data.id);
-          if (!resolve) return;
-          pendingRef.current.delete(data.id);
-          resolve(data);
-        } catch {
-          /* ignore */
-        }
-      };
-
-      ws.onclose = () => {
-        if (cancelled) return;
-        // best-effort reconnect (doesn't block UI; actions will error if used while down)
-        if (!reconnectTimer) {
-          reconnectTimer = setTimeout(() => {
-            reconnectTimer = null;
-            connect();
-          }, 800);
-        }
-      };
-    };
-
-    connect();
-    return () => {
-      cancelled = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      try {
-        wsRef.current?.close();
-      } catch {
-        /* ignore */
-      }
-    };
-  }, []);
-
-  const sendWs = async (
-    method: OrchestrateWsReq["method"],
-  ): Promise<OrchestrateWsRes> => {
-    const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      throw new Error("WebSocket not connected");
-    }
-
-    const id =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : String(Date.now());
-
-    const req: OrchestrateWsReq = { type: "req", id, method };
-    const p = new Promise<OrchestrateWsRes>((resolve, reject) => {
-      pendingRef.current.set(id, resolve);
-      setTimeout(() => {
-        if (pendingRef.current.has(id)) {
-          pendingRef.current.delete(id);
-          reject(new Error("Request timed out"));
-        }
-      }, 8000);
-    });
-
-    ws.send(JSON.stringify(req));
-    return await p;
-  };
-
   const handleRun = async () => {
     setIsStarting(true);
     setError(null);
     try {
-      const res = await sendWs("orchestrate.run");
-      if (!res.ok) {
-        setError(res.error || "Failed to start");
-        setIsStarting(false);
-      }
-      // store의 polling이 running 감지하면 isStarting 자동 해제
+      await gateway.call("orchestrate.run");
+      // UI state update handled by orchestration-status event
     } catch (err) {
-      setError(getErrorMessage(err, "Network error"));
+      const e = err as { code?: string; message?: string };
+      setError(e.message ?? getErrorMessage(err, "Failed to start"));
       setIsStarting(false);
     }
   };
@@ -177,14 +78,10 @@ export default function AutoImproveControl({
     setError(null);
     setIsStopping(true);
     try {
-      const res = await sendWs("orchestrate.stop");
-      if (!res.ok) {
-        setError(res.error || "Failed to stop");
-        setIsStopping(false);
-      }
-      // store의 polling이 실제 종료 감지하면 상태가 idle로 전환됨
+      await gateway.call("orchestrate.stop");
     } catch (err) {
-      setError(getErrorMessage(err, "Network error"));
+      const e = err as { code?: string; message?: string };
+      setError(e.message ?? getErrorMessage(err, "Failed to stop"));
       setIsStopping(false);
     }
   };
