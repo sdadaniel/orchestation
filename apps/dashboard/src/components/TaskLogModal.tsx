@@ -5,6 +5,7 @@ import { getErrorMessage } from "@/lib/errors/error-utils";
 import { X, Terminal, Loader2, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WaterfallTask } from "@/types/waterfall";
+import { useTaskLogStream } from "@/gateway-ws/task-streams";
 
 interface TaskLogModalProps {
   task: WaterfallTask;
@@ -12,62 +13,11 @@ interface TaskLogModalProps {
 }
 
 export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
-  const [logs, setLogs] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { lines: logs, loaded, error } = useTaskLogStream(task.id);
   const [activeTab, setActiveTab] = useState<"log" | "info">("log");
   const logContainerRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    setError(null);
-    setLogs([]);
-
-    const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    const url = `${proto}://${window.location.host}/ws/task-logs/${task.id}`;
-    const ws = new WebSocket(url);
-
-    ws.onopen = () => {
-      if (cancelled) return;
-      setIsLoading(false);
-    };
-
-    ws.onmessage = (e) => {
-      if (cancelled) return;
-      try {
-        const msg = JSON.parse(String(e.data ?? "")) as
-          | { type: "log"; line: string }
-          | { type: "status"; status: string };
-        if (msg.type === "log") {
-          setLogs((prev) => [...prev, msg.line]);
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    ws.onerror = () => {
-      if (cancelled) return;
-      setError("로그 스트림 연결에 실패했습니다.");
-      setIsLoading(false);
-    };
-
-    ws.onclose = () => {
-      if (cancelled) return;
-      // keep existing logs, just stop streaming
-    };
-
-    return () => {
-      cancelled = true;
-      try {
-        ws.close();
-      } catch {
-        /* ignore */
-      }
-    };
-  }, [task.id]);
+  const isLoading = !loaded;
 
   // Auto-scroll to bottom
   useEffect(() => {

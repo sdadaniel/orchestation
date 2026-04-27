@@ -34,6 +34,7 @@ import {
   markTaskFailed,
   type TransitionContext,
 } from "./task-transitions";
+import { publish } from "../../bus";
 import { formatLogLine } from "../../bus/logging/log-format";
 
 export type TaskStatus =
@@ -44,7 +45,7 @@ export type TaskStatus =
   | "done"
   | "rejected"
   | "failed";
-export type EngineStatus = "idle" | "running" | "completed";
+export type EngineStatus = "idle" | "running";
 
 export interface EngineEvents {
   log: (line: string) => void;
@@ -297,6 +298,7 @@ export class OrchestrateEngine {
     const abortController = new AbortController();
     const writeLine = (line: string) => {
       this.log(`  ${line}`);
+      publish("log", { scope: "task", taskId, line });
       try {
         fs.appendFileSync(logFile, line + "\n");
       } catch {

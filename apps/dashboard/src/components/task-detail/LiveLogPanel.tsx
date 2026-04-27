@@ -1,15 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TERMINAL_BG, TERMINAL_HEADER_BG } from "@/constants/theme";
-
-interface LogEntry {
-  timestamp: string;
-  level: string;
-  message: string;
-}
+import { useTaskLogStream } from "@/gateway-ws/task-streams";
 
 export function LiveLogPanel({
   taskId,
@@ -18,51 +13,9 @@ export function LiveLogPanel({
   taskId: string;
   onStatusChange?: (status: string) => void;
 }) {
-  const [lines, setLines] = useState<string[]>([]);
-  const [waiting, setWaiting] = useState(true);
+  const { lines, loaded } = useTaskLogStream(taskId, onStatusChange);
+  const waiting = !loaded || lines.length === 0;
   const logBodyRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(
-      `${protocol}//${window.location.host}/ws/task-logs/${taskId}`,
-    );
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "log" && msg.line) {
-          setLines((prev) => [...prev, msg.line]);
-          setWaiting(false);
-        } else if (msg.type === "status") {
-          onStatusChange?.(msg.status);
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    ws.onerror = () => {
-      fetch(`/api/tasks/${taskId}/logs`)
-        .then((r) => r.json())
-        .then((data: LogEntry[]) => {
-          if (Array.isArray(data) && data.length > 0) {
-            setLines(data.map((e) => `${e.timestamp} ${e.message}`));
-            setWaiting(false);
-          }
-        })
-        .catch(() => {});
-    };
-
-    return () => {
-      if (
-        ws.readyState === WebSocket.OPEN ||
-        ws.readyState === WebSocket.CONNECTING
-      ) {
-        ws.close();
-      }
-    };
-  }, [taskId, onStatusChange]);
 
   useEffect(() => {
     const el = logBodyRef.current;

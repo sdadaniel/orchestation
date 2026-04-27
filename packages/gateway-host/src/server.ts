@@ -10,6 +10,7 @@ import taskRunnerManager from "@/gateway/runner/task-runner-manager";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 import { subscribe } from "@/bus/index";
 import "./rpc/methods/orchestrate"; // side-effect: registers orchestrate.run and orchestrate.stop
+import "./rpc/methods/task-streams"; // side-effect: registers task stream RPCs
 import { attachGatewayChannel } from "./ws/gateway-channel";
 import { verifyOrigin } from "./ws/verify-origin";
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TERMINAL_BG, TERMINAL_HEADER_BG } from "@/constants/theme";
+import { useTaskConversationStream } from "@/gateway-ws/task-streams";
 
 interface TerminalEntry {
   type: "tool_use" | "tool_result" | "thinking" | "text" | "system";
@@ -70,64 +71,13 @@ const TOOL_ICONS: Record<string, string> = {
 };
 
 export function LiveTerminalPanel({ taskId }: { taskId: string }) {
-  const [entries, setEntries] = useState<TerminalEntry[]>([]);
-  const [waiting, setWaiting] = useState(true);
+  const { lines, loaded } = useTaskConversationStream(taskId);
+  const entries = useMemo(
+    () => lines.map(parseJSONLLine).filter(Boolean) as TerminalEntry[],
+    [lines],
+  );
+  const waiting = !loaded || entries.length === 0;
   const bodyRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(
-      `${protocol}//${window.location.host}/ws/task-terminal/${taskId}`,
-    );
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "jsonl" && msg.line) {
-          const entry = parseJSONLLine(msg.line);
-          if (entry) {
-            setEntries((prev) => [...prev, entry]);
-            setWaiting(false);
-          }
-        } else if (msg.type === "batch" && Array.isArray(msg.lines)) {
-          const parsed = msg.lines
-            .map(parseJSONLLine)
-            .filter(Boolean) as TerminalEntry[];
-          if (parsed.length > 0) {
-            setEntries((prev) => [...prev, ...parsed]);
-            setWaiting(false);
-          }
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    ws.onerror = () => {
-      // Fallback: fetch completed conversation JSONL
-      fetch(`/api/tasks/${taskId}/conversation`)
-        .then((r) => r.json())
-        .then((data: string[]) => {
-          const parsed = data
-            .map(parseJSONLLine)
-            .filter(Boolean) as TerminalEntry[];
-          if (parsed.length > 0) {
-            setEntries(parsed);
-            setWaiting(false);
-          }
-        })
-        .catch(() => {});
-    };
-
-    return () => {
-      if (
-        ws.readyState === WebSocket.OPEN ||
-        ws.readyState === WebSocket.CONNECTING
-      ) {
-        ws.close();
-      }
-    };
-  }, [taskId]);
 
   useEffect(() => {
     const el = bodyRef.current;

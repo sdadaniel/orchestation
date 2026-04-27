@@ -13,6 +13,7 @@ import { runClaudeStreamJson } from "../claude/claude-worker";
 import { getTask, taskRowToMarkdown } from "../../service/task-store";
 import { parseContext, parseScope } from "../../lib/task-row-parsers";
 import { logTokenUsage } from "../../service/token-logger";
+import { publish } from "../../bus";
 
 export interface JobTaskResult {
   status: "task-done" | "task-failed" | "task-rejected";
@@ -32,6 +33,10 @@ export async function runJobTask(
   stepId?: string,
 ): Promise<JobTaskResult> {
   const log = (msg: string) => onLog?.(`[${taskId}] ${msg}`);
+  const emitTerminalLine = (line: string) => {
+    publish("task-terminal", { taskId, phase: "task", line });
+    log(line);
+  };
 
   try {
     // 1. DB에서 태스크 조회
@@ -106,7 +111,7 @@ export async function runJobTask(
       cwd: workDir,
       convFile,
       timeout: 600000, // 10분
-      onLine: (line) => log(line),
+      onLine: emitTerminalLine,
     });
 
     log(

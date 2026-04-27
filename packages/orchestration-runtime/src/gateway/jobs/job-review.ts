@@ -10,6 +10,7 @@ import { setupContextFilter, buildReviewPrompt } from "../ops/context-builder";
 import { runClaudeStreamJson } from "../claude/claude-worker";
 import { getTask, taskRowToMarkdown } from "../../service/task-store";
 import { logTokenUsage } from "../../service/token-logger";
+import { publish } from "../../bus";
 
 const DEFAULT_REVIEW_MODEL = "claude-haiku-4-5";
 
@@ -29,6 +30,10 @@ export async function runJobReview(
   stepId?: string,
 ): Promise<JobReviewResult> {
   const log = (msg: string) => onLog?.(`[${taskId}/review] ${msg}`);
+  const emitTerminalLine = (line: string) => {
+    publish("task-terminal", { taskId, phase: "review", line });
+    log(line);
+  };
 
   try {
     // 1. DB에서 태스크 조회
@@ -91,7 +96,7 @@ export async function runJobReview(
       cwd: workDir,
       convFile,
       timeout: 300000, // 5분
-      onLine: (line) => log(line),
+      onLine: emitTerminalLine,
     });
 
     log(

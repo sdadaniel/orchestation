@@ -7,6 +7,7 @@
     "esModuleInterop": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "ignoreDeprecations": "6.0",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "baseUrl": ".",

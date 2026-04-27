@@ -3,43 +3,21 @@ import { appendRunHistory, type RunHistoryEntry } from "../../service/run-histor
 import { parseCostLog } from "../../parser/cost-parser";
 import { getErrorMessage } from "../../lib/errors/error-utils";
 import { formatLogLine, normalizeLogLine, publish } from "../../bus";
-
-export type OrchestrationStatus = "idle" | "running" | "completed" | "failed";
-
-export interface OrchestrationStatusData {
-  status: OrchestrationStatus;
-  startedAt: string | null;
-  finishedAt: string | null;
-  exitCode: number | null;
-  taskResults: { taskId: string; status: "success" | "failure" }[];
-}
-
-export interface TaskResult {
-  taskId: string;
-  status: "success" | "failure";
-}
-
-export interface OrchestrationState {
-  status: OrchestrationStatus;
-  startedAt: string | null;
-  finishedAt: string | null;
-  logs: string[];
-  /** logs[0]가 의미하는 절대 인덱스 (클리핑 시 증가) */
-  logBase: number;
-  taskResults: TaskResult[];
-  exitCode: number | null;
-}
-
-// UI도 200줄만 보여주므로, 서버 상태도 200줄로 클리핑해 메모리를 안정적으로 유지한다.
-const MAX_STATE_LOG_LINES = 200;
+import fs from "fs";
+import path from "path";
+import { LOGS_DIR } from "../../lib/config/paths";
+import type { OrchestrationState, OrchestrationStatus, OrchestrationStatusData } from "./types";
+import { MAX_STATE_LOG_LINES, ORCHESTRATE_LOG_RETENTION_DAYS, ORCHESTRATION_STATUS } from "./const";
 
 class OrchestrationManager {
   private engine: OrchestrateEngine | null = null;
 
   private lastEmittedSnapshotJson: string | null = null;
 
+  private lastLogPruneDay: string | null = null;
+
   private state: OrchestrationState = {
-    status: "idle",
+    status: ORCHESTRATION_STATUS.IDLE,
     startedAt: null,
     finishedAt: null,
     logs: [],
@@ -94,7 +72,7 @@ class OrchestrationManager {
   }
 
   isRunning(): boolean {
-    return this.state.status === "running";
+    return this.state.status === ORCHESTRATION_STATUS.RUNNING;
   }
 
   // ── Run ────────────────────────────────────────────────
@@ -105,7 +83,7 @@ class OrchestrationManager {
     }
 
     // 상태는 리셋하되, logs는 유지한다. (run/stop 이벤트도 포함해 연속 로그로 관측)
-    this.state.status = "running";
+    this.state.status = ORCHESTRATION_STATUS.RUNNING;
     this.state.startedAt = new Date().toISOString();
     this.state.finishedAt = null;
     this.state.taskResults = [];
@@ -118,26 +96,31 @@ class OrchestrationManager {
     this.engine = new OrchestrateEngine({
       onLog: (line) => this.appendLog(line),
       onStatusChanged: (status: EngineStatus) => {
-        if (status === "idle" || status === "completed") {
-          this.state.status = status;
+        if (status === "idle") {
+          this.state.status = ORCHESTRATION_STATUS.IDLE;
           this.state.finishedAt = new Date().toISOString();
-          this.state.exitCode = 0;
+          this.state.exitCode ??= 0;
           this.saveRunHistory();
           this.emitStatusChange({ log: false });
         }
       },
       onTaskResult: (result) => {
         this.state.taskResults.push(result);
+        publish("task-result", {
+          taskId: result.taskId,
+          status: result.status === "success" ? "completed" : "failed",
+        });
         this.emitStatusChange({ log: false });
       },
     });
 
     const result = this.engine.start();
     if (!result.success) {
-      this.state.status = "failed";
+      this.state.status = ORCHESTRATION_STATUS.IDLE;
       this.state.finishedAt = new Date().toISOString();
       this.state.exitCode = 1;
       this.appendLog(`[orchestrate] Engine start failed: ${result.error}`);
+      this.saveRunHistory();
       this.emitStatusChange();
     }
 
@@ -150,8 +133,8 @@ class OrchestrationManager {
     if (this.engine) {
       this.engine.stop();
       this.engine = null;
-    } else if (this.state.status === "running") {
-      this.state.status = "idle";
+    } else if (this.state.status === ORCHESTRATION_STATUS.RUNNING) {
+      this.state.status = ORCHESTRATION_STATUS.IDLE;
       this.state.finishedAt = new Date().toISOString();
       this.state.exitCode = 0;
       this.saveRunHistory();
@@ -164,9 +147,55 @@ class OrchestrationManager {
 
   // ── Internal ───────────────────────────────────────────
 
+  private getIsoDay(): string {
+    // YYYY-MM-DD (UTC) — consistent with other ISO timestamps in the system.
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  private pruneOrchestrateLogsIfNeeded(today: string) {
+    if (this.lastLogPruneDay === today) return;
+    this.lastLogPruneDay = today;
+
+    try {
+      if (!fs.existsSync(LOGS_DIR)) return;
+      const keepAfter =
+        Date.now() - ORCHESTRATE_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+      const files = fs.readdirSync(LOGS_DIR);
+      for (const f of files) {
+        const m = f.match(/^orchestrate-(\d{4}-\d{2}-\d{2})\.log$/);
+        if (!m) continue;
+        const day = m[1];
+        const ts = Date.parse(`${day}T00:00:00.000Z`);
+        if (Number.isNaN(ts)) continue;
+        if (ts < keepAfter) {
+          try {
+            fs.unlinkSync(path.join(LOGS_DIR, f));
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  private appendOrchestrateLogToFile(line: string) {
+    const day = this.getIsoDay();
+    const logFile = path.join(LOGS_DIR, `orchestrate-${day}.log`);
+    try {
+      fs.mkdirSync(LOGS_DIR, { recursive: true });
+      fs.appendFileSync(logFile, line + "\n");
+    } catch {
+      /* ignore */
+    }
+    this.pruneOrchestrateLogsIfNeeded(day);
+  }
+
   private appendLog(line: string) {
     const normalized = normalizeLogLine(line, { defaultSource: "orchestrate" });
     this.state.logs.push(normalized);
+    this.appendOrchestrateLogToFile(normalized);
     publish("log", { scope: "orchestrate", line: normalized });
     if (this.state.logs.length > MAX_STATE_LOG_LINES) {
       const drop = this.state.logs.length - MAX_STATE_LOG_LINES;
@@ -228,7 +257,7 @@ class OrchestrationManager {
       ).length;
 
       const historyStatus: "completed" | "failed" =
-        this.state.status === "failed" ? "failed" : "completed";
+        this.state.exitCode === 0 ? "completed" : "failed";
 
       const entry: RunHistoryEntry = {
         id: `run-${this.state.startedAt.replace(/[^0-9]/g, "").slice(0, 14)}`,
@@ -280,4 +309,3 @@ const orchestrationManager: OrchestrationManager =
     return m;
   })();
 export default orchestrationManager;
-

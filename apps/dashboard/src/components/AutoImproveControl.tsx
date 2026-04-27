@@ -54,10 +54,11 @@ export default function AutoImproveControl({
       ? "stopping"
       : orchestrationStatus;
 
-  // failed 상태일 때 에러 메시지 표시 (Stop에 의한 종료(130)는 제외)
+  // 비정상 종료는 상태값이 아니라 exitCode로 판정한다.
   const showError =
-    orchestrationStatus === "failed" &&
+    orchestrationStatus === "idle" &&
     exitCode != null &&
+    exitCode !== 0 &&
     exitCode !== 130 &&
     !isStopping;
 

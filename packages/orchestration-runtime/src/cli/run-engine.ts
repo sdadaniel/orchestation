@@ -8,7 +8,7 @@ import { OrchestrateEngine } from "../gateway/orchestrate-engine";
 const engine = new OrchestrateEngine({
   onLog: (line) => console.log(line),
   onStatusChanged: (status) => {
-    if (status === "completed" || status === "idle") {
+    if (status === "idle") {
       process.exit(0);
     }
   },

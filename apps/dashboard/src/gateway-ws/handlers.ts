@@ -40,10 +40,7 @@ export function createEventHandlers(queryClient: QueryClient) {
         const store = useOrchestrationStore.getState();
         const prevStatus = store.data.status;
         const justFinished =
-          prevStatus === "running" &&
-          (statusData.status === "completed" ||
-            statusData.status === "failed" ||
-            statusData.status === "idle");
+          prevStatus === "running" && statusData.status === "idle";
 
         useOrchestrationStore.setState(
           {

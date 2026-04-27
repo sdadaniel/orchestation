@@ -2,7 +2,8 @@ export type SseEventType =
   | "log"
   | "orchestration-status"
   | "task-result"
-  | "task-changed";
+  | "task-changed"
+  | "task-terminal";
 
 export type SseEventEnvelope<T = unknown> = {
   id: number;
@@ -10,4 +11,3 @@ export type SseEventEnvelope<T = unknown> = {
   type: SseEventType;
   data: T;
 };
-

@@ -27,6 +27,11 @@ export function useGatewayClient(): GatewayClient {
   return client;
 }
 
+export function useOptionalGatewayClient(): GatewayClient | null {
+  const { client } = useContext(GatewayCtx);
+  return client;
+}
+
 export function GatewayWsProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [client, setClient] = useState<GatewayClient | null>(null);
@@ -43,7 +48,8 @@ export function GatewayWsProvider({ children }: { children: React.ReactNode }) {
       },
       onSnapshot: (snap) => h.onSnapshot(snap),
       onReplayGap: () => h.onReplayGap(),
-      isIdempotent: (m) => IDEMPOTENT_METHODS.has(m),
+      isIdempotent: (m) =>
+        IDEMPOTENT_METHODS.has(m) || m === "task.conversation.get",
     });
     setClient(c);
     return () => { c.close(); };
