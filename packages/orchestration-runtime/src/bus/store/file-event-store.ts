@@ -102,6 +102,15 @@ export class FileEventStore {
     return env;
   }
 
+  appendRaw(env: SseEventEnvelope): void {
+    const at = new Date(env.atIso);
+    ensureDir();
+    cleanupOldFiles(at);
+    const day = isoDay(at);
+    const fp = filePathForDay(day);
+    fs.appendFileSync(fp, `${JSON.stringify(env)}\n`, "utf-8");
+  }
+
   /**
    * Read events strictly after `afterId` (exclusive), in ascending order.
    * This scans the retained day files (7 days) and returns up to `limit` events.
