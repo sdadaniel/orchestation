@@ -302,12 +302,26 @@ export function updateTask(
   values.updated = now();
 
   db.prepare(`UPDATE tasks SET ${sets.join(", ")} WHERE id = @id`).run(values);
-  notifyTaskChanged(taskId, {
-    ...(fields.status ? { status: fields.status } : {}),
-    ...("phase" in fields ? { phase: fields.phase } : {}),
-    ...(fields.priority ? { priority: fields.priority } : {}),
-    ...(fields.title ? { title: fields.title } : {}),
-  });
+
+  // 필드 변경 후 최신 task를 읽어서 변경된 필드와 함께 현재 상태를 함께 emit
+  const updated = getTask(taskId);
+  if (updated) {
+    notifyTaskChanged(taskId, {
+      // 변경된 필드 + 함께 보낼 관련 필드
+      ...(fields.status ? { status: updated.status } : {}),
+      ...("phase" in fields ? { phase: updated.phase, status: updated.status } : {}),
+      ...(fields.priority ? { priority: updated.priority } : {}),
+      ...(fields.title ? { title: updated.title } : {}),
+    });
+  } else {
+    // fallback: task 조회 실패 시 전달된 필드로만 emit
+    notifyTaskChanged(taskId, {
+      ...(fields.status ? { status: fields.status } : {}),
+      ...("phase" in fields ? { phase: fields.phase } : {}),
+      ...(fields.priority ? { priority: fields.priority } : {}),
+      ...(fields.title ? { title: fields.title } : {}),
+    });
+  }
   return true;
 }
 
@@ -362,7 +376,18 @@ export function updateTaskStatus(
     "INSERT INTO task_events (task_id, event_type, from_status, to_status, timestamp) VALUES (?, 'status_change', ?, ?, ?)",
   ).run(taskId, fromStatus ?? null, newStatus, ts);
 
-  notifyTaskChanged(taskId, { status: newStatus, ...(shouldClearPhase ? { phase: null } : {}) });
+  // 상태 변경 후 최신 task를 읽어서 변경된 status 및 현재 phase를 함께 emit
+  const updated = getTask(taskId);
+  if (updated) {
+    notifyTaskChanged(taskId, {
+      status: updated.status,
+      phase: updated.phase,
+      ...(shouldClearPhase ? { phaseClearedAt: ts } : {}),
+    });
+  } else {
+    // fallback: task 조회 실패 시 변경한 값으로만 emit
+    notifyTaskChanged(taskId, { status: newStatus, ...(shouldClearPhase ? { phase: null } : {}) });
+  }
   return true;
 }
 
