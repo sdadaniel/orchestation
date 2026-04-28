@@ -25,6 +25,7 @@ import { SKIP_REVIEW_ROLES } from "../runner/task-runner-utils";
 import { scanTasks, taskRowToInfo, type TaskInfo } from "./scheduler";
 import type { JobTaskResult } from "../jobs/job-task";
 import type { JobReviewResult } from "../jobs/job-review";
+import type { StepType } from "../runner/step-runner";
 
 export const MAX_TASK_COST = 5.0;
 
@@ -44,7 +45,7 @@ export interface TransitionContext {
 export async function onStepFinished(
   taskId: string,
   stepId: string,
-  stepType: string,
+  stepType: StepType,
   result: JobTaskResult | JobReviewResult,
   ctx: TransitionContext,
 ): Promise<void> {
@@ -57,122 +58,22 @@ export async function onStepFinished(
   recordStepEvent(taskId, stepId, "step_end", resultStatus);
 
   if (stepType === "task") {
-    const r = result as JobTaskResult;
-    switch (r.status) {
-      case "task-done": {
-        const info = readTaskInfo(taskId);
-        const role = info?.role ?? "";
-
-        // Find next step. If none → done (rare), else dispatch.
-        const next = getNextPendingStep(taskId);
-        if (!next) {
-          ctx.log(`  ✅ ${taskId} step(task) 완료 → 다음 step 없음 → 머지`);
-          await mergeAndDone(taskId, ctx);
-          return;
-        }
-
-        // Keep legacy skip-review behavior when next is review
-        if (next.step_type === "review" && SKIP_REVIEW_ROLES.includes(role)) {
-          ctx.log(`  ✅ ${taskId} task 완료 → review 스킵 → 머지`);
-          updateTaskStep(next.id, { status: "skipped" });
-          await mergeAndDone(taskId, ctx);
-          return;
-        }
-
-        ctx.log(
-          `  ✅ ${taskId} step(task) 완료 → 다음 step 시작: ${next.step_key}`,
-        );
-        ctx.startStep(taskId, next.id);
-        return;
-      }
-
-      case "task-rejected": {
-        ctx.log(`  🚫 ${taskId} 거절됨`);
-        let reason = "";
-        const reasonFile = path.join(
-          OUTPUT_DIR,
-          `${taskId}-rejection-reason.txt`,
-        );
-        if (fs.existsSync(reasonFile))
-          reason = fs.readFileSync(reasonFile, "utf-8").split("\n")[0];
-        markTaskRejected(taskId, reason, ctx);
-        updateTaskStep(stepId, { status: "failed" });
-        return;
-      }
-
-      case "task-failed":
-        ctx.log(`  ❌ ${taskId} task 실행 실패`);
-        markTaskFailed(taskId, "task 실행 실패", ctx);
-        updateTaskStep(stepId, { status: "failed" });
-        return;
-    }
+    await handleTaskStepFinished(taskId, stepId, result as JobTaskResult, ctx);
+    return;
   }
 
   if (stepType === "review") {
-    const r = result as JobReviewResult;
-    if (r.status === "review-approved") {
-      ctx.log(`  ✅ ${taskId} review 승인 → 머지`);
-      await mergeAndDone(taskId, ctx);
-      return;
-    }
-
-    // review-rejected
-    updateTaskStep(stepId, { status: "failed" });
-    if (isCostOverLimit(taskId, ctx.log)) {
-      markTaskFailed(taskId, "비용 상한 초과", ctx);
-      return;
-    }
-
-    const reviewStep = getTaskStep(stepId);
-    const attempts = (reviewStep?.attempt ?? 0) + 1;
-    const max = reviewStep?.max_attempts ?? Math.max(1, ctx.maxReviewRetry());
-
-    if (canRetryReview(attempts - 1, max)) {
-      updateTaskStep(stepId, { attempt: attempts });
-      ctx.log(`  🔄 ${taskId} review 수정요청 → retry (${attempts}/${max})`);
-
-      // Retry by re-running the first task step (work)
-      const steps = getTaskSteps(taskId);
-      const work = steps.find((s) => s.step_type === "task") ?? null;
-      if (!work) {
-        markTaskFailed(taskId, "work step 없음 (retry 불가)", ctx);
-        return;
-      }
-
-      updateTaskStep(work.id, {
-        status: "pending",
-        finished_at: null,
-        started_at: null,
-      });
-
-      const feedbackFile = path.join(
-        OUTPUT_DIR,
-        `${taskId}-review-feedback.txt`,
-      );
-      ctx.startStep(taskId, work.id, { feedbackFile });
-    } else {
-      ctx.log(`  ❌ ${taskId} retry 상한 초과 (${attempts}/${max})`);
-      markTaskFailed(taskId, "review retry 상한 초과", ctx);
-    }
+    await handleReviewStepFinished(taskId, stepId, result as JobReviewResult, ctx);
     return;
   }
 
   // Unknown step types: treat as completed and continue
-  const next = getNextPendingStep(taskId);
-  if (!next) {
-    ctx.log(`  ✅ ${taskId} step(${stepType}) 완료 → 다음 step 없음 → 머지`);
-    await mergeAndDone(taskId, ctx);
-    return;
-  }
-  ctx.log(
-    `  ✅ ${taskId} step(${stepType}) 완료 → 다음 step 시작: ${next.step_key}`,
-  );
-  ctx.startStep(taskId, next.id);
+  await handleUnknownStepFinished(taskId, stepType, ctx);
 }
 
 // ── 상태 전이 primitive ─────────────────────────────────
 
-export async function mergeAndDone(
+export async function finalizeTask(
   taskId: string,
   ctx: TransitionContext,
 ): Promise<void> {
@@ -182,6 +83,9 @@ export async function mergeAndDone(
   const success = await runMergeTask(taskId, (line) => ctx.log(`  ${line}`));
 
   if (success) {
+    // Merge success is the single source of truth for completion.
+    // Persist done status so the dashboard can reflect completion via task-changed.
+    setTaskStatus(taskId, "done", ctx.log);
     writeNotice(
       "info",
       `${taskId} 완료`,
@@ -191,6 +95,128 @@ export async function mergeAndDone(
     ctx.log(`  ✅ ${taskId} 완료 → ${ctx.baseBranch()} 머지됨`);
   } else {
     markTaskFailed(taskId, "merge 실패", ctx);
+  }
+}
+
+async function handleTaskStepFinished(
+  taskId: string,
+  stepId: string,
+  result: JobTaskResult,
+  ctx: TransitionContext,
+): Promise<void> {
+  switch (result.status) {
+    case "task-done": {
+      const info = readTaskInfo(taskId);
+      const role = info?.role ?? "";
+
+      // Find next step. If none → finalize, else dispatch.
+      const next = getNextPendingStep(taskId);
+      if (!next) {
+        ctx.log(`  ✅ ${taskId} step(task) 완료 → 다음 step 없음 → 머지`);
+        await finalizeTask(taskId, ctx);
+        return;
+      }
+
+      // Keep legacy skip-review behavior when next is review
+      if (next.step_type === "review" && SKIP_REVIEW_ROLES.includes(role)) {
+        ctx.log(`  ✅ ${taskId} task 완료 → review 스킵 → 머지`);
+        updateTaskStep(next.id, { status: "skipped" });
+        await finalizeTask(taskId, ctx);
+        return;
+      }
+
+      ctx.log(`  ✅ ${taskId} step(task) 완료 → 다음 step 시작: ${next.step_key}`);
+      ctx.startStep(taskId, next.id);
+      return;
+    }
+
+    case "task-rejected": {
+      ctx.log(`  🚫 ${taskId} 거절됨`);
+      const reason = readRejectionReasonFirstLine(taskId);
+      markTaskRejected(taskId, reason, ctx);
+      updateTaskStep(stepId, { status: "failed" });
+      return;
+    }
+
+    case "task-failed":
+      ctx.log(`  ❌ ${taskId} task 실행 실패`);
+      markTaskFailed(taskId, "task 실행 실패", ctx);
+      updateTaskStep(stepId, { status: "failed" });
+      return;
+  }
+}
+
+async function handleReviewStepFinished(
+  taskId: string,
+  stepId: string,
+  result: JobReviewResult,
+  ctx: TransitionContext,
+): Promise<void> {
+  if (result.status === "review-approved") {
+    ctx.log(`  ✅ ${taskId} review 승인 → 머지`);
+    await finalizeTask(taskId, ctx);
+    return;
+  }
+
+  // review-rejected
+  updateTaskStep(stepId, { status: "failed" });
+  if (isCostOverLimit(taskId, ctx.log)) {
+    markTaskFailed(taskId, "비용 상한 초과", ctx);
+    return;
+  }
+
+  const reviewStep = getTaskStep(stepId);
+  const attempts = (reviewStep?.attempt ?? 0) + 1;
+  const max = reviewStep?.max_attempts ?? Math.max(1, ctx.maxReviewRetry());
+
+  if (canRetryReview(attempts - 1, max)) {
+    updateTaskStep(stepId, { attempt: attempts });
+    ctx.log(`  🔄 ${taskId} review 수정요청 → retry (${attempts}/${max})`);
+
+    // Retry by re-running the first task step (work)
+    const steps = getTaskSteps(taskId);
+    const work = steps.find((s) => s.step_type === "task") ?? null;
+    if (!work) {
+      markTaskFailed(taskId, "work step 없음 (retry 불가)", ctx);
+      return;
+    }
+
+    updateTaskStep(work.id, {
+      status: "pending",
+      finished_at: null,
+      started_at: null,
+    });
+
+    const feedbackFile = path.join(OUTPUT_DIR, `${taskId}-review-feedback.txt`);
+    ctx.startStep(taskId, work.id, { feedbackFile });
+  } else {
+    ctx.log(`  ❌ ${taskId} retry 상한 초과 (${attempts}/${max})`);
+    markTaskFailed(taskId, "review retry 상한 초과", ctx);
+  }
+}
+
+async function handleUnknownStepFinished(
+  taskId: string,
+  stepType: StepType,
+  ctx: TransitionContext,
+): Promise<void> {
+  const next = getNextPendingStep(taskId);
+  if (!next) {
+    ctx.log(`  ✅ ${taskId} step(${stepType}) 완료 → 다음 step 없음 → 머지`);
+    await finalizeTask(taskId, ctx);
+    return;
+  }
+  ctx.log(`  ✅ ${taskId} step(${stepType}) 완료 → 다음 step 시작: ${next.step_key}`);
+  ctx.startStep(taskId, next.id);
+}
+
+function readRejectionReasonFirstLine(taskId: string): string {
+  const reasonFile = path.join(OUTPUT_DIR, `${taskId}-rejection-reason.txt`);
+  if (!fs.existsSync(reasonFile)) return "";
+  try {
+    return fs.readFileSync(reasonFile, "utf-8").split("\n")[0] ?? "";
+  } catch {
+    return "";
   }
 }
 

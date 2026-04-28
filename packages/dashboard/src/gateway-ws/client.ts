@@ -2,9 +2,8 @@
 
 type AnyObject = Record<string, unknown>;
 
-type EventHandler = (event: string, data: unknown, seq: number) => void;
+type EventHandler = (event: string, data: unknown, id: string) => void;
 type SnapshotHandler = (data: AnyObject) => void;
-type GapHandler = () => void;
 
 interface PendingRpc {
   resolve: (payload: unknown) => void;
@@ -18,7 +17,6 @@ export interface GatewayClientOpts {
   url: string;
   onEvent: EventHandler;
   onSnapshot: SnapshotHandler;
-  onReplayGap: GapHandler;
   isIdempotent: (method: string) => boolean;
   rpcTimeoutMs?: number;
 }
@@ -26,7 +24,6 @@ export interface GatewayClientOpts {
 export interface GatewayClient {
   call<P extends AnyObject, R>(method: string, params?: P): Promise<R>;
   close(): void;
-  getLastSeq(): number;
 }
 
 const BACKOFF_MIN = 500;
@@ -35,7 +32,6 @@ const BACKOFF_MAX = 30_000;
 export function createGatewayClient(opts: GatewayClientOpts): GatewayClient {
   let ws: WebSocket | null = null;
   let closed = false;
-  let lastSeq = Number(localStorage.getItem("gateway.lastSeq") ?? "0") || 0;
   let backoff = BACKOFF_MIN;
   const pending = new Map<string, PendingRpc>();
   const rpcTimeoutMs = opts.rpcTimeoutMs ?? 30_000;
@@ -45,13 +41,6 @@ export function createGatewayClient(opts: GatewayClientOpts): GatewayClient {
     const jitter = Math.random() * backoff * 0.2;
     setTimeout(connect, Math.min(BACKOFF_MAX, backoff + jitter));
     backoff = Math.min(BACKOFF_MAX, backoff * 2);
-  }
-
-  function persistSeq(seq: number) {
-    if (seq > lastSeq) {
-      lastSeq = seq;
-      localStorage.setItem("gateway.lastSeq", String(seq));
-    }
   }
 
   function connect() {
@@ -65,7 +54,7 @@ export function createGatewayClient(opts: GatewayClientOpts): GatewayClient {
 
     ws.addEventListener("open", () => {
       backoff = BACKOFF_MIN;
-      ws?.send(JSON.stringify({ type: "hello", lastSeq }));
+      ws?.send(JSON.stringify({ type: "hello" }));
     });
 
     ws.addEventListener("message", (e: MessageEvent) => {
@@ -73,27 +62,13 @@ export function createGatewayClient(opts: GatewayClientOpts): GatewayClient {
       try { msg = JSON.parse(String(e.data ?? "")); } catch { return; }
 
       if (msg.type === "snapshot") {
-        persistSeq(Number(msg.seq) || 0);
         opts.onSnapshot(msg.data as AnyObject);
         return;
       }
 
-      if (msg.type === "replay" && Array.isArray(msg.events)) {
-        for (const ev of msg.events as Array<{ seq: number; event: string; data: unknown }>) {
-          opts.onEvent(ev.event, ev.data, ev.seq);
-          persistSeq(ev.seq);
-        }
-        return;
-      }
-
-      if (msg.type === "replay-gap") {
-        opts.onReplayGap();
-        return;
-      }
-
       if (msg.type === "event") {
-        opts.onEvent(String(msg.event), msg.data, Number(msg.seq) || 0);
-        persistSeq(Number(msg.seq) || 0);
+        const id = typeof msg.id === "string" ? msg.id : "";
+        opts.onEvent(String(msg.event), msg.data, id);
         return;
       }
 
@@ -156,6 +131,5 @@ export function createGatewayClient(opts: GatewayClientOpts): GatewayClient {
       try { ws?.close(); } catch { /* ignore */ }
       ws = null;
     },
-    getLastSeq() { return lastSeq; },
   };
 }

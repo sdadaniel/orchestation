@@ -14,22 +14,24 @@
 
 ## File Map
 
-| 파일 | 변경 유형 | 내용 |
-|------|----------|------|
-| `src/frontend/src/engine/scheduler.ts` | Create | `scanTasks`, `depsSatisfied`, `scopeNotConflicting`, `canDispatch`, `taskRowToInfo` |
-| `src/frontend/src/engine/signal-handler.ts` | Create | `processSignals`, `handleSignal`, `mergeAndDone`, `markTaskFailed/Rejected`, `cleanupWorktreeAndBranch`, `stopDependents`, `checkCostLimit` |
-| `src/frontend/src/engine/orchestrate-engine.ts` | Shrink | 위 두 모듈 사용, ~200 LOC 목표 |
-| `scripts-legacy/` | Delete | 전체 삭제 |
-| `cli.js` | Verify | shell 직접 호출 없는지 확인 |
+
+| 파일                                              | 변경 유형  | 내용                                                                                                                                          |
+| ----------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/frontend/src/engine/scheduler.ts`          | Create | `scanTasks`, `depsSatisfied`, `scopeNotConflicting`, `canDispatch`, `taskRowToInfo`                                                         |
+| `src/frontend/src/engine/signal-handler.ts`     | Create | `processSignals`, `handleSignal`, `finalizeTask`, `markTaskFailed/Rejected`, `cleanupWorktreeAndBranch`, `stopDependents`, `checkCostLimit` |
+| `src/frontend/src/engine/orchestrate-engine.ts` | Shrink | 위 두 모듈 사용, ~200 LOC 목표                                                                                                                      |
+| `scripts-legacy/`                               | Delete | 전체 삭제                                                                                                                                       |
+| `cli.js`                                        | Verify | shell 직접 호출 없는지 확인                                                                                                                          |
+
 
 ---
 
 ### Task 1: `scheduler.ts` 생성 — 스케줄링 순수 함수 추출
 
 **Files:**
-- Create: `src/frontend/src/engine/scheduler.ts`
 
-- [ ] **Step 1: `scheduler.ts` 파일 생성**
+- Create: `src/frontend/src/engine/scheduler.ts`
+- **Step 1: `scheduler.ts` 파일 생성**
 
 ```typescript
 /**
@@ -150,14 +152,15 @@ export function canDispatch(): boolean {
 }
 ```
 
-- [ ] **Step 2: 타입 체크**
+- **Step 2: 타입 체크**
 
 ```bash
 cd src/frontend && npx tsc --noEmit 2>&1 | grep "scheduler" | head -20
 ```
+
 Expected: no errors
 
-- [ ] **Step 3: Commit**
+- **Step 3: Commit**
 
 ```bash
 git add src/frontend/src/engine/scheduler.ts
@@ -169,9 +172,9 @@ git commit -m "refactor: extract scheduler.ts — task scheduling pure functions
 ### Task 2: `signal-handler.ts` 생성 — 시그널 처리/상태 전환 추출
 
 **Files:**
-- Create: `src/frontend/src/engine/signal-handler.ts`
 
-- [ ] **Step 1: `signal-handler.ts` 파일 생성**
+- Create: `src/frontend/src/engine/signal-handler.ts`
+- **Step 1: `signal-handler.ts` 파일 생성**
 
 ```typescript
 /**
@@ -252,7 +255,7 @@ export function handleSignal(
       const SKIP_REVIEW_ROLES = ["night-worker", "auto-improve"];
       if (SKIP_REVIEW_ROLES.includes(role)) {
         cb.log(`  ✅ ${taskId} task 완료 → review 스킵 → 머지`);
-        mergeAndDone(taskId, cb);
+        finalizeTask(taskId, cb);
       } else {
         cb.log(`  ✅ ${taskId} task 완료 → review 시작`);
         cb.startReview(taskId);
@@ -276,7 +279,7 @@ export function handleSignal(
 
     case "review-approved":
       cb.log(`  ✅ ${taskId} review 승인 → 머지`);
-      mergeAndDone(taskId, cb);
+      finalizeTask(taskId, cb);
       break;
 
     case "review-rejected": {
@@ -300,7 +303,7 @@ export function handleSignal(
   }
 }
 
-export async function mergeAndDone(taskId: string, cb: SignalHandlerCallbacks): Promise<void> {
+export async function finalizeTask(taskId: string, cb: SignalHandlerCallbacks): Promise<void> {
   const info = readTaskInfo(taskId);
   if (!info) return;
 
@@ -390,14 +393,15 @@ function stopDependents(failedId: string, log: (msg: string) => void): void {
 }
 ```
 
-- [ ] **Step 2: 타입 체크**
+- **Step 2: 타입 체크**
 
 ```bash
 cd src/frontend && npx tsc --noEmit 2>&1 | grep "signal-handler" | head -20
 ```
+
 Expected: no errors
 
-- [ ] **Step 3: Commit**
+- **Step 3: Commit**
 
 ```bash
 git add src/frontend/src/engine/signal-handler.ts
@@ -409,9 +413,9 @@ git commit -m "refactor: extract signal-handler.ts — signal processing and sta
 ### Task 3: `orchestrate-engine.ts` 슬림화
 
 **Files:**
-- Modify: `src/frontend/src/engine/orchestrate-engine.ts`
 
-- [ ] **Step 1: orchestrate-engine.ts 전체를 아래 코드로 교체**
+- Modify: `src/frontend/src/engine/orchestrate-engine.ts`
+- **Step 1: orchestrate-engine.ts 전체를 아래 코드로 교체**
 
 ```typescript
 /**
@@ -653,21 +657,23 @@ export class OrchestrateEngine extends EventEmitter {
 }
 ```
 
-- [ ] **Step 2: 타입 체크**
+- **Step 2: 타입 체크**
 
 ```bash
 cd src/frontend && npx tsc --noEmit 2>&1 | head -40
 ```
+
 Expected: 0 errors. 에러 발생 시 타입 불일치를 수정합니다.
 
-- [ ] **Step 3: LOC 확인**
+- **Step 3: LOC 확인**
 
 ```bash
 wc -l src/frontend/src/engine/orchestrate-engine.ts
 ```
+
 Expected: < 200 lines
 
-- [ ] **Step 4: Commit**
+- **Step 4: Commit**
 
 ```bash
 git add src/frontend/src/engine/orchestrate-engine.ts
@@ -679,37 +685,40 @@ git commit -m "refactor: slim orchestrate-engine.ts → delegates to scheduler +
 ### Task 4: `scripts-legacy/` 완전 삭제
 
 **Files:**
-- Delete: `scripts-legacy/` 디렉토리 전체
 
-- [ ] **Step 1: scripts-legacy 참조가 TypeScript 소스에 없는지 확인**
+- Delete: `scripts-legacy/` 디렉토리 전체
+- **Step 1: scripts-legacy 참조가 TypeScript 소스에 없는지 확인**
 
 ```bash
 grep -r "scripts-legacy" src/frontend/src/ --include="*.ts" --include="*.tsx"
 grep -r "scripts-legacy" cli.js
 ```
+
 Expected: no output
 
-- [ ] **Step 2: cli.js에서 shell 직접 호출 없는지 확인**
+- **Step 2: cli.js에서 shell 직접 호출 없는지 확인**
 
 ```bash
 grep -n "\.sh" cli.js
 ```
+
 Expected: no output
 
-- [ ] **Step 3: scripts-legacy 삭제**
+- **Step 3: scripts-legacy 삭제**
 
 ```bash
 rm -rf scripts-legacy/
 ```
 
-- [ ] **Step 4: 빌드 확인**
+- **Step 4: 빌드 확인**
 
 ```bash
 cd src/frontend && npx tsc --noEmit && echo "✅ tsc passed"
 ```
+
 Expected: `✅ tsc passed`
 
-- [ ] **Step 5: Commit**
+- **Step 5: Commit**
 
 ```bash
 git add -A
@@ -720,31 +729,35 @@ git commit -m "chore: delete scripts-legacy/ — fully superseded by TypeScript 
 
 ### Task 5: 최종 검증
 
-- [ ] **Step 1: 전체 타입 체크**
+- **Step 1: 전체 타입 체크**
 
 ```bash
 cd src/frontend && npx tsc --noEmit 2>&1
 ```
+
 Expected: 0 errors
 
-- [ ] **Step 2: engine 파일 LOC 확인**
+- **Step 2: engine 파일 LOC 확인**
 
 ```bash
 wc -l src/frontend/src/engine/orchestrate-engine.ts \
        src/frontend/src/engine/scheduler.ts \
        src/frontend/src/engine/signal-handler.ts
 ```
+
 Expected: orchestrate-engine.ts < 200, 각 파일 < 200 LOC
 
-- [ ] **Step 3: scripts-legacy 없는지 확인**
+- **Step 3: scripts-legacy 없는지 확인**
 
 ```bash
 ls scripts-legacy 2>&1
 ```
+
 Expected: `ls: cannot access 'scripts-legacy': No such file or directory`
 
-- [ ] **Step 4: Commit (변경 없으면 skip)**
+- **Step 4: Commit (변경 없으면 skip)**
 
 ```bash
 git status
 ```
+

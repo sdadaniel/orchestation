@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RUNTIME_ROOT = path.resolve(__dirname, "..", "..", "..");
 
 /**
- * orchestration CLI 배포 루트 (cli.js, apps/, packages/)
+ * orchestration CLI 배포 루트 (cli.js, packages/)
  * env 없을 때: monorepo 기준 RUNTIME_ROOT 상위 2단계
  */
 export const PACKAGE_DIR =
@@ -18,7 +18,7 @@ export const PACKAGE_DIR =
 export const PROJECT_ROOT = process.env.PROJECT_ROOT || PACKAGE_DIR;
 
 /** Next 대시보드 앱 루트 (template/ 등) */
-export const DASHBOARD_DIR = path.join(PACKAGE_DIR, "apps", "dashboard");
+export const DASHBOARD_DIR = path.join(PACKAGE_DIR, "packages", "dashboard");
 
 // ── .orchestration 하위 경로 일괄 정의 ──────────────────────
 const ORCH_DIR = path.join(PROJECT_ROOT, ".orchestration");

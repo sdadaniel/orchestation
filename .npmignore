@@ -20,12 +20,12 @@ docs/todo/
 docs/README.md
 
 # 대시보드: 소스만 포함, 빌드/런타임 산출물 제외
-apps/dashboard/node_modules/
-apps/dashboard/.next/
-apps/dashboard/test-results/
-apps/dashboard/playwright-report/
-apps/dashboard/e2e/
-apps/dashboard/tsconfig.tsbuildinfo
+packages/dashboard/node_modules/
+packages/dashboard/.next/
+packages/dashboard/test-results/
+packages/dashboard/playwright-report/
+packages/dashboard/e2e/
+packages/dashboard/tsconfig.tsbuildinfo
 
 # 오케스트레이션 런타임 패키지
 packages/orchestration-runtime/node_modules/

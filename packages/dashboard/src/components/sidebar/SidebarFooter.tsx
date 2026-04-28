@@ -1,22 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import {
-  DollarSign,
-  SquareTerminal,
-  Settings,
-  Activity,
-  Moon,
-} from "lucide-react";
+import { DollarSign, SquareTerminal, Settings, Activity, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-/* ── Props ── */
 
 export interface SidebarFooterProps {
   currentPath: string;
 }
-
-/* ── Component ── */
 
 export function SidebarFooter({ currentPath }: SidebarFooterProps) {
   return (
@@ -74,3 +64,4 @@ export function SidebarFooter({ currentPath }: SidebarFooterProps) {
     </div>
   );
 }
+

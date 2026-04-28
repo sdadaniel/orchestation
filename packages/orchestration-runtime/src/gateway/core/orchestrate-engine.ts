@@ -18,6 +18,7 @@ import {
   getTasksByStatus,
   recordStepEvent,
   updateTask,
+  updateTaskPhase,
   updateTaskStatus,
   updateTaskStep,
 } from "../../service/task-store";
@@ -36,12 +37,17 @@ import {
 } from "./task-transitions";
 import { publish } from "../../bus";
 import { formatLogLine } from "../../bus/logging/log-format";
+import type { StepType } from "../runner/step-runner";
+import {
+  CONFIG_WATCH_INTERVAL_MS,
+  HEALTHCHECK_EVERY_N_LOOPS,
+  LOOP_INTERVAL_MS,
+} from "./const";
 
 export type TaskStatus =
   | "pending"
   | "stopped"
   | "in_progress"
-  | "reviewing"
   | "done"
   | "rejected"
   | "failed";
@@ -67,20 +73,15 @@ interface WorkerEntry {
   promise: Promise<void>;
   taskId: string;
   stepId: string;
-  stepType: string;
+  stepType: StepType;
   startedAt: number;
 }
-
-/** 메인 루프 주기. 시그널 확인·스케줄링이 이 간격으로 반복된다. */
-const LOOP_INTERVAL_MS = 3000;
-/** loadConfig / healthCheck 를 몇 루프마다 돌릴지 (실제 시간 ≈ 루프 간격 × 배수). */
-const CONFIG_AND_HEALTH_EVERY_N_LOOPS = 10;
-/** 할 일·워커가 모두 없을 때 대기 로그를 몇 루프마다 찍을지. */
-const IDLE_LOG_EVERY_N_LOOPS = 5;
 
 export class OrchestrateEngine {
   private workers = new Map<string, WorkerEntry>();
   private loopTimer: ReturnType<typeof setInterval> | null = null;
+  private configWatchArmed = false;
+  private lastConfigMtimeMs: number | null = null;
   private _status: EngineStatus = "idle";
   private baseBranchValue = "main";
   private maxParallelTask = 2;
@@ -120,6 +121,7 @@ export class OrchestrateEngine {
       return { success: false, error: "Already running" };
 
     this.loadConfig();
+    this.armConfigWatch();
     this._status = "running";
     this.logInfo("Engine started");
     this.emitStatusChanged(this._status);
@@ -140,9 +142,50 @@ export class OrchestrateEngine {
       clearInterval(this.loopTimer);
       this.loopTimer = null;
     }
+    this.disarmConfigWatch();
     this._status = "idle";
     this.emitStatusChanged(this._status);
     return { success: true };
+  }
+
+  private armConfigWatch() {
+    if (this.configWatchArmed) return;
+    this.configWatchArmed = true;
+
+    try {
+      this.lastConfigMtimeMs = fs.existsSync(CONFIG_PATH)
+        ? fs.statSync(CONFIG_PATH).mtimeMs
+        : null;
+    } catch {
+      this.lastConfigMtimeMs = null;
+    }
+
+    fs.watchFile(
+      CONFIG_PATH,
+      { interval: CONFIG_WATCH_INTERVAL_MS },
+      (curr, prev) => {
+        if (this._status !== "running") return;
+        if (!this.configWatchArmed) return;
+        // mtime 기반으로 “저장”만 감지해서 리로드한다.
+        const currMs = Number(curr?.mtimeMs) || 0;
+        const prevMs = Number(prev?.mtimeMs) || 0;
+        if (currMs === 0 || currMs === prevMs) return;
+        if (this.lastConfigMtimeMs !== null && currMs === this.lastConfigMtimeMs)
+          return;
+        this.lastConfigMtimeMs = currMs;
+        this.loadConfig();
+      },
+    );
+  }
+
+  private disarmConfigWatch() {
+    if (!this.configWatchArmed) return;
+    this.configWatchArmed = false;
+    try {
+      fs.unwatchFile(CONFIG_PATH);
+    } catch {
+      // ignore
+    }
   }
 
   private loadConfig() {
@@ -182,6 +225,7 @@ export class OrchestrateEngine {
    * (브랜치 없음 또는 base 와 동일 → false)
    */
   private branchHasUnrelatedHistory(branchName: string): boolean {
+    // 1) 해당 이름의 로컬 브랜치가 실제로 존재하는지 확인 (없으면 안전하므로 false)
     try {
       execSync(
         `git -C "${PROJECT_ROOT}" show-ref --verify --quiet "refs/heads/${branchName}"`,
@@ -190,6 +234,7 @@ export class OrchestrateEngine {
     } catch {
       return false;
     }
+    // 2) base..branch 범위에 커밋이 있으면(=base에 없는 커밋이 남아있으면) 재사용 위험 → true
     try {
       const commits = execSync(
         `git -C "${PROJECT_ROOT}" log --oneline "${this.baseBranchValue}..${branchName}"`,
@@ -279,10 +324,11 @@ export class OrchestrateEngine {
       this.log(`  📝 ${taskId}: branch/worktree 필드 자동 추가`);
     }
 
-    this.setStatus(
-      taskId,
-      step.step_type === "review" ? "reviewing" : "in_progress",
-    );
+    // task.status는 coarse 상태만 유지하고(=in_progress),
+    // step 타입에 따른 세부 상태는 task.phase로 구분한다.
+    this.setStatus(taskId, "in_progress");
+    updateTaskPhase(taskId, step.step_type === "review" ? "reviewing" : "working");
+    
     updateTaskStep(stepId, {
       status: "in_progress",
       started_at: new Date().toISOString(),
@@ -370,27 +416,27 @@ export class OrchestrateEngine {
   private mainLoop() {
     if (this._status !== "running") return;
     this.loopCount++;
-    if (this.loopCount % CONFIG_AND_HEALTH_EVERY_N_LOOPS === 0)
-      this.loadConfig();
 
     const queue = scanTasks().filter(
       (t) =>
         (t.status === "pending" || t.status === "stopped") && depsSatisfied(t),
     );
-
-    if (this.workers.size === 0 && queue.length === 0) {
-      if (this.loopCount % IDLE_LOG_EVERY_N_LOOPS === 0)
-        this.log("  ⏳ 새 태스크 대기 중...");
-      return;
-    }
+  
 
     for (const task of queue) {
       if (this.workers.size >= this.maxParallelTask) break;
       // One active worker per task at a time (even if multiple steps exist)
+      // 동일 taskId의 step을 중복 디스패치하지 않기 위해, 이미 실행 중인 워커가 있으면 건너뛴다.
       if ([...this.workers.values()].some((w) => w.taskId === task.id))
         continue;
+
+    
+      // 실행 중 워커들과 scope가 충돌하면(같은 범위를 동시에 만지면) 병렬 실행을 피한다.
       if (!scopeNotConflicting(task, this.workers, (msg) => this.log(msg)))
         continue;
+
+      
+      // 메모리 압박(예: macOS `memory_pressure`가 warn/critical) 상태면 새 워커 디스패치를 중단한다.
       if (!canDispatch()) break;
 
       // Ensure workflow/steps exist, then start next pending step
@@ -409,7 +455,7 @@ export class OrchestrateEngine {
       );
     }
 
-    if (this.loopCount % CONFIG_AND_HEALTH_EVERY_N_LOOPS === 0)
+    if (this.loopCount % HEALTHCHECK_EVERY_N_LOOPS === 0)
       this.healthCheck();
   }
 

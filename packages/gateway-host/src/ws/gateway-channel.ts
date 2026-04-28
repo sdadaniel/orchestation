@@ -1,12 +1,12 @@
 import { WebSocket, type WebSocketServer } from "ws";
-import { subscribe, replayAfter, snapshotSeq } from "@/bus/index";
+import { subscribe } from "@/bus/index";
 import orchestrationManager from "@/gateway/orchestration-manager";
 import { getRpc } from "../rpc/registry";
 import type { RpcRequest, RpcResponse } from "../rpc/types";
+import { randomUUID } from "crypto";
 
 interface HelloMsg {
   type: "hello";
-  lastSeq?: number;
 }
 
 type Incoming = HelloMsg | RpcRequest | { type: "ping" };
@@ -32,15 +32,14 @@ function buildSnapshot() {
 
 export function attachGatewayChannel(wss: WebSocketServer): void {
   wss.on("connection", (ws: WebSocket) => {
-    const { head } = snapshotSeq();
     sendSafe(ws, {
       type: "snapshot",
-      seq: head,
+      id: randomUUID(),
       data: buildSnapshot(),
     });
 
     const unsubscribe = subscribe((env) => {
-      sendSafe(ws, { type: "event", seq: env.id, event: env.type, data: env.data });
+      sendSafe(ws, { type: "event", id: env.id, event: env.type, data: env.data });
     });
 
     ws.on("message", async (raw: Buffer | string) => {
@@ -58,21 +57,7 @@ export function attachGatewayChannel(wss: WebSocketServer): void {
       }
 
       if (msg.type === "hello") {
-        const lastSeq = typeof msg.lastSeq === "number" ? msg.lastSeq : 0;
-        const { tail } = snapshotSeq();
-        if (lastSeq > 0 && lastSeq < tail - 1) {
-          sendSafe(ws, { type: "replay-gap", head: snapshotSeq().head });
-          return;
-        }
-        const missed = replayAfter(lastSeq);
-        sendSafe(ws, {
-          type: "replay",
-          events: missed.map((env) => ({
-            seq: env.id,
-            event: env.type,
-            data: env.data,
-          })),
-        });
+        // Backwards/forwards compatibility: clients may send hello on connect.
         return;
       }
 

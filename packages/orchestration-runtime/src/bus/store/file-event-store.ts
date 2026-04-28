@@ -2,12 +2,10 @@ import fs from "fs";
 import path from "path";
 import { PROJECT_ROOT } from "../../lib/config/paths";
 import type { BusEventEnvelope } from "../types";
+import { randomUUID } from "crypto";
 
 const EVENTS_DIR = path.join(PROJECT_ROOT, ".orchestration", "events");
-const META_PATH = path.join(EVENTS_DIR, "meta.json");
 const RETENTION_DAYS = 7;
-
-type Meta = { lastId: number };
 
 function ensureDir() {
   fs.mkdirSync(EVENTS_DIR, { recursive: true });
@@ -22,23 +20,6 @@ function isoDay(d: Date): string {
 
 function filePathForDay(day: string): string {
   return path.join(EVENTS_DIR, `${day}.jsonl`);
-}
-
-function readMeta(): Meta {
-  try {
-    const raw = fs.readFileSync(META_PATH, "utf-8");
-    const parsed = JSON.parse(raw) as Partial<Meta>;
-    const lastId = typeof parsed.lastId === "number" && Number.isFinite(parsed.lastId)
-      ? parsed.lastId
-      : 0;
-    return { lastId };
-  } catch {
-    return { lastId: 0 };
-  }
-}
-
-function writeMeta(meta: Meta) {
-  fs.writeFileSync(META_PATH, JSON.stringify(meta), "utf-8");
 }
 
 let lastCleanupAtMs = 0;
@@ -70,19 +51,8 @@ function cleanupOldFiles(now: Date) {
 }
 
 export class FileEventStore {
-  private meta: Meta;
-
   constructor() {
     ensureDir();
-    this.meta = readMeta();
-    // Ensure meta file exists
-    writeMeta(this.meta);
-  }
-
-  nextId(): number {
-    this.meta.lastId += 1;
-    writeMeta(this.meta);
-    return this.meta.lastId;
   }
 
   append<T>(type: string, data: T, at: Date = new Date()): BusEventEnvelope<T> {
@@ -90,7 +60,7 @@ export class FileEventStore {
     cleanupOldFiles(at);
 
     const env: BusEventEnvelope<T> = {
-      id: this.nextId(),
+      id: randomUUID(),
       atIso: at.toISOString(),
       type: type as any,
       data,
@@ -109,45 +79,6 @@ export class FileEventStore {
     const day = isoDay(at);
     const fp = filePathForDay(day);
     fs.appendFileSync(fp, `${JSON.stringify(env)}\n`, "utf-8");
-  }
-
-  /**
-   * Read events strictly after `afterId` (exclusive), in ascending order.
-   * This scans the retained day files (7 days) and returns up to `limit` events.
-   */
-  readAfter(afterId: number, limit: number): BusEventEnvelope[] {
-    ensureDir();
-    const out: BusEventEnvelope[] = [];
-
-    const files = fs
-      .readdirSync(EVENTS_DIR)
-      .filter((f) => /^\d{4}-\d{2}-\d{2}\.jsonl$/.test(f))
-      .sort(); // day ascending
-
-    for (const f of files) {
-      const fp = path.join(EVENTS_DIR, f);
-      let raw = "";
-      try {
-        raw = fs.readFileSync(fp, "utf-8");
-      } catch {
-        continue;
-      }
-      const lines = raw.split("\n");
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          const env = JSON.parse(line) as BusEventEnvelope;
-          if (typeof env?.id !== "number") continue;
-          if (env.id <= afterId) continue;
-          out.push(env);
-          if (out.length >= limit) return out;
-        } catch {
-          // ignore bad line
-        }
-      }
-    }
-
-    return out;
   }
 }
 

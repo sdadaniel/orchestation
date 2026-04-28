@@ -64,6 +64,9 @@ function ensureDb(): void {
     addColumn("token_usage", "step_id TEXT");
     addColumn("conversations", "step_id TEXT");
 
+    // tasks.phase (fine-grained status; e.g. working/reviewing)
+    addColumn("tasks", "phase TEXT");
+
     // task_steps table might exist only on newer installs: create if missing
     db.exec(`
       CREATE TABLE IF NOT EXISTS task_steps (

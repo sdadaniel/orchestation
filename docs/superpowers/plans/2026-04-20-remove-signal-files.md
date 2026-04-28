@@ -22,7 +22,7 @@
 ## File Structure
 
 **Create:**
-- `src/frontend/src/engine/core/task-transitions.ts` — 상태 전이 단일 진입점 (`onTaskFinished`, `onReviewFinished`) + 보조 함수 (`markTaskFailed`, `markTaskRejected`, `mergeAndDone`) + pure decision helpers
+- `src/frontend/src/engine/core/task-transitions.ts` — 상태 전이 단일 진입점 (`onTaskFinished`, `onReviewFinished`) + 보조 함수 (`markTaskFailed`, `markTaskRejected`, `finalizeTask`) + pure decision helpers
 - `src/frontend/src/engine/core/task-transitions.test.ts` — retry/cost 판정 순수 함수 단위 테스트
 
 **Modify:**
@@ -151,7 +151,7 @@ git -C /Users/leo/Desktop/sdadaniel/orchestation commit -m "feat(engine): task-t
 ```typescript
 // ── 상태 전이 primitive ─────────────────────────────────
 
-export async function mergeAndDone(
+export async function finalizeTask(
   taskId: string,
   ctx: TransitionContext,
 ): Promise<void> {
@@ -299,7 +299,7 @@ Expected: `task-transitions.ts` 관련 오류 없음. (signal-handler.ts 쪽은 
 
 ```bash
 git -C /Users/leo/Desktop/sdadaniel/orchestation add src/frontend/src/engine/core/task-transitions.ts
-git -C /Users/leo/Desktop/sdadaniel/orchestation commit -m "feat(engine): 상태 전이 primitive 이전 (markTaskFailed/Rejected/mergeAndDone)"
+git -C /Users/leo/Desktop/sdadaniel/orchestation commit -m "feat(engine): 상태 전이 primitive 이전 (markTaskFailed/Rejected/finalizeTask)"
 ```
 
 ---
@@ -327,7 +327,7 @@ export async function onTaskFinished(
       const role = info?.role ?? "";
       if (SKIP_REVIEW_ROLES.includes(role)) {
         ctx.log(`  ✅ ${taskId} task 완료 → review 스킵 → 머지`);
-        await mergeAndDone(taskId, ctx);
+        await finalizeTask(taskId, ctx);
       } else {
         ctx.log(`  ✅ ${taskId} task 완료 → review 시작`);
         ctx.startReview(taskId);
@@ -389,7 +389,7 @@ export async function onReviewFinished(
 ): Promise<void> {
   if (result.status === "review-approved") {
     ctx.log(`  ✅ ${taskId} review 승인 → 머지`);
-    await mergeAndDone(taskId, ctx);
+    await finalizeTask(taskId, ctx);
     return;
   }
 

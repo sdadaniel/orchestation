@@ -234,6 +234,14 @@ body {
   font-weight: 600;
 }
 
+/* Sidebar helpers */
+.sidebar-section-sep {
+  height: 1px;
+  background: var(--sidebar-border);
+  margin: 8px 8px 6px;
+  opacity: 0.8;
+}
+
 /* Right panel section */
 .detail-section {
   padding: 8px 12px;

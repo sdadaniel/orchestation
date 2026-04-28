@@ -1,36 +1,37 @@
 {
-  "name": "@orchestration/cli",
-  "version": "0.1.7",
-  "description": "AI Development Orchestration — 태스크 자동 실행, 리뷰, 머지 파이프라인",
-  "bin": {
-    "orchestrate": "./cli.js"
-  },
-  "scripts": {
-    "dashboard": "node cli.js dashboard",
-    "start": "node cli.js run",
-    "night": "node cli.js night"
-  },
-  "files": [
-    "cli.js",
-    "docs/roles/",
-    "config.json",
-    "apps/dashboard/",
-    "packages/orchestration-runtime/"
-  ],
-  "bundledDependencies": false,
-  "engines": {
-    "node": ">=18"
-  },
-  "os": [
-    "darwin",
-    "linux"
-  ],
-  "keywords": [
-    "ai",
-    "orchestration",
-    "claude",
-    "automation"
-  ],
-  "license": "MIT",
-  "bundleDependencies": []
+    "name": "@orchestration/cli",
+    "version": "0.1.7",
+    "description": "AI Development Orchestration — 태스크 자동 실행, 리뷰, 머지 파이프라인",
+    "bin": {
+        "orchestrate": "./cli.js"
+    },
+    "scripts": {
+        "start": "node cli.js start",
+        "status": "node cli.js status",
+        "restart": "node cli.js restart",
+        "stop": "node cli.js stop"
+    },
+    "files": [
+        "cli.js",
+        "docs/roles/",
+        "config.json",
+        "packages/dashboard/",
+        "packages/orchestration-runtime/"
+    ],
+    "bundledDependencies": false,
+    "engines": {
+        "node": ">=18"
+    },
+    "os": [
+        "darwin",
+        "linux"
+    ],
+    "keywords": [
+        "ai",
+        "orchestration",
+        "claude",
+        "automation"
+    ],
+    "license": "MIT",
+    "bundleDependencies": []
 }

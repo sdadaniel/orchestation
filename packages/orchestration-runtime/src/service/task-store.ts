@@ -10,11 +10,14 @@ import {
   parseScope,
 } from "../lib/task-row-parsers";
 import { publish } from "../bus";
+import { parseWorkflowFromTaskContent } from "../lib/workflow";
+import type { StepType } from "../gateway/runner/step-runner";
 
 export interface TaskRow {
   id: string;
   title: string;
   status: string;
+  phase: string | null;
   priority: string;
   branch: string | null;
   worktree: string | null;
@@ -34,7 +37,7 @@ export interface TaskStepRow {
   id: string;
   task_id: string;
   step_key: string;
-  step_type: string;
+  step_type: StepType;
   status: string;
   attempt: number;
   max_attempts: number | null;
@@ -160,6 +163,7 @@ export function createTask(task: {
   id: string;
   title: string;
   status?: string;
+  phase?: string | null;
   priority?: string;
   role?: string;
   reviewer_role?: string;
@@ -177,14 +181,15 @@ export function createTask(task: {
 
   const ts = now();
   db.prepare(
-    `INSERT INTO tasks (id, title, status, priority, branch, worktree, role, reviewer_role,
+    `INSERT INTO tasks (id, title, status, phase, priority, branch, worktree, role, reviewer_role,
       scope, context, depends_on, complexity, sort_order, content, created, updated)
-     VALUES (@id, @title, @status, @priority, @branch, @worktree, @role, @reviewer_role,
+     VALUES (@id, @title, @status, @phase, @priority, @branch, @worktree, @role, @reviewer_role,
       @scope, @context, @depends_on, @complexity, @sort_order, @content, @created, @updated)`,
   ).run({
     id: task.id,
     title: task.title,
     status: task.status ?? "pending",
+    phase: task.phase ?? null,
     priority: task.priority ?? "medium",
     branch: task.branch ?? null,
     worktree: task.worktree ?? null,
@@ -201,13 +206,16 @@ export function createTask(task: {
   });
 
   const created = getTask(task.id)!;
-  notifyTaskChanged(task.id, { status: created.status });
+  // 태스크 생성 시점에 workflow(frontmatter)를 파싱해서 step 레코드도 함께 생성한다.
+  // (엔진 디스패치 전에 UI/DB에서도 step을 볼 수 있게 하기 위함)
+  ensureTaskSteps(task.id, parseWorkflowFromTaskContent(created.content || ""));
+  notifyTaskChanged(task.id, { status: created.status, phase: created.phase });
   return created;
 }
 
 export function ensureTaskSteps(
   taskId: string,
-  steps: { key: string; type: string; maxAttempts?: number }[],
+  steps: { key: string; type: StepType; maxAttempts?: number }[],
 ): void {
   const db = getWritableDb();
   if (!db) throw new Error("Database not available");
@@ -258,6 +266,7 @@ export function updateTask(
   fields: Partial<{
     title: string;
     status: string;
+    phase: string | null;
     priority: string;
     branch: string;
     worktree: string;
@@ -295,10 +304,15 @@ export function updateTask(
   db.prepare(`UPDATE tasks SET ${sets.join(", ")} WHERE id = @id`).run(values);
   notifyTaskChanged(taskId, {
     ...(fields.status ? { status: fields.status } : {}),
+    ...("phase" in fields ? { phase: fields.phase } : {}),
     ...(fields.priority ? { priority: fields.priority } : {}),
     ...(fields.title ? { title: fields.title } : {}),
   });
   return true;
+}
+
+export function updateTaskPhase(taskId: string, phase: string | null): boolean {
+  return updateTask(taskId, { phase });
 }
 
 export function recordStepEvent(
@@ -322,18 +336,33 @@ export function updateTaskStatus(
   const db = getWritableDb();
   if (!db) return false;
 
-  db.prepare("UPDATE tasks SET status = ?, updated = ? WHERE id = ?").run(
-    newStatus,
-    now(),
-    taskId,
-  );
+  const ts = now();
+  const shouldClearPhase =
+    newStatus === "done" ||
+    newStatus === "failed" ||
+    newStatus === "rejected" ||
+    newStatus === "stopped";
+
+  if (shouldClearPhase) {
+    db.prepare("UPDATE tasks SET status = ?, phase = NULL, updated = ? WHERE id = ?").run(
+      newStatus,
+      ts,
+      taskId,
+    );
+  } else {
+    db.prepare("UPDATE tasks SET status = ?, updated = ? WHERE id = ?").run(
+      newStatus,
+      ts,
+      taskId,
+    );
+  }
 
   // 이벤트 기록
   db.prepare(
     "INSERT INTO task_events (task_id, event_type, from_status, to_status, timestamp) VALUES (?, 'status_change', ?, ?, ?)",
-  ).run(taskId, fromStatus ?? null, newStatus, now());
+  ).run(taskId, fromStatus ?? null, newStatus, ts);
 
-  notifyTaskChanged(taskId, { status: newStatus });
+  notifyTaskChanged(taskId, { status: newStatus, ...(shouldClearPhase ? { phase: null } : {}) });
   return true;
 }
 
@@ -358,6 +387,7 @@ export function taskRowToMarkdown(task: TaskRow): string {
     `id: ${task.id}`,
     `title: ${task.title}`,
     `status: ${task.status}`,
+    ...(task.phase ? [`phase: ${task.phase}`] : []),
     `priority: ${task.priority}`,
     `role: ${task.role}`,
   ];

@@ -8,7 +8,7 @@
 ## 1. 한 줄 요약
 
 - 오케스트레이션 **코어 디렉터리**는 `packages/orchestration-runtime/src/gateway`(현재 `src/engine`)로 통일한다.
-- **패키지는 3분할**: `packages/orchestration-runtime`(순수 코어, 브라우저·Next 의존 없음) + `packages/gateway-host`(HTTP + WS + Next 호스트) + `apps/dashboard`(Next 앱).
+- **패키지는 3분할**: `packages/orchestration-runtime`(순수 코어, 브라우저·Next 의존 없음) + `packages/gateway-host`(HTTP + WS + Next 호스트) + `packages/dashboard`(Next 앱).
 - **SSE 제거**: 서버→클라이언트 푸시는 **WebSocket 이벤트**만 사용한다.
 - **액션(사이드 이펙트)**은 HTTP POST 나열이 아니라 **WebSocket RPC**(`req` / `res`)로 통일한다.
 - **재연결**: 전송 계층 끊김 시 지수 백오프 + 스냅샷 + `lastSeq` replay(event store 기반). `run`/`idle` 같은 앱 상태 때문에 소켓을 의도적으로 끊지 않는다.
@@ -20,16 +20,16 @@
 
 ### 2.1 현재
 
-- 개발 시 `apps/dashboard/server.ts`가 `http.createServer` + Next `getRequestHandler` + 여러 `WebSocketServer`의 `upgrade`로 **한 포트**에서 페이지·API·WS를 함께 제공한다.
-- `apps/dashboard/package.json`의 `start`는 `next start`라 **프로덕션에서는 커스텀 서버가 빠진다**(WS upgrade 핸들러 전부 동작 안 함).
+- 개발 시 `packages/dashboard/server.ts`가 `http.createServer` + Next `getRequestHandler` + 여러 `WebSocketServer`의 `upgrade`로 **한 포트**에서 페이지·API·WS를 함께 제공한다.
+- `packages/dashboard/package.json`의 `start`는 `next start`라 **프로덕션에서는 커스텀 서버가 빠진다**(WS upgrade 핸들러 전부 동작 안 함).
 - `packages/orchestration-runtime` deps는 3개(`better-sqlite3`, `gray-matter`, `tsx`)만 있어 순수한 상태.
-- SSE는 `apps/dashboard/src/app/sse/route.ts`와 `SseProvider`/`client.ts`/`useSseHandlers.ts`로 구성. DB 폴링 + `replayAfter` 타임스탬프 커서.
+- SSE는 `packages/dashboard/src/app/sse/route.ts`와 `SseProvider`/`client.ts`/`useSseHandlers.ts`로 구성. DB 폴링 + `replayAfter` 타임스탬프 커서.
 
 ### 2.2 목표
 
 | 구분 | 내용 |
 |------|------|
-| 용어 | 코어: `packages/orchestration-runtime/src/gateway`. 대시보드 alias: `@/engine/*` → `@/gateway/*` (`apps/dashboard/tsconfig.json`). |
+| 용어 | 코어: `packages/orchestration-runtime/src/gateway`. 대시보드 alias: `@/engine/*` → `@/gateway/*` (`packages/dashboard/tsconfig.json`). |
 | 패키지 경계 | **3분할**. runtime은 브라우저/Next 의존 금지. gateway-host가 Next + WS + HTTP 호스트. dashboard는 Next 앱 디렉터리. |
 | 실행 | 리스닝 프로세스를 `packages/gateway-host`에 두고, 루트 `cli.js`에 `orchestrate gateway`를 추가(`start`/`dashboard`는 위임). |
 | 실시간 | SSE 완전 제거. `orchestration-status`, `task-changed` 등 **브라우저로의 푸시는 WS 이벤트**만. 내부 pub/sub(`packages/orchestration-runtime/src/lib/sse/` → **rename `bus/`**)은 유지하되 브라우저 팬아웃은 WS 한 경로. |
@@ -53,7 +53,7 @@
 
 - **원칙 A (앱 상태)**: 오케스트레이션이 `running`이든 `idle`이든 **의도적으로 WS를 닫아서 상태를 바꾸지 않는다**. `run` ↔ `idle`은 애플리케이션 상태만 변경한다.
 - **원칙 B (전송 장애)**: 끊기면 클라이언트는 **재연결**한다(§5).
-- **참고(현재 서버)**: `apps/dashboard/server.ts`의 `/ws/orchestrate`는 연결 후 `ready`를 보내고, `orchestrate.run` / `orchestrate.stop`에 대해 `{ type: "res", ... }`로 응답하며 **성공 시 소켓을 닫지 않는다**.
+- **참고(현재 서버)**: `packages/dashboard/server.ts`의 `/ws/orchestrate`는 연결 후 `ready`를 보내고, `orchestrate.run` / `orchestrate.stop`에 대해 `{ type: "res", ... }`로 응답하며 **성공 시 소켓을 닫지 않는다**.
 
 ---
 
@@ -61,8 +61,8 @@
 
 ### 4.1 제거·대체 대상(대표)
 
-- 라우트: `apps/dashboard/src/app/sse/route.ts` (`GET /sse`, DB 폴링, replay, 스냅샷 푸시).
-- 클라이언트: `apps/dashboard/src/providers/SseProvider.tsx`, `apps/dashboard/src/sse/client.ts`, `apps/dashboard/src/providers/useSseHandlers.ts`.
+- 라우트: `packages/dashboard/src/app/sse/route.ts` (`GET /sse`, DB 폴링, replay, 스냅샷 푸시).
+- 클라이언트: `packages/dashboard/src/providers/SseProvider.tsx`, `packages/dashboard/src/sse/client.ts`, `packages/dashboard/src/providers/useSseHandlers.ts`.
 - 레이아웃: `SseProvider` 마운트 제거 → **단일 WS 클라이언트**(`GatewayWsProvider`)로 대체.
 
 ### 4.2 서버
@@ -151,7 +151,7 @@ interface RpcMethodDef<P, R> {
 flowchart LR
   subgraph process [gateway-host 단일 Node 프로세스]
     GH[gateway-host server]
-    Next[Next apps/dashboard]
+    Next[Next packages/dashboard]
     WS[ws upgrades]
     GW[gateway 코어<br/>packages/orchestration-runtime/src/gateway]
     Bus[event bus + store<br/>packages/orchestration-runtime/src/bus]
@@ -175,9 +175,9 @@ flowchart LR
 
 1. `packages/orchestration-runtime/src/engine` → `src/gateway` (git mv, import 일괄 치환).
 2. `@/engine/*` alias → `@/gateway/*` (dashboard tsconfig).
-3. `packages/gateway-host` 신설. `apps/dashboard/server.ts`를 `packages/gateway-host/src/server.ts`로 이전. Next 앱 디렉터리 해석은 `PACKAGE_DIR`/`PROJECT_ROOT` 우선순위로 고정.
+3. `packages/gateway-host` 신설. `packages/dashboard/server.ts`를 `packages/gateway-host/src/server.ts`로 이전. Next 앱 디렉터리 해석은 `PACKAGE_DIR`/`PROJECT_ROOT` 우선순위로 고정.
 4. `cli.js`에 `orchestrate gateway` 추가, `start`/`dashboard`는 위임.
-5. `apps/dashboard/package.json`의 `dev`는 gateway-host 엔트리로 연결, `start`도 동일(프로덕션).
+5. `packages/dashboard/package.json`의 `dev`는 gateway-host 엔트리로 연결, `start`도 동일(프로덕션).
 
 ### Phase 2 — bus 리네임 + event store
 
@@ -189,7 +189,7 @@ flowchart LR
 
 9. `gateway-host/src/ws/gateway-channel.ts` 신설: 연결 핸들러, 스냅샷, `hello`/`replay`/`replay-gap`, RPC 레지스트리.
 10. RPC 레지스트리에 `orchestrate.run`(idempotent=false) / `orchestrate.stop`(idempotent=true) 등록. 기존 `/ws/orchestrate`는 **제거**하고 클라이언트를 `/ws/gateway`로 이전.
-11. 클라이언트: `GatewayWsProvider` 신설(`apps/dashboard/src/gateway-ws/provider.tsx`), 백오프·seq·in-flight RPC·idempotent 재전송 규칙 구현.
+11. 클라이언트: `GatewayWsProvider` 신설(`packages/dashboard/src/gateway-ws/provider.tsx`), 백오프·seq·in-flight RPC·idempotent 재전송 규칙 구현.
 12. `SseProvider`·`useSseHandlers`·`src/sse/`·`src/app/sse/route.ts` 제거, 레이아웃에서 `GatewayWsProvider`로 교체.
 13. `useSseHandlers`의 React Query invalidate / Zustand patch 로직을 WS 이벤트 핸들러로 이전.
 
@@ -200,7 +200,7 @@ flowchart LR
 
 ### Phase 5 — 프로덕션 부팅
 
-16. `apps/dashboard/package.json`의 `start`를 `next start`에서 gateway-host 엔트리로 변경. `next build` 후 `next({ dev: false }).getRequestHandler()`로 한 포트 유지.
+16. `packages/dashboard/package.json`의 `start`를 `next start`에서 gateway-host 엔트리로 변경. `next build` 후 `next({ dev: false }).getRequestHandler()`로 한 포트 유지.
 17. 프로덕션 부팅 스모크: 빌드 → 기동 → 페이지·`/ws/gateway`·태스크별 WS·터미널 스모크.
 
 ### Phase 6 — 문서·검증
@@ -218,12 +218,12 @@ flowchart LR
 |------|------|
 | 이동 | `packages/orchestration-runtime/src/engine/**` → `packages/orchestration-runtime/src/gateway/**` |
 | 이동 | `packages/orchestration-runtime/src/lib/sse/**` → `packages/orchestration-runtime/src/bus/**` |
-| 이동 | `apps/dashboard/server.ts` → `packages/gateway-host/src/server.ts` |
+| 이동 | `packages/dashboard/server.ts` → `packages/gateway-host/src/server.ts` |
 | 신규 | `packages/gateway-host/{package.json, tsconfig.json, src/server.ts, src/ws/gateway-channel.ts, src/ws/verify-origin.ts, src/rpc/registry.ts, src/rpc/methods/*}` |
 | 신규 | `packages/orchestration-runtime/src/bus/event-store.ts` |
-| 신규 | `apps/dashboard/src/gateway-ws/{provider.tsx, client.ts, handlers.ts}` |
-| 제거 | `apps/dashboard/src/app/sse/route.ts`, `apps/dashboard/src/providers/SseProvider.tsx`, `apps/dashboard/src/providers/useSseHandlers.ts`, `apps/dashboard/src/sse/client.ts` |
-| 변경 | `cli.js`(gateway 커맨드), `apps/dashboard/package.json`(dev/start), `apps/dashboard/tsconfig.json`(alias), 전 `@/engine/` import |
+| 신규 | `packages/dashboard/src/gateway-ws/{provider.tsx, client.ts, handlers.ts}` |
+| 제거 | `packages/dashboard/src/app/sse/route.ts`, `packages/dashboard/src/providers/SseProvider.tsx`, `packages/dashboard/src/providers/useSseHandlers.ts`, `packages/dashboard/src/sse/client.ts` |
+| 변경 | `cli.js`(gateway 커맨드), `packages/dashboard/package.json`(dev/start), `packages/dashboard/tsconfig.json`(alias), 전 `@/engine/` import |
 | 변경 | `docs/architecture/orchestrator-node-architecture.md` |
 
 ---
@@ -244,7 +244,7 @@ flowchart LR
 
 ## 11. 관련 기존 파일(구현 시 참고)
 
-- 게이트웨이 호스트(현재): `apps/dashboard/server.ts`
-- SSE 라우트: `apps/dashboard/src/app/sse/route.ts`
+- 게이트웨이 호스트(현재): `packages/dashboard/server.ts`
+- SSE 라우트: `packages/dashboard/src/app/sse/route.ts`
 - 이벤트 버스(현재): `packages/orchestration-runtime/src/lib/sse/` (→ rename `bus/`)
 - 오케스트레이션 상태 푸시(현재 import 경로): `packages/orchestration-runtime/src/engine/orchestration-manager.ts` (루트, `@/engine/orchestration-manager`로 import). 참고로 `engine/managers/orchestration-manager.ts`도 존재하나 `server.ts`는 **루트 버전**을 사용. 정리 대상. rename 후: `packages/orchestration-runtime/src/gateway/orchestration-manager.ts`.

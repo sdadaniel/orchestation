@@ -16,6 +16,7 @@ export async function GET() {
     id: row.id,
     title: row.title,
     status: row.status as TaskFrontmatter["status"],
+    phase: (row as unknown as { phase?: string | null }).phase ?? null,
     priority: row.priority as TaskFrontmatter["priority"],
     depends_on: parseDependsOn(row),
     blocks: [],

@@ -6,7 +6,7 @@ export type BusEventType =
   | "task-terminal";
 
 export type BusEventEnvelope<T = unknown> = {
-  id: number;
+  id: string;
   atIso: string;
   type: BusEventType;
   data: T;

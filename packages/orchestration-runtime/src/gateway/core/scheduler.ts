@@ -78,6 +78,7 @@ export function scanTasks(): TaskInfo[] {
   return tasks;
 }
 
+// 실행 게이트: dependsOn에 있는 선행 태스크가 모두 "done"인 경우에만 디스패치 가능
 export function depsSatisfied(task: TaskInfo): boolean {
   if (task.dependsOn.length === 0) return true;
   for (const dep of task.dependsOn) {
@@ -121,6 +122,11 @@ export function scopeNotConflicting(
 }
 
 export function canDispatch(): boolean {
+  // macOS에서는 `memory_pressure`로 시스템 메모리 압박(critical/warn)을 감지할 수 있다.
+  // 메모리가 빡빡한 상태에서 새 워커를 더 띄우면 전체가 느려지거나 실패율이 올라가므로,
+  // 이 경우에는 "지금은 디스패치하지 말자"로 판단한다.
+  //
+  // non-macOS(또는 커맨드 실패) 환경에서는 이 신호를 못 쓰므로 항상 true로 fallback한다.
   try {
     const output = execSync(
       "memory_pressure 2>/dev/null | grep -o 'The system is under .*memory pressure' | awk '{print $6}'",

@@ -17,7 +17,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "5.0",
     "plugins": [
       {
         "name": "next"
@@ -25,13 +25,13 @@
     ],
     "paths": {
       "@/types/plan": [
-        "../../packages/orchestration-runtime/src/types/plan.ts"
+        "../orchestration-runtime/src/types/plan.ts"
       ],
       "@/types/waterfall": [
-        "../../packages/orchestration-runtime/src/types/waterfall.ts"
+        "../orchestration-runtime/src/types/waterfall.ts"
       ],
       "@/bus/*": [
-        "../../packages/orchestration-runtime/src/bus/*"
+        "../orchestration-runtime/src/bus/*"
       ],
       "@/lib/query-client": [
         "./src/lib/query-client.ts"
@@ -40,19 +40,19 @@
         "./src/lib/utils.ts"
       ],
       "@/lib/*": [
-        "../../packages/orchestration-runtime/src/lib/*"
+        "../orchestration-runtime/src/lib/*"
       ],
       "@/service/*": [
-        "../../packages/orchestration-runtime/src/service/*"
+        "../orchestration-runtime/src/service/*"
       ],
       "@/parser/*": [
-        "../../packages/orchestration-runtime/src/parser/*"
+        "../orchestration-runtime/src/parser/*"
       ],
       "@/gateway/*": [
-        "../../packages/orchestration-runtime/src/gateway/*"
+        "../orchestration-runtime/src/gateway/*"
       ],
       "@/constants/*": [
-        "../../packages/orchestration-runtime/src/constants/*"
+        "../orchestration-runtime/src/constants/*"
       ],
       "@/*": [
         "./src/*"

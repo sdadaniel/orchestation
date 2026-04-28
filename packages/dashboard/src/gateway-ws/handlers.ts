@@ -4,6 +4,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/query-keys";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 import { useTasksStore } from "@/store/tasksStore";
+import { useLogsStore } from "@/store/logsStore";
 import type { OrchestrationStatusData } from "@/gateway/orchestration-manager";
 
 export function createEventHandlers(queryClient: QueryClient) {
@@ -13,22 +14,25 @@ export function createEventHandlers(queryClient: QueryClient) {
   };
 
   return {
-    onEvent(event: string, data: unknown, _seq: number) {
+    onEvent(event: string, data: unknown, _id: string) {
+      useLogsStore.getState().markConnected();
+
       if (event === "task-changed") {
-        const d = data as { full?: boolean; deleted?: boolean; taskId?: string; status?: string; priority?: string; title?: string };
+        const d = data as { full?: boolean; deleted?: boolean; taskId?: string; status?: string; priority?: string; title?: string; phase?: string | null };
         if (d.full || d.deleted) {
           invalidateTasksAndRequests();
           useTasksStore.getState().fetchAll();
           return;
         }
         if (d.taskId) {
-          const patch: Record<string, string> = {};
+          const patch: Record<string, unknown> = {};
           if (d.status) patch.status = d.status;
           if (d.priority) patch.priority = d.priority;
           if (d.title) patch.title = d.title;
+          if ("phase" in d) patch.phase = d.phase ?? null;
           const store = useTasksStore.getState();
           const exists = store.requests.some((r) => r.id === d.taskId);
-          if (exists) store.patchRequest(d.taskId, patch);
+          if (exists) store.patchRequest(d.taskId, patch as never);
           else store.fetchAll();
           invalidateTasksAndRequests();
         }
@@ -56,11 +60,26 @@ export function createEventHandlers(queryClient: QueryClient) {
           queryClient.invalidateQueries({ queryKey: queryKeys.costs.all });
           queryClient.invalidateQueries({ queryKey: queryKeys.runHistory.all });
         }
+
+        useLogsStore.getState().setStatus(statusData.status);
         return;
+      }
+
+      if (event === "log") {
+        const d = data as { scope?: string; line?: string; logs?: string[]; total?: number };
+        if (d?.scope !== "orchestrate") return;
+        if (typeof d?.line === "string") {
+          useLogsStore.getState().applyIncoming({ logs: [d.line] });
+          return;
+        }
+        if (Array.isArray(d?.logs) || typeof d?.total === "number") {
+          useLogsStore.getState().applyIncoming({ logs: d.logs, total: d.total });
+        }
       }
     },
 
     onSnapshot(snapshot: unknown) {
+      useLogsStore.getState().markConnected();
       const s = snapshot as {
         orchestration?: OrchestrationStatusData;
         tasksFullHint?: boolean;
@@ -74,6 +93,8 @@ export function createEventHandlers(queryClient: QueryClient) {
           false,
           "orchestration/ws-snapshot",
         );
+
+        useLogsStore.getState().setStatus(s.orchestration.status);
       }
       if (s.tasksFullHint) {
         useTasksStore.getState().fetchAll();
@@ -81,9 +102,5 @@ export function createEventHandlers(queryClient: QueryClient) {
       }
     },
 
-    onReplayGap() {
-      invalidateTasksAndRequests();
-      useTasksStore.getState().fetchAll();
-    },
   };
 }

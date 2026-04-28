@@ -7,7 +7,7 @@ import { createEventHandlers } from "./handlers";
 
 const IDEMPOTENT_METHODS = new Set<string>(["orchestrate.stop"]);
 
-type Listener = (event: string, data: unknown, seq: number) => void;
+type Listener = (event: string, data: unknown, id: string) => void;
 const listeners = new Set<Listener>();
 
 export function subscribeGatewayEvent(fn: Listener): () => void {
@@ -42,12 +42,11 @@ export function GatewayWsProvider({ children }: { children: React.ReactNode }) {
     const url = `${proto}://${window.location.host}/ws/gateway`;
     const c = createGatewayClient({
       url,
-      onEvent: (event, data, seq) => {
-        h.onEvent(event, data, seq);
-        for (const l of listeners) l(event, data, seq);
+      onEvent: (event, data, id) => {
+        h.onEvent(event, data, id);
+        for (const l of listeners) l(event, data, id);
       },
       onSnapshot: (snap) => h.onSnapshot(snap),
-      onReplayGap: () => h.onReplayGap(),
       isIdempotent: (m) =>
         IDEMPOTENT_METHODS.has(m) || m === "task.conversation.get",
     });

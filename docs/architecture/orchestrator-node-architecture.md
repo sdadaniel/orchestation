@@ -1,6 +1,6 @@
 # 오케스트레이터 아키텍처 (게이트웨이 통합 이후)
 
-> 기준: `gateway-unification` 완료 상태. `packages/gateway-host`가 단일 HTTP + WS 호스트 프로세스를 담당하며, `apps/dashboard`는 순수 Next.js 앱(서버 코드 없음)으로 분리된 상태를 기준으로 한다.
+> 기준: `gateway-unification` 완료 상태. `packages/gateway-host`가 단일 HTTP + WS 호스트 프로세스를 담당하며, `packages/dashboard`는 순수 Next.js 앱(서버 코드 없음)으로 분리된 상태를 기준으로 한다.
 
 ## 1. 프로세스 경계
 
@@ -10,7 +10,7 @@
 flowchart TB
   subgraph gw["gateway-host 프로세스 (packages/gateway-host)"]
     server["server.ts\nHTTP createServer"]
-    next_handler["Next.js handle(req, res)\n→ apps/dashboard 렌더링"]
+    next_handler["Next.js handle(req, res)\n→ packages/dashboard 렌더링"]
     upgrade["upgrade 이벤트\n→ verifyOrigin 검사"]
 
     server --> next_handler
@@ -41,7 +41,7 @@ flowchart TB
 | 진입점 | 역할 |
 |--------|------|
 | `packages/gateway-host/src/server.ts` | HTTP 서버 기동, Next.js 앱 연결, WS 업그레이드 라우팅 |
-| `apps/dashboard` | 순수 Next.js 앱 (API Routes 포함). `server.ts` 없음 |
+| `packages/dashboard` | 순수 Next.js 앱 (API Routes 포함). `server.ts` 없음 |
 | `/ws/gateway` | 이벤트 구독 + RPC 단일 채널 |
 
 ---
@@ -193,4 +193,4 @@ sequenceDiagram
 | 러너 (TaskRunnerManager) | `packages/orchestration-runtime/src/gateway/runner/task-runner-manager.ts` |
 | OrchestrationManager | `packages/orchestration-runtime/src/gateway/managers/orchestration-manager.ts` |
 | 태스크 스토어 (SQLite) | `packages/orchestration-runtime/src/service/task-store.ts` |
-| Dashboard (Next.js 앱) | `apps/dashboard/` (서버 코드 없음 — 순수 Next.js) |
+| Dashboard (Next.js 앱) | `packages/dashboard/` (서버 코드 없음 — 순수 Next.js) |

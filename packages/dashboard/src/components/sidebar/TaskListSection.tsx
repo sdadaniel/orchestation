@@ -6,15 +6,11 @@ import { ChevronDown, Plus, Square, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RequestItem } from "@/store/tasksStore";
 
-/* ── Props ── */
-
 export interface TaskListSectionProps {
   requestItems: RequestItem[];
   currentPath: string;
   onStopTask?: (id: string) => Promise<void>;
 }
-
-/* ── Component ── */
 
 export function TaskListSection({
   requestItems,
@@ -24,7 +20,6 @@ export function TaskListSection({
   const [tasksExpanded, setTasksExpanded] = useState(true);
   const [stoppingTaskId, setStoppingTaskId] = useState<string | null>(null);
 
-  // 사이드바 태스크: 활성 태스크 우선, 그 안에서 updated 내림차순으로 최근 10개
   const padDate = (d: string) => (d.length === 10 ? `${d} 99:99:99` : d);
   const statusWeight = (s: string) => {
     switch (s) {
@@ -37,9 +32,10 @@ export function TaskListSection({
       case "stopped":
         return 3;
       default:
-        return 4; // done, failed, rejected
+        return 4;
     }
   };
+
   const uniqueItems = [...new Map(requestItems.map((r) => [r.id, r])).values()];
   const recentItems = uniqueItems
     .sort((a, b) => {
@@ -57,7 +53,7 @@ export function TaskListSection({
       <div className="px-2 mb-1.5 flex items-center justify-between">
         <button
           type="button"
-          className="flex items-center gap-1 sidebar-section-link bg-transparent border-none p-0 cursor-pointer"
+          className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setTasksExpanded((v) => !v)}
         >
           <ChevronDown
@@ -69,8 +65,8 @@ export function TaskListSection({
           <Link
             href="/tasks"
             className={cn(
-              "sidebar-section-link",
-              currentPath.startsWith("/tasks") && "active",
+              "no-underline text-muted-foreground hover:text-foreground transition-colors",
+              currentPath.startsWith("/tasks") && "text-primary",
             )}
             onClick={(e) => e.stopPropagation()}
           >
@@ -89,7 +85,6 @@ export function TaskListSection({
         </span>
       </div>
 
-      {/* Collapsible tasks content */}
       <div
         className={cn(
           "sidebar-collapsible",
@@ -97,7 +92,6 @@ export function TaskListSection({
         )}
       >
         <div className="sidebar-collapsible-inner">
-          {/* 최근 업데이트 순 10개 태스크 */}
           {recentItems.map((task) => {
             const taskDisplayId = task.id;
             const isDone = task.status === "done";
@@ -105,9 +99,7 @@ export function TaskListSection({
             const statusIndicator = isInProgress ? (
               <span className="w-3 h-3 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
             ) : isDone ? (
-              <span className="text-emerald-500 text-xs shrink-0">
-                &#10003;
-              </span>
+              <span className="text-emerald-500 text-xs shrink-0">&#10003;</span>
             ) : task.status === "reviewing" ? (
               <span className="w-2 h-2 rounded-full shrink-0 bg-orange-500" />
             ) : task.status === "pending" ? (
@@ -166,7 +158,6 @@ export function TaskListSection({
             );
           })}
 
-          {/* + New Task button */}
           <Link
             href="/tasks/new"
             className={cn(
@@ -188,3 +179,4 @@ export function TaskListSection({
     </div>
   );
 }
+

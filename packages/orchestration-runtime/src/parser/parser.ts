@@ -9,6 +9,7 @@ export interface TaskFrontmatter {
   id: string;
   title: string;
   status: TaskStatus;
+  phase?: string | null;
   priority: TaskPriority;
   depends_on: string[];
   blocks: string[];
@@ -60,6 +61,7 @@ function taskRowToFrontmatter(row: TaskRow): TaskFrontmatter {
     id: row.id,
     title: row.title,
     status: toTaskStatus(row.status),
+    phase: row.phase ?? null,
     priority: toTaskPriority(row.priority),
     depends_on: parseDependsOn(row),
     blocks: [],

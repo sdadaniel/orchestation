@@ -1,22 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import {
-  ChevronDown,
-  ChevronRight,
-  ClipboardList,
-  DollarSign,
-  SquareTerminal,
-  Folder,
-  FileText,
-  Plus,
-  Activity,
-  Bell,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { TaskStatus } from "@/constants/status";
 import type { DocNode } from "@/hooks/useDocTree";
 import { useTasksStore, type RequestItem } from "@/store/tasksStore";
 import { useNotices } from "@/hooks/useNotices";
@@ -28,40 +15,6 @@ import { NewItemInput } from "./sidebar/NewItemInput";
 import { SidebarFooter } from "./sidebar/SidebarFooter";
 import { TaskListSection } from "./sidebar/TaskListSection";
 
-/* ── Types ── */
-
-export type SidebarFilter =
-  | { type: "all" }
-  | { type: "prd"; prdId: string }
-  | { type: "status"; status: TaskStatus };
-
-type NavItem = {
-  label: string;
-  icon: React.ReactNode;
-  href: string;
-};
-
-const pageNavItems: NavItem[] = [
-  { label: "Task", icon: <ClipboardList className="h-3.5 w-3.5" />, href: "/" },
-  {
-    label: "Cost",
-    icon: <DollarSign className="h-3.5 w-3.5" />,
-    href: "/cost",
-  },
-  {
-    label: "Monitor",
-    icon: <Activity className="h-3.5 w-3.5" />,
-    href: "/monitor",
-  },
-  {
-    label: "Terminal",
-    icon: <SquareTerminal className="h-3.5 w-3.5" />,
-    href: "/terminal",
-  },
-];
-
-/* ── Sidebar for IDE Task page ── */
-
 export interface PrdInfo {
   id: string;
   title: string;
@@ -70,10 +23,8 @@ export interface PrdInfo {
 
 type TaskSidebarProps = {
   groups?: WaterfallGroup[];
-  prds: PrdInfo[];
+  prds?: PrdInfo[];
   docTree: DocNode[];
-  filter?: SidebarFilter;
-  onFilterChange?: (filter: SidebarFilter) => void;
   onDocCreate?: (
     title: string,
     type: "doc" | "folder",
@@ -106,7 +57,6 @@ export function TaskSidebar({
   noticeItems: noticeItemsProp,
   currentPath: currentPathProp,
 }: TaskSidebarProps) {
-  // store에서 직접 구독 (props fallback)
   const storeRequests = useTasksStore((s) => s.requests);
   const storeStopTask = useTasksStore((s) => s.stopTask);
   const { notices: storeNotices } = useNotices();
@@ -116,6 +66,7 @@ export function TaskSidebar({
   const noticeItems = noticeItemsProp ?? storeNotices ?? [];
   const currentPath = currentPathProp ?? pathname ?? "/";
   const handleStopTask = onStopTask ?? storeStopTask;
+
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set(),
   );
@@ -144,7 +95,6 @@ export function TaskSidebar({
 
   return (
     <div className="ide-sidebar flex flex-col h-full">
-      {/* Header */}
       <div className="flex items-center px-3 h-10 border-b border-sidebar-border shrink-0">
         <Link
           href="/"
@@ -158,19 +108,22 @@ export function TaskSidebar({
         className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-2"
         style={{ scrollbarWidth: "none" }}
       >
-        {/* ── Docs (문서 트리) ── */}
+        {/* Docs */}
         <div className="mb-2">
           <div className="px-2 mb-1.5 flex items-center justify-between">
             <button
               type="button"
-              className="flex items-center gap-1 sidebar-section-link bg-transparent border-none p-0 cursor-pointer"
+              className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setDocsExpanded((v) => !v)}
             >
-              {docsExpanded ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronRight className="h-3 w-3" />
-              )}
+              <span
+                className={cn(
+                  "inline-block transition-transform duration-200",
+                  docsExpanded ? "rotate-0" : "-rotate-90",
+                )}
+              >
+                ▾
+              </span>
               Docs
             </button>
             <div className="flex items-center gap-1">
@@ -185,30 +138,28 @@ export function TaskSidebar({
                     className="p-0.5 rounded hover:bg-sidebar-accent text-muted-foreground hover:text-foreground"
                     onClick={() => setShowNewMenu(!showNewMenu)}
                   >
-                    <Plus className="h-3 w-3" />
+                    +
                   </button>
                   {showNewMenu && (
                     <div className="absolute right-0 top-full mt-1 bg-sidebar border border-sidebar-border rounded shadow-lg z-50 py-1 min-w-[120px]">
                       <button
                         type="button"
-                        className="w-full text-left px-3 py-1 text-xs hover:bg-sidebar-accent flex items-center gap-2"
+                        className="w-full text-left px-3 py-1 text-xs hover:bg-sidebar-accent"
                         onClick={() => {
                           setNewRootItemType("doc");
                           setShowNewMenu(false);
                         }}
                       >
-                        <FileText className="h-3 w-3" />
                         New Document
                       </button>
                       <button
                         type="button"
-                        className="w-full text-left px-3 py-1 text-xs hover:bg-sidebar-accent flex items-center gap-2"
+                        className="w-full text-left px-3 py-1 text-xs hover:bg-sidebar-accent"
                         onClick={() => {
                           setNewRootItemType("folder");
                           setShowNewMenu(false);
                         }}
                       >
-                        <Folder className="h-3 w-3" />
                         New Folder
                       </button>
                     </div>
@@ -218,7 +169,6 @@ export function TaskSidebar({
             </div>
           </div>
 
-          {/* Collapsible doc tree content */}
           <div
             className={cn(
               "sidebar-collapsible",
@@ -226,7 +176,6 @@ export function TaskSidebar({
             )}
           >
             <div className="sidebar-collapsible-inner">
-              {/* New root item input */}
               {newRootItemType && (
                 <NewItemInput
                   type={newRootItemType}
@@ -235,7 +184,6 @@ export function TaskSidebar({
                 />
               )}
 
-              {/* Doc tree */}
               {docTree.map((node) => (
                 <DocTreeNode
                   key={node.id}
@@ -261,35 +209,35 @@ export function TaskSidebar({
           </div>
         </div>
 
-        {/* ── Tasks ── */}
+        {/* Tasks */}
         <TaskListSection
           requestItems={requestItems}
           currentPath={currentPath}
           onStopTask={handleStopTask}
         />
 
-        {/* ── Notices ── */}
+        {/* Notices */}
         <div className="mb-2">
           <div className="sidebar-section-sep" />
           <div className="px-2 mb-1.5 flex items-center justify-between">
             <button
               type="button"
-              className="flex items-center gap-1 sidebar-section-link bg-transparent border-none p-0 cursor-pointer"
+              className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setNoticesExpanded((v) => !v)}
             >
-              <ChevronDown
-                className="h-3 w-3 transition-transform duration-200"
-                style={{
-                  transform: noticesExpanded
-                    ? "rotate(0deg)"
-                    : "rotate(-90deg)",
-                }}
-              />
+              <span
+                className={cn(
+                  "inline-block transition-transform duration-200",
+                  noticesExpanded ? "rotate-0" : "-rotate-90",
+                )}
+              >
+                ▾
+              </span>
               <Link
                 href="/notices"
                 className={cn(
-                  "sidebar-section-link",
-                  currentPath === "/notices" && "active",
+                  "no-underline text-muted-foreground hover:text-foreground transition-colors",
+                  currentPath === "/notices" && "text-primary",
                 )}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -307,7 +255,6 @@ export function TaskSidebar({
             )}
           </div>
 
-          {/* Collapsible notices content */}
           <div
             className={cn(
               "sidebar-collapsible",
@@ -322,11 +269,9 @@ export function TaskSidebar({
                   <Link
                     key={notice.id}
                     href="/notices"
-                    className={cn(
-                      "tree-item w-full text-left no-underline text-sidebar-foreground",
-                    )}
+                    className="tree-item w-full text-left no-underline text-sidebar-foreground"
                   >
-                    <Bell className="h-3 w-3 shrink-0 text-primary" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
                     <span className="truncate flex-1 text-xs font-medium">
                       {notice.title}
                     </span>
@@ -348,46 +293,8 @@ export function TaskSidebar({
         </div>
       </div>
 
-      {/* Bottom: Cost + Terminal + Settings */}
       <SidebarFooter currentPath={currentPath} />
     </div>
   );
 }
 
-/* ── Simple sidebar for non-Task pages ── */
-
-export function PageSidebar() {
-  const pathname = usePathname();
-
-  return (
-    <aside className="flex h-screen w-48 flex-col border-r border-sidebar-border bg-sidebar">
-      <div className="px-3 py-3">
-        <h1 className="text-sm font-semibold text-sidebar-foreground">
-          Dashboard
-        </h1>
-      </div>
-      <nav className="flex flex-1 flex-col gap-0.5 px-2">
-        {pageNavItems.map((item) => {
-          const isActive =
-            item.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(item.href);
-
-          return (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={cn(
-                "tree-item text-sidebar-foreground no-underline",
-                isActive && "active",
-              )}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-    </aside>
-  );
-}

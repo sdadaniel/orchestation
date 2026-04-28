@@ -18,6 +18,7 @@ export interface RequestItem {
     | "done"
     | "failed"
     | "rejected";
+  phase?: string | null;
   priority: "high" | "medium" | "low";
   created: string;
   updated: string;
@@ -57,7 +58,7 @@ interface TasksState {
   stopTask: (id: string) => Promise<void>;
   patchRequest: (
     id: string,
-    patch: Partial<Pick<RequestItem, "status" | "priority" | "title">>,
+    patch: Partial<Pick<RequestItem, "status" | "priority" | "title" | "phase">>,
   ) => void;
 }
 

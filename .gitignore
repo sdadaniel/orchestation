@@ -1,4 +1,6 @@
 .orchestration/output/
+.orchestration/events/
+.orchestration/sse/
 *.DS_Store
 test*.json
 src/frontend/package-lock.json

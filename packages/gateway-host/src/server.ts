@@ -13,15 +13,15 @@ import "./rpc/methods/orchestrate"; // side-effect: registers orchestrate.run an
 import "./rpc/methods/task-streams"; // side-effect: registers task stream RPCs
 import { attachGatewayChannel } from "./ws/gateway-channel";
 import { verifyOrigin } from "./ws/verify-origin";
+import {
+  CRASH_LOG,
+  DASHBOARD_DIR,
+  ORCH_OUTPUT_DIR,
+  OUTPUT_DIR,
+  PROJECT_ROOT,
+} from "./const";
 
-const PACKAGE_DIR = path.resolve(__dirname, "..");             // packages/gateway-host
-const WORKSPACE_ROOT = path.resolve(PACKAGE_DIR, "..", "..");  // repo root
-const DASHBOARD_DIR =
-  process.env.DASHBOARD_DIR ??
-  path.resolve(WORKSPACE_ROOT, "apps", "dashboard");
-const PROJECT_ROOT = process.env.PROJECT_ROOT ?? WORKSPACE_ROOT;
-
-const CRASH_LOG = resolve(PROJECT_ROOT, ".orchestration/output/crash.log");
+// NOTE: Path constants live in ./paths
 
 function logCrash(type: string, err: Error | unknown) {
   const ts = new Date().toISOString();
@@ -56,8 +56,17 @@ const port = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
 
 const app = next({ dev, hostname, port, dir: DASHBOARD_DIR });
 const handle = app.getRequestHandler();
+// Next dev server uses a WebSocket upgrade endpoint for HMR (/_next/webpack-hmr).
+// When we attach our own `upgrade` listener, we must delegate all non-gateway WS
+// upgrades back to Next, otherwise HMR breaks (especially noticeable when using
+// 127.0.0.1 vs localhost).
+let handleUpgrade: ReturnType<typeof app.getUpgradeHandler> | null = null;
 
 app.prepare().then(() => {
+  if (dev) {
+    // Must be initialized after prepare()
+    handleUpgrade = app.getUpgradeHandler();
+  }
   const server = createServer((req, res) => {
     handle(req, res);
   });
@@ -91,11 +100,13 @@ app.prepare().then(() => {
       wssTaskLogs.handleUpgrade(req, socket, head, (ws) => {
         wssTaskLogs.emit("connection", ws, req);
       });
+    } else if (handleUpgrade) {
+      // Delegate to Next.js (e.g. /_next/webpack-hmr in dev)
+      handleUpgrade(req, socket, head);
+    } else {
+      socket.destroy();
     }
-    // Other upgrade requests (e.g. /_next/webpack-hmr) pass through to Next.js
   });
-
-  const OUTPUT_DIR = resolve(PROJECT_ROOT, "output");
 
   attachGatewayChannel(wssGateway);
 
@@ -109,7 +120,6 @@ app.prepare().then(() => {
 
     console.log(`[ws:task-terminal] connected for ${taskId}`);
 
-    const ORCH_OUTPUT_DIR = resolve(PROJECT_ROOT, ".orchestration", "output");
     const jsonlFiles = [
       resolve(OUTPUT_DIR, `${taskId}-task-conversation.jsonl`),
       resolve(ORCH_OUTPUT_DIR, `${taskId}-task-conversation.jsonl`),
@@ -207,7 +217,6 @@ app.prepare().then(() => {
 
     // ── Source 2: File-based logs (orchestrate.sh pipeline runs) ──
     // Watch multiple log sources across both output directories
-    const ORCH_OUTPUT_DIR = resolve(PROJECT_ROOT, ".orchestration", "output");
     const watchedFiles: string[] = [
       resolve(OUTPUT_DIR, "logs", `${taskId}.log`),
       resolve(ORCH_OUTPUT_DIR, "logs", `${taskId}.log`),

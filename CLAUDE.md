@@ -39,7 +39,7 @@
 - OpenAI Assistants Playground 스타일 기반: 단일 컬럼, 넉넉한 패딩, 간격으로 그룹핑
 - **raw HTML 금지**: `<input>`, `<select>`, `<textarea>` 직접 사용 금지. 반드시 `@/components/ui/` 컴포넌트 사용
 
-### UI 컴포넌트 (`apps/dashboard/src/components/ui/`)
+### UI 컴포넌트 (`packages/dashboard/src/components/ui/`)
 | 컴포넌트 | 용도 | 주요 props |
 |----------|------|-----------|
 | `Input` | 텍스트/패스워드/숫자/시간 입력 | `size="default"\|"sm"` |

@@ -298,7 +298,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onDocRename={handleDocRename}
         onDocReorder={handleDocReorder}
         onDocReorderError={handleDocReorderError}
-        onStopTask={async (id) => {
+        onStopTask={async (id: string) => {
           try {
             await fetch(`/api/tasks/${id}/run`, { method: "DELETE" });
           } catch {}

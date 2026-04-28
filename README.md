@@ -12,12 +12,12 @@ node cli.js init
 # .orchestration/config.json에서 apiKey 입력
 # 또는 대시보드 Settings 페이지에서 설정
 
-# 3. 대시보드 실행
-node cli.js dashboard
+# 3. 대시보드 + 파이프라인 실행 (백그라운드)
+node cli.js start
 # → http://localhost:3000
 
-# 4. 파이프라인 실행
-node cli.js run
+# 4. 종료 (대시보드 + 파이프라인)
+node cli.js stop
 ```
 
 ## CLI 명령어
@@ -25,8 +25,8 @@ node cli.js run
 | 명령어 | 설명 |
 |--------|------|
 | `node cli.js init` | 프로젝트 초기화 (`.orchestration/` 생성) |
-| `node cli.js dashboard` | 대시보드 실행 (localhost:3000) |
-| `node cli.js run` | 오케스트레이션 파이프라인 실행 |
+| `node cli.js start` | 대시보드 + 파이프라인 실행 (백그라운드) |
+| `node cli.js stop` | 대시보드 + 파이프라인 종료 |
 | `node cli.js night` | Night Worker 시작 |
 | `node cli.js status` | 현재 상태 확인 |
 
@@ -58,7 +58,7 @@ project/
     run-worker.sh           # 개별 태스크 워커
     night-worker.sh         # Night Worker
     lib/                    # 유틸리티
-  apps/dashboard/          # 대시보드 (Next.js)
+  packages/dashboard/      # 대시보드 (Next.js)
   packages/orchestration-runtime/  # 엔진, CLI 스크립트, 파서, 공유 서버 유틸
   cli.js                    # CLI 엔트리포인트
 ```
@@ -68,11 +68,11 @@ project/
 대시보드와 오케스트레이션 런타임은 서로 다른 `package.json`을 쓰므로, 클론 후 각각 한 번씩 설치합니다.
 
 ```bash
-cd apps/dashboard && npm install
+cd packages/dashboard && npm install
 cd ../../packages/orchestration-runtime && npm install
 ```
 
-대시보드만 띄울 때는 `apps/dashboard`에서 `npm run dev`를 실행합니다.
+대시보드만 띄울 때는 `packages/dashboard`에서 `npm run dev`를 실행합니다.
 
 ## 설정 (.orchestration/config.json)
 

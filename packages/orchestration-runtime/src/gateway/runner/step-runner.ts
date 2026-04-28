@@ -3,16 +3,13 @@ import type { JobTaskResult } from "../jobs/job-task";
 import { runJobReview } from "../jobs/job-review";
 import { runJobTask } from "../jobs/job-task";
 
-export type StepType = string;
+export const STEP_TYPES = ["task", "review", "check"] as const;
+export type StepType = (typeof STEP_TYPES)[number];
 
 export type StepRunResult =
   | { stepType: "task"; status: JobTaskResult["status"]; raw: JobTaskResult }
-  | {
-      stepType: "review";
-      status: JobReviewResult["status"];
-      raw: JobReviewResult;
-    }
-  | { stepType: string; status: "step-done"; raw: { status: "step-done" } };
+  | { stepType: "review"; status: JobReviewResult["status"]; raw: JobReviewResult }
+  | { stepType: "check"; status: "step-done"; raw: { status: "step-done" } };
 
 export async function runStep(args: {
   stepType: StepType;
@@ -33,6 +30,6 @@ export async function runStep(args: {
     return { stepType: "task", status: raw.status, raw };
   }
 
-  // Unknown step types are treated as no-op successful steps for now.
-  return { stepType, status: "step-done", raw: { status: "step-done" } };
+  // check = no-op successful step (reserved for lightweight validators)
+  return { stepType: "check", status: "step-done", raw: { status: "step-done" } };
 }

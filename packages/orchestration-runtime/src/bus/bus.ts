@@ -12,17 +12,10 @@ export function publish<T>(type: BusEventType, data: T): BusEventEnvelope<T> {
     l(env);
   }
   return env;
+
 }
 
 export function subscribe(listener: Listener): () => void {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
-}
-
-export function replayAfter(lastSeq: number, _limit?: number): BusEventEnvelope[] {
-  return eventStore.readAfter(lastSeq);
-}
-
-export function snapshotSeq(): { head: number; tail: number } {
-  return { head: eventStore.head(), tail: eventStore.tail() };
 }
