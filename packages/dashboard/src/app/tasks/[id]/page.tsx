@@ -112,6 +112,12 @@ export default function TaskDetailPage({
       setRunStatus("idle");
       return;
     }
+    // in_progress 상태면 running으로 간주
+    if (task.status === "in_progress") {
+      setRunStatus("running");
+      setActiveTab("logs");
+      return;
+    }
     async function checkRunStatus() {
       try {
         const res = await fetch(`/api/tasks/${id}/run`);
@@ -134,6 +140,10 @@ export default function TaskDetailPage({
     async (status: string) => {
       if (status === "completed" || status === "failed") {
         setRunStatus(status as "completed" | "failed");
+        // 사이드바 즉시 반영: done 또는 failed로 전환
+        const finalStatus = status === "completed" ? "done" : "failed";
+        useTasksStore.getState().patchRequest(id, { status: finalStatus });
+        // 최신 task 데이터 refetch
         try {
           const taskRes = await fetch(`/api/requests/${id}`);
           if (taskRes.ok) setTask(await taskRes.json());
@@ -167,13 +177,19 @@ export default function TaskDetailPage({
         alert(data.error || "실행 실패");
         return;
       }
+      // 즉시 UI 업데이트: task 상태를 in_progress로 설정
       setRunStatus("running");
+      setTask((prev) =>
+        prev ? { ...prev, status: "in_progress" } : null
+      );
+      // 사이드바 즉시 반영
+      useTasksStore.getState().patchRequest(id, { status: "in_progress" });
       setActiveTab("logs");
-      // task 데이터 refetch (status 반영)
+      // task 데이터 refetch (status 확정)
       setTimeout(async () => {
         const taskRes = await fetch(`/api/requests/${id}`);
         if (taskRes.ok) setTask(await taskRes.json());
-      }, 2000);
+      }, 500);
     } catch {
       alert("실행 요청 실패");
     }
