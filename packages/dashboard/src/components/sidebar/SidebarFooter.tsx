@@ -22,14 +22,14 @@ export function SidebarFooter({ currentPath }: SidebarFooterProps) {
         <span className="text-xs">Cost</span>
       </Link>
       <Link
-        href="/monitor"
+        href="/log"
         className={cn(
           "tree-item text-sidebar-foreground no-underline",
-          currentPath === "/monitor" && "active",
+          currentPath === "/log" && "active",
         )}
       >
         <Activity className="h-3.5 w-3.5 shrink-0" />
-        <span className="text-xs">Monitor</span>
+        <span className="text-xs">Log</span>
       </Link>
       <Link
         href="/terminal"
