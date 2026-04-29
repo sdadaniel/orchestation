@@ -6,7 +6,7 @@ import * as pty from "node-pty";
 import os from "os";
 import { resolve } from "path";
 import path from "path";
-import taskRunnerManager from "@/gateway/runner/task-runner-manager";
+import taskRunnerManager from "@/orchestrate/runner/task-runner-manager";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 import { subscribe } from "@/bus/index";
 import "./rpc/methods/orchestrate"; // side-effect: registers orchestrate.run and orchestrate.stop
@@ -16,9 +16,15 @@ import { verifyOrigin } from "./ws/verify-origin";
 import {
   CRASH_LOG,
   DASHBOARD_DIR,
+  DEFAULT_HOSTNAME,
+  DEFAULT_PORT,
+  IDLE_TIMEOUT_MS,
+  IS_DEV,
   ORCH_OUTPUT_DIR,
   OUTPUT_DIR,
-  PROJECT_ROOT,
+  TERM_COLS,
+  TERM_NAME,
+  TERM_ROWS,
 } from "./const";
 
 // NOTE: Path constants live in ./paths
@@ -45,16 +51,10 @@ process.on("unhandledRejection", (reason) => {
   logCrash("unhandledRejection", reason);
 });
 
-const dev = process.env.NODE_ENV !== "production";
-const DEFAULT_HOSTNAME = "localhost";
-const DEFAULT_PORT = 3000;
-const TERM_NAME = "xterm-256color";
-const TERM_COLS = 80;
-const TERM_ROWS = 24;
 const hostname = DEFAULT_HOSTNAME;
 const port = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
 
-const app = next({ dev, hostname, port, dir: DASHBOARD_DIR });
+const app = next({ dev: IS_DEV, hostname, port, dir: DASHBOARD_DIR });
 const handle = app.getRequestHandler();
 // Next dev server uses a WebSocket upgrade endpoint for HMR (/_next/webpack-hmr).
 // When we attach our own `upgrade` listener, we must delegate all non-gateway WS
@@ -63,7 +63,7 @@ const handle = app.getRequestHandler();
 let handleUpgrade: ReturnType<typeof app.getUpgradeHandler> | null = null;
 
 app.prepare().then(() => {
-  if (dev) {
+  if (IS_DEV) {
     // Must be initialized after prepare()
     handleUpgrade = app.getUpgradeHandler();
   }
@@ -324,7 +324,6 @@ app.prepare().then(() => {
     console.log(`[pty] spawned shell="${shell}" pid=${ptyProcess.pid}`);
 
     // idle timeout: 5분간 데이터 없으면 자동 종료
-    const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
     let idleTimer = setTimeout(() => {
       console.log(`[pty] idle timeout, killing pid=${ptyProcess.pid}`);
       ptyProcess.kill();
