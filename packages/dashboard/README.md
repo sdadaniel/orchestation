@@ -87,17 +87,31 @@ src/
 │   ├── run-task.ts               #   단일 태스크 (iTerm용)
 │   └── run-review.ts             #   코드 리뷰 (iTerm용)
 │
-├── components/                   # React 컴포넌트
-│   ├── ui/                       #   디자인 시스템 (Button, Input, Select 등)
-│   ├── cost/                     #   비용 분석 (CostTable, RunHistory 등)
-│   ├── sidebar/                  #   사이드바 (DocTree, TaskList 등)
-│   ├── task-detail/              #   태스크 상세 (로그, 터미널)
-│   ├── monitor/                  #   시스템 모니터링
-│   ├── plan/                     #   계획 트리
-│   ├── terminal/                 #   터미널 뷰
-│   ├── waterfall/                #   워터폴 차트
-│   ├── AppShell.tsx              #   레이아웃 쉘
-│   ├── GlobalSearch.tsx          #   전역 검색
+├── views/                        # 페이지별 View (app/page wrapper가 import)
+│   ├── tasks/
+│   │   ├── TasksPageView.tsx
+│   │   ├── index.ts
+│   │   └── components/
+│   │       ├── RequestCard.tsx
+│   │       ├── DAGCanvas.tsx
+│   │       └── index.ts
+│   ├── tasks/[id]/
+│   ├── tasks/new/
+│   ├── docs/
+│   └── ...
+│
+├── components/                   # 전역 공유 컴포넌트(2개 이상 화면에서 재사용)
+│   ├── AppShell/
+│   │   ├── AppShell.tsx
+│   │   └── index.ts
+│   ├── sidebar/
+│   │   ├── Sidebar.tsx
+│   │   ├── index.ts
+│   │   └── components/
+│   │       ├── DocTreeNode.tsx
+│   │       └── index.ts
+│   ├── ui/                       # 디자인 시스템 (Button, Input, Select 등)
+│   ├── task-detail/
 │   └── ...
 │
 ├── hooks/                        # React Query 커스텀 훅
@@ -124,6 +138,52 @@ src/
     ├── plan.ts
     └── waterfall.ts
 ```
+
+## 폴더 규칙 (필수)
+
+### 1) `app/`는 라우팅 진입점만 담당
+- `app/**/page.tsx`는 View를 import해서 그대로 렌더만 한다.
+- 페이지 로직/상태/화면 구성은 `views/**`에 둔다.
+
+```tsx
+import TasksPageView from "@/views/tasks";
+
+export default function TasksPage() {
+  return <TasksPageView />;
+}
+```
+
+### 2) `views/` 구조 규칙
+- 각 페이지 폴더는 `XxxPageView.tsx` + `index.ts`를 기본으로 한다.
+- `index.tsx`는 사용하지 않는다.
+- 엔트리 export는 `index.ts`만 사용한다.
+
+```ts
+export { default } from "./TasksPageView";
+```
+
+- 페이지 전용 하위 조각 컴포넌트는 같은 폴더의 `components/`로 분리한다.
+- `components/index.ts`를 만들어 배럴 export로만 소비한다.
+
+### 3) `components/`는 전역 공유만 허용
+- `src/components`에는 **2개 이상 화면에서 재사용되는 컴포넌트만** 둔다.
+- 한 페이지에서만 쓰이면 `views/<page>/components`로 이동한다.
+- 전역 컴포넌트도 폴더 단위로 관리한다.
+  - `components/Foo/Foo.tsx`
+  - `components/Foo/index.ts`
+
+### 4) 모든 엔트리 파일은 `index.ts`
+- `index.tsx` 금지 (`views`, `components` 모두 동일).
+- `index.ts`는 export만 담당하고 UI 로직을 넣지 않는다.
+
+### 5) 하위 컴포넌트 폴더 규칙
+- 메인 컴포넌트 옆에 보조 컴포넌트가 2개 이상이면 `components/`로 분리한다.
+- 보조 컴포넌트도 직접 파일 경로 import 대신 `./components`를 우선 사용한다.
+
+### 6) Import 경로 기준
+- 페이지 레벨: `@/views/<route>`
+- 전역 공유: `@/components/<ComponentFolder>`
+- 같은 페이지 전용 조각: `./components`
 
 ## 의존성 방향
 

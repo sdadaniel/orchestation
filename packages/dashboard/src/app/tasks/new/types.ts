@@ -1,4 +1,4 @@
-import type { TaskOption } from "@/components/DependsOnSelector";
+import type { TaskOption } from "@/views/tasks/new/components";
 
 export interface AnalyzedTask {
   title: string;

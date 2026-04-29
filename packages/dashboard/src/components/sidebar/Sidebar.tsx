@@ -9,11 +9,12 @@ import { useTasksStore, type RequestItem } from "@/store/tasksStore";
 import { useNotices } from "@/hooks/useNotices";
 import type { NoticeItem } from "@/hooks/useNotices";
 import type { WaterfallGroup } from "@/types/waterfall";
-
-import { DocTreeNode } from "./sidebar/DocTreeNode";
-import { NewItemInput } from "./sidebar/NewItemInput";
-import { SidebarFooter } from "./sidebar/SidebarFooter";
-import { TaskListSection } from "./sidebar/TaskListSection";
+import {
+  DocTreeNode,
+  NewItemInput,
+  SidebarFooter,
+  TaskListSection,
+} from "./components";
 
 export interface PrdInfo {
   id: string;
@@ -61,15 +62,11 @@ export function TaskSidebar({
   const storeStopTask = useTasksStore((s) => s.stopTask);
   const { notices: storeNotices } = useNotices();
   const pathname = usePathname();
-
   const requestItems = requestItemsProp ?? storeRequests ?? [];
   const noticeItems = noticeItemsProp ?? storeNotices ?? [];
   const currentPath = currentPathProp ?? pathname ?? "/";
   const handleStopTask = onStopTask ?? storeStopTask;
-
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
-    new Set(),
-  );
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [docsExpanded, setDocsExpanded] = useState(false);
   const [noticesExpanded, setNoticesExpanded] = useState(true);
   const [newRootItemType, setNewRootItemType] = useState<
@@ -103,12 +100,10 @@ export function TaskSidebar({
           Home
         </Link>
       </div>
-
       <div
         className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-2"
         style={{ scrollbarWidth: "none" }}
       >
-        {/* Docs */}
         <div className="mb-2">
           <div className="px-2 mb-1.5 flex items-center justify-between">
             <button
@@ -168,7 +163,6 @@ export function TaskSidebar({
               )}
             </div>
           </div>
-
           <div
             className={cn(
               "sidebar-collapsible",
@@ -183,7 +177,6 @@ export function TaskSidebar({
                   onCancel={() => setNewRootItemType(null)}
                 />
               )}
-
               {docTree.map((node) => (
                 <DocTreeNode
                   key={node.id}
@@ -199,7 +192,6 @@ export function TaskSidebar({
                   onReorderError={onDocReorderError}
                 />
               ))}
-
               {docTree.length === 0 && !newRootItemType && (
                 <div className="px-2 py-2 text-[11px] text-muted-foreground">
                   No documents yet
@@ -209,14 +201,12 @@ export function TaskSidebar({
           </div>
         </div>
 
-        {/* Tasks */}
         <TaskListSection
           requestItems={requestItems}
           currentPath={currentPath}
           onStopTask={handleStopTask}
         />
 
-        {/* Notices */}
         <div className="mb-2">
           <div className="sidebar-section-sep" />
           <div className="px-2 mb-1.5 flex items-center justify-between">
@@ -292,9 +282,7 @@ export function TaskSidebar({
           </div>
         </div>
       </div>
-
       <SidebarFooter currentPath={currentPath} />
     </div>
   );
 }
-

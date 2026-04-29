@@ -24,10 +24,27 @@ export interface ReviewResult {
   result?: string;
 }
 
+export interface TaskWorkflowStep {
+  key: string;
+  type: string;
+  status: string;
+  attempt: number;
+  maxAttempts: number | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+}
+
+export interface TaskWorkflow {
+  steps: TaskWorkflowStep[];
+  currentStepKey: string | null;
+  currentStepType: string | null;
+}
+
 export interface TaskDetail {
   id: string;
   title: string;
   status: string;
+  phase: string | null;
   priority: string;
   created: string;
   content: string;
@@ -38,6 +55,7 @@ export interface TaskDetail {
   costEntries: CostEntry[];
   scope: string[];
   branch: string;
+  workflow?: TaskWorkflow;
 }
 
 export interface LogEntry {

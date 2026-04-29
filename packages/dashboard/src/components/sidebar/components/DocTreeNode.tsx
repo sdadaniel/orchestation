@@ -17,8 +17,6 @@ import type { DocNode } from "@/hooks/useDocTree";
 import { InlineRename } from "./InlineRename";
 import { NewItemInput } from "./NewItemInput";
 
-/* ── Props ── */
-
 export interface DocTreeNodeProps {
   node: DocNode;
   depth: number;
@@ -39,8 +37,6 @@ export interface DocTreeNodeProps {
   ) => Promise<void>;
   onReorderError?: (error: unknown) => void;
 }
-
-/* ── Component ── */
 
 export function DocTreeNode({
   node,
@@ -69,11 +65,9 @@ export function DocTreeNode({
     if (onRename) await onRename(node.id, title);
     setIsRenaming(false);
   };
-
   const handleDelete = async () => {
     if (onDelete) await onDelete(node.id);
   };
-
   const handleCreateChild = async (title: string) => {
     if (onCreate && newItemType) {
       await onCreate(title, newItemType, node.id);
@@ -82,30 +76,21 @@ export function DocTreeNode({
     setNewItemType(null);
   };
 
-  // Drag handlers
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("text/plain", node.id);
     e.dataTransfer.effectAllowed = "move";
   };
-
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const h = rect.height;
-
-    if (isFolder && y > h * 0.25 && y < h * 0.75) {
-      setDragOver("inside");
-    } else if (y < h * 0.5) {
-      setDragOver("above");
-    } else {
-      setDragOver("below");
-    }
+    if (isFolder && y > h * 0.25 && y < h * 0.75) setDragOver("inside");
+    else if (y < h * 0.5) setDragOver("above");
+    else setDragOver("below");
   };
-
   const handleDragLeave = () => setDragOver(null);
-
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -114,7 +99,6 @@ export function DocTreeNode({
       setDragOver(null);
       return;
     }
-
     try {
       if (dragOver === "inside" && isFolder) {
         await onReorder(draggedId, node.id, 0);
@@ -126,7 +110,6 @@ export function DocTreeNode({
       }
     } catch (err) {
       addToast("문서 순서 변경에 실패했습니다.", "error");
-      // Delegate to parent for state rollback/refetch
       onReorderError?.(err);
     } finally {
       setDragOver(null);
@@ -134,7 +117,6 @@ export function DocTreeNode({
   };
 
   const paddingLeft = 8 + depth * 12;
-
   const dropIndicator =
     dragOver === "above"
       ? "border-t-2 border-primary"
@@ -209,8 +191,6 @@ export function DocTreeNode({
             )}
           </Link>
         )}
-
-        {/* Hover actions — hide for readonly nodes */}
         {showActions && !isRenaming && !node.readonly && (
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 bg-sidebar rounded px-0.5">
             {isFolder && (
@@ -268,8 +248,6 @@ export function DocTreeNode({
           </div>
         )}
       </div>
-
-      {/* Children */}
       {isFolder && isExpanded && (
         <div>
           {newItemType && (

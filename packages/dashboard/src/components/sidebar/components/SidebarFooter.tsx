@@ -64,4 +64,3 @@ export function SidebarFooter({ currentPath }: SidebarFooterProps) {
     </div>
   );
 }
-

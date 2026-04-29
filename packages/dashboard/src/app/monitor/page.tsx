@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import MonitorPageView from "@/views/monitor";
 
 export default function MonitorPage() {
-  redirect("/log");
+  return <MonitorPageView />;
 }

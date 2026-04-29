@@ -66,7 +66,6 @@ export function DependsOnSelector({
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
-      {/* Selected chips + input */}
       <div
         className={cn(
           "min-h-[34px] flex flex-wrap gap-1 items-center bg-muted border border-border rounded px-2 py-1 cursor-text",
@@ -110,7 +109,6 @@ export function DependsOnSelector({
         <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
       </div>
 
-      {/* Dropdown */}
       {open && (
         <div className="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto rounded border border-border bg-popover shadow-lg">
           {filtered.length === 0 ? (

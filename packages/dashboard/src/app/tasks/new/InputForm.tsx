@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Loader2, GitMerge } from "lucide-react";
-import { DependsOnSelector } from "@/components/DependsOnSelector";
+import { DependsOnSelector } from "@/views/tasks/new/components";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";

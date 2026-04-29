@@ -1,11 +1,5 @@
-"use client";
-
-import { TerminalView } from "@/components/terminal/TerminalView";
+import TerminalPageView from "@/views/terminal";
 
 export default function TerminalPage() {
-  return (
-    <div className="h-full -m-6 flex flex-col pb-[300px]">
-      <TerminalView />
-    </div>
-  );
+  return <TerminalPageView />;
 }

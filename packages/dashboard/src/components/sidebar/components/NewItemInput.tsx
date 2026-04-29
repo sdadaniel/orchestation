@@ -4,15 +4,11 @@ import { useState, useRef, useEffect } from "react";
 import { Folder, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-/* ── Props ── */
-
 export interface NewItemInputProps {
   type: "doc" | "folder";
   onConfirm: (title: string) => void;
   onCancel: () => void;
 }
-
-/* ── Component ── */
 
 export function NewItemInput({ type, onConfirm, onCancel }: NewItemInputProps) {
   const [value, setValue] = useState("");

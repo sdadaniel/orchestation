@@ -96,7 +96,17 @@ export function getTaskSteps(taskId: string): TaskStepRow[] {
   if (!db) return [];
   return db
     .prepare(
-      "SELECT * FROM task_steps WHERE task_id = ? ORDER BY created ASC, step_key ASC",
+      `SELECT * FROM task_steps
+       WHERE task_id = ?
+       ORDER BY
+         created ASC,
+         CASE step_type
+           WHEN 'task' THEN 0
+           WHEN 'review' THEN 1
+           WHEN 'check' THEN 2
+           ELSE 9
+         END ASC,
+         step_key ASC`,
     )
     .all(taskId) as TaskStepRow[];
 }
@@ -255,7 +265,18 @@ export function getNextPendingStep(taskId: string): TaskStepRow | null {
   return (
     (db
       .prepare(
-        "SELECT * FROM task_steps WHERE task_id = ? AND status = 'pending' ORDER BY created ASC, step_key ASC LIMIT 1",
+        `SELECT * FROM task_steps
+         WHERE task_id = ? AND status = 'pending'
+         ORDER BY
+           created ASC,
+           CASE step_type
+             WHEN 'task' THEN 0
+             WHEN 'review' THEN 1
+             WHEN 'check' THEN 2
+             ELSE 9
+           END ASC,
+           step_key ASC
+         LIMIT 1`,
       )
       .get(taskId) as TaskStepRow | undefined) ?? null
   );

@@ -4,9 +4,11 @@ import path from "path";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 import { OUTPUT_DIR } from "@/lib/config/paths";
 import { parseDependsOn, parseScope } from "@/lib/task-row-parsers";
+import { parseWorkflowFromTaskContent } from "@/lib/workflow";
 import {
   getTask,
   getAllTasks,
+  getTaskSteps,
   updateTask,
   updateTaskStatus,
   deleteTask,
@@ -84,10 +86,33 @@ export async function GET(
       : { id: depId, title: "", status: "unknown" };
   });
 
+  const workflowDefs = parseWorkflowFromTaskContent(task.content ?? "");
+  const workflowRows = getTaskSteps(id);
+  const rowByKey = new Map(workflowRows.map((r) => [r.step_key, r]));
+  const workflowSteps = workflowDefs.map((def) => {
+    const row = rowByKey.get(def.key);
+    return {
+      key: def.key,
+      type: def.type,
+      status: row?.status ?? "pending",
+      attempt: row?.attempt ?? 0,
+      maxAttempts: row?.max_attempts ?? null,
+      startedAt: row?.started_at ?? null,
+      finishedAt: row?.finished_at ?? null,
+    };
+  });
+
+  const currentStep =
+    workflowSteps.find((s) => s.status === "in_progress") ??
+    workflowSteps.find((s) => s.status === "pending") ??
+    workflowSteps[workflowSteps.length - 1] ??
+    null;
+
   return NextResponse.json({
     id: task.id,
     title: task.title,
     status: task.status,
+    phase: task.phase ?? null,
     priority: task.priority ?? "medium",
     created: task.created ?? "",
     updated: task.updated ?? "",
@@ -101,6 +126,11 @@ export async function GET(
     executionLog,
     reviewResult,
     costEntries,
+    workflow: {
+      steps: workflowSteps,
+      currentStepKey: currentStep?.key ?? null,
+      currentStepType: currentStep?.type ?? null,
+    },
   });
 }
 

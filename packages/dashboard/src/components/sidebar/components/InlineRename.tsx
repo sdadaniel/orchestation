@@ -3,15 +3,11 @@
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 
-/* ── Props ── */
-
 export interface InlineRenameProps {
   initialValue: string;
   onConfirm: (value: string) => void;
   onCancel: () => void;
 }
-
-/* ── Component ── */
 
 export function InlineRename({
   initialValue,
