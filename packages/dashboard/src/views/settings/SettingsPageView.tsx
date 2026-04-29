@@ -27,6 +27,7 @@ export default function SettingsPageView() {
     baseBranch: "main",
     maxParallel: 3,
     maxReviewRetry: 2,
+    orchestrateLogRetentionDays: 7,
     workerMode: "background",
   });
   const { addToast } = useToast();
@@ -274,6 +275,30 @@ export default function SettingsPageView() {
                 }
               />
             </div>
+
+            <FieldRow
+              label="Orchestrate log retention (days)"
+              htmlFor="orchestrateLogRetentionDays"
+              description="Delete orchestrate log files older than this number of days"
+            >
+              <Input
+                id="orchestrateLogRetentionDays"
+                type="number"
+                min={1}
+                max={365}
+                value={draft.orchestrateLogRetentionDays}
+                onChange={(e) =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    orchestrateLogRetentionDays: Math.max(
+                      1,
+                      Number.parseInt(e.target.value || "1", 10) || 1,
+                    ),
+                  }))
+                }
+                className="font-mono"
+              />
+            </FieldRow>
           </SettingSection>
         </div>
       )}

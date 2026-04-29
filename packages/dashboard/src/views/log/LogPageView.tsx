@@ -6,11 +6,14 @@ import { Terminal, Monitor } from "lucide-react";
 import { OrchestrateLogViewer } from "@/components/Logs/OrchestrateLogViewer";
 import { MonitorDashboard } from "@/components/Monitor/MonitorDashboard";
 import { Tabs } from "@/components/ui";
+import { useLogsStore } from "@/store/logsStore";
 
 export default function LogPageView() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const lineCount = useLogsStore((s) => s.lines.length);
+  const applyIncoming = useLogsStore((s) => s.applyIncoming);
   const [activeTab, setActiveTab] = useState<"monitor" | "log">("log");
 
   const queryTab = useMemo(() => {
@@ -38,6 +41,27 @@ export default function LogPageView() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     setActiveTab("log");
   }, [pathname, queryTab, router, searchParams]);
+
+  useEffect(() => {
+    if (lineCount > 0) return;
+    let cancelled = false;
+    fetch("/api/orchestrate/logs?limit=200", { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as { logs?: string[]; total?: number };
+        if (cancelled || !Array.isArray(data.logs) || data.logs.length === 0) return;
+        applyIncoming({
+          logs: data.logs,
+          total: typeof data.total === "number" ? data.total : data.logs.length,
+        });
+      })
+      .catch(() => {
+        // ignore; websocket stream still provides live updates
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [applyIncoming, lineCount]);
 
   const handleTabChange = (nextTab: "monitor" | "log") => {
     setActiveTab(nextTab);

@@ -18,6 +18,7 @@ export interface Settings {
   baseBranch: string;
   maxParallel: number;
   maxReviewRetry: number;
+  orchestrateLogRetentionDays: number;
   workerMode: WorkerMode;
   nightWorker: NightWorkerSettings;
 }
@@ -29,6 +30,7 @@ const DEFAULTS: Settings = {
   baseBranch: "main",
   maxParallel: 3,
   maxReviewRetry: 2,
+  orchestrateLogRetentionDays: 7,
   workerMode: "background",
   nightWorker: {
     until: "07:00",
@@ -66,6 +68,11 @@ export function loadSettings(): Settings {
         typeof parsed.maxReviewRetry === "number" && parsed.maxReviewRetry >= 0
           ? Math.floor(parsed.maxReviewRetry)
           : DEFAULTS.maxReviewRetry,
+      orchestrateLogRetentionDays:
+        typeof parsed.orchestrateLogRetentionDays === "number" &&
+        parsed.orchestrateLogRetentionDays >= 1
+          ? Math.floor(parsed.orchestrateLogRetentionDays)
+          : DEFAULTS.orchestrateLogRetentionDays,
       workerMode:
         parsed.workerMode === "iterm" || parsed.workerMode === "background"
           ? parsed.workerMode
@@ -104,6 +111,11 @@ export function saveSettings(settings: Partial<Settings>): Settings {
       settings.maxReviewRetry >= 0
         ? Math.floor(settings.maxReviewRetry)
         : current.maxReviewRetry,
+    orchestrateLogRetentionDays:
+      typeof settings.orchestrateLogRetentionDays === "number" &&
+      settings.orchestrateLogRetentionDays >= 1
+        ? Math.floor(settings.orchestrateLogRetentionDays)
+        : current.orchestrateLogRetentionDays,
     workerMode:
       settings.workerMode === "iterm" || settings.workerMode === "background"
         ? settings.workerMode

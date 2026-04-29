@@ -7,5 +7,6 @@ export interface AppSettings {
   baseBranch: string;
   maxParallel: number;
   maxReviewRetry: number;
+  orchestrateLogRetentionDays: number;
   workerMode: WorkerMode;
 }
