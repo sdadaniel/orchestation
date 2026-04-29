@@ -10,7 +10,7 @@ import { setupContextFilter, buildReviewPrompt } from "../ops/context-builder";
 import { runClaudeStreamJson } from "../claude/claude-worker";
 import { getTask, taskRowToMarkdown } from "../../service/task-store";
 import { logTokenUsage } from "../../service/token-logger";
-import { publish } from "../../bus";
+import { publish } from "@/bus/index";
 
 const DEFAULT_REVIEW_MODEL = "claude-haiku-4-5";
 

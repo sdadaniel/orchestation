@@ -16,5 +16,7 @@ export function publish<T>(type: BusEventType, data: T): BusEventEnvelope<T> {
 
 export function subscribe(listener: Listener): () => void {
   listeners.add(listener);
-  return () => { listeners.delete(listener); };
+  return () => {
+    listeners.delete(listener);
+  };
 }

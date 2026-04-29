@@ -13,7 +13,7 @@ import { runClaudeStreamJson } from "../claude/claude-worker";
 import { getTask, taskRowToMarkdown } from "../../service/task-store";
 import { parseContext, parseScope } from "../../lib/task-row-parsers";
 import { logTokenUsage } from "../../service/token-logger";
-import { publish } from "../../bus";
+import { publish } from "@/bus/index";
 
 export interface JobTaskResult {
   status: "task-done" | "task-failed" | "task-rejected";

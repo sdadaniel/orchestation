@@ -35,8 +35,8 @@ import {
   markTaskFailed,
   type TransitionContext,
 } from "./task-transitions";
-import { normalizeLogEntry, publish } from "../../bus";
-import { formatLogLine } from "../../bus/logging/log-format";
+import { normalizeLogEntry, publish } from "@/bus/index";
+import { formatLogLine } from "@/bus/logging/log-format";
 import { taskStatusToResultOutcome } from "../../lib/task-status";
 import type { TaskStatus } from "../../entities/task";
 import type { StepType } from "../runner/step-runner";

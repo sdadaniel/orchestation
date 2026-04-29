@@ -30,6 +30,24 @@ function buildSnapshot() {
   };
 }
 
+function buildOrchestrationStatusData() {
+  const state = orchestrationManager.getState();
+  return {
+    status: orchestrationManager.getStatus(),
+    startedAt: state.startedAt,
+    finishedAt: state.finishedAt,
+    exitCode: state.exitCode,
+    taskResults: state.taskResults,
+  };
+}
+
+function buildLatestOrchestrateLogEventData() {
+  const lines = orchestrationManager.getRecentLogs(1);
+  const line = lines.at(-1);
+  if (!line) return null;
+  return { scope: "orchestrate", line };
+}
+
 export function attachGatewayChannel(wss: WebSocketServer): void {
   wss.on("connection", (ws: WebSocket) => {
     sendSafe(ws, {
@@ -92,6 +110,23 @@ export function attachGatewayChannel(wss: WebSocketServer): void {
           }
           const payload = await def.handler(parsed.data);
           sendSafe(ws, { type: "res", id: req.id, ok: true, payload } satisfies RpcResponse);
+          if (req.method === "orchestrate.run" || req.method === "orchestrate.stop") {
+            sendSafe(ws, {
+              type: "event",
+              id: randomUUID(),
+              event: "orchestration-status",
+              data: buildOrchestrationStatusData(),
+            });
+            const logData = buildLatestOrchestrateLogEventData();
+            if (logData) {
+              sendSafe(ws, {
+                type: "event",
+                id: randomUUID(),
+                event: "log",
+                data: logData,
+              });
+            }
+          }
         } catch (err) {
           const e = err as { code?: string; message?: string };
           sendSafe(ws, {

@@ -2,12 +2,13 @@ import { OrchestrateEngine, EngineStatus } from "../core/orchestrate-engine";
 import { appendRunHistory, type RunHistoryEntry } from "../../service/run-history";
 import { parseCostLog } from "../../parser/cost-parser";
 import { getErrorMessage } from "../../lib/errors/error-utils";
-import { formatLogLine, normalizeLogEntry, normalizeLogLine, publish } from "../../bus";
+import { formatLogLine, normalizeLogEntry, normalizeLogLine, publish } from "@/bus/index";
 import fs from "fs";
 import path from "path";
 import { LOGS_DIR } from "../../lib/config/paths";
+import { loadSettings } from "../../lib/config/settings";
 import type { OrchestrationState, OrchestrationStatus, OrchestrationStatusData } from "./types";
-import { MAX_STATE_LOG_LINES, ORCHESTRATE_LOG_RETENTION_DAYS, ORCHESTRATION_STATUS } from "./const";
+import { MAX_STATE_LOG_LINES, ORCHESTRATION_STATUS } from "./const";
 
 class OrchestrationManager {
   private engine: OrchestrateEngine | null = null;
@@ -61,6 +62,34 @@ class OrchestrationManager {
     // since는 절대 인덱스. 클리핑으로 앞부분이 날아간 경우, 현재 보유분을 전부 반환한다.
     const start = Math.max(0, since - this.state.logBase);
     return this.state.logs.slice(start);
+  }
+
+  getRecentLogs(limit: number = 200): string[] {
+    const safeLimit = Math.max(1, Math.min(1000, Math.floor(limit)));
+    try {
+      if (!fs.existsSync(LOGS_DIR)) {
+        return this.state.logs.slice(-safeLimit);
+      }
+      const files = fs
+        .readdirSync(LOGS_DIR)
+        .filter((name) => /^orchestrate-\d{4}-\d{2}-\d{2}\.log$/.test(name))
+        .sort();
+      const collected: string[] = [];
+      for (let i = files.length - 1; i >= 0 && collected.length < safeLimit; i--) {
+        const filePath = path.join(LOGS_DIR, files[i]!);
+        const lines = fs
+          .readFileSync(filePath, "utf-8")
+          .split(/\r?\n/)
+          .filter((line) => line.length > 0);
+        if (lines.length === 0) continue;
+        const need = safeLimit - collected.length;
+        collected.unshift(...lines.slice(-need));
+      }
+      if (collected.length > 0) return collected;
+    } catch {
+      // ignore and fallback to in-memory logs
+    }
+    return this.state.logs.slice(-safeLimit);
   }
 
   /**
@@ -164,7 +193,8 @@ class OrchestrationManager {
     try {
       if (!fs.existsSync(LOGS_DIR)) return;
       const keepAfter =
-        Date.now() - ORCHESTRATE_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+        Date.now() -
+        loadSettings().orchestrateLogRetentionDays * 24 * 60 * 60 * 1000;
       const files = fs.readdirSync(LOGS_DIR);
       for (const f of files) {
         const m = f.match(/^orchestrate-(\d{4}-\d{2}-\d{2})\.log$/);
