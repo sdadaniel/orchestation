@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { TaskFrontmatter } from "@/parser/parser";
+import type { TaskPriority, TaskStatus } from "@/entities/task";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 import { buildWaterfallGroups } from "@/lib/waterfall";
 import type { WaterfallGroup } from "@/types/waterfall";
@@ -10,16 +11,9 @@ import type { WaterfallGroup } from "@/types/waterfall";
 export interface RequestItem {
   id: string;
   title: string;
-  status:
-    | "pending"
-    | "stopped"
-    | "in_progress"
-    | "reviewing"
-    | "done"
-    | "failed"
-    | "rejected";
+  status: TaskStatus;
   phase?: string | null;
-  priority: "high" | "medium" | "low";
+  priority: TaskPriority;
   created: string;
   updated: string;
   content: string;

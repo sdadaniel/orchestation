@@ -2,7 +2,7 @@ import { OrchestrateEngine, EngineStatus } from "../core/orchestrate-engine";
 import { appendRunHistory, type RunHistoryEntry } from "../../service/run-history";
 import { parseCostLog } from "../../parser/cost-parser";
 import { getErrorMessage } from "../../lib/errors/error-utils";
-import { formatLogLine, normalizeLogLine, publish } from "../../bus";
+import { formatLogLine, normalizeLogEntry, normalizeLogLine, publish } from "../../bus";
 import fs from "fs";
 import path from "path";
 import { LOGS_DIR } from "../../lib/config/paths";
@@ -94,7 +94,8 @@ class OrchestrationManager {
 
     // 엔진 생성 및 hooks 연결 (EventEmitter 제거)
     this.engine = new OrchestrateEngine({
-      onLog: (line) => this.appendLog(line),
+      // 엔진 내부 로그는 외부 오케스트레이션 로그로 노출하지 않는다.
+      onLog: () => {},
       onStatusChanged: (status: EngineStatus) => {
         if (status === "idle") {
           this.state.status = ORCHESTRATION_STATUS.IDLE;
@@ -130,13 +131,17 @@ class OrchestrationManager {
   // ── Stop ───────────────────────────────────────────────
 
   stop(): { success: boolean; error?: string } {
+    const wasRunning = this.state.status === ORCHESTRATION_STATUS.RUNNING;
+
     if (this.engine) {
       this.engine.stop();
       this.engine = null;
-    } else if (this.state.status === ORCHESTRATION_STATUS.RUNNING) {
+    }
+
+    if (wasRunning) {
       this.state.status = ORCHESTRATION_STATUS.IDLE;
       this.state.finishedAt = new Date().toISOString();
-      this.state.exitCode = 0;
+      this.state.exitCode ??= 0;
       this.saveRunHistory();
     }
 
@@ -196,7 +201,8 @@ class OrchestrationManager {
     const normalized = normalizeLogLine(line, { defaultSource: "orchestrate" });
     this.state.logs.push(normalized);
     this.appendOrchestrateLogToFile(normalized);
-    publish("log", { scope: "orchestrate", line: normalized });
+    const entry = normalizeLogEntry(normalized, { defaultSource: "orchestrate" });
+    publish("log", { scope: "orchestrate", entry });
     if (this.state.logs.length > MAX_STATE_LOG_LINES) {
       const drop = this.state.logs.length - MAX_STATE_LOG_LINES;
       this.state.logs.splice(0, drop);

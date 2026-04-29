@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { GatewayClient } from "./client";
 import { subscribeGatewayEvent, useOptionalGatewayClient } from "./provider";
+import { toDisplayLogLine, type GatewayLogEntry } from "./log-entry";
 
 interface TaskLogEntry {
   timestamp: string;
@@ -70,14 +71,25 @@ export function useTaskLogStream(
       if (cancelled) return;
 
       if (event === "log") {
-        const d = data as { scope?: string; taskId?: string; line?: string };
+        const d = data as {
+          scope?: string;
+          taskId?: string;
+          entry?: GatewayLogEntry;
+          line?: string;
+        };
         if (
+          d?.scope === "task" &&
+          d?.taskId === taskId &&
+          d?.entry
+        ) {
+          setLines((prev) => [...prev, toDisplayLogLine(d.entry)]);
+        } else if (
           d?.scope === "task" &&
           d?.taskId === taskId &&
           typeof d?.line === "string"
         ) {
-          const line = d.line;
-          setLines((prev) => [...prev, line]);
+          // Backward compatibility for older gateway payloads.
+          setLines((prev) => [...prev, d.line]);
         }
         return;
       }

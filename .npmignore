@@ -27,5 +27,6 @@ packages/dashboard/playwright-report/
 packages/dashboard/e2e/
 packages/dashboard/tsconfig.tsbuildinfo
 
-# 오케스트레이션 런타임 패키지
-packages/orchestration-runtime/node_modules/
+# 게이트웨이 / 엔진 패키지
+packages/gateway/node_modules/
+packages/engine/node_modules/

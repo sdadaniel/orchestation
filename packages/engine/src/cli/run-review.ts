@@ -4,7 +4,7 @@
  * Replaces: bash scripts/job-review.sh
  * Used by iTerm mode to run review in a separate tab.
  */
-import { runJobReview } from "../gateway/job-review";
+import { runJobReview } from "../orchestrate/job-review";
 
 const taskId = process.argv[2];
 

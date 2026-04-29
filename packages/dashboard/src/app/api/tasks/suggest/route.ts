@@ -34,7 +34,7 @@ function fallbackSuggestions() {
         "status=done인데 step이 failed로 남는 등 정합성 이슈를 방지하기 위해 단계 전이/정렬 규칙을 점검합니다.",
       category: "bug",
       priority: "medium",
-      scope: ["packages/orchestration-runtime/src/service/task-store.ts"],
+      scope: ["packages/engine/src/service/task-store.ts"],
       effort: "small",
     },
     {
@@ -52,7 +52,7 @@ function fallbackSuggestions() {
         "환경별로 AI 모델과 타임아웃을 조정할 수 있도록 설정으로 분리해 안정성과 비용을 균형 있게 운영합니다.",
       category: "refactor",
       priority: "low",
-      scope: ["packages/orchestration-runtime/src/lib/ai/claude-cli.ts"],
+      scope: ["packages/engine/src/lib/ai/claude-cli.ts"],
       effort: "medium",
     },
   ];

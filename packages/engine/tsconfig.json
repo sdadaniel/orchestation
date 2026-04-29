@@ -12,13 +12,13 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@/entities/*": ["./src/entities/*"],
       "@/bus/*": ["./src/bus/*"],
-      "@/constants/*": ["./src/constants/*"],
       "@/types/*": ["./src/types/*"],
       "@/parser/*": ["./src/parser/*"],
       "@/lib/*": ["./src/lib/*"],
       "@/service/*": ["./src/service/*"],
-      "@/gateway/*": ["./src/gateway/*"]
+      "@/orchestrate/*": ["./src/orchestrate/*"]
     }
   },
   "include": ["src/**/*.ts"],

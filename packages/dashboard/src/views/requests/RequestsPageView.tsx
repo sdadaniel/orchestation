@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRequests, type RequestItem } from "@/hooks/useRequests";
 import { cn } from "@/lib/utils";
 import { Plus, X } from "lucide-react";
-import AutoImproveControl from "@/components/AutoImproveControl";
+import Controls from "@/components/Controls";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
@@ -81,7 +81,7 @@ export default function RequestsPageView() {
   return (
     <PageLayout>
       <PageHeader title="Tasks">
-        <AutoImproveControl />
+        <Controls />
         <button
           type="button"
           onClick={() => setShowForm(!showForm)}

@@ -1,4 +1,4 @@
-import type { TaskStatus, TaskPriority } from "@/constants/status";
+import type { TaskPriority, TaskStatus } from "@/entities/task";
 
 export type PlanStatus = "draft" | "in_progress" | "done";
 
@@ -11,7 +11,7 @@ export type PlanTaskNode = {
 
 export type PlanTreeData = {
   plan: {
-    id: string;
+    id: string;ㄴ
     title: string;
     status: PlanStatus;
   };

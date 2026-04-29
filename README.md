@@ -59,7 +59,8 @@ project/
     night-worker.sh         # Night Worker
     lib/                    # 유틸리티
   packages/dashboard/      # 대시보드 (Next.js)
-  packages/orchestration-runtime/  # 엔진, CLI 스크립트, 파서, 공유 서버 유틸
+  packages/gateway/        # HTTP + WS + Next 커스텀 서버 호스트
+  packages/engine/         # 엔진, CLI 스크립트, 파서, 공유 서버 유틸
   cli.js                    # CLI 엔트리포인트
 ```
 
@@ -69,8 +70,11 @@ project/
 
 ```bash
 cd packages/dashboard && npm install
-cd ../../packages/orchestration-runtime && npm install
+cd ../gateway && npm install
+cd ../engine && npm install
 ```
+
+모노레포 루트에서 한 번에 설치할 때는 `pnpm install`을 사용합니다.
 
 대시보드만 띄울 때는 `packages/dashboard`에서 `npm run dev`를 실행합니다.
 

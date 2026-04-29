@@ -1,21 +1,15 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { TaskPriority, TaskStatus } from "@/entities/task";
 import { queryKeys } from "@/lib/query/query-keys";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 
 export interface RequestItem {
   id: string;
   title: string;
-  status:
-    | "pending"
-    | "stopped"
-    | "in_progress"
-    | "reviewing"
-    | "done"
-    | "failed"
-    | "rejected";
-  priority: "high" | "medium" | "low";
+  status: TaskStatus;
+  priority: TaskPriority;
   created: string;
   updated: string;
   content: string;

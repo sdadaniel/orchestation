@@ -4,7 +4,7 @@
  * Replaces: bash scripts/job-task.sh
  * Used by iTerm mode to run task in a separate tab.
  */
-import { runJobTask } from "../gateway/job-task";
+import { runJobTask } from "../orchestrate/job-task";
 
 const taskId = process.argv[2];
 const feedbackFile = process.argv[3] || undefined;

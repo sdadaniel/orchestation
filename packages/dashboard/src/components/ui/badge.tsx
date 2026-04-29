@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import type { TaskStatus, TaskPriority } from "@/constants/status";
+import type { TaskPriority, TaskStatus } from "@/entities/task";
 import { STATUS_STYLES, PRIORITY_STYLES } from "@/constants/theme";
 import type { BadgeProps } from "./types";
 

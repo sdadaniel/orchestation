@@ -20,6 +20,7 @@ import {
   getStringArray,
 } from "../lib/content/frontmatter-utils";
 import { createTask, getNextTaskId } from "../service/task-store";
+import type { TaskPriority } from "../entities/task";
 
 export interface NightWorkerOptions {
   until?: string; // HH:MM (기본 07:00)
@@ -244,7 +245,7 @@ class NightWorkerManager {
     // frontmatter에서 title 추출 시도
     let title = "";
     let role = "general";
-    let priority = "medium";
+    let priority: TaskPriority = "medium";
     let scope: string[] = [];
     let dependsOn: string[] = [];
     let bodyContent = taskContent;
@@ -252,7 +253,12 @@ class NightWorkerManager {
     const { data } = parseFrontmatter(taskContent);
     title = getString(data, "title");
     if (data.role) role = getString(data, "role") || "general";
-    if (data.priority) priority = getString(data, "priority") || "medium";
+    if (data.priority) {
+      const parsed = getString(data, "priority");
+      if (parsed === "high" || parsed === "medium" || parsed === "low") {
+        priority = parsed;
+      }
+    }
     if (data.scope) scope = getStringArray(data, "scope");
     if (data.depends_on) dependsOn = getStringArray(data, "depends_on");
 

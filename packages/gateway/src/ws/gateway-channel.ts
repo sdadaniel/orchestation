@@ -1,6 +1,6 @@
 import { WebSocket, type WebSocketServer } from "ws";
 import { subscribe } from "@/bus/index";
-import orchestrationManager from "@/gateway/orchestration-manager";
+import orchestrationManager from "@/orchestrate/orchestration-manager";
 import { getRpc } from "../rpc/registry";
 import type { RpcRequest, RpcResponse } from "../rpc/types";
 import { randomUUID } from "crypto";

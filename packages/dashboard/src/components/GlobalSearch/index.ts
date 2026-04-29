@@ -1,2 +1,2 @@
-export * from "./GlobalSearch";
-export type { GlobalSearchProps, SearchResultItem } from "./types";
+export { default as GlobalSearch } from "./GlobalSearch";
+export type { SearchResultItem } from "./types";

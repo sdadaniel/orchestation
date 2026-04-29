@@ -1,5 +1,5 @@
 import { z } from "zod";
-import orchestrationManager from "@/gateway/orchestration-manager";
+import orchestrationManager from "@/orchestrate/orchestration-manager";
 import { registerRpc } from "../registry";
 
 registerRpc({

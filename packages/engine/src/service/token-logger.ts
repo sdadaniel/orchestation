@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { OUTPUT_DIR } from "../lib/config/paths";
+import type { TokenUsageEntity } from "../entities";
 import { getWritableDb } from "./db";
 
 export interface TokenUsageResult {
@@ -20,7 +21,7 @@ function formatLocalTimestampForCostLog(d: Date): string {
 
 export function logTokenUsage(
   taskId: string,
-  phase: string,
+  phase: TokenUsageEntity["phase"],
   model: string,
   result: TokenUsageResult,
   stepId?: string,

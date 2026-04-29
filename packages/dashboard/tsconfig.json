@@ -24,14 +24,23 @@
       }
     ],
     "paths": {
+      "@/entities/*": [
+        "../engine/src/entities/*"
+      ],
+      "@dashboard/*": [
+        "./src/*"
+      ],
+      "@runtime/*": [
+        "../engine/src/*"
+      ],
       "@/types/plan": [
-        "../orchestration-runtime/src/types/plan.ts"
+        "../engine/src/types/plan.ts"
       ],
       "@/types/waterfall": [
-        "../orchestration-runtime/src/types/waterfall.ts"
+        "../engine/src/types/waterfall.ts"
       ],
       "@/bus/*": [
-        "../orchestration-runtime/src/bus/*"
+        "../engine/src/bus/*"
       ],
       "@/lib/query-client": [
         "./src/lib/query-client.ts"
@@ -40,19 +49,19 @@
         "./src/lib/utils.ts"
       ],
       "@/lib/*": [
-        "../orchestration-runtime/src/lib/*"
+        "../engine/src/lib/*"
       ],
       "@/service/*": [
-        "../orchestration-runtime/src/service/*"
+        "../engine/src/service/*"
       ],
       "@/parser/*": [
-        "../orchestration-runtime/src/parser/*"
+        "../engine/src/parser/*"
       ],
-      "@/gateway/*": [
-        "../orchestration-runtime/src/gateway/*"
+      "@/orchestrate/*": [
+        "../engine/src/orchestrate/*"
       ],
       "@/constants/*": [
-        "../orchestration-runtime/src/constants/*"
+        "../engine/src/constants/*"
       ],
       "@/*": [
         "./src/*"

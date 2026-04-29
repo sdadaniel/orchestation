@@ -2,12 +2,13 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import type { TaskPriority } from "@/entities/task";
 
 export interface Suggestion {
   title: string;
   description: string;
   category: string;
-  priority: "high" | "medium" | "low";
+  priority: TaskPriority;
   scope: string[];
   effort: "small" | "medium" | "large";
 }

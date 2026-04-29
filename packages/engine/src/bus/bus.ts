@@ -12,7 +12,6 @@ export function publish<T>(type: BusEventType, data: T): BusEventEnvelope<T> {
     l(env);
   }
   return env;
-
 }
 
 export function subscribe(listener: Listener): () => void {

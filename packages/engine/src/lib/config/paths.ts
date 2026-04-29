@@ -4,15 +4,18 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/** packages/orchestration-runtime (이 패키지 루트) */
-const RUNTIME_ROOT = path.resolve(__dirname, "..", "..", "..");
+/**
+ * packages/engine 패키지 루트
+ * 이 파일: src/lib/config → 상위 3단계 (config→lib→src→engine)
+ */
+const ENGINE_ROOT = path.resolve(__dirname, "..", "..", "..");
 
 /**
- * orchestration CLI 배포 루트 (cli.js, packages/)
- * env 없을 때: monorepo 기준 RUNTIME_ROOT 상위 2단계
+ * orchestration CLI 배포 루트 (cli.js, packages/ 가 있는 디렉터리)
+ * monorepo: engine 루트의 상위 2단계 = repo 루트
  */
 export const PACKAGE_DIR =
-  process.env.PACKAGE_DIR || path.resolve(RUNTIME_ROOT, "..", "..");
+  process.env.PACKAGE_DIR || path.resolve(ENGINE_ROOT, "..", "..");
 
 /** 사용자 프로젝트 루트 — env 없을 때는 PACKAGE_DIR과 동일(로컬 개발) */
 export const PROJECT_ROOT = process.env.PROJECT_ROOT || PACKAGE_DIR;

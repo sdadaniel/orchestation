@@ -4,11 +4,16 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { SearchIcon, FileTextIcon, ListTodoIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { GlobalSearchProps as Props, SearchResultItem } from "./types";
+import { useDocTree } from "@/hooks/useDocTree";
+import { useTasksStore } from "@/store/tasksStore";
+import type { SearchResultItem } from "./types";
 
 /* ── Helpers ── */
 
-function flattenDocs(nodes: Props["docTree"]): { id: string; title: string }[] {
+function flattenDocs(nodes: ReturnType<typeof useDocTree>["tree"]): {
+  id: string;
+  title: string;
+}[] {
   const result: { id: string; title: string }[] = [];
   for (const node of nodes) {
     if (node.type === "doc") {
@@ -27,8 +32,10 @@ function padId(num: string): string {
 
 /* ── Component ── */
 
-export function GlobalSearch({ requestItems, docTree }: Props) {
+const GlobalSearch = () => {
   const router = useRouter();
+  const requestItems = useTasksStore((s) => s.requests);
+  const { tree: docTree } = useDocTree();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -314,4 +321,6 @@ export function GlobalSearch({ requestItems, docTree }: Props) {
       )}
     </div>
   );
-}
+};
+
+export default GlobalSearch;

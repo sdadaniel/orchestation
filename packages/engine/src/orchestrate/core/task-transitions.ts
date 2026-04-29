@@ -37,7 +37,7 @@ export interface TransitionContext {
     stepId: string,
     opts?: { feedbackFile?: string },
   ) => boolean;
-  emitTaskResult: (taskId: string, status: "success" | "failure") => void;
+  emitTaskResult: (taskId: string) => void;
   maxReviewRetry: () => number;
   baseBranch: () => string;
 }
@@ -67,7 +67,7 @@ export async function onStepFinished(
     return;
   }
 
-  // Unknown step types: treat as completed and continue
+  // Unknown step types: treat as mpleted and continue
   await handleUnknownStepFinished(taskId, stepType, ctx);
 }
 
@@ -91,7 +91,7 @@ export async function finalizeTask(
       `${taskId} 완료`,
       `**${taskId}:** ${info.title}\n\n태스크가 성공적으로 완료되어 ${ctx.baseBranch()}에 머지되었습니다.`,
     );
-    ctx.emitTaskResult(taskId, "success");
+    ctx.emitTaskResult(taskId);
     ctx.log(`  ✅ ${taskId} 완료 → ${ctx.baseBranch()} 머지됨`);
   } else {
     markTaskFailed(taskId, "merge 실패", ctx);
@@ -229,7 +229,7 @@ export function markTaskFailed(
   cleanupWorktreeAndBranch(taskId);
   writeNotice("error", `${taskId} 실패`, `**${taskId}:** ${reason}`);
   stopDependents(taskId, ctx.log);
-  ctx.emitTaskResult(taskId, "failure");
+  ctx.emitTaskResult(taskId);
 }
 
 export function markTaskRejected(

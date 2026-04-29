@@ -35,8 +35,10 @@ import {
   markTaskFailed,
   type TransitionContext,
 } from "./task-transitions";
-import { publish } from "../../bus";
+import { normalizeLogEntry, publish } from "../../bus";
 import { formatLogLine } from "../../bus/logging/log-format";
+import { taskStatusToResultOutcome } from "../../lib/task-status";
+import type { TaskStatus } from "../../entities/task";
 import type { StepType } from "../runner/step-runner";
 import {
   CONFIG_WATCH_INTERVAL_MS,
@@ -44,13 +46,6 @@ import {
   LOOP_INTERVAL_MS,
 } from "./const";
 
-export type TaskStatus =
-  | "pending"
-  | "stopped"
-  | "in_progress"
-  | "done"
-  | "rejected"
-  | "failed";
 export type EngineStatus = "idle" | "running";
 
 export interface EngineEvents {
@@ -105,8 +100,21 @@ export class OrchestrateEngine {
   private emitStatusChanged(status: EngineStatus) {
     this.hooks.onStatusChanged(status);
   }
-  private emitTaskResult(taskId: string, status: "success" | "failure") {
-    this.hooks.onTaskResult({ taskId, status });
+  /** `task-store`에 반영된 최신 `TaskEntity.status` 기준으로 훅을 호출한다. */
+  private emitTaskResult(taskId: string) {
+    const row = getTask(taskId);
+    if (!row) {
+      this.log(`  ⚠️  emitTaskResult: 태스크 없음 ${taskId}`);
+      return;
+    }
+    const outcome = taskStatusToResultOutcome(row.status);
+    if (outcome === undefined) {
+      this.log(
+        `  ⚠️  emitTaskResult: 종료 상태 아님 (${taskId} → ${row.status})`,
+      );
+      return;
+    }
+    this.hooks.onTaskResult({ taskId, status: outcome });
   }
 
   get status(): EngineStatus {
@@ -144,7 +152,6 @@ export class OrchestrateEngine {
     }
     this.disarmConfigWatch();
     this._status = "idle";
-    this.emitStatusChanged(this._status);
     return { success: true };
   }
 
@@ -213,8 +220,7 @@ export class OrchestrateEngine {
     return {
       log: (msg) => this.log(msg),
       startStep: (taskId, stepId, opts) => this.startStep(taskId, stepId, opts),
-      emitTaskResult: (taskId, status) =>
-        this.emitTaskResult(taskId, status),
+      emitTaskResult: (taskId) => this.emitTaskResult(taskId),
       maxReviewRetry: () => this.maxReviewRetryValue,
       baseBranch: () => this.baseBranchValue,
     };
@@ -344,7 +350,11 @@ export class OrchestrateEngine {
     const abortController = new AbortController();
     const writeLine = (line: string) => {
       this.log(`  ${line}`);
-      publish("log", { scope: "task", taskId, line });
+      publish("log", {
+        scope: "task",
+        taskId,
+        entry: normalizeLogEntry(line, { defaultSource: "task" }),
+      });
       try {
         fs.appendFileSync(logFile, line + "\n");
       } catch {

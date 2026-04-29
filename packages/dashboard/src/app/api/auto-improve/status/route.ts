@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import autoImproveManager from "@/gateway/auto-improve-manager";
+import autoImproveManager from "@/orchestrate/auto-improve-manager";
 
 export const dynamic = "force-dynamic";
 

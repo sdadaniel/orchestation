@@ -3,7 +3,7 @@
  * CLI entry point for NightWorkerManager.
  * Replaces: bash scripts/night-worker.sh
  */
-import nightWorkerManager from "../gateway/night-worker";
+import nightWorkerManager from "../orchestrate/night-worker";
 
 // Parse CLI args
 const args = process.argv.slice(2);

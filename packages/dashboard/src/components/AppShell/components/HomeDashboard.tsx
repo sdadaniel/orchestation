@@ -1,13 +1,10 @@
 "use client";
 
-import type { RequestItem } from "@/store/tasksStore";
+import { useTasksStore } from "@/store/tasksStore";
 import OverviewCard from "./OverviewCard";
 
-type HomeDashboardProps = {
-  requestItems: RequestItem[];
-};
-
-const HomeDashboard = ({ requestItems }: HomeDashboardProps) => {
+const HomeDashboard = () => {
+  const requestItems = useTasksStore((s) => s.requests);
   const inProgress = requestItems.filter((t) => t.status === "in_progress");
   const pending = requestItems.filter(
     (t) => t.status === "pending" || t.status === "reviewing",

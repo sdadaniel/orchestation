@@ -1,3 +1,3 @@
-export { Sidebar } from "./Sidebar";
-export type { DocActions, PrdInfo, SidebarProps } from "./types";
+export { default } from "./Sidebar";
+export type { DocActions } from "./types";
 export * from "./components";

@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import type { DocActions } from "@/components/Sidebar";
+import type { DocActions } from "../types";
 
 type UseDocActionsParams = {
   createDoc: (
@@ -17,13 +17,13 @@ type UseDocActionsParams = {
   fetchTree: () => Promise<void>;
 };
 
-export function useDocActions({
+const useDocActions = ({
   createDoc,
   deleteDoc,
   updateDoc,
   reorderDoc,
   fetchTree,
-}: UseDocActionsParams): DocActions {
+}: UseDocActionsParams): DocActions => {
   const create = useCallback<DocActions["create"]>(
     async (title, type, parentId) => {
       await createDoc(title, type, parentId);
@@ -53,7 +53,7 @@ export function useDocActions({
   );
 
   const reorderError = useCallback<DocActions["reorderError"]>(
-    async (_error) => {
+    async () => {
       await fetchTree();
     },
     [fetchTree],
@@ -69,4 +69,6 @@ export function useDocActions({
     }),
     [create, remove, rename, reorder, reorderError],
   );
-}
+};
+
+export default useDocActions;

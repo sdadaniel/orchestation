@@ -1,5 +1,6 @@
 ---
-id: TASK-124
+
+## id: TASK-124
 title: 상태 관리, 컨텍스트, 데이터 흐름 분석
 status: done
 branch: task/task-124
@@ -15,10 +16,11 @@ depends_on:
   - TASK-123
 created: 2026-03-25
 updated: 2026-03-25
----
+
 React 상태 관리 패턴, Context 사용 방식, props drilling, 데이터 fetching 패턴 등을 분석한다. 불필요한 리렌더링, 잘못된 상태 위치, 과도한 prop 전달, context 남용 등의 문제를 식별한다.
 
 ## Completion Criteria
+
 - 상태 관리 패턴 분석 완료
 - Context 사용 적절성 평가 완료
 - 데이터 흐름 문제점 목록화
@@ -37,14 +39,16 @@ React 상태 관리 패턴, Context 사용 방식, props drilling, 데이터 fet
 
 ### 1.1 전체 전략
 
-| 구분 | 사용 여부 | 비고 |
-|---|---|---|
-| Redux | ❌ | 미사용 |
-| Zustand | ❌ | 미사용 |
-| Jotai / Recoil | ❌ | 미사용 |
-| React Context | ✅ (1개) | Toast 전용 |
-| useState + useEffect | ✅ | 전체 데이터 패턴 |
-| React Query / SWR | ❌ | 미사용, 직접 fetch |
+
+| 구분                   | 사용 여부  | 비고            |
+| -------------------- | ------ | ------------- |
+| Redux                | ❌      | 미사용           |
+| Zustand              | ❌      | 미사용           |
+| Jotai / Recoil       | ❌      | 미사용           |
+| React Context        | ✅ (1개) | Toast 전용      |
+| useState + useEffect | ✅      | 전체 데이터 패턴     |
+| React Query / SWR    | ❌      | 미사용, 직접 fetch |
+
 
 **결론**: 전역 상태 라이브러리 없이, 커스텀 훅 + useState + useEffect 패턴으로 모든 서버 상태를 관리한다. `AppShell`이 최상위 오케스트레이터 역할을 한다.
 
@@ -65,6 +69,7 @@ Root (app/layout.tsx)
 ```
 
 **AppShell 자체 로컬 상태**:
+
 - `logModalTask` — 태스크 로그 모달 열기/닫기
 - `filter` — 사이드바 필터 (type: "all" | ...)
 - `prevTaskStatusRef` — 태스크 상태 변경 감지용 ref (이전 상태 비교)
@@ -73,20 +78,22 @@ Root (app/layout.tsx)
 
 ### 1.3 커스텀 훅 목록 (12개)
 
-| 훅 이름 | 파일 | 역할 | 상태 수 | 폴링 방식 |
-|---|---|---|---|---|
-| `useTasks` | hooks/useTasks.ts | 태스크+스프린트 fetch | 3 | SSE + debounce 1s |
-| `useSprints` | hooks/useSprints.ts | 스프린트 목록 | 3 | 5s 폴링 (실행 중) |
-| `useMonitor` | hooks/useMonitor.ts | CPU/메모리 모니터링 | 2 | 1s 폴링 (기본) |
-| `useCosts` | hooks/useCosts.ts | 비용 데이터 | 3 | 5s 폴링 (실행 중) |
-| `useRunHistory` | hooks/useRunHistory.ts | 실행 기록 | 3 | 없음 (수동 refetch) |
-| `useOrchestrationStatus` | hooks/useOrchestrationStatus.ts | 오케스트레이션 상태 | 2 | 2s(실행 중)/5s(대기) |
-| `useDocTree` | hooks/useDocTree.ts | 문서 트리 CRUD | 3 | 없음 |
-| `usePlanTree` | hooks/usePlanTree.ts | 플랜 계층 트리 | 3 | 없음 |
-| `useSprintDetail` | hooks/useSprintDetail.ts | 스프린트 상세 | 4 | 없음 |
-| `usePrds` | hooks/usePrds.ts | PRD 목록 | 3 | 없음 |
-| `useNotices` | hooks/useNotices.ts | 알림 CRUD | 3 | 없음 |
-| `useRequests` | hooks/useRequests.ts | 요청/태스크 CRUD | 3 | 없음 |
+
+| 훅 이름                     | 파일                              | 역할             | 상태 수 | 폴링 방식             |
+| ------------------------ | ------------------------------- | -------------- | ---- | ----------------- |
+| `useTasks`               | hooks/useTasks.ts               | 태스크+스프린트 fetch | 3    | SSE + debounce 1s |
+| `useSprints`             | hooks/useSprints.ts             | 스프린트 목록        | 3    | 5s 폴링 (실행 중)      |
+| `useMonitor`             | hooks/useMonitor.ts             | CPU/메모리 모니터링   | 2    | 1s 폴링 (기본)        |
+| `useCosts`               | hooks/useCosts.ts               | 비용 데이터         | 3    | 5s 폴링 (실행 중)      |
+| `useRunHistory`          | hooks/useRunHistory.ts          | 실행 기록          | 3    | 없음 (수동 refetch)   |
+| `useOrchestrationStatus` | hooks/useOrchestrationStatus.ts | 오케스트레이션 상태     | 2    | 2s(실행 중)/5s(대기)   |
+| `useDocTree`             | hooks/useDocTree.ts             | 문서 트리 CRUD     | 3    | 없음                |
+| `usePlanTree`            | hooks/usePlanTree.ts            | 플랜 계층 트리       | 3    | 없음                |
+| `useSprintDetail`        | hooks/useSprintDetail.ts        | 스프린트 상세        | 4    | 없음                |
+| `usePrds`                | hooks/usePrds.ts                | PRD 목록         | 3    | 없음                |
+| `useNotices`             | hooks/useNotices.ts             | 알림 CRUD        | 3    | 없음                |
+| `useRequests`            | hooks/useRequests.ts            | 요청/태스크 CRUD    | 3    | 없음                |
+
 
 ---
 
@@ -150,6 +157,7 @@ const ToastStateContext = createContext<ToastStateValue | null>(null); // 변경
 #### 영역 1: Doc Tree 작업 — ❌ 부재 (props drilling)
 
 현재 흐름:
+
 ```
 AppShell (useDocTree 호출)
   → handleDocCreate, handleDocDelete, handleDocRename, handleDocReorder, handleDocReorderError (5개 콜백 생성)
@@ -357,14 +365,17 @@ function useAsyncData<T>(fetcher: () => Promise<T>, deps: unknown[] = []) {
 
 ## 5. 요약 및 우선순위 매트릭스
 
-| 우선순위 | 항목 | 영향 | 난이도 |
-|---|---|---|---|
-| 🔴 P1 | 오케스트레이션 상태 중복 폴링 제거 | 네트워크 요청 감소 | 낮음 |
-| 🔴 P1 | requestItems → RequestsContext | 컴포넌트 결합 감소 | 중간 |
-| 🔴 P1 | AppShell God Component 분리 | 렌더링 성능 향상 | 높음 |
-| 🟡 P2 | onNewTask/onStopTask useCallback 래핑 | TaskSidebar 리렌더 감소 | 낮음 |
-| 🟡 P2 | DocTree 콜백 → DocTreeContext | Props drilling 제거 | 중간 |
-| 🟡 P2 | `useAsyncData` 추상 훅 도입 | 코드 중복 제거 | 중간 |
-| 🟡 P2 | 복합 로딩 상태 처리 개선 | UX 안정성 향상 | 낮음 |
-| 🟢 P3 | React Query 도입 | 캐싱/성능 전반 | 높음 |
-| 🟢 P3 | SSE 연결 싱글턴화 | 안전성 강화 | 낮음 |
+
+| 우선순위  | 항목                                  | 영향                 | 난이도 |
+| ----- | ----------------------------------- | ------------------ | --- |
+| 🔴 P1 | 오케스트레이션 상태 중복 폴링 제거                 | 네트워크 요청 감소         | 낮음  |
+| 🔴 P1 | requestItems → RequestsContext      | 컴포넌트 결합 감소         | 중간  |
+| 🔴 P1 | AppShell God Component 분리           | 렌더링 성능 향상          | 높음  |
+| 🟡 P2 | onNewTask/onStopTask useCallback 래핑 | TaskSidebar 리렌더 감소 | 낮음  |
+| 🟡 P2 | DocTree 콜백 → DocTreeContext         | Props drilling 제거  | 중간  |
+| 🟡 P2 | `useAsyncData` 추상 훅 도입              | 코드 중복 제거           | 중간  |
+| 🟡 P2 | 복합 로딩 상태 처리 개선                      | UX 안정성 향상          | 낮음  |
+| 🟢 P3 | React Query 도입                      | 캐싱/성능 전반           | 높음  |
+| 🟢 P3 | SSE 연결 싱글턴화                         | 안전성 강화             | 낮음  |
+
+

@@ -27,7 +27,7 @@ Module.prototype.require = function(id) {
 };
 
 // Now import the module
-const { updateTaskStatus, updateTask, createTask } = require('./packages/orchestration-runtime/src/service/task-store');
+const { updateTaskStatus, updateTask, createTask } = require('./packages/engine/src/service/task-store');
 
 console.log('✅ Test: Verify task status/phase change events');
 console.log('=========================================\n');

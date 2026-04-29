@@ -1,14 +1,14 @@
 # 오케스트레이터 아키텍처 (게이트웨이 통합 이후)
 
-> 기준: `gateway-unification` 완료 상태. `packages/gateway-host`가 단일 HTTP + WS 호스트 프로세스를 담당하며, `packages/dashboard`는 순수 Next.js 앱(서버 코드 없음)으로 분리된 상태를 기준으로 한다.
+> 기준: `gateway-unification` 완료 상태. `packages/gateway`가 단일 HTTP + WS 호스트 프로세스를 담당하며, `packages/dashboard`는 순수 Next.js 앱(서버 코드 없음)으로 분리된 상태를 기준으로 한다.
 
 ## 1. 프로세스 경계
 
-단일 `gateway-host` 프로세스가 Next.js 렌더링, WebSocket 업그레이드, 오케스트레이션 엔진을 모두 담당한다.
+단일 `gateway` 프로세스가 Next.js 렌더링, WebSocket 업그레이드, 오케스트레이션 엔진을 모두 담당한다.
 
 ```mermaid
 flowchart TB
-  subgraph gw["gateway-host 프로세스 (packages/gateway-host)"]
+  subgraph gw["gateway 프로세스 (packages/gateway)"]
     server["server.ts\nHTTP createServer"]
     next_handler["Next.js handle(req, res)\n→ packages/dashboard 렌더링"]
     upgrade["upgrade 이벤트\n→ verifyOrigin 검사"]
@@ -26,8 +26,8 @@ flowchart TB
     upgrade --> ws_endpoints
   end
 
-  subgraph runtime["orchestration-runtime (패키지)"]
-    engine["gateway/core/orchestrate-engine.ts"]
+  subgraph runtime["engine (패키지)"]
+    engine["orchestrate/core/orchestrate-engine.ts"]
     bus["bus/ (publish / subscribe / replayAfter)"]
     store["service/task-store (SQLite)"]
   end
@@ -40,7 +40,7 @@ flowchart TB
 
 | 진입점 | 역할 |
 |--------|------|
-| `packages/gateway-host/src/server.ts` | HTTP 서버 기동, Next.js 앱 연결, WS 업그레이드 라우팅 |
+| `packages/gateway/src/server.ts` | HTTP 서버 기동, Next.js 앱 연결, WS 업그레이드 라우팅 |
 | `packages/dashboard` | 순수 Next.js 앱 (API Routes 포함). `server.ts` 없음 |
 | `/ws/gateway` | 이벤트 구독 + RPC 단일 채널 |
 
@@ -52,7 +52,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  subgraph engine_layer["gateway/core/ (orchestration-runtime)"]
+  subgraph engine_layer["orchestrate/core/ (engine)"]
     main_loop["orchestrate-engine.ts\nmainLoop — 폴링"]
     scheduler["scheduler.ts\nscanTasks / depsSatisfied\nscopeNotConflicting / canDispatch"]
     transitions["task-transitions.ts\n상태 전이 규칙"]
@@ -60,19 +60,19 @@ flowchart TB
     main_loop --> transitions
   end
 
-  subgraph jobs_layer["gateway/jobs/"]
+  subgraph jobs_layer["orchestrate/jobs/"]
     job_task["job-task.ts"]
     job_review["job-review.ts"]
   end
 
-  subgraph ops_layer["gateway/ops/"]
+  subgraph ops_layer["orchestrate/ops/"]
     ctx["context-builder.ts"]
     model["model-selector.ts"]
     merge["merge-utils.ts"]
     signal["signal.ts"]
   end
 
-  subgraph runner_layer["gateway/runner/"]
+  subgraph runner_layer["orchestrate/runner/"]
     runner_mgr["task-runner-manager.ts"]
     runner_iterm["task-runner-iterm.ts"]
     step_runner["step-runner.ts"]
@@ -174,23 +174,23 @@ sequenceDiagram
 
 | 영역 | 경로 |
 |------|------|
-| HTTP + WS 호스트 진입점 | `packages/gateway-host/src/server.ts` |
-| `/ws/gateway` 채널 | `packages/gateway-host/src/ws/gateway-channel.ts` |
-| Origin 검증 | `packages/gateway-host/src/ws/verify-origin.ts` |
-| RPC 타입 정의 | `packages/gateway-host/src/rpc/types.ts` |
-| RPC 레지스트리 | `packages/gateway-host/src/rpc/registry.ts` |
-| RPC 메서드 (orchestrate) | `packages/gateway-host/src/rpc/methods/orchestrate.ts` |
-| 버스 진입점 | `packages/orchestration-runtime/src/bus/index.ts` |
-| 버스 pub/sub 구현 | `packages/orchestration-runtime/src/bus/bus.ts` |
-| 링 버퍼 이벤트 스토어 | `packages/orchestration-runtime/src/bus/event-store.ts` |
-| 버스 타입 | `packages/orchestration-runtime/src/bus/types.ts` |
-| 파일 이벤트 스토어 | `packages/orchestration-runtime/src/bus/store/file-event-store.ts` |
-| 엔진 코어 | `packages/orchestration-runtime/src/gateway/core/orchestrate-engine.ts` |
-| 스케줄러 | `packages/orchestration-runtime/src/gateway/core/scheduler.ts` |
-| 상태 전이 | `packages/orchestration-runtime/src/gateway/core/task-transitions.ts` |
-| 태스크/리뷰 잡 | `packages/orchestration-runtime/src/gateway/jobs/job-task.ts`, `job-review.ts` |
-| OPS 유틸 | `packages/orchestration-runtime/src/gateway/ops/*` |
-| 러너 (TaskRunnerManager) | `packages/orchestration-runtime/src/gateway/runner/task-runner-manager.ts` |
-| OrchestrationManager | `packages/orchestration-runtime/src/gateway/managers/orchestration-manager.ts` |
-| 태스크 스토어 (SQLite) | `packages/orchestration-runtime/src/service/task-store.ts` |
+| HTTP + WS 호스트 진입점 | `packages/gateway/src/server.ts` |
+| `/ws/gateway` 채널 | `packages/gateway/src/ws/gateway-channel.ts` |
+| Origin 검증 | `packages/gateway/src/ws/verify-origin.ts` |
+| RPC 타입 정의 | `packages/gateway/src/rpc/types.ts` |
+| RPC 레지스트리 | `packages/gateway/src/rpc/registry.ts` |
+| RPC 메서드 (orchestrate) | `packages/gateway/src/rpc/methods/orchestrate.ts` |
+| 버스 진입점 | `packages/engine/src/bus/index.ts` |
+| 버스 pub/sub 구현 | `packages/engine/src/bus/bus.ts` |
+| 링 버퍼 이벤트 스토어 | `packages/engine/src/bus/event-store.ts` |
+| 버스 타입 | `packages/engine/src/bus/types.ts` |
+| 파일 이벤트 스토어 | `packages/engine/src/bus/store/file-event-store.ts` |
+| 엔진 코어 | `packages/engine/src/orchestrate/core/orchestrate-engine.ts` |
+| 스케줄러 | `packages/engine/src/orchestrate/core/scheduler.ts` |
+| 상태 전이 | `packages/engine/src/orchestrate/core/task-transitions.ts` |
+| 태스크/리뷰 잡 | `packages/engine/src/orchestrate/jobs/job-task.ts`, `job-review.ts` |
+| OPS 유틸 | `packages/engine/src/orchestrate/ops/*` |
+| 러너 (TaskRunnerManager) | `packages/engine/src/orchestrate/runner/task-runner-manager.ts` |
+| OrchestrationManager | `packages/engine/src/orchestrate/managers/orchestration-manager.ts` |
+| 태스크 스토어 (SQLite) | `packages/engine/src/service/task-store.ts` |
 | Dashboard (Next.js 앱) | `packages/dashboard/` (서버 코드 없음 — 순수 Next.js) |

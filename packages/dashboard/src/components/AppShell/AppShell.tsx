@@ -3,32 +3,17 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useTasks } from "@/hooks/useTasks";
-import { usePrds } from "@/hooks/usePrds";
-import { useDocTree } from "@/hooks/useDocTree";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 import { useTasksStore } from "@/store/tasksStore";
-import { Sidebar } from "@/components/Sidebar";
+import Sidebar from "@/components/Sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { ChatBot } from "@/components/ChatBot";
-import { GlobalSearch } from "@/components/GlobalSearch";
-import { useNotices } from "@/hooks/useNotices";
-import AutoImproveControl from "@/components/AutoImproveControl";
-import { useDocActions } from "./hooks/useDocActions";
-import { HomeDashboard } from "./components";
+import { GlobalHeader, HomeDashboard } from "./components";
 
 const AppShell = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const { groups, isLoading } = useTasks();
-  const { prds } = usePrds();
-  const {
-    tree: docTree,
-    createDoc,
-    updateDoc,
-    deleteDoc,
-    reorderDoc,
-    fetchTree,
-  } = useDocTree();
   const { addToast } = useToast();
 
   // 초기 데이터 로드 — 이후 변경 감지는 Gateway WS 이벤트로 처리
@@ -42,8 +27,8 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
 
   // Requests는 store에서 직접 구독
   const requestItems = useTasksStore((s) => s.requests);
+
   const fetchAll = useTasksStore((s) => s.fetchAll);
-  const { notices: noticeItems } = useNotices();
 
   // Track previous task statuses for change detection
   const prevTaskStatusRef = useRef<Map<string, string>>(new Map());
@@ -93,14 +78,6 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
 
   const isHome = pathname === "/";
 
-  const docActions = useDocActions({
-    createDoc,
-    deleteDoc,
-    updateDoc,
-    reorderDoc,
-    fetchTree,
-  });
-
   if (isLoading) {
     return (
       <div className="flex h-full">
@@ -120,44 +97,19 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="flex h-full">
-      <Sidebar
-        prds={prds}
-        docTree={docTree}
-        requestItems={requestItems}
-        noticeItems={noticeItems}
-        currentPath={pathname}
-        docActions={docActions}
-        onStopTask={async (id: string) => {
-          try {
-            await fetch(`/api/tasks/${id}/run`, { method: "DELETE" });
-          } catch {}
-          await fetch(`/api/requests/${id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: "stopped" }),
-          });
-          fetchAll();
-        }}
-      />
+      <Sidebar />
 
       {/* Content area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Global header */}
-        <div className="global-header">
-          <AutoImproveControl
-            runningTaskCount={
-              requestItems.filter((t) => t.status === "in_progress").length
-            }
-          />
-          <GlobalSearch requestItems={requestItems} docTree={docTree} />
-        </div>
+        <GlobalHeader />
 
         {/* Main content */}
         <div className="flex flex-1 overflow-hidden">
           {isHome ? (
             <div className="flex-1 overflow-auto bg-background p-4">
               <div className="content-container">
-                <HomeDashboard requestItems={requestItems} />
+                <HomeDashboard />
               </div>
             </div>
           ) : (

@@ -1,4 +1,4 @@
-import type { TaskRow } from "../service/task-store";
+import type { TaskEntity } from "../entities/task";
 
 function parseJsonStringArray(value: string): string[] {
   try {
@@ -10,15 +10,15 @@ function parseJsonStringArray(value: string): string[] {
   }
 }
 
-export function parseScope(task: TaskRow): string[] {
+export function parseScope(task: TaskEntity): string[] {
   return parseJsonStringArray(task.scope);
 }
 
-export function parseDependsOn(task: TaskRow): string[] {
+export function parseDependsOn(task: TaskEntity): string[] {
   return parseJsonStringArray(task.depends_on);
 }
 
-export function parseContext(task: TaskRow): string[] {
+export function parseContext(task: TaskEntity): string[] {
   return parseJsonStringArray(task.context);
 }
 

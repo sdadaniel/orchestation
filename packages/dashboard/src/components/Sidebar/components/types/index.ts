@@ -1,4 +1,6 @@
 import type { DocNode } from "@/hooks/useDocTree";
+import type { NoticeItem } from "@/hooks/useNotices";
+import type { DocActions } from "@/components/Sidebar/types";
 import type { RequestItem } from "@/store/tasksStore";
 
 export interface InlineRenameProps {
@@ -42,4 +44,15 @@ export interface DocTreeNodeProps {
     position: number,
   ) => Promise<void>;
   onReorderError?: (error: unknown) => void;
+}
+
+export interface DocsSectionProps {
+  docTree: DocNode[];
+  currentPath: string;
+  docActions?: DocActions;
+}
+
+export interface NoticesSectionProps {
+  noticeItems: NoticeItem[];
+  currentPath: string;
 }

@@ -8,8 +8,8 @@ const { pathToFileURL } = require("url");
 
 const ORCH_DIR = ".orchestration";
 const FRONTEND_DIR = path.join(__dirname, "packages", "dashboard");
-const RUNTIME_DIR = path.join(__dirname, "packages", "orchestration-runtime");
-const GATEWAY_DIR = path.join(__dirname, "packages", "gateway-host");
+const RUNTIME_DIR = path.join(__dirname, "packages", "engine");
+const GATEWAY_DIR = path.join(__dirname, "packages", "gateway");
 
 const command = process.argv[2];
 const args = process.argv.slice(3);
@@ -212,7 +212,7 @@ function findRunEnginePids() {
 
 function findDashboardPids() {
   try {
-    const out = execSync('pgrep -f "gateway-host/src/server\\.ts" 2>/dev/null || true', { encoding: "utf-8" });
+    const out = execSync('pgrep -f "gateway/src/server\\.ts" 2>/dev/null || true', { encoding: "utf-8" });
     return out
       .trim()
       .split("\n")
@@ -324,7 +324,7 @@ switch (command) {
 
     const runtimeNodeModules = path.join(RUNTIME_DIR, "node_modules");
     if (!fs.existsSync(runtimeNodeModules)) {
-      console.log("Installing orchestration runtime dependencies (first run)...");
+      console.log("Installing engine package dependencies (first run)...");
       try {
         execSync("npm install --production=false", {
           cwd: RUNTIME_DIR,
@@ -332,14 +332,14 @@ switch (command) {
         });
         console.log("  Runtime dependencies installed.\n");
       } catch (err) {
-        console.error("Failed to install runtime dependencies.");
+        console.error("Failed to install engine package dependencies.");
         process.exit(1);
       }
     }
 
     const gatewayNodeModules = path.join(GATEWAY_DIR, "node_modules");
     if (fs.existsSync(GATEWAY_DIR) && !fs.existsSync(gatewayNodeModules)) {
-      console.log("Installing gateway-host dependencies (first run)...");
+      console.log("Installing gateway dependencies (first run)...");
       try {
         execSync("npm install --production=false", {
           cwd: GATEWAY_DIR,
@@ -347,7 +347,7 @@ switch (command) {
         });
         console.log("  Gateway-host dependencies installed.\n");
       } catch (err) {
-        console.error("Failed to install gateway-host dependencies.");
+        console.error("Failed to install gateway dependencies.");
         process.exit(1);
       }
     }
@@ -557,14 +557,14 @@ switch (command) {
 
     const runtimeNodeModulesRun = path.join(RUNTIME_DIR, "node_modules");
     if (!fs.existsSync(runtimeNodeModulesRun)) {
-      console.log("Installing orchestration runtime dependencies (first run)...");
+      console.log("Installing engine package dependencies (first run)...");
       try {
         execSync("npm install --production=false", {
           cwd: RUNTIME_DIR,
           stdio: "inherit",
         });
       } catch (err) {
-        console.error("Failed to install runtime dependencies.");
+        console.error("Failed to install engine package dependencies.");
         process.exit(1);
       }
     }
@@ -595,14 +595,14 @@ switch (command) {
 
     const runtimeNodeModulesNight = path.join(RUNTIME_DIR, "node_modules");
     if (!fs.existsSync(runtimeNodeModulesNight)) {
-      console.log("Installing orchestration runtime dependencies (first run)...");
+      console.log("Installing engine package dependencies (first run)...");
       try {
         execSync("npm install --production=false", {
           cwd: RUNTIME_DIR,
           stdio: "inherit",
         });
       } catch (err) {
-        console.error("Failed to install runtime dependencies.");
+        console.error("Failed to install engine package dependencies.");
         process.exit(1);
       }
     }

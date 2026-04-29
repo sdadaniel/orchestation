@@ -21,7 +21,7 @@ export default defineConfig({
           environment: 'node',
           include: [
             'src/**/*.test.ts',
-            '../orchestration-runtime/src/**/*.test.ts',
+            '../engine/src/**/*.test.ts',
           ],
         },
       },

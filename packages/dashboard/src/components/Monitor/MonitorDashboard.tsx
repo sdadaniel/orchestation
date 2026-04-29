@@ -6,7 +6,7 @@ import { ProcessMetrics } from "./ProcessMetrics";
 import { AlertCircle } from "lucide-react";
 
 export function MonitorDashboard() {
-  const { current, history, error } = useMonitor(1000);
+  const { current, history, error } = useMonitor(5000);
 
   if (error && !current) {
     return (

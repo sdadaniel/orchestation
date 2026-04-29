@@ -6,6 +6,7 @@ import { getErrorMessage } from "../../lib/errors/error-utils";
 import { PROJECT_ROOT, CONFIG_PATH, SIGNALS_DIR } from "../../lib/config/paths";
 import { TaskRunState } from "./task-runner-types";
 import { getTask, updateTaskStatus } from "../../service/task-store";
+import type { TaskStatus } from "../../entities/task";
 
 /** config.json에서 workerMode 읽기 */
 export function getWorkerMode(): string {
@@ -43,7 +44,7 @@ end tell`;
 }
 
 /** 태스크 status를 DB에서 갱신 */
-export function updateTaskFileStatus(taskId: string, status: string): void {
+export function updateTaskFileStatus(taskId: string, status: TaskStatus): void {
   try {
     updateTaskStatus(taskId, status);
   } catch {

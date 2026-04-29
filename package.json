@@ -1,6 +1,8 @@
 {
-    "name": "@orchestration/cli",
+    "name": "@orchestration",
     "version": "0.1.7",
+    "private": true,
+    "packageManager": "pnpm@10.17.0",
     "description": "AI Development Orchestration — 태스크 자동 실행, 리뷰, 머지 파이프라인",
     "bin": {
         "orchestrate": "./cli.js"
@@ -16,7 +18,7 @@
         "docs/roles/",
         "config.json",
         "packages/dashboard/",
-        "packages/orchestration-runtime/"
+        "packages/engine/"
     ],
     "bundledDependencies": false,
     "engines": {

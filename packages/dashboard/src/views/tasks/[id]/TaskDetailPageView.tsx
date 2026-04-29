@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { getErrorMessage } from "@/lib/errors/error-utils";
-import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
   Loader2,
@@ -27,6 +26,7 @@ import {
 } from "@/app/tasks/[id]/TaskTabContent";
 import { LiveTerminalPanel } from "@/components/TaskDetail/LiveTerminalPanel";
 import { TaskWorkflowIndicator } from "@/components/TaskDetail/TaskWorkflowIndicator";
+import { Tabs } from "@/components/ui";
 
 export default function TaskDetailPageView({
   params,
@@ -285,31 +285,18 @@ export default function TaskDetailPageView({
       <TaskWorkflowIndicator workflow={task.workflow} taskStatus={task.status} />
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-border">
-        {[
-          { key: "detail" as const, label: "Content", icon: FileText },
-          { key: "scope" as const, label: "Scope", icon: FileText },
-          { key: "cost" as const, label: "Cost", icon: DollarSign },
-          { key: "logs" as const, label: "로그", icon: Terminal },
-          { key: "terminal" as const, label: "Terminal", icon: Monitor },
-          { key: "ai-result" as const, label: "AI Result", icon: CheckCircle2 },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors",
-              activeTab === tab.key
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <tab.icon className="h-3 w-3" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { key: "detail", label: "Content", icon: FileText },
+          { key: "scope", label: "Scope", icon: FileText },
+          { key: "cost", label: "Cost", icon: DollarSign },
+          { key: "logs", label: "로그", icon: Terminal },
+          { key: "terminal", label: "Terminal", icon: Monitor },
+          { key: "ai-result", label: "AI Result", icon: CheckCircle2 },
+        ]}
+      />
 
       {/* Tab Content */}
       {activeTab === "detail" && <DetailTab task={task} />}

@@ -1,12 +1,13 @@
 {
-  "name": "orchestration-dashboard",
+  "name": "@orchestration/dashboard",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "postinstall": "node -e \"const fs=require('fs'),p=require('path');try{const d='node_modules/node-pty/prebuilds';fs.readdirSync(d).forEach(s=>{const f=p.join(d,s,'spawn-helper');try{fs.chmodSync(f,0o755)}catch{}})}catch{}\"",
-    "dev": "tsx ../gateway-host/src/server.ts",
+    "dev": "tsx ../gateway/src/server.ts",
+    "clean": "rm -rf .next",
     "build": "next build",
-    "start": "NODE_ENV=production tsx ../gateway-host/src/server.ts",
+    "start": "NODE_ENV=production tsx ../gateway/src/server.ts",
     "lint": "next lint",
     "format": "prettier --write 'src/**/*.{ts,tsx,js,jsx,json,css}'",
     "format:check": "prettier --check 'src/**/*.{ts,tsx,js,jsx,json,css}'",
@@ -16,6 +17,7 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@orchestration/engine": "workspace:^",
     "@tanstack/react-query": "^5.95.2",
     "@tanstack/react-query-devtools": "^5.95.2",
     "@xterm/addon-fit": "^0.11.0",

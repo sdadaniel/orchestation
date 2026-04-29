@@ -5,17 +5,17 @@ import { cn } from "@/lib/utils";
 import { Play, Square, Loader2 } from "lucide-react";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
+import { useTasksStore } from "@/store/tasksStore";
 import { useGatewayClient } from "@/gateway-ws/provider";
 
-export default function AutoImproveControl({
-  runningTaskCount = 0,
-}: {
-  runningTaskCount?: number;
-} = {}) {
+const Controls = () => {
   const gateway = useGatewayClient();
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
+  const runningTaskCount = useTasksStore(
+    (s) => s.requests.filter((t) => t.status === "in_progress").length,
+  );
 
   // Orchestration 상태를 store에서 직접 구독 (별도 polling 제거)
   const orchestrationStatus = useOrchestrationStore((s) => s.data.status);
@@ -87,59 +87,68 @@ export default function AutoImproveControl({
     }
   };
 
-  return (
-    <div className="flex items-center gap-3">
-      {status === "starting" ? (
-        <span className="filter-pill flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Starting...
-        </span>
-      ) : status === "stopping" ? (
-        <span className="filter-pill flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Stopping...
-        </span>
-      ) : status === "running" ? (
-        <>
-          <div className="running-indicator">
-            <span className="running-indicator-spinner" />
-            <span className="running-indicator-text">
-              Running
-              <span className="running-indicator-dots" />
-            </span>
-            {runningTaskCount > 0 && (
-              <span className="running-indicator-count">
-                {runningTaskCount}
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={handleStop}
-            disabled={isStopping}
-            className={cn(
-              "filter-pill flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300",
-              isStopping && "opacity-50 cursor-not-allowed",
-            )}
-          >
-            <Square className="h-3 w-3" />
-            Stop
-          </button>
-        </>
-      ) : (
+  let statusContent: React.ReactNode;
+  if (status === "starting") {
+    statusContent = (
+      <span className="filter-pill flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Starting...
+      </span>
+    );
+  } else if (status === "stopping") {
+    statusContent = (
+      <span className="filter-pill flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Stopping...
+      </span>
+    );
+  } else if (status === "running") {
+    statusContent = (
+      <>
+        <div className="running-indicator">
+          <span className="running-indicator-spinner" />
+          <span className="running-indicator-text">
+            Running
+            <span className="running-indicator-dots" />
+          </span>
+          {runningTaskCount > 0 && (
+            <span className="running-indicator-count">{runningTaskCount}</span>
+          )}
+        </div>
         <button
           type="button"
-          onClick={handleRun}
-          disabled={isStarting}
+          onClick={handleStop}
+          disabled={isStopping}
           className={cn(
-            "filter-pill active flex items-center gap-1.5 text-xs",
-            isStarting && "opacity-50 cursor-not-allowed",
+            "filter-pill flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300",
+            isStopping && "opacity-50 cursor-not-allowed",
           )}
         >
-          <Play className="h-3 w-3" />
-          Run
+          <Square className="h-3 w-3" />
+          Stop
         </button>
-      )}
+      </>
+    );
+  } else {
+    statusContent = (
+      <button
+        type="button"
+        onClick={handleRun}
+        disabled={isStarting}
+        className={cn(
+          "filter-pill active flex items-center gap-1.5 text-xs",
+          isStarting && "opacity-50 cursor-not-allowed",
+        )}
+      >
+        <Play className="h-3 w-3" />
+        Run
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      {statusContent}
 
       {showError && (
         <span className="text-xs text-red-500">
@@ -149,4 +158,6 @@ export default function AutoImproveControl({
       {error && <span className="text-xs text-red-500">{error}</span>}
     </div>
   );
-}
+};
+
+export default Controls;

@@ -29,6 +29,13 @@ export interface GatewayClient {
 const BACKOFF_MIN = 500;
 const BACKOFF_MAX = 30_000;
 
+function createRequestId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function createGatewayClient(opts: GatewayClientOpts): GatewayClient {
   let ws: WebSocket | null = null;
   let closed = false;
@@ -104,7 +111,7 @@ export function createGatewayClient(opts: GatewayClientOpts): GatewayClient {
   return {
     call<P extends AnyObject, R>(method: string, params?: P): Promise<R> {
       return new Promise<R>((resolve, reject) => {
-        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const id = createRequestId();
         const idempotent = opts.isIdempotent(method);
         const timeout = setTimeout(() => {
           pending.delete(id);

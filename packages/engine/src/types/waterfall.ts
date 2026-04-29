@@ -1,4 +1,4 @@
-import type { TaskStatus, TaskPriority } from "@/constants/status";
+import type { TaskPriority, TaskStatus } from "@/entities/task";
 
 export type WaterfallTask = {
   id: string;

@@ -4,7 +4,7 @@ import path from "path";
 import { killProcessGracefully } from "../../lib/process/process-utils";
 import { PROJECT_ROOT, LOGS_DIR } from "../../lib/config/paths";
 import { TaskRunState } from "./task-runner-types";
-import { publish } from "../../bus";
+import { normalizeLogEntry, publish } from "../../bus";
 import {
   getWorkerMode,
   runInIterm,
@@ -113,7 +113,11 @@ class TaskRunnerManager {
 
     const appendLog = (line: string) => {
       state.logs.push(line);
-      publish("log", { scope: "task", taskId, line });
+      publish("log", {
+        scope: "task",
+        taskId,
+        entry: normalizeLogEntry(line, { defaultSource: "task-runner" }),
+      });
       try {
         fs.appendFileSync(logFile, line + "\n");
       } catch {
@@ -188,7 +192,11 @@ class TaskRunnerManager {
     state.phase = "merge";
     const appendLog = (line: string) => {
       state.logs.push(line);
-      publish("log", { scope: "task", taskId, line });
+      publish("log", {
+        scope: "task",
+        taskId,
+        entry: normalizeLogEntry(line, { defaultSource: "task-runner" }),
+      });
       const logFile = path.join(LOGS_DIR, `${taskId}.log`);
       try {
         fs.appendFileSync(logFile, line + "\n");
@@ -236,12 +244,24 @@ class TaskRunnerManager {
       state.logs.push(
         "[task-runner] iTerm2가 실행 중이지 않습니다. 백그라운드로 전환합니다.",
       );
-      publish("log", { scope: "task", taskId, line: state.logs[state.logs.length - 1] });
+      publish("log", {
+        scope: "task",
+        taskId,
+        entry: normalizeLogEntry(state.logs[state.logs.length - 1] ?? "", {
+          defaultSource: "task-runner",
+        }),
+      });
       return this.runBackground(taskId, state);
     }
 
     state.logs.push(`[task-runner] ${taskId}: iTerm 탭에서 실행 중`);
-    publish("log", { scope: "task", taskId, line: state.logs[state.logs.length - 1] });
+    publish("log", {
+      scope: "task",
+      taskId,
+      entry: normalizeLogEntry(state.logs[state.logs.length - 1] ?? "", {
+        defaultSource: "task-runner",
+      }),
+    });
 
     const dummy = spawn("sleep", ["999999"], {
       stdio: "ignore",
@@ -255,7 +275,12 @@ class TaskRunnerManager {
       state,
       logFile,
       dummy,
-      (line) => publish("log", { scope: "task", taskId, line }),
+      (line) =>
+        publish("log", {
+          scope: "task",
+          taskId,
+          entry: normalizeLogEntry(line, { defaultSource: "task-runner" }),
+        }),
       (status) => publish("task-result", { taskId, status }),
       this.watcherMgr,
       (tid, st) => this.handleStartReviewIterm(tid, st),
@@ -270,7 +295,12 @@ class TaskRunnerManager {
     startReviewInIterm(
       taskId,
       state,
-      (line) => publish("log", { scope: "task", taskId, line }),
+      (line) =>
+        publish("log", {
+          scope: "task",
+          taskId,
+          entry: normalizeLogEntry(line, { defaultSource: "task-runner" }),
+        }),
       (status) => publish("task-result", { taskId, status }),
       this.watcherMgr,
       (tid, st) => this.startReviewLegacy(tid, st),
@@ -283,7 +313,11 @@ class TaskRunnerManager {
 
     runJobReview(taskId, (line) => {
       state.logs.push(line);
-      publish("log", { scope: "task", taskId, line });
+      publish("log", {
+        scope: "task",
+        taskId,
+        entry: normalizeLogEntry(line, { defaultSource: "task-runner" }),
+      });
     })
       .then((result) => {
         if (result.status === "review-approved") {

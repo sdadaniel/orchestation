@@ -1,8 +1,8 @@
-import type { TaskStatus, TaskPriority } from "@/constants/status";
+import type { TaskPriority, TaskStatus } from "@/entities/task";
 import {
   getAllTasks as getAllTasksFromDb,
-  type TaskRow,
 } from "../service/task-store";
+import type { TaskEntity } from "../entities/task";
 import { parseDependsOn, parseScope } from "../lib/task-row-parsers";
 
 export interface TaskFrontmatter {
@@ -55,8 +55,8 @@ let _tasksCache: TaskFrontmatter[] | null = null;
 let _tasksCacheTime = 0;
 const CACHE_TTL_MS = 3000;
 
-/** TaskRow를 TaskFrontmatter로 변환 */
-function taskRowToFrontmatter(row: TaskRow): TaskFrontmatter {
+/** TaskEntity를 TaskFrontmatter로 변환 */
+function taskRowToFrontmatter(row: TaskEntity): TaskFrontmatter {
   return {
     id: row.id,
     title: row.title,

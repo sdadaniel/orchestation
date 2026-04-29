@@ -5,7 +5,7 @@ import { devtools } from "zustand/middleware";
 import type {
   OrchestrationStatus,
   OrchestrationStatusData,
-} from "@/gateway/orchestration-manager";
+} from "@/orchestrate/orchestration-manager";
 
 export type { OrchestrationStatus, OrchestrationStatusData };
 

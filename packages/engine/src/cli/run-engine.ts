@@ -3,7 +3,7 @@
  * CLI entry point for OrchestrateEngine.
  * Replaces: bash scripts/orchestrate.sh
  */
-import { OrchestrateEngine } from "../gateway/orchestrate-engine";
+import { OrchestrateEngine } from "../orchestrate/orchestrate-engine";
 
 const engine = new OrchestrateEngine({
   onLog: (line) => console.log(line),

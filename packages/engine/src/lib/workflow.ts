@@ -1,5 +1,5 @@
 import { parseFrontmatter } from "./content/frontmatter-utils";
-import type { StepType } from "../gateway/runner/step-runner";
+import type { StepType } from "../orchestrate/runner/step-runner";
 
 export interface WorkflowStepDef {
   /** stable key within a task (e.g. "work", "review") */

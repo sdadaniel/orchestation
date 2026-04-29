@@ -11,43 +11,13 @@ import {
 } from "../lib/task-row-parsers";
 import { publish } from "../bus";
 import { parseWorkflowFromTaskContent } from "../lib/workflow";
-import type { StepType } from "../gateway/runner/step-runner";
-
-export interface TaskRow {
-  id: string;
-  title: string;
-  status: string;
-  phase: string | null;
-  priority: string;
-  branch: string | null;
-  worktree: string | null;
-  role: string;
-  reviewer_role: string | null;
-  scope: string; // JSON array string
-  context: string; // JSON array string
-  depends_on: string; // JSON array string
-  complexity: string | null;
-  sort_order: number;
-  content: string;
-  created: string;
-  updated: string;
-}
-
-export interface TaskStepRow {
-  id: string;
-  task_id: string;
-  step_key: string;
-  step_type: StepType;
-  status: string;
-  attempt: number;
-  max_attempts: number | null;
-  inputs: string; // JSON object string
-  outputs: string; // JSON object string
-  started_at: string | null;
-  finished_at: string | null;
-  created: string;
-  updated: string;
-}
+import type { StepType } from "../orchestrate/runner/step-runner";
+import type {
+  TaskEntity,
+  TaskPriority,
+  TaskStatus,
+  TaskStepEntity,
+} from "../entities/task";
 
 function now(): string {
   return formatTimestamp(new Date());
@@ -62,25 +32,25 @@ function notifyTaskChanged(
 
 // ── Read ──────────────────────────────────────────────
 
-export function getTask(taskId: string): TaskRow | null {
+export function getTask(taskId: string): TaskEntity | null {
   const db = getDb();
   if (!db) return null;
   return (
     (db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId) as
-      | TaskRow
+      | TaskEntity
       | undefined) ?? null
   );
 }
 
-export function getAllTasks(): TaskRow[] {
+export function getAllTasks(): TaskEntity[] {
   const db = getDb();
   if (!db) return [];
   return db
     .prepare("SELECT * FROM tasks ORDER BY sort_order, id")
-    .all() as TaskRow[];
+    .all() as TaskEntity[];
 }
 
-export function getTasksByStatus(...statuses: string[]): TaskRow[] {
+export function getTasksByStatus(...statuses: TaskStatus[]): TaskEntity[] {
   const db = getDb();
   if (!db) return [];
   const placeholders = statuses.map(() => "?").join(",");
@@ -88,10 +58,10 @@ export function getTasksByStatus(...statuses: string[]): TaskRow[] {
     .prepare(
       `SELECT * FROM tasks WHERE status IN (${placeholders}) ORDER BY sort_order, id`,
     )
-    .all(...statuses) as TaskRow[];
+    .all(...statuses) as TaskEntity[];
 }
 
-export function getTaskSteps(taskId: string): TaskStepRow[] {
+export function getTaskSteps(taskId: string): TaskStepEntity[] {
   const db = getDb();
   if (!db) return [];
   return db
@@ -108,15 +78,15 @@ export function getTaskSteps(taskId: string): TaskStepRow[] {
          END ASC,
          step_key ASC`,
     )
-    .all(taskId) as TaskStepRow[];
+    .all(taskId) as TaskStepEntity[];
 }
 
-export function getTaskStep(stepId: string): TaskStepRow | null {
+export function getTaskStep(stepId: string): TaskStepEntity | null {
   const db = getDb();
   if (!db) return null;
   return (
     (db.prepare("SELECT * FROM task_steps WHERE id = ?").get(stepId) as
-      | TaskStepRow
+      | TaskStepEntity
       | undefined) ?? null
   );
 }
@@ -125,7 +95,7 @@ export function updateTaskStep(
   stepId: string,
   patch: Partial<
     Pick<
-      TaskStepRow,
+      TaskStepEntity,
       | "status"
       | "attempt"
       | "max_attempts"
@@ -172,9 +142,9 @@ export function getNextTaskId(): string {
 export function createTask(task: {
   id: string;
   title: string;
-  status?: string;
+  status?: TaskStatus;
   phase?: string | null;
-  priority?: string;
+  priority?: TaskPriority;
   role?: string;
   reviewer_role?: string;
   branch?: string;
@@ -185,7 +155,7 @@ export function createTask(task: {
   complexity?: string;
   sort_order?: number;
   content?: string;
-}): TaskRow {
+}): TaskEntity {
   const db = getWritableDb();
   if (!db) throw new Error("Database not available");
 
@@ -259,7 +229,7 @@ export function ensureTaskSteps(
   txn(steps);
 }
 
-export function getNextPendingStep(taskId: string): TaskStepRow | null {
+export function getNextPendingStep(taskId: string): TaskStepEntity | null {
   const db = getDb();
   if (!db) return null;
   return (
@@ -278,7 +248,7 @@ export function getNextPendingStep(taskId: string): TaskStepRow | null {
            step_key ASC
          LIMIT 1`,
       )
-      .get(taskId) as TaskStepRow | undefined) ?? null
+      .get(taskId) as TaskStepEntity | undefined) ?? null
   );
 }
 
@@ -286,9 +256,9 @@ export function updateTask(
   taskId: string,
   fields: Partial<{
     title: string;
-    status: string;
+    status: TaskStatus;
     phase: string | null;
-    priority: string;
+    priority: TaskPriority;
     branch: string;
     worktree: string;
     role: string;
@@ -365,8 +335,8 @@ export function recordStepEvent(
 
 export function updateTaskStatus(
   taskId: string,
-  newStatus: string,
-  fromStatus?: string,
+  newStatus: TaskStatus,
+  fromStatus?: TaskStatus,
 ): boolean {
   const db = getWritableDb();
   if (!db) return false;
@@ -422,8 +392,8 @@ export function deleteTask(taskId: string): boolean {
   return result.changes > 0;
 }
 
-/** TaskRow를 마크다운 frontmatter 문자열로 변환 (임시 파일 생성용) */
-export function taskRowToMarkdown(task: TaskRow): string {
+/** TaskEntity를 마크다운 frontmatter 문자열로 변환 (임시 파일 생성용) */
+export function taskRowToMarkdown(task: TaskEntity): string {
   const scope = parseScope(task);
   const context = parseContext(task);
   const dependsOn = parseDependsOn(task);

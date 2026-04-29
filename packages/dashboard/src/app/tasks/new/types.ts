@@ -1,9 +1,10 @@
 import type { TaskOption } from "@/views/tasks/new/components";
+import type { TaskPriority } from "@/entities/task";
 
 export interface AnalyzedTask {
   title: string;
   description: string;
-  priority: "high" | "medium" | "low";
+  priority: TaskPriority;
   criteria: string[];
   scope?: string[];
   /** Reference files (read-only, not modified) */

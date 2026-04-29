@@ -5,7 +5,8 @@ import { queryKeys } from "@/lib/query/query-keys";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 import { useTasksStore } from "@/store/tasksStore";
 import { useLogsStore } from "@/store/logsStore";
-import type { OrchestrationStatusData } from "@/gateway/orchestration-manager";
+import type { OrchestrationStatusData } from "@/orchestrate/orchestration-manager";
+import { toDisplayLogLine, type GatewayLogEntry } from "./log-entry";
 
 export function createEventHandlers(queryClient: QueryClient) {
   const invalidateTasksAndRequests = () => {
@@ -66,9 +67,22 @@ export function createEventHandlers(queryClient: QueryClient) {
       }
 
       if (event === "log") {
-        const d = data as { scope?: string; line?: string; logs?: string[]; total?: number };
+        const d = data as {
+          scope?: string;
+          entry?: GatewayLogEntry;
+          line?: string;
+          logs?: string[];
+          total?: number;
+        };
         if (d?.scope !== "orchestrate") return;
+        if (d?.entry) {
+          useLogsStore.getState().applyIncoming({
+            logs: [toDisplayLogLine(d.entry)],
+          });
+          return;
+        }
         if (typeof d?.line === "string") {
+          // Backward compatibility for older gateway payloads.
           useLogsStore.getState().applyIncoming({ logs: [d.line] });
           return;
         }

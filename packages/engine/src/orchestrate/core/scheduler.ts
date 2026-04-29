@@ -8,18 +8,9 @@ import { execSync } from "child_process";
 import {
   getTasksByStatus,
   getTask,
-  type TaskRow,
 } from "../../service/task-store";
+import type { TaskEntity, TaskStatus } from "../../entities/task";
 import { parseDependsOn, parseScope } from "../../lib/task-row-parsers";
-
-export type TaskStatus =
-  | "pending"
-  | "stopped"
-  | "in_progress"
-  | "reviewing"
-  | "done"
-  | "rejected"
-  | "failed";
 
 export interface TaskInfo {
   id: string;
@@ -40,7 +31,7 @@ export interface WorkerRef {
   taskId: string;
 }
 
-export function taskRowToInfo(row: TaskRow): TaskInfo {
+export function taskRowToInfo(row: TaskEntity): TaskInfo {
   return {
     id: row.id,
     filePath: "",

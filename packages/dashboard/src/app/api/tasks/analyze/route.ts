@@ -1,4 +1,5 @@
 import fs from "fs";
+import type { TaskPriority } from "@/entities/task";
 import {
   spawnClaude,
   CLAUDE_DEFAULT_TIMEOUT_MS,
@@ -14,7 +15,7 @@ export const maxDuration = 120;
 interface AnalyzedTask {
   title: string;
   description: string;
-  priority: "high" | "medium" | "low";
+  priority: TaskPriority;
   criteria: string[];
   scope: string[];
   context: string[];

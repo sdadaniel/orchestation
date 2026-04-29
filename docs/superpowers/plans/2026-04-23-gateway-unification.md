@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `engine` → `gateway` 네이밍 통일, 패키지 3분할(runtime/gateway-host/dashboard), SSE 완전 제거 + `/ws/gateway`(이벤트 멀티플렉스 + WS-RPC) 도입, origin 검증 + zod 스키마 검증, 프로덕션 부팅 한 포트 유지.
+**Goal:** 엔진 **코어** 디렉터리를 `packages/engine/src/orchestrate`로 두고 HTTP·WS **호스트**는 `packages/gateway`로 구분한다. 패키지 3분할(engine/gateway/dashboard), SSE 완전 제거 + `/ws/gateway`(이벤트 멀티플렉스 + WS-RPC) 도입, origin 검증 + zod 스키마 검증, 프로덕션 부팅 한 포트 유지.
 
-**Architecture:** `packages/orchestration-runtime`는 순수 코어(브라우저/Next 의존 금지). `packages/gateway-host`가 HTTP + Next + WS upgrade 호스트. `packages/dashboard`는 Next 앱만. 이벤트 버스는 `packages/orchestration-runtime/src/bus`로 rename되고 링버퍼 기반 event store가 `lastSeq` replay를 지원.
+**Architecture:** `packages/engine`는 순수 코어(브라우저/Next 의존 금지). `packages/gateway`가 HTTP + Next + WS upgrade 호스트. `packages/dashboard`는 Next 앱만. 이벤트 버스는 `packages/engine/src/bus`로 rename되고 링버퍼 기반 event store가 `lastSeq` replay를 지원.
 
 **Tech Stack:** Node.js ≥18, TypeScript, Next.js 16, React 19, ws, zod, tsx. 기존 `better-sqlite3`, `node-pty` 유지.
 
@@ -18,35 +18,36 @@
 - **포트**: 테스트는 3001번 포트 사용(CLAUDE.md).
 - **macOS bash 3.x**: shell 스크립트에서 `declare -A`/`mapfile`/`readarray` 금지. `cli.js`는 node 기반이므로 해당 없음.
 - **포맷**: TS 변경 후 `prettier --check`, 타입체크 `tsc --noEmit` 필수.
-- **엔진 파일 이중 존재**: `packages/orchestration-runtime/src/engine/orchestration-manager.ts`(루트)와 `engine/managers/orchestration-manager.ts` 둘 다 존재. `server.ts`가 사용하는 건 루트. Phase 1 rename 시 둘 다 그대로 옮겨간 뒤 Phase 6에서 unused 제거 여부 검토.
+- **엔진 파일 이중 존재**: `packages/engine/src/orchestrate/orchestration-manager.ts`(루트)와 `orchestrate/managers/orchestration-manager.ts` 등이 공존할 수 있음. Phase 1 rename 시 둘 다 그대로 옮겨간 뒤 Phase 6에서 unused 제거 여부 검토.
 
 ---
 
-## Phase 1 — Rename engine → gateway, extract gateway-host
+## Phase 1 — Rename engine 코어 → `orchestrate`, extract gateway
 
-### Task 1.1: `engine` → `gateway` 디렉터리 이동
+### Task 1.1: `engine` → `orchestrate` 디렉터리 이동
 
 **Files:**
-- Rename: `packages/orchestration-runtime/src/engine/**` → `packages/orchestration-runtime/src/gateway/**`
+- Rename: `packages/engine/src/engine/**` → `packages/engine/src/orchestrate/**`  
+  *(이미 `src/gateway`인 경우: `git mv packages/engine/src/gateway packages/engine/src/orchestrate`.)*
 
 - [ ] **Step 1: git mv 수행**
 
 ```bash
-git mv packages/orchestration-runtime/src/engine packages/orchestration-runtime/src/gateway
+git mv packages/engine/src/engine packages/engine/src/orchestrate
 ```
 
 - [ ] **Step 2: 디렉터리 검증**
 
 ```bash
-ls packages/orchestration-runtime/src/gateway
+ls packages/engine/src/orchestrate
 ```
 
-Expected: 기존 `engine/` 하위 파일들이 모두 존재(`core/`, `jobs/`, `ops/`, `runner/`, `claude/`, `managers/`, `logging/`, `orchestrate-engine.ts`, `orchestration-manager.ts`, `workflow.ts`, `workflow.test.ts`, 기타).
+Expected: 기존 코어 하위 파일들이 모두 존재(`core/`, `jobs/`, `ops/`, `runner/`, `claude/`, `managers/`, `logging/`, `orchestrate-engine.ts`, `orchestration-manager.ts`, `workflow.ts`, `workflow.test.ts`, 기타).
 
 - [ ] **Step 3: 커밋(이동만)**
 
 ```bash
-git commit -m "refactor(runtime): rename src/engine → src/gateway (move only)"
+git commit -m "refactor(runtime): rename src/engine → src/orchestrate (move only)"
 ```
 
 ---
@@ -54,38 +55,38 @@ git commit -m "refactor(runtime): rename src/engine → src/gateway (move only)"
 ### Task 1.2: runtime 내부 import 경로 치환
 
 **Files:**
-- Modify: `packages/orchestration-runtime/src/gateway/**/*.ts` 내 `../engine`, `../../engine`, `./engine/` 참조
+- Modify: `packages/engine/src/orchestrate/**/*.ts` 내 `../engine`, `../../engine`, `./engine/` 참조
 
 - [ ] **Step 1: 내부 상대경로 `engine` 검색**
 
 ```bash
-grep -rn "engine" packages/orchestration-runtime/src/gateway --include="*.ts" | grep -v "// " | head -40
+grep -rn "engine" packages/engine/src/orchestrate --include="*.ts" | grep -v "// " | head -40
 ```
 
-- [ ] **Step 2: `/engine/` → `/gateway/` 치환 (runtime 내부만)**
+- [ ] **Step 2: `/engine/` → `/orchestrate/` 치환 (runtime 내부만)**
 
 ```bash
 # 내부 문자열에 'engine'이 들어간 경우(주석/로그 메시지)는 제외, import 경로만 치환
-find packages/orchestration-runtime/src/gateway -name "*.ts" -print0 | \
-  xargs -0 sed -i '' -e 's|from "\.\./engine|from "../gateway|g' \
-                     -e 's|from "\.\./\.\./engine|from "../../gateway|g' \
-                     -e 's|from "\./engine|from "./gateway|g'
+find packages/engine/src/orchestrate -name "*.ts" -print0 | \
+  xargs -0 sed -i '' -e 's|from "\.\./engine|from "../orchestrate|g' \
+                     -e 's|from "\.\./\.\./engine|from "../../orchestrate|g' \
+                     -e 's|from "\./engine|from "./orchestrate|g'
 ```
 
 - [ ] **Step 3: CLI 엔트리 경로 갱신**
 
 ```bash
-grep -rn "engine" packages/orchestration-runtime/src/cli --include="*.ts"
+grep -rn "engine" packages/engine/src/cli --include="*.ts"
 ```
 
-`run-engine.ts`가 `../engine/...`를 import하면 `../gateway/...`로 치환.
+`run-engine.ts`가 `../engine/...`를 import하면 `../orchestrate/...`로 치환.
 
 - [ ] **Step 4: runtime tsconfig paths 갱신**
 
 ```bash
 ```
 
-Edit `packages/orchestration-runtime/tsconfig.json`:
+Edit `packages/engine/tsconfig.json`:
 
 ```json
 {
@@ -95,17 +96,17 @@ Edit `packages/orchestration-runtime/tsconfig.json`:
     "@/parser/*": ["./src/parser/*"],
     "@/lib/*": ["./src/lib/*"],
     "@/service/*": ["./src/service/*"],
-    "@/gateway/*": ["./src/gateway/*"]
+    "@/orchestrate/*": ["./src/orchestrate/*"]
   }
 }
 ```
 
-(`@/engine/*` 항목 제거, `@/gateway/*` 추가.)
+(`@/engine/*` 항목 제거, `@/orchestrate/*` 추가.)
 
 - [ ] **Step 5: runtime 타입체크**
 
 ```bash
-cd packages/orchestration-runtime && npx tsc --noEmit
+cd packages/engine && npx tsc --noEmit
 ```
 
 Expected: 에러 없음. `src/engine/...` 경로 잔여 참조 없음.
@@ -113,7 +114,7 @@ Expected: 에러 없음. `src/engine/...` 경로 잔여 참조 없음.
 - [ ] **Step 6: 커밋**
 
 ```bash
-git commit -am "refactor(runtime): update imports engine → gateway (internal)"
+git commit -am "refactor(runtime): update imports engine → orchestrate (internal)"
 ```
 
 ---
@@ -125,11 +126,11 @@ git commit -am "refactor(runtime): update imports engine → gateway (internal)"
 
 - [ ] **Step 1: paths 수정**
 
-`packages/dashboard/tsconfig.json`의 paths에서 `@/engine/*` 키를 `@/gateway/*`로 변경:
+`packages/dashboard/tsconfig.json`의 paths에서 `@/engine/*` 키를 `@/orchestrate/*`로 변경:
 
 ```json
-"@/gateway/*": [
-  "../../packages/orchestration-runtime/src/gateway/*"
+"@/orchestrate/*": [
+  "../../packages/engine/src/orchestrate/*"
 ],
 ```
 
@@ -139,10 +140,10 @@ git commit -am "refactor(runtime): update imports engine → gateway (internal)"
 
 ---
 
-### Task 1.4: dashboard 전 import `@/engine` → `@/gateway` 치환
+### Task 1.4: dashboard 전 import `@/engine` → `@/orchestrate` 치환
 
 **Files:**
-- Modify: `packages/dashboard/src/**/*.{ts,tsx}` 중 `@/engine` 사용처 10개.
+- Modify: `packages/dashboard/src/**/*.{ts,tsx}` 중 `@/engine` 사용처.
 
 - [ ] **Step 1: 치환 대상 확인**
 
@@ -150,13 +151,11 @@ git commit -am "refactor(runtime): update imports engine → gateway (internal)"
 grep -rln "@/engine" packages/dashboard/src
 ```
 
-Expected 10 files (AutoImproveControl.tsx는 없음, API routes + SseProvider 주변 등).
-
 - [ ] **Step 2: 일괄 치환**
 
 ```bash
 find packages/dashboard/src -type f \( -name "*.ts" -o -name "*.tsx" \) -print0 | \
-  xargs -0 sed -i '' -e 's|@/engine/|@/gateway/|g'
+  xargs -0 sed -i '' -e 's|@/engine/|@/orchestrate/|g'
 ```
 
 - [ ] **Step 3: dashboard 타입체크**
@@ -170,23 +169,23 @@ Expected: 에러 없음.
 - [ ] **Step 4: 커밋**
 
 ```bash
-git commit -am "refactor(dashboard): @/engine → @/gateway alias and imports"
+git commit -am "refactor(dashboard): @/engine → @/orchestrate alias and imports"
 ```
 
 ---
 
-### Task 1.5: `packages/gateway-host` 패키지 신설(스켈레톤)
+### Task 1.5: `packages/gateway` 패키지 신설(스켈레톤)
 
 **Files:**
-- Create: `packages/gateway-host/package.json`
-- Create: `packages/gateway-host/tsconfig.json`
-- Create: `packages/gateway-host/src/server.ts` (placeholder)
+- Create: `packages/gateway/package.json`
+- Create: `packages/gateway/tsconfig.json`
+- Create: `packages/gateway/src/server.ts` (placeholder)
 
 - [ ] **Step 1: `package.json` 작성**
 
 ```json
 {
-  "name": "@orchestration/gateway-host",
+  "name": "@orchestration/gateway",
   "version": "0.1.0",
   "private": true,
   "main": "src/server.ts",
@@ -228,11 +227,11 @@ git commit -am "refactor(dashboard): @/engine → @/gateway alias and imports"
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@/gateway/*": ["../orchestration-runtime/src/gateway/*"],
-      "@/bus/*":     ["../orchestration-runtime/src/bus/*"],
-      "@/lib/*":     ["../orchestration-runtime/src/lib/*"],
-      "@/service/*": ["../orchestration-runtime/src/service/*"],
-      "@/constants/*": ["../orchestration-runtime/src/constants/*"]
+      "@/orchestrate/*": ["../engine/src/orchestrate/*"],
+      "@/bus/*":     ["../engine/src/bus/*"],
+      "@/lib/*":     ["../engine/src/lib/*"],
+      "@/service/*": ["../engine/src/service/*"],
+      "@/constants/*": ["../engine/src/constants/*"]
     }
   },
   "include": ["src/**/*.ts"],
@@ -252,13 +251,13 @@ export {};
 - [ ] **Step 4: 설치**
 
 ```bash
-cd packages/gateway-host && npm install
+cd packages/gateway && npm install
 ```
 
 - [ ] **Step 5: 타입체크**
 
 ```bash
-cd packages/gateway-host && npx tsc --noEmit
+cd packages/gateway && npx tsc --noEmit
 ```
 
 Expected: 에러 없음.
@@ -266,28 +265,28 @@ Expected: 에러 없음.
 - [ ] **Step 6: 커밋**
 
 ```bash
-git add packages/gateway-host
-git commit -m "feat(gateway-host): add package skeleton (package.json, tsconfig)"
+git add packages/gateway
+git commit -m "feat(gateway): add package skeleton (package.json, tsconfig)"
 ```
 
 ---
 
-### Task 1.6: `server.ts` 본문을 `gateway-host`로 이전
+### Task 1.6: `server.ts` 본문을 `gateway`로 이전
 
 **Files:**
-- Create: `packages/gateway-host/src/server.ts`(전체 내용)
+- Create: `packages/gateway/src/server.ts`(전체 내용)
 - Modify: `packages/dashboard/server.ts` → 얇은 shim 또는 제거
 
 - [ ] **Step 1: dashboard `server.ts` 읽고 본문 복사**
 
-기존 `packages/dashboard/server.ts` 전체를 `packages/gateway-host/src/server.ts`로 이전. 다음 변경:
+기존 `packages/dashboard/server.ts` 전체를 `packages/gateway/src/server.ts`로 이전. 다음 변경:
 
 1. Next 앱 디렉터리 해석을 `PACKAGE_DIR`/`PROJECT_ROOT` 우선순위로:
 
 ```ts
 import path from "path";
 
-const PACKAGE_DIR = path.resolve(__dirname, "..");   // packages/gateway-host
+const PACKAGE_DIR = path.resolve(__dirname, "..");   // packages/gateway
 const WORKSPACE_ROOT = path.resolve(PACKAGE_DIR, "..", "..");  // repo root
 const DASHBOARD_DIR =
   process.env.DASHBOARD_DIR ??
@@ -301,7 +300,7 @@ const PROJECT_ROOT = process.env.PROJECT_ROOT ?? WORKSPACE_ROOT;
 const app = next({ dev, hostname, port, dir: DASHBOARD_DIR });
 ```
 
-3. import 경로 변경: `@/engine/...` → `@/gateway/...`, `@/lib/sse` → `@/lib/sse`(Phase 2에서 `@/bus`로 재치환).
+3. import 경로 변경: `@/engine/...` → `@/orchestrate/...`, `@/lib/sse` → `@/lib/sse`(Phase 2에서 `@/bus`로 재치환).
 
 4. `OUTPUT_DIR` 등 `PROJECT_ROOT` 기반 경로는 그대로 유지.
 
@@ -315,14 +314,14 @@ git rm packages/dashboard/server.ts
 
 ```json
 "scripts": {
-  "dev": "tsx ../../packages/gateway-host/src/server.ts",
+  "dev": "tsx ../../packages/gateway/src/server.ts",
   "build": "next build",
-  "start": "tsx ../../packages/gateway-host/src/server.ts",
+  "start": "tsx ../../packages/gateway/src/server.ts",
   ...
 }
 ```
 
-(`NODE_ENV=production` 환경에서 `start`가 실행될 때 gateway-host의 `dev` 플래그가 `false`로 떨어지도록 `server.ts`의 `const dev = process.env.NODE_ENV !== "production"`에 의존.)
+(`NODE_ENV=production` 환경에서 `start`가 실행될 때 gateway의 `dev` 플래그가 `false`로 떨어지도록 `server.ts`의 `const dev = process.env.NODE_ENV !== "production"`에 의존.)
 
 - [ ] **Step 4: 루트 `cli.js` 갱신**
 
@@ -349,7 +348,7 @@ PORT=3001 npm run dev --prefix packages/dashboard
 
 ```bash
 git add -A
-git commit -m "refactor(gateway-host): move server.ts into packages/gateway-host"
+git commit -m "refactor(gateway): move server.ts into packages/gateway"
 ```
 
 ---
@@ -359,8 +358,8 @@ git commit -m "refactor(gateway-host): move server.ts into packages/gateway-host
 - [ ] **Step 1: 전 패키지 타입체크**
 
 ```bash
-cd packages/orchestration-runtime && npx tsc --noEmit && cd -
-cd packages/gateway-host && npx tsc --noEmit && cd -
+cd packages/engine && npx tsc --noEmit && cd -
+cd packages/gateway && npx tsc --noEmit && cd -
 cd packages/dashboard && npx tsc --noEmit && cd -
 ```
 
@@ -386,12 +385,12 @@ PORT=3001 npm run dev --prefix packages/dashboard
 ### Task 2.1: `lib/sse` → `bus` 이동
 
 **Files:**
-- Rename: `packages/orchestration-runtime/src/lib/sse/**` → `packages/orchestration-runtime/src/bus/**`
+- Rename: `packages/engine/src/lib/sse/**` → `packages/engine/src/bus/**`
 
 - [ ] **Step 1: git mv**
 
 ```bash
-git mv packages/orchestration-runtime/src/lib/sse packages/orchestration-runtime/src/bus
+git mv packages/engine/src/lib/sse packages/engine/src/bus
 ```
 
 - [ ] **Step 2: 커밋(이동만)**
@@ -411,7 +410,7 @@ git commit -m "refactor(runtime): rename lib/sse → bus (move only)"
 
 ```bash
 # runtime 내부
-find packages/orchestration-runtime/src -type f -name "*.ts" -print0 | \
+find packages/engine/src -type f -name "*.ts" -print0 | \
   xargs -0 sed -i '' -e 's|\.\./\.\./lib/sse|../../bus|g' \
                      -e 's|\.\./lib/sse|../bus|g'
 
@@ -426,14 +425,14 @@ find packages/dashboard/src -type f \( -name "*.ts" -o -name "*.tsx" \) -print0 
 
 ```json
 "@/bus/*": [
-  "../../packages/orchestration-runtime/src/bus/*"
+  "../../packages/engine/src/bus/*"
 ],
 ```
 
 - [ ] **Step 3: 타입체크**
 
 ```bash
-cd packages/orchestration-runtime && npx tsc --noEmit && cd -
+cd packages/engine && npx tsc --noEmit && cd -
 cd packages/dashboard && npx tsc --noEmit && cd -
 ```
 
@@ -448,10 +447,10 @@ git commit -am "refactor: update imports lib/sse → bus"
 ### Task 2.3: event store — 링버퍼 + seq 재설계
 
 **Files:**
-- Create: `packages/orchestration-runtime/src/bus/event-store.ts` (신규)
-- Modify: `packages/orchestration-runtime/src/bus/bus.ts` (publish 시 링버퍼 write-through)
-- Modify: `packages/orchestration-runtime/src/bus/index.ts` (export)
-- Modify: `packages/orchestration-runtime/src/bus/types.ts` (envelope에 seq 필드 확인)
+- Create: `packages/engine/src/bus/event-store.ts` (신규)
+- Modify: `packages/engine/src/bus/bus.ts` (publish 시 링버퍼 write-through)
+- Modify: `packages/engine/src/bus/index.ts` (export)
+- Modify: `packages/engine/src/bus/types.ts` (envelope에 seq 필드 확인)
 
 기존 `store/file-event-store.ts`는 유지하되(디스크 영속성), 재연결 replay 경로는 새 인메모리 **링버퍼**로 일원화. 파일 스토어는 디버깅/감사 로그 용도로만 남겨둠.
 
@@ -557,7 +556,7 @@ export * from "./logging/log-format";
 - [ ] **Step 4: `replayAfter` 구 시그니처 사용처 확인**
 
 ```bash
-grep -rn "replayAfter" packages/orchestration-runtime packages/dashboard
+grep -rn "replayAfter" packages/engine packages/dashboard
 ```
 
 기존은 `replayAfter(afterId, limit)` 시그니처. `packages/dashboard/src/app/sse/route.ts`만 사용. Phase 3에서 해당 파일 자체를 제거하므로 호환 시그니처(두 번째 인자 무시) 유지:
@@ -571,7 +570,7 @@ export function replayAfter(lastSeq: number, _limit?: number): BusEventEnvelope[
 - [ ] **Step 5: 타입체크 + 커밋**
 
 ```bash
-cd packages/orchestration-runtime && npx tsc --noEmit && cd -
+cd packages/engine && npx tsc --noEmit && cd -
 cd packages/dashboard && npx tsc --noEmit && cd -
 git add -A
 git commit -m "feat(bus): add in-memory ring event store with seq-based replay"
@@ -584,13 +583,13 @@ git commit -m "feat(bus): add in-memory ring event store with seq-based replay"
 `packages/dashboard/src/app/sse/route.ts`의 DB 폴링(1초 주기 `MAX(updated)`)을 제거하려면 task-store 변경 경로 전부가 `publish("task-changed", ...)`를 호출해야 한다.
 
 **Files:**
-- Inspect: `packages/orchestration-runtime/src/service/task-store.ts`
+- Inspect: `packages/engine/src/service/task-store.ts`
 - Modify: 필요 시 task-store write 메서드에 `publish("task-changed", ...)` 호출 추가
 
 - [ ] **Step 1: task-store 쓰기 메서드 조사**
 
 ```bash
-grep -n "UPDATE\|INSERT\|DELETE" packages/orchestration-runtime/src/service/task-store.ts
+grep -n "UPDATE\|INSERT\|DELETE" packages/engine/src/service/task-store.ts
 ```
 
 - [ ] **Step 2: 각 쓰기 메서드 직후 `publish("task-changed", ...)` 누락 여부 확인**
@@ -616,8 +615,8 @@ git commit -am "fix(task-store): emit task-changed on all write paths"
 ### Task 3.1: RPC 레지스트리 타입과 구조
 
 **Files:**
-- Create: `packages/gateway-host/src/rpc/registry.ts`
-- Create: `packages/gateway-host/src/rpc/types.ts`
+- Create: `packages/gateway/src/rpc/registry.ts`
+- Create: `packages/gateway/src/rpc/types.ts`
 
 - [ ] **Step 1: `types.ts` 작성**
 
@@ -676,8 +675,8 @@ export function listRpc(): { name: string; idempotent: boolean }[] {
 - [ ] **Step 3: 커밋**
 
 ```bash
-git add packages/gateway-host/src/rpc
-git commit -m "feat(gateway-host): add RPC registry skeleton"
+git add packages/gateway/src/rpc
+git commit -m "feat(gateway): add RPC registry skeleton"
 ```
 
 ---
@@ -685,13 +684,13 @@ git commit -m "feat(gateway-host): add RPC registry skeleton"
 ### Task 3.2: `orchestrate.run` / `orchestrate.stop` 메서드 등록
 
 **Files:**
-- Create: `packages/gateway-host/src/rpc/methods/orchestrate.ts`
+- Create: `packages/gateway/src/rpc/methods/orchestrate.ts`
 
 - [ ] **Step 1: 메서드 파일 작성**
 
 ```ts
 import { z } from "zod";
-import orchestrationManager from "@/gateway/orchestration-manager";
+import orchestrationManager from "@/orchestrate/orchestration-manager";
 import { registerRpc } from "../registry";
 
 registerRpc({
@@ -731,8 +730,8 @@ registerRpc({
 - [ ] **Step 2: 커밋**
 
 ```bash
-git add packages/gateway-host/src/rpc/methods
-git commit -m "feat(gateway-host): register orchestrate.run (non-idempotent) and orchestrate.stop (idempotent)"
+git add packages/gateway/src/rpc/methods
+git commit -m "feat(gateway): register orchestrate.run (non-idempotent) and orchestrate.stop (idempotent)"
 ```
 
 ---
@@ -740,14 +739,14 @@ git commit -m "feat(gateway-host): register orchestrate.run (non-idempotent) and
 ### Task 3.3: `/ws/gateway` 채널 핸들러
 
 **Files:**
-- Create: `packages/gateway-host/src/ws/gateway-channel.ts`
+- Create: `packages/gateway/src/ws/gateway-channel.ts`
 
 - [ ] **Step 1: 핸들러 작성**
 
 ```ts
 import type { WebSocket, WebSocketServer } from "ws";
 import { publish, subscribe, replayAfter, snapshotSeq } from "@/bus";
-import orchestrationManager from "@/gateway/orchestration-manager";
+import orchestrationManager from "@/orchestrate/orchestration-manager";
 import { getRpc } from "../rpc/registry";
 import type { RpcRequest, RpcResponse } from "../rpc/types";
 
@@ -890,8 +889,8 @@ export function attachGatewayChannel(wss: WebSocketServer): void {
 - [ ] **Step 2: 커밋**
 
 ```bash
-git add packages/gateway-host/src/ws/gateway-channel.ts
-git commit -m "feat(gateway-host): add /ws/gateway channel handler (events + RPC + replay)"
+git add packages/gateway/src/ws/gateway-channel.ts
+git commit -m "feat(gateway): add /ws/gateway channel handler (events + RPC + replay)"
 ```
 
 ---
@@ -899,7 +898,7 @@ git commit -m "feat(gateway-host): add /ws/gateway channel handler (events + RPC
 ### Task 3.4: server.ts에서 `/ws/gateway` upgrade 라우팅, `/ws/orchestrate` 제거
 
 **Files:**
-- Modify: `packages/gateway-host/src/server.ts`
+- Modify: `packages/gateway/src/server.ts`
 
 - [ ] **Step 1: `/ws/orchestrate` 블록 제거 및 `/ws/gateway`로 교체**
 
@@ -919,13 +918,13 @@ attachGatewayChannel(wssGateway);
 - [ ] **Step 2: 타입체크**
 
 ```bash
-cd packages/gateway-host && npx tsc --noEmit
+cd packages/gateway && npx tsc --noEmit
 ```
 
 - [ ] **Step 3: 커밋**
 
 ```bash
-git commit -am "refactor(gateway-host): replace /ws/orchestrate with /ws/gateway channel"
+git commit -am "refactor(gateway): replace /ws/orchestrate with /ws/gateway channel"
 ```
 
 ---
@@ -1126,7 +1125,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/query-keys";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 import { useTasksStore } from "@/store/tasksStore";
-import type { OrchestrationStatusData } from "@/gateway/orchestration-manager";
+import type { OrchestrationStatusData } from "@/orchestrate/orchestration-manager";
 
 export function createEventHandlers(queryClient: QueryClient) {
   const invalidateTasksAndRequests = () => {
@@ -1492,7 +1491,7 @@ PORT=3001 npm run dev --prefix packages/dashboard
 ### Task 4.1: origin 검증 유틸
 
 **Files:**
-- Create: `packages/gateway-host/src/ws/verify-origin.ts`
+- Create: `packages/gateway/src/ws/verify-origin.ts`
 
 - [ ] **Step 1: 유틸 작성**
 
@@ -1520,8 +1519,8 @@ export function verifyOrigin(req: IncomingMessage, port: number): boolean {
 - [ ] **Step 2: 커밋**
 
 ```bash
-git add packages/gateway-host/src/ws/verify-origin.ts
-git commit -m "feat(gateway-host): origin verification utility"
+git add packages/gateway/src/ws/verify-origin.ts
+git commit -m "feat(gateway): origin verification utility"
 ```
 
 ---
@@ -1529,7 +1528,7 @@ git commit -m "feat(gateway-host): origin verification utility"
 ### Task 4.2: server.ts upgrade 핸들러에 origin 검증 적용
 
 **Files:**
-- Modify: `packages/gateway-host/src/server.ts`
+- Modify: `packages/gateway/src/server.ts`
 
 - [ ] **Step 1: upgrade 핸들러 수정**
 
@@ -1562,7 +1561,7 @@ server.on("upgrade", (req, socket, head) => {
 - [ ] **Step 3: 커밋**
 
 ```bash
-git commit -am "feat(gateway-host): apply origin verification to all WS upgrades"
+git commit -am "feat(gateway): apply origin verification to all WS upgrades"
 ```
 
 ---
@@ -1574,7 +1573,7 @@ Task 3.3의 gateway-channel.ts에서 `safeParse`를 이미 호출하므로 추�
 - [ ] **Step 1: 레지스트리 스키마 존재 확인**
 
 ```bash
-grep -n "paramsSchema" packages/gateway-host/src/rpc/methods/*.ts
+grep -n "paramsSchema" packages/gateway/src/rpc/methods/*.ts
 ```
 
 Expected: 모든 메서드 파일에 `paramsSchema: z.object(...)` 존재.
@@ -1597,9 +1596,9 @@ Expected: `{ ok: false, error: { code: "INVALID_PARAMS", ... } }` (strict schema
 
 ## Phase 5 — 프로덕션 부팅
 
-### Task 5.1: `start` 스크립트를 gateway-host 기반으로
+### Task 5.1: `start` 스크립트를 gateway 기반으로
 
-(Phase 1.6 Step 3에서 이미 `start`를 gateway-host tsx로 바꿔둔 상태라면 이 Task는 검증만.)
+(Phase 1.6 Step 3에서 이미 `start`를 gateway tsx로 바꿔둔 상태라면 이 Task는 검증만.)
 
 **Files:**
 - Confirm: `packages/dashboard/package.json` `start` 스크립트
@@ -1607,7 +1606,7 @@ Expected: `{ ok: false, error: { code: "INVALID_PARAMS", ... } }` (strict schema
 - [ ] **Step 1: `packages/dashboard/package.json` 확인**
 
 ```json
-"start": "NODE_ENV=production tsx ../../packages/gateway-host/src/server.ts",
+"start": "NODE_ENV=production tsx ../../packages/gateway/src/server.ts",
 ```
 
 (또는 `cross-env` 사용. macOS bash에서는 `NODE_ENV=production ...` 직접 prefix 가능.)
@@ -1615,7 +1614,7 @@ Expected: `{ ok: false, error: { code: "INVALID_PARAMS", ... } }` (strict schema
 - [ ] **Step 2: `server.ts`의 `dev` 플래그 확인**
 
 ```bash
-grep -n "process.env.NODE_ENV" packages/gateway-host/src/server.ts
+grep -n "process.env.NODE_ENV" packages/gateway/src/server.ts
 ```
 
 Expected: `const dev = process.env.NODE_ENV !== "production";`
@@ -1640,7 +1639,7 @@ Expected: HTML 반환.
 ```bash
 # 위에서 백그라운드 서버 종료
 kill %1 2>/dev/null
-git commit -am "feat(dashboard): use gateway-host for production start (one-port)" --allow-empty
+git commit -am "feat(dashboard): use gateway for production start (one-port)" --allow-empty
 ```
 
 ---
@@ -1656,10 +1655,10 @@ git commit -am "feat(dashboard): use gateway-host for production start (one-port
 
 변경 포인트:
 - 제목/기준 문장: "gateway"로 용어 통일
-- §1 프로세스 경계: `Next.js 서버 프로세스` → `gateway-host 단일 프로세스`
-- §2 내부 레이어: 경로 `packages/orchestration-runtime/src/gateway/**`로 갱신
+- §1 프로세스 경계: `Next.js 서버 프로세스` → `gateway 단일 프로세스`
+- §2 내부 레이어: 경로 `packages/engine/src/orchestrate/**`로 갱신
 - §4 UI↔서버 이벤트: SSE 섹션 전면 교체 — `/ws/gateway` snapshot/event/RPC 흐름
-- §5 소스 경로 테이블: gateway-host 경로 + bus/event-store 추가, `/ws/orchestrate` 제거
+- §5 소스 경로 테이블: gateway 경로 + bus/event-store 추가, `/ws/orchestrate` 제거
 
 전면 rewrite라 diff 대신 새로 작성. (구현 세부는 이 플랜의 scope 밖이므로 실행 담당자가 작성 후 커밋.)
 
@@ -1680,13 +1679,13 @@ git commit -am "docs(arch): rewrite orchestrator-node-architecture for gateway +
 - [ ] **Step 1: runtime**
 
 ```bash
-cd packages/orchestration-runtime && npx tsc --noEmit && cd -
+cd packages/engine && npx tsc --noEmit && cd -
 ```
 
-- [ ] **Step 2: gateway-host**
+- [ ] **Step 2: gateway**
 
 ```bash
-cd packages/gateway-host && npx tsc --noEmit && cd -
+cd packages/gateway && npx tsc --noEmit && cd -
 ```
 
 - [ ] **Step 3: dashboard**
@@ -1736,7 +1735,7 @@ Expected: 기존 그린 테스트 유지. WS 관련 테스트는 `/ws/gateway` �
 - [ ] **Step 2: 시나리오 2 — 서버 재시작 → replay-gap → snapshot fallback**
 
 1. 이벤트 다수 발생
-2. gateway-host 프로세스 kill 후 재시작(링버퍼 초기화됨, seq 0부터)
+2. gateway 프로세스 kill 후 재시작(링버퍼 초기화됨, seq 0부터)
 3. 클라이언트 `hello`의 `lastSeq`는 이전 값 → 서버 tail보다 훨씬 큼(혹은 반대): `replay-gap` 회신
 4. 클라이언트가 `tasksStore.fetchAll()` 등으로 fallback 수행, UI 정합 회복
 
@@ -1769,9 +1768,9 @@ gh pr create --title "feat: gateway unification (rename, 3-pkg split, ws /ws/gat
 
 ## 완료 기준(Definition of Done)
 
-- [ ] `packages/orchestration-runtime/src/engine` 경로 없음(전부 `src/gateway`)
-- [ ] `packages/orchestration-runtime/src/lib/sse` 경로 없음(전부 `src/bus`)
-- [ ] `packages/gateway-host` 패키지 존재, `src/server.ts`가 dev/prod 단일 엔트리
+- [ ] `packages/engine/src/engine` 경로 없음(전부 `src/orchestrate`)
+- [ ] `packages/engine/src/lib/sse` 경로 없음(전부 `src/bus`)
+- [ ] `packages/gateway` 패키지 존재, `src/server.ts`가 dev/prod 단일 엔트리
 - [ ] `packages/dashboard/server.ts` 부재(얇은 shim도 없음)
 - [ ] `/sse` 라우트 404, `/ws/orchestrate` 404, `/ws/gateway` 200 upgrade
 - [ ] 레이아웃에 `SseProvider` 없음, `GatewayWsProvider` 존재
