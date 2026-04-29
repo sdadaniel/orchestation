@@ -24,6 +24,9 @@
       }
     ],
     "paths": {
+      "@orchestration/bus-types": [
+        "../bus-types/src/index.ts"
+      ],
       "@/entities/*": [
         "../engine/src/entities/*"
       ],
@@ -44,6 +47,9 @@
       ],
       "@/lib/query-client": [
         "./src/lib/query-client.ts"
+      ],
+      "@/lib/gateway-rpc-server": [
+        "./src/lib/gateway-rpc-server.ts"
       ],
       "@/lib/utils": [
         "./src/lib/utils.ts"

@@ -2,7 +2,7 @@
 
 type AnyObject = Record<string, unknown>;
 
-type EventHandler = (event: string, data: unknown, id: string) => void;
+type EventHandler = (eventType: string, data: unknown, id: string) => void;
 type SnapshotHandler = (data: AnyObject) => void;
 
 interface PendingRpc {
@@ -75,7 +75,7 @@ export function createGatewayClient(opts: GatewayClientOpts): GatewayClient {
 
       if (msg.type === "event") {
         const id = typeof msg.id === "string" ? msg.id : "";
-        opts.onEvent(String(msg.event), msg.data, id);
+        opts.onEvent(String(msg.eventType), msg.data, id);
         return;
       }
 

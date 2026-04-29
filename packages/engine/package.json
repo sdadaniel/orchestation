@@ -8,6 +8,7 @@
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
+        "@orchestration/bus-types": "workspace:^",
         "better-sqlite3": "^12.8.0",
         "gray-matter": "^4.0.3",
         "tsx": "^4.21.0"

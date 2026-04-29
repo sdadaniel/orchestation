@@ -1,24 +1,16 @@
 import { NextResponse } from "next/server";
-import autoImproveManager from "@/orchestrate/auto-improve-manager";
+import { callGatewayRpc, getGatewayErrorStatus } from "@/lib/gateway-rpc-server";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
-  if (autoImproveManager.getStatus() !== "running") {
+export async function POST(request: Request) {
+  try {
+    const payload = await callGatewayRpc(request, "auto-improve.stop");
+    return NextResponse.json(payload);
+  } catch (err) {
     return NextResponse.json(
-      { error: "Auto-improve is not running" },
-      { status: 409 },
+      { error: (err as { message?: string }).message ?? "gateway rpc failed" },
+      { status: getGatewayErrorStatus(err) },
     );
   }
-
-  const result = autoImproveManager.stop();
-
-  if (!result.success) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
-  }
-
-  return NextResponse.json({
-    message: "Graceful stop signal sent",
-    status: autoImproveManager.getStatus(),
-  });
 }

@@ -12,6 +12,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@orchestration/bus-types": ["../bus-types/src/index.ts"],
       "@/entities/*": ["./src/entities/*"],
       "@/bus/*": ["./src/bus/*"],
       "@/types/*": ["./src/types/*"],

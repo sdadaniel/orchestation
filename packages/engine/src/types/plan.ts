@@ -11,7 +11,7 @@ export type PlanTaskNode = {
 
 export type PlanTreeData = {
   plan: {
-    id: string;ㄴ
+    id: string;
     title: string;
     status: PlanStatus;
   };

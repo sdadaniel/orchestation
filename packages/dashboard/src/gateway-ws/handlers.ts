@@ -15,10 +15,10 @@ export function createEventHandlers(queryClient: QueryClient) {
   };
 
   return {
-    onEvent(event: string, data: unknown, _id: string) {
+    onEvent(eventType: string, data: unknown, _id: string) {
       useLogsStore.getState().markConnected();
 
-      if (event === "task-changed") {
+      if (eventType === "task-changed") {
         const d = data as { full?: boolean; deleted?: boolean; taskId?: string; status?: string; priority?: string; title?: string; phase?: string | null };
         if (d.full || d.deleted) {
           invalidateTasksAndRequests();
@@ -40,7 +40,7 @@ export function createEventHandlers(queryClient: QueryClient) {
         return;
       }
 
-      if (event === "orchestration-status") {
+      if (eventType === "orchestration-status") {
         const statusData = data as OrchestrationStatusData;
         const store = useOrchestrationStore.getState();
         const prevStatus = store.data.status;
@@ -66,7 +66,7 @@ export function createEventHandlers(queryClient: QueryClient) {
         return;
       }
 
-      if (event === "log") {
+      if (eventType === "log") {
         const d = data as {
           scope?: string;
           entry?: GatewayLogEntry;

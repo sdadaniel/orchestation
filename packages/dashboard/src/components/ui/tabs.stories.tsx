@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/nextjs";
+import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
 import { FileText, Monitor, Terminal } from "lucide-react";
 import { Tabs } from "./tabs";
@@ -35,5 +35,10 @@ function TabsPreview() {
 }
 
 export const Default: Story = {
+  args: {
+    items: [],
+    activeKey: "detail",
+    onChange: () => {},
+  },
   render: () => <TabsPreview />,
 };

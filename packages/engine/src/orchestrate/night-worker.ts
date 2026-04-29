@@ -423,11 +423,5 @@ class NightWorkerManager {
   }
 }
 
-// 싱글톤
-const globalKey = "__nightWorkerManager__";
-const nightWorkerManager: NightWorkerManager =
-  ((globalThis as Record<string, unknown>)[globalKey] as NightWorkerManager) ??
-  ((globalThis as Record<string, unknown>)[globalKey] =
-    new NightWorkerManager());
-
+const nightWorkerManager = new NightWorkerManager();
 export default nightWorkerManager;

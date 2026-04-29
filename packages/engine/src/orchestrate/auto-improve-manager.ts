@@ -383,13 +383,5 @@ SCOPE: (if accept) target file paths (comma-separated, relative to src/)`;
   }
 }
 
-// Singleton
-const globalKey = "__autoImproveManager__" as keyof typeof globalThis;
-const autoImproveManager: AutoImproveManager =
-  ((globalThis as Record<string, unknown>)[globalKey] as AutoImproveManager) ??
-  (() => {
-    const m = new AutoImproveManager();
-    (globalThis as Record<string, unknown>)[globalKey] = m;
-    return m;
-  })();
+const autoImproveManager = new AutoImproveManager();
 export default autoImproveManager;

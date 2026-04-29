@@ -9,6 +9,7 @@
         "dev": "tsx src/server.ts"
     },
     "dependencies": {
+        "@orchestration/bus-types": "workspace:^",
         "@orchestration/engine": "workspace:^",
         "next": "^16.2.0",
         "react": "^19.2.4",

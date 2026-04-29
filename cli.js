@@ -213,14 +213,67 @@ function findRunEnginePids() {
 function findDashboardPids() {
   try {
     const out = execSync('pgrep -f "gateway/src/server\\.ts" 2>/dev/null || true', { encoding: "utf-8" });
-    return out
+    const pids = out
       .trim()
       .split("\n")
       .filter(Boolean)
       .map((line) => parseInt(line.trim().split(/\s+/)[0], 10))
       .filter((n) => !Number.isNaN(n));
+    if (pids.length === 0) {
+      return { all: [], wrappers: [], servers: [], other: [] };
+    }
+
+    const psOut = execSync(`ps -o pid=,ppid=,command= -p ${pids.join(",")}`, { encoding: "utf-8" });
+    const parentByPid = new Map();
+    const commandByPid = new Map();
+    for (const line of psOut.trim().split("\n")) {
+      const match = line.trim().match(/^(\d+)\s+(\d+)\s+(.*)$/);
+      if (!match) continue;
+      const pid = parseInt(match[1], 10);
+      const ppid = parseInt(match[2], 10);
+      const command = match[3];
+      if (!Number.isNaN(pid) && !Number.isNaN(ppid)) {
+        parentByPid.set(pid, ppid);
+        commandByPid.set(pid, command);
+      }
+    }
+
+    const pidSet = new Set(pids);
+    const wrappers = [];
+    const servers = [];
+    const other = [];
+
+    for (const pid of pids) {
+      const ppid = parentByPid.get(pid);
+      const command = commandByPid.get(pid) || "";
+      const isParentWithinMatch = ppid != null && pidSet.has(ppid);
+      const isTsxCli = command.includes("tsx/dist/cli.mjs");
+      const isGatewayServer = command.includes("gateway/src/server.ts");
+
+      if (isTsxCli || (isGatewayServer && !isParentWithinMatch)) {
+        wrappers.push(pid);
+      } else if (isGatewayServer && isParentWithinMatch) {
+        servers.push(pid);
+      } else {
+        other.push(pid);
+      }
+    }
+
+    return { all: pids, wrappers, servers, other };
   } catch {
-    return [];
+    return { all: [], wrappers: [], servers: [], other: [] };
+  }
+}
+
+function logDashboardStopPids(dashboardPids) {
+  if (dashboardPids.wrappers.length > 0) {
+    console.log(`Stopping dashboard launcher: pid(s) ${dashboardPids.wrappers.join(", ")}`);
+  }
+  if (dashboardPids.servers.length > 0) {
+    console.log(`Stopping dashboard server:   pid(s) ${dashboardPids.servers.join(", ")}`);
+  }
+  if (dashboardPids.other.length > 0) {
+    console.log(`Stopping dashboard other:    pid(s) ${dashboardPids.other.join(", ")}`);
   }
 }
 
@@ -453,17 +506,17 @@ switch (command) {
       const dashPids = findDashboardPids();
       const enginePids = findRunEnginePids();
 
-      if (dashPids.length === 0 && enginePids.length === 0) {
+      if (dashPids.all.length === 0 && enginePids.length === 0) {
         console.log("Nothing to stop (dashboard and pipeline are not running).");
         return;
       }
 
-      if (dashPids.length > 0) console.log(`Stopping dashboard: pid(s) ${dashPids.join(", ")}`);
+      logDashboardStopPids(dashPids);
       if (enginePids.length > 0) console.log(`Stopping pipeline:  pid(s) ${enginePids.join(", ")}`);
 
-      killPids([...enginePids, ...dashPids], "SIGTERM");
+      killPids([...enginePids, ...dashPids.all], "SIGTERM");
       await new Promise((r) => setTimeout(r, 600));
-      killPids([...enginePids, ...dashPids], "SIGKILL");
+      killPids([...enginePids, ...dashPids.all], "SIGKILL");
       await new Promise((r) => setTimeout(r, 200));
 
       console.log("Stopped.");
@@ -479,15 +532,15 @@ switch (command) {
       const dashPids = findDashboardPids();
       const enginePids = findRunEnginePids();
 
-      if (dashPids.length === 0 && enginePids.length === 0) {
+      if (dashPids.all.length === 0 && enginePids.length === 0) {
         console.log("Nothing to restart (dashboard and pipeline are not running).");
       } else {
-        if (dashPids.length > 0) console.log(`Stopping dashboard: pid(s) ${dashPids.join(", ")}`);
+        logDashboardStopPids(dashPids);
         if (enginePids.length > 0) console.log(`Stopping pipeline:  pid(s) ${enginePids.join(", ")}`);
 
-        killPids([...enginePids, ...dashPids], "SIGTERM");
+        killPids([...enginePids, ...dashPids.all], "SIGTERM");
         await new Promise((r) => setTimeout(r, 600));
-        killPids([...enginePids, ...dashPids], "SIGKILL");
+        killPids([...enginePids, ...dashPids.all], "SIGKILL");
         await new Promise((r) => setTimeout(r, 300));
       }
 

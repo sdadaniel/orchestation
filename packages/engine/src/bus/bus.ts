@@ -1,22 +1,34 @@
-import type { BusEventEnvelope, BusEventType } from "./types";
-import { eventStore } from "./event-store";
-import { fileEventStore } from "./store/file-event-store";
+import type { BusEventEnvelope, BusEventType, EventBus } from "./types";
 
-type Listener = (env: BusEventEnvelope) => void;
-const listeners = new Set<Listener>();
+const noopBus: EventBus = {
+  publish<T>(type: BusEventType, data: T): BusEventEnvelope<T> {
+    return {
+      id: "",
+      atIso: new Date().toISOString(),
+      type,
+      data,
+    };
+  },
+};
 
-export function publish<T>(type: BusEventType, data: T): BusEventEnvelope<T> {
-  const env = eventStore.append(type, data);
-  fileEventStore.appendRaw(env);
-  for (const l of listeners) {
-    l(env);
-  }
-  return env;
+let engineEventBus: EventBus = noopBus;
+let warnedUnconfiguredBus = false;
+
+function warnUnconfiguredBus() {
+  if (warnedUnconfiguredBus) return;
+  warnedUnconfiguredBus = true;
+  console.warn(
+    "[engine-bus] publish() called before setEngineEventBus(); event was not propagated.",
+  );
 }
 
-export function subscribe(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
+export function setEngineEventBus(next: EventBus): void {
+  engineEventBus = next;
+}
+
+export function publish<T>(type: BusEventType, data: T): BusEventEnvelope<T> {
+  if (engineEventBus === noopBus) {
+    warnUnconfiguredBus();
+  }
+  return engineEventBus.publish(type, data);
 }

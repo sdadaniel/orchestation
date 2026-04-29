@@ -374,10 +374,5 @@ class TaskRunnerManager {
   }
 }
 
-// Use globalThis to ensure single instance across server.ts and Next.js API routes
-const globalKey = "__taskRunnerManager__";
-const taskRunnerManager: TaskRunnerManager =
-  ((globalThis as Record<string, unknown>)[globalKey] as TaskRunnerManager) ??
-  ((globalThis as Record<string, unknown>)[globalKey] =
-    new TaskRunnerManager());
+const taskRunnerManager = new TaskRunnerManager();
 export default taskRunnerManager;

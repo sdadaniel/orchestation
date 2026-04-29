@@ -25,4 +25,4 @@ export function createRingEventStore(capacity = DEFAULT_CAPACITY): EventStore {
   };
 }
 
-export const eventStore = createRingEventStore();
+export const eventStore: EventStore = createRingEventStore();

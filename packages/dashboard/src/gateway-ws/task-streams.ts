@@ -77,19 +77,21 @@ export function useTaskLogStream(
           entry?: GatewayLogEntry;
           line?: string;
         };
+        const entry = d?.entry;
+        const line = d?.line;
         if (
           d?.scope === "task" &&
           d?.taskId === taskId &&
-          d?.entry
+          entry
         ) {
-          setLines((prev) => [...prev, toDisplayLogLine(d.entry)]);
+          setLines((prev) => [...prev, toDisplayLogLine(entry)]);
         } else if (
           d?.scope === "task" &&
           d?.taskId === taskId &&
-          typeof d?.line === "string"
+          typeof line === "string"
         ) {
           // Backward compatibility for older gateway payloads.
-          setLines((prev) => [...prev, d.line]);
+          setLines((prev) => [...prev, line]);
         }
         return;
       }
@@ -143,7 +145,7 @@ export function useTaskConversationStream(taskId: string) {
       const d = data as { taskId?: string; line?: string };
       if (d?.taskId !== taskId || typeof d?.line !== "string") return;
       const line = d.line;
-      setLines((prev) => [...prev, line]);
+      setLines((prev) => [...prev, line].filter((value): value is string => typeof value === "string"));
     });
 
     return () => {

@@ -1,9 +1,9 @@
 import { WebSocket, type WebSocketServer } from "ws";
-import { subscribe } from "@/bus/index";
-import orchestrationManager from "@/orchestrate/orchestration-manager";
 import { getRpc } from "../rpc/registry";
 import type { RpcRequest, RpcResponse } from "../rpc/types";
 import { randomUUID } from "crypto";
+import { getLatestEvent, subscribe } from "../bus/bus";
+import type { OrchestrationStatusData } from "@/orchestrate/orchestration-manager";
 
 interface HelloMsg {
   type: "hello";
@@ -17,35 +17,11 @@ function sendSafe(ws: WebSocket, obj: unknown) {
 }
 
 function buildSnapshot() {
-  const state = orchestrationManager.getState();
+  const latest = getLatestEvent("orchestration-status");
   return {
-    orchestration: {
-      status: orchestrationManager.getStatus(),
-      startedAt: state.startedAt,
-      finishedAt: state.finishedAt,
-      exitCode: state.exitCode,
-      taskResults: state.taskResults,
-    },
+    ...(latest ? { orchestration: latest.data as OrchestrationStatusData } : {}),
     tasksFullHint: true,
   };
-}
-
-function buildOrchestrationStatusData() {
-  const state = orchestrationManager.getState();
-  return {
-    status: orchestrationManager.getStatus(),
-    startedAt: state.startedAt,
-    finishedAt: state.finishedAt,
-    exitCode: state.exitCode,
-    taskResults: state.taskResults,
-  };
-}
-
-function buildLatestOrchestrateLogEventData() {
-  const lines = orchestrationManager.getRecentLogs(1);
-  const line = lines.at(-1);
-  if (!line) return null;
-  return { scope: "orchestrate", line };
 }
 
 export function attachGatewayChannel(wss: WebSocketServer): void {
@@ -57,7 +33,12 @@ export function attachGatewayChannel(wss: WebSocketServer): void {
     });
 
     const unsubscribe = subscribe((env) => {
-      sendSafe(ws, { type: "event", id: env.id, event: env.type, data: env.data });
+      sendSafe(ws, {
+        type: "event",
+        id: env.id,
+        eventType: env.type,
+        data: env.data,
+      });
     });
 
     ws.on("message", async (raw: Buffer | string) => {
@@ -110,23 +91,6 @@ export function attachGatewayChannel(wss: WebSocketServer): void {
           }
           const payload = await def.handler(parsed.data);
           sendSafe(ws, { type: "res", id: req.id, ok: true, payload } satisfies RpcResponse);
-          if (req.method === "orchestrate.run" || req.method === "orchestrate.stop") {
-            sendSafe(ws, {
-              type: "event",
-              id: randomUUID(),
-              event: "orchestration-status",
-              data: buildOrchestrationStatusData(),
-            });
-            const logData = buildLatestOrchestrateLogEventData();
-            if (logData) {
-              sendSafe(ws, {
-                type: "event",
-                id: randomUUID(),
-                event: "log",
-                data: logData,
-              });
-            }
-          }
         } catch (err) {
           const e = err as { code?: string; message?: string };
           sendSafe(ws, {

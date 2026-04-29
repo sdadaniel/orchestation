@@ -44,6 +44,10 @@ class OrchestrationManager {
     publish("orchestration-status", snapshot);
   }
 
+  publishCurrentStatus(opts?: { log?: boolean }) {
+    this.emitStatusChange(opts);
+  }
+
   // ── Public API ─────────────────────────────────────────
 
   getState(): OrchestrationState {
@@ -317,31 +321,5 @@ class OrchestrationManager {
   }
 }
 
-// Singleton — survives Next.js HMR by storing on globalThis
-const globalKey = "__orchestrationManager__" as keyof typeof globalThis;
-const existing = (globalThis as Record<string, unknown>)[
-  globalKey
-] as OrchestrationManager | undefined;
-
-// HMR에서 이전 클래스 인스턴스가 남아있을 수 있다.
-// Next dev(HMR)에서 메서드 구현이 바뀌면 prototype을 최신으로 맞춰야 한다.
-// (run()이 logs를 리셋하는/안 하는 등의 변경이 즉시 반영되어야 함)
-if (existing) {
-  Object.setPrototypeOf(existing, OrchestrationManager.prototype);
-  // HMR로 필드가 추가된 경우(예: logBase) 런타임 상태를 보정한다.
-  const state = (existing as unknown as { state?: unknown }).state as
-    | { logBase?: unknown }
-    | undefined;
-  if (state && typeof state.logBase !== "number") {
-    state.logBase = 0;
-  }
-}
-
-const orchestrationManager: OrchestrationManager =
-  existing ??
-  (() => {
-    const m = new OrchestrationManager();
-    (globalThis as Record<string, unknown>)[globalKey] = m;
-    return m;
-  })();
+const orchestrationManager = new OrchestrationManager();
 export default orchestrationManager;

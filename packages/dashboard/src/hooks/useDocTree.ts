@@ -117,8 +117,7 @@ export function useDocTree() {
       type: "doc" | "folder",
       parentId?: string | null,
     ) => {
-      const data = await createMutation.mutateAsync({ title, type, parentId });
-      return data.node as DocNode;
+      await createMutation.mutateAsync({ title, type, parentId });
     },
     updateDoc: (id: string, updates: { title?: string; content?: string }) =>
       updateMutation.mutateAsync({ id, updates }),

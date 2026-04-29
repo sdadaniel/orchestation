@@ -6,11 +6,15 @@ import * as pty from "node-pty";
 import os from "os";
 import { resolve } from "path";
 import path from "path";
+import { setEngineEventBus } from "@/bus/bus";
+import orchestrationManager from "@/orchestrate/orchestration-manager";
 import taskRunnerManager from "@/orchestrate/runner/task-runner-manager";
 import { getErrorMessage } from "@/lib/errors/error-utils";
-import { subscribe } from "@/bus/index";
 import "./rpc/methods/orchestrate"; // side-effect: registers orchestrate.run and orchestrate.stop
+import "./rpc/methods/task-runs";
 import "./rpc/methods/task-streams"; // side-effect: registers task stream RPCs
+import "./lib/gateway-rpc";
+import { gatewayBus, subscribe } from "./bus/bus";
 import { attachGatewayChannel } from "./ws/gateway-channel";
 import { verifyOrigin } from "./ws/verify-origin";
 import {
@@ -28,6 +32,9 @@ import {
 } from "./const";
 
 // NOTE: Path constants live in ./paths
+
+setEngineEventBus(gatewayBus);
+orchestrationManager.publishCurrentStatus({ log: false });
 
 function logCrash(type: string, err: Error | unknown) {
   const ts = new Date().toISOString();
