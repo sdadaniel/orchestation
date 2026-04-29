@@ -1,13 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-
-export interface ToggleProps extends Omit<
-  React.ButtonHTMLAttributes<HTMLButtonElement>,
-  "onChange"
-> {
-  checked?: boolean;
-  onChange?: (checked: boolean) => void;
-}
+import type { ToggleProps } from "./types";
 
 const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
   ({ className, checked = false, onChange, disabled, ...props }, ref) => {
@@ -42,3 +35,4 @@ const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
 Toggle.displayName = "Toggle";
 
 export { Toggle };
+export type { ToggleProps } from "./types";

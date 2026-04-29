@@ -1,6 +1,7 @@
 import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import type { SelectProps } from "./types";
 
 const selectVariants = cva(
   "bg-muted border border-border rounded-md outline-none focus:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-foreground appearance-none cursor-pointer",
@@ -17,11 +18,6 @@ const selectVariants = cva(
     },
   },
 );
-
-export interface SelectProps
-  extends
-    Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "size">,
-    VariantProps<typeof selectVariants> {}
 
 const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, size, ...props }, ref) => {
@@ -50,3 +46,4 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
 Select.displayName = "Select";
 
 export { Select, selectVariants };
+export type { SelectProps } from "./types";

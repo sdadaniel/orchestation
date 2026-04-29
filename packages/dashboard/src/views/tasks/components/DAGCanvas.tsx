@@ -15,34 +15,7 @@ import {
   SECTION_GAP,
   SECTION_HEADER_H,
 } from "@/app/tasks/constants";
-
-// ── Types ────────────────────────────────────────────
-
-export type NodeLayout = {
-  id: string;
-  x: number;
-  y: number;
-  req: RequestItem;
-  isNextUp: boolean;
-};
-export type EdgeLayout = {
-  fromId: string;
-  toId: string;
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-};
-export type SectionLayout = {
-  key: string;
-  label: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  color: string;
-  extra: number;
-};
+import type { EdgeLayout, NodeLayout, SectionLayout } from "./types";
 
 // ── Layout computation ───────────────────────────────
 

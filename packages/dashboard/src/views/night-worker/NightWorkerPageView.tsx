@@ -10,13 +10,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PageLayout, PageHeader } from "@/components/ui/page-layout";
-
-type NightWorkerStatus =
-  | "idle"
-  | "running"
-  | "completed"
-  | "stopped"
-  | "failed";
+import type { NightWorkerStatus } from "./types";
 
 const TASK_TYPES = [
   { id: "typecheck", label: "TypeScript 타입 오류 수정" },

@@ -7,13 +7,7 @@ import { ko } from "react-day-picker/locale";
 import { format } from "date-fns";
 import { Calendar, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface DatePickerProps {
-  value?: string; // yyyy-MM-dd or ""
-  onChange: (value: string) => void;
-  placeholder?: string;
-  className?: string;
-}
+import type { DatePickerProps } from "./types";
 
 export function DatePicker({
   value,
@@ -100,3 +94,4 @@ export function DatePicker({
     </PopoverPrimitive.Root>
   );
 }
+export type { DatePickerProps } from "./types";

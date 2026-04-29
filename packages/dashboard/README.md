@@ -104,14 +104,14 @@ src/
 │   ├── AppShell/
 │   │   ├── AppShell.tsx
 │   │   └── index.ts
-│   ├── sidebar/
+│   ├── Sidebar/
 │   │   ├── Sidebar.tsx
 │   │   ├── index.ts
 │   │   └── components/
 │   │       ├── DocTreeNode.tsx
 │   │       └── index.ts
 │   ├── ui/                       # 디자인 시스템 (Button, Input, Select 등)
-│   ├── task-detail/
+│   ├── TaskDetail/
 │   └── ...
 │
 ├── hooks/                        # React Query 커스텀 훅
@@ -142,6 +142,7 @@ src/
 ## 폴더 규칙 (필수)
 
 ### 1) `app/`는 라우팅 진입점만 담당
+
 - `app/**/page.tsx`는 View를 import해서 그대로 렌더만 한다.
 - 페이지 로직/상태/화면 구성은 `views/**`에 둔다.
 
@@ -154,6 +155,7 @@ export default function TasksPage() {
 ```
 
 ### 2) `views/` 구조 규칙
+
 - 각 페이지 폴더는 `XxxPageView.tsx` + `index.ts`를 기본으로 한다.
 - `index.tsx`는 사용하지 않는다.
 - 엔트리 export는 `index.ts`만 사용한다.
@@ -166,24 +168,48 @@ export { default } from "./TasksPageView";
 - `components/index.ts`를 만들어 배럴 export로만 소비한다.
 
 ### 3) `components/`는 전역 공유만 허용
+
 - `src/components`에는 **2개 이상 화면에서 재사용되는 컴포넌트만** 둔다.
 - 한 페이지에서만 쓰이면 `views/<page>/components`로 이동한다.
 - 전역 컴포넌트도 폴더 단위로 관리한다.
   - `components/Foo/Foo.tsx`
   - `components/Foo/index.ts`
+- 컴포넌트 폴더명은 **반드시 PascalCase**를 사용한다.
+  - `components/sidebar` (X)
+  - `components/Sidebar` (O)
+- 대표 컴포넌트가 있는 폴더는 **폴더명과 대표 컴포넌트명이 반드시 동일**해야 한다.
+  - `components/Sidebar/Sidebar.tsx`에서 `export function Sidebar()` (O)
+  - `components/Sidebar/Sidebar.tsx`에서 `export function TaskSidebar()` (X)
 
 ### 4) 모든 엔트리 파일은 `index.ts`
+
 - `index.tsx` 금지 (`views`, `components` 모두 동일).
 - `index.ts`는 export만 담당하고 UI 로직을 넣지 않는다.
 
 ### 5) 하위 컴포넌트 폴더 규칙
+
 - 메인 컴포넌트 옆에 보조 컴포넌트가 2개 이상이면 `components/`로 분리한다.
 - 보조 컴포넌트도 직접 파일 경로 import 대신 `./components`를 우선 사용한다.
 
-### 6) Import 경로 기준
+### 6) 타입 분리 규칙 (`types/`)
+
+- 컴포넌트/뷰 파일 내부 타입 선언(`interface`, `type`)은 `types/`로 분리한다.
+- 폴더마다 타입 엔트리는 `types/index.ts`를 기본으로 사용한다.
+- 컴포넌트 파일에서는 `import type`으로만 타입을 가져온다.
+- 배럴 파일에서도 타입을 재-export해서 타입 import 경로를 일관되게 유지한다.
+
+### 7) Import 경로 기준
+
 - 페이지 레벨: `@/views/<route>`
-- 전역 공유: `@/components/<ComponentFolder>`
+- 전역 공유: `@/components/<ComponentFolder>` (`ComponentFolder`는 PascalCase)
 - 같은 페이지 전용 조각: `./components`
+
+### 8) 컴포넌트 작성 규칙 (강제)
+
+- **1파일 1컴포넌트**를 원칙으로 한다. 한 파일에 여러 컴포넌트를 함께 선언하지 않는다.
+- 컴포넌트 export는 **무조건 `export default`**를 사용한다.
+- 컴포넌트 선언은 `function` 선언식 대신 **함수형 컴포넌트 상수**를 사용한다.
+  - `const ComponentName = (...) => { ... }`
 
 ## 의존성 방향
 
@@ -201,19 +227,22 @@ lib/ (순수 유틸)  <--  parser/  <--  service/  <--  engine/
 
 ## API Routes
 
-| 경로 | 메서드 | 설명 |
-|------|--------|------|
-| `/api/tasks` | GET, POST | 태스크 목록/생성 |
-| `/api/tasks/[id]` | GET, PUT, DELETE | 태스크 상세/수정/삭제 |
-| `/api/tasks/[id]/run` | POST, DELETE | 태스크 실행/중지 |
-| `/api/tasks/[id]/logs` | GET | 태스크 로그 |
-| `/api/orchestrate/run` | POST | 파이프라인 시작 |
-| `/api/orchestrate/stop` | POST | 파이프라인 중지 |
-| `/api/orchestrate/status` | GET | 파이프라인 상태 |
-| `/ws/gateway` | WS | 파이프라인 상태/이벤트 스트림 |
-| `/api/run-history` | GET | 실행 이력 |
-| `/api/costs` | GET | 비용 데이터 |
-| `/api/night-worker` | GET, POST, DELETE | 야간 작업자 |
-| `/api/notices` | GET, POST | 알림 |
-| `/api/docs` | GET, POST | 문서 |
-| `/api/settings` | GET, PUT | 설정 |
+
+| 경로                        | 메서드               | 설명               |
+| ------------------------- | ----------------- | ---------------- |
+| `/api/tasks`              | GET, POST         | 태스크 목록/생성        |
+| `/api/tasks/[id]`         | GET, PUT, DELETE  | 태스크 상세/수정/삭제     |
+| `/api/tasks/[id]/run`     | POST, DELETE      | 태스크 실행/중지        |
+| `/api/tasks/[id]/logs`    | GET               | 태스크 로그           |
+| `/api/orchestrate/run`    | POST              | 파이프라인 시작         |
+| `/api/orchestrate/stop`   | POST              | 파이프라인 중지         |
+| `/api/orchestrate/status` | GET               | 파이프라인 상태         |
+| `/ws/gateway`             | WS                | 파이프라인 상태/이벤트 스트림 |
+| `/api/run-history`        | GET               | 실행 이력            |
+| `/api/costs`              | GET               | 비용 데이터           |
+| `/api/night-worker`       | GET, POST, DELETE | 야간 작업자           |
+| `/api/notices`            | GET, POST         | 알림               |
+| `/api/docs`               | GET, POST         | 문서               |
+| `/api/settings`           | GET, PUT          | 설정               |
+
+

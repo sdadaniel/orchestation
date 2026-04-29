@@ -13,16 +13,7 @@ import { Button } from "@/components/ui/button";
 import { PageLayout, PageHeader } from "@/components/ui/page-layout";
 import { FieldRow } from "@/components/ui/FieldRow";
 import { SettingSection } from "@/components/ui/SettingSection";
-
-interface AppSettings {
-  apiKey: string;
-  srcPaths: string[];
-  model: string;
-  baseBranch: string;
-  maxParallel: number;
-  maxReviewRetry: number;
-  workerMode: WorkerMode;
-}
+import type { AppSettings } from "./types";
 
 export default function SettingsPageView() {
   const [settings, setSettings] = useState<AppSettings | null>(null);

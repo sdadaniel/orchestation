@@ -1,16 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-
-export interface PageLayoutProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-export interface PageHeaderProps {
-  title: string;
-  children?: React.ReactNode;
-  className?: string;
-}
+import type { PageHeaderProps, PageLayoutProps } from "./types";
 
 function PageLayout({ children, className }: PageLayoutProps) {
   return (
@@ -28,3 +18,4 @@ function PageHeader({ title, children, className }: PageHeaderProps) {
 }
 
 export { PageLayout, PageHeader };
+export type { PageHeaderProps, PageLayoutProps } from "./types";

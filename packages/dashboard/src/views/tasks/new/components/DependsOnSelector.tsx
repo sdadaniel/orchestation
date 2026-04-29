@@ -3,20 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-export interface TaskOption {
-  id: string;
-  title: string;
-  status: string;
-}
-
-interface DependsOnSelectorProps {
-  selected: string[];
-  onChange: (ids: string[]) => void;
-  tasks: TaskOption[];
-  placeholder?: string;
-  className?: string;
-}
+import type { DependsOnSelectorProps, TaskOption } from "./types";
 
 export function DependsOnSelector({
   selected,

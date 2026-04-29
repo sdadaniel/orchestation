@@ -1,10 +1,5 @@
-import type { ReactNode } from "react";
 import { Label } from "@/components/ui/label";
-
-interface SettingSectionProps {
-  title: string;
-  children: ReactNode;
-}
+import type { SettingSectionProps } from "./types";
 
 /**
  * 설정 섹션 그룹 패턴.
@@ -18,3 +13,4 @@ export function SettingSection({ title, children }: SettingSectionProps) {
     </div>
   );
 }
+export type { SettingSectionProps } from "./types";

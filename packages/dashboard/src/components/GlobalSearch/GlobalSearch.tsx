@@ -3,29 +3,12 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { SearchIcon, FileTextIcon, ListTodoIcon } from "lucide-react";
-import type { RequestItem } from "@/hooks/useRequests";
-import type { DocNode } from "@/hooks/useDocTree";
 import { cn } from "@/lib/utils";
-
-/* ── Types ── */
-
-type SearchResultItem = {
-  type: "task" | "doc";
-  id: string;
-  displayId: string;
-  title: string;
-  status?: string;
-  href: string;
-};
-
-type Props = {
-  requestItems: RequestItem[];
-  docTree: DocNode[];
-};
+import type { GlobalSearchProps as Props, SearchResultItem } from "./types";
 
 /* ── Helpers ── */
 
-function flattenDocs(nodes: DocNode[]): { id: string; title: string }[] {
+function flattenDocs(nodes: Props["docTree"]): { id: string; title: string }[] {
   const result: { id: string; title: string }[] = [];
   for (const node of nodes) {
     if (node.type === "doc") {

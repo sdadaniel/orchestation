@@ -1,8 +1,5 @@
 import { AlertCircle } from "lucide-react";
-
-interface ErrorStateProps {
-  message: string;
-}
+import type { ErrorStateProps } from "./types";
 
 export function ErrorState({ message }: ErrorStateProps) {
   return (

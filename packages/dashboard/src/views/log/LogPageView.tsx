@@ -1,6 +1,6 @@
 "use client";
 
-import { MonitorDashboard } from "@/components/monitor/MonitorDashboard";
+import { MonitorDashboard } from "@/components/Monitor/MonitorDashboard";
 
 export default function LogPageView() {
   return (

@@ -1,12 +1,5 @@
-import type { ReactNode } from "react";
 import { Label } from "@/components/ui/label";
-
-interface FieldRowProps {
-  label: string;
-  htmlFor?: string;
-  description?: string;
-  children: ReactNode;
-}
+import type { FieldRowProps } from "./types";
 
 /**
  * 라벨 + 입력 필드 + 설명 텍스트 조합 패턴.
@@ -28,3 +21,4 @@ export function FieldRow({
     </div>
   );
 }
+export type { FieldRowProps } from "./types";

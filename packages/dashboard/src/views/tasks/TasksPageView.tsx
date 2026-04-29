@@ -25,10 +25,9 @@ import {
   TAB_LABEL,
 } from "@/app/tasks/constants";
 import { ChainGroup, DAGCanvas, RequestCard } from "./components";
+import type { SortKey } from "./types";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
-
-type SortKey = "newest" | "oldest" | "priority" | "id";
 
 function TasksPageInner() {
   const requests = useTasksStore((s) => s.requests);

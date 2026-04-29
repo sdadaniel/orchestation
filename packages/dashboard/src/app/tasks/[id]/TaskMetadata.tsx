@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Loader2, Play, Square, Trash2 } from "lucide-react";
 import { HorseRunningIndicator } from "@/views/tasks/[id]/components/HorseRunningIndicator";
-import { BranchBadge } from "@/components/task-detail/BranchBadge";
+import { BranchBadge } from "@/components/TaskDetail/BranchBadge";
 import { Select } from "@/components/ui/select";
 import { TaskDetail, STATUS_DOT, STATUS_LABEL, PRIORITY_COLORS } from "./types";
 

@@ -4,20 +4,7 @@ import { cn } from "@/lib/utils";
 import type { RequestItem } from "@/store/tasksStore";
 import { PRIORITY_COLORS, STATUS_DOT } from "@/app/tasks/constants";
 import { RequestCard } from "./RequestCard";
-
-interface ChainGroupProps {
-  items: RequestItem[];
-  onUpdate: (
-    id: string,
-    updates: Partial<
-      Pick<RequestItem, "status" | "title" | "content" | "priority">
-    >,
-  ) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-  onReorder?: (id: string, direction: "up" | "down") => Promise<void>;
-  isFirst?: boolean;
-  isLast?: boolean;
-}
+import type { ChainGroupProps } from "./types";
 
 export function ChainGroup({
   items,

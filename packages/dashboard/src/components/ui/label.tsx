@@ -1,6 +1,7 @@
 import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import type { LabelProps } from "./types";
 
 const labelVariants = cva("font-medium text-muted-foreground", {
   variants: {
@@ -14,11 +15,6 @@ const labelVariants = cva("font-medium text-muted-foreground", {
     size: "default",
   },
 });
-
-export interface LabelProps
-  extends
-    React.LabelHTMLAttributes<HTMLLabelElement>,
-    VariantProps<typeof labelVariants> {}
 
 const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
   ({ className, size, ...props }, ref) => {
@@ -34,3 +30,4 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
 Label.displayName = "Label";
 
 export { Label, labelVariants };
+export type { LabelProps } from "./types";

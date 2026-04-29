@@ -4,13 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 import { X, Terminal, Loader2, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { WaterfallTask } from "@/types/waterfall";
 import { useTaskLogStream } from "@/gateway-ws/task-streams";
-
-interface TaskLogModalProps {
-  task: WaterfallTask;
-  onClose: () => void;
-}
+import type { TaskLogModalProps } from "./types";
 
 export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
   const { lines: logs, loaded, error } = useTaskLogStream(task.id);

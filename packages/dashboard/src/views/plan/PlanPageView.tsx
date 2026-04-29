@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { usePlanTree } from "@/hooks/usePlanTree";
-import { PlanTreeContainer } from "@/components/plan/PlanTreeContainer";
-import { TaskDetailPanel } from "@/components/waterfall/TaskDetailPanel";
+import { PlanTreeContainer } from "@/components/Plan/PlanTreeContainer";
+import { TaskDetailPanel } from "@/components/Waterfall/TaskDetailPanel";
 import type { WaterfallTask } from "@/types/waterfall";
 import { ErrorState, LoadingSkeleton } from "./components";
 

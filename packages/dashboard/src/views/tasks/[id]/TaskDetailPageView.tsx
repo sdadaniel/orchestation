@@ -25,8 +25,8 @@ import {
   CostTab,
   LogsTab,
 } from "@/app/tasks/[id]/TaskTabContent";
-import { LiveTerminalPanel } from "@/components/task-detail/LiveTerminalPanel";
-import { TaskWorkflowIndicator } from "@/components/task-detail/TaskWorkflowIndicator";
+import { LiveTerminalPanel } from "@/components/TaskDetail/LiveTerminalPanel";
+import { TaskWorkflowIndicator } from "@/components/TaskDetail/TaskWorkflowIndicator";
 
 export default function TaskDetailPageView({
   params,

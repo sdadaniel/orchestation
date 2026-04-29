@@ -2,8 +2,8 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { LogLine } from "@/components/logs/type";
-import { MAX_LOG_LINES } from "@/components/logs/const";
+import type { LogLine } from "@/components/Logs/type";
+import { MAX_LOG_LINES } from "@/components/Logs/const";
 
 interface LogsState {
   lines: LogLine[];

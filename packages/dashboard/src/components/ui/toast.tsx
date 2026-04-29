@@ -14,24 +14,7 @@ import {
 import { createPortal } from "react-dom";
 import { X, CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-/* ── Types ── */
-export type ToastVariant = "success" | "error" | "info";
-
-export interface Toast {
-  id: string;
-  message: string;
-  variant: ToastVariant;
-}
-
-interface ToastActions {
-  addToast: (message: string, variant?: ToastVariant) => void;
-  removeToast: (id: string) => void;
-}
-
-interface ToastStateValue {
-  toasts: Toast[];
-}
+import type { Toast, ToastActions, ToastStateValue, ToastVariant } from "./types";
 
 /**
  * Split into two contexts to prevent re-render cascades:
@@ -117,6 +100,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     </ToastActionsContext.Provider>
   );
 }
+export type { Toast, ToastActions, ToastStateValue, ToastVariant } from "./types";
 
 /* ── Toast Item ── */
 const VARIANT_STYLES: Record<

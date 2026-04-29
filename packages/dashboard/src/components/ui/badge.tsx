@@ -1,8 +1,9 @@
 import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import type { TaskStatus, TaskPriority } from "@/constants/status";
 import { STATUS_STYLES, PRIORITY_STYLES } from "@/constants/theme";
+import type { BadgeProps } from "./types";
 
 const badgeVariants = cva("inline-flex items-center rounded font-medium", {
   variants: {
@@ -16,11 +17,6 @@ const badgeVariants = cva("inline-flex items-center rounded font-medium", {
     size: "default",
   },
 });
-
-export interface BadgeProps
-  extends
-    React.HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof badgeVariants> {}
 
 const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
   ({ className, size, ...props }, ref) => {
@@ -81,3 +77,4 @@ function PriorityBadge({
 PriorityBadge.displayName = "PriorityBadge";
 
 export { Badge, badgeVariants, StatusBadge, PriorityBadge };
+export type { BadgeProps } from "./types";

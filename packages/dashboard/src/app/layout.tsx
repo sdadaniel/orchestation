@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AppShell } from "@/components/AppShell";
+import AppShell from "@/components/AppShell";
 import { ToastProvider } from "@/components/ui/toast";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { GatewayWsProvider } from "@/gateway-ws/provider";

@@ -2,9 +2,9 @@
 
 import { useCosts } from "@/hooks/useCosts";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
-import { SummaryCards } from "@/components/cost/SummaryCards";
-import { CostTable } from "@/components/cost/CostTable";
-import { CumulativeCostChart } from "@/components/cost/CumulativeCostChart";
+import { SummaryCards } from "@/components/Cost/SummaryCards";
+import { CostTable } from "@/components/Cost/CostTable";
+import { CumulativeCostChart } from "@/components/Cost/CumulativeCostChart";
 import { PageLayout, PageHeader } from "@/components/ui/page-layout";
 import { useEffect } from "react";
 import { EmptyState, ErrorState, LoadingSkeleton } from "./components";

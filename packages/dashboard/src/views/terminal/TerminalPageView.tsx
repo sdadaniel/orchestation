@@ -1,6 +1,6 @@
 "use client";
 
-import { TerminalView } from "@/components/terminal/TerminalView";
+import { TerminalView } from "@/components/Terminal/TerminalView";
 
 export default function TerminalPageView() {
   return (

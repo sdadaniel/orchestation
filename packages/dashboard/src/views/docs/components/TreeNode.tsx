@@ -8,12 +8,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { DocNode } from "@/hooks/useDocTree";
-
-interface TreeNodeProps {
-  node: DocNode;
-  depth?: number;
-}
+import type { TreeNodeProps } from "./types";
 
 export function TreeNode({ node, depth = 0 }: TreeNodeProps) {
   const [expanded, setExpanded] = useState(true);

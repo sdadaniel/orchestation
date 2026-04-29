@@ -1,10 +1,6 @@
 "use client";
 
-import type { RequestItem } from "@/hooks/useRequests";
-
-interface RunningIndicatorProps {
-  requestItems: RequestItem[];
-}
+import type { RunningIndicatorProps } from "./types";
 
 export function RunningIndicator({ requestItems }: RunningIndicatorProps) {
   const runningTasks = requestItems.filter((t) => t.status === "in_progress");

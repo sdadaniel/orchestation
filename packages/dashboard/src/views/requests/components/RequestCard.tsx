@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import type { RequestItem } from "@/hooks/useRequests";
+import type { RequestCardProps } from "./types";
 
 const PRIORITY_COLORS: Record<string, string> = {
   high: "bg-red-500/15 text-red-500 border-red-500/30",
@@ -24,17 +25,6 @@ const STATUS_DOT: Record<string, string> = {
   done: "bg-emerald-500",
   rejected: "bg-red-500",
 };
-
-interface RequestCardProps {
-  req: RequestItem;
-  onUpdate: (
-    id: string,
-    updates: Partial<
-      Pick<RequestItem, "status" | "title" | "content" | "priority">
-    >,
-  ) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-}
 
 export function RequestCard({ req, onUpdate, onDelete }: RequestCardProps) {
   const [expanded, setExpanded] = useState(false);

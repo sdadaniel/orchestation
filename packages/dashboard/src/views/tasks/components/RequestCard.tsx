@@ -21,8 +21,7 @@ import { MarkdownContent } from "@/components/MarkdownContent";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
-
-type CardTab = "content" | "scope" | "ai-result" | "logs";
+import type { CardTab } from "./types";
 
 export const RequestCard = memo(
   function RequestCard({

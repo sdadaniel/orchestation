@@ -20,8 +20,7 @@ import { EFFORT_LABEL } from "@/app/tasks/new/types";
 import { TaskPreviewCard } from "@/app/tasks/new/TaskPreviewCard";
 import { SuggestionsTab } from "@/app/tasks/new/SuggestionsTab";
 import { InputForm } from "@/app/tasks/new/InputForm";
-
-type Step = "input" | "preview";
+import type { Step } from "./types";
 
 export default function NewTaskPageView() {
   const router = useRouter();

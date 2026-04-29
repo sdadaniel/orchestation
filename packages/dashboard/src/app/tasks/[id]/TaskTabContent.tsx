@@ -3,8 +3,8 @@
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { MarkdownContent } from "@/components/MarkdownContent";
-import { LiveLogPanel } from "@/components/task-detail/LiveLogPanel";
-import { CompletedLogPanel } from "@/components/task-detail/CompletedLogPanel";
+import { LiveLogPanel } from "@/components/TaskDetail/LiveLogPanel";
+import { CompletedLogPanel } from "@/components/TaskDetail/CompletedLogPanel";
 import { TaskDetail } from "./types";
 
 /* ── Detail Tab ── */

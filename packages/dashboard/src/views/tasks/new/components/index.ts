@@ -1,2 +1,2 @@
 export { DependsOnSelector } from "./DependsOnSelector";
-export type { TaskOption } from "./DependsOnSelector";
+export type { DependsOnSelectorProps, TaskOption } from "./types";

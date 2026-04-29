@@ -3,20 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageSquare, X, Send, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: number;
-}
-
-interface Session {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: number;
-}
+import type { Message, Session } from "./types";
 
 function generateId() {
   return crypto.randomUUID();
