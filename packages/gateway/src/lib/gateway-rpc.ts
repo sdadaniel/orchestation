@@ -29,7 +29,7 @@ registerRpc({
   idempotent: true,
   paramsSchema: z.object({}).strict(),
   handler: async () => {
-    const latest = getLatestEvent("orchestration-status");
+    const latest = getLatestEvent("orchestration.status");
     return (latest?.data as OrchestrationStatusData | undefined) ?? null;
   },
 });
@@ -41,7 +41,7 @@ registerRpc({
     limit: z.number().int().positive().max(1000).optional(),
   }).strict(),
   handler: async ({ limit }) => {
-    const logs = getRecentEvents("log", limit ?? 200)
+    const logs = getRecentEvents("log.dashboard", limit ?? 200)
       .map((env) => toOrchestrateLogLine(env.data))
       .filter((line): line is string => typeof line === "string");
     return { logs, total: logs.length };

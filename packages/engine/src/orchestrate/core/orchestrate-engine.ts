@@ -51,7 +51,7 @@ export type EngineStatus = "idle" | "running";
 export interface EngineEvents {
   log: (line: string) => void;
   "status-changed": (status: EngineStatus) => void;
-  "task-result": (result: {
+  "task.result": (result: {
     taskId: string;
     status: "success" | "failure";
   }) => void;

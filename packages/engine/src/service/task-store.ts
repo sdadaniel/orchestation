@@ -27,7 +27,7 @@ function notifyTaskChanged(
   taskId?: string,
   extra?: Record<string, unknown>,
 ): void {
-  publish("task-changed", { full: true, ...(taskId ? { taskId } : {}), ...extra });
+  publish("task.changed", { full: true, ...(taskId ? { taskId } : {}), ...extra });
 }
 
 // ── Read ──────────────────────────────────────────────

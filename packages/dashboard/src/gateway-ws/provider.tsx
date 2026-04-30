@@ -2,12 +2,13 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import type { BusEventType } from "@orchestration/bus-types";
 import { createGatewayClient, type GatewayClient } from "./client";
 import { createEventHandlers } from "./handlers";
 
 const IDEMPOTENT_METHODS = new Set<string>(["orchestrate.stop"]);
 
-type Listener = (eventType: string, data: unknown, id: string) => void;
+type Listener = (eventType: BusEventType, data: unknown, id: string) => void;
 const listeners = new Set<Listener>();
 
 export function subscribeGatewayEvent(fn: Listener): () => void {

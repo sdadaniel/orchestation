@@ -4,12 +4,14 @@ import type { RpcRequest, RpcResponse } from "../rpc/types";
 import { randomUUID } from "crypto";
 import { getLatestEvent, subscribe } from "../bus/bus";
 import type { OrchestrationStatusData } from "@/orchestrate/orchestration-manager";
+import {
+  GatewayWsMsgType,
+  type GatewayWsPingMsg,
+  type GatewayWsSnapshotMsg,
+  type GatewayWsEventMsg,
+} from "@orchestration/bus-types";
 
-interface HelloMsg {
-  type: "hello";
-}
-
-type Incoming = HelloMsg | RpcRequest | { type: "ping" };
+type Incoming = GatewayWsPingMsg | RpcRequest;
 
 function sendSafe(ws: WebSocket, obj: unknown) {
   if (ws.readyState !== WebSocket.OPEN) return;
@@ -17,7 +19,7 @@ function sendSafe(ws: WebSocket, obj: unknown) {
 }
 
 function buildSnapshot() {
-  const latest = getLatestEvent("orchestration-status");
+  const latest = getLatestEvent("orchestration.status");
   return {
     ...(latest ? { orchestration: latest.data as OrchestrationStatusData } : {}),
     tasksFullHint: true,
@@ -26,19 +28,21 @@ function buildSnapshot() {
 
 export function attachGatewayChannel(wss: WebSocketServer): void {
   wss.on("connection", (ws: WebSocket) => {
-    sendSafe(ws, {
-      type: "snapshot",
+    const snapshotMsg: GatewayWsSnapshotMsg = {
+      type: GatewayWsMsgType.Snapshot,
       id: randomUUID(),
       data: buildSnapshot(),
-    });
+    };
+    sendSafe(ws, snapshotMsg);
 
     const unsubscribe = subscribe((env) => {
-      sendSafe(ws, {
-        type: "event",
+      const eventMsg: GatewayWsEventMsg = {
+        type: GatewayWsMsgType.Event,
         id: env.id,
         eventType: env.type,
         data: env.data,
-      });
+      };
+      sendSafe(ws, eventMsg);
     });
 
     ws.on("message", async (raw: Buffer | string) => {
@@ -50,13 +54,8 @@ export function attachGatewayChannel(wss: WebSocketServer): void {
         return;
       }
 
-      if (msg.type === "ping") {
-        sendSafe(ws, { type: "pong" });
-        return;
-      }
-
-      if (msg.type === "hello") {
-        // Backwards/forwards compatibility: clients may send hello on connect.
+      if (msg.type === GatewayWsMsgType.Ping) {
+        sendSafe(ws, { type: GatewayWsMsgType.Pong });
         return;
       }
 

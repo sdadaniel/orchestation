@@ -214,7 +214,7 @@ app.prepare().then(() => {
         if (d?.scope === "task" && d?.taskId === taskId && typeof d?.line === "string") {
           ws.send(JSON.stringify({ type: "log", line: d.line }));
         }
-      } else if (env.type === "task-result") {
+      } else if (env.type === "task.result") {
         const d = env.data as any;
         if (d?.taskId === taskId && typeof d?.status === "string") {
           ws.send(JSON.stringify({ type: "status", status: d.status }));

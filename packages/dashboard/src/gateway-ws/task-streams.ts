@@ -96,7 +96,7 @@ export function useTaskLogStream(
         return;
       }
 
-      if (event === "task-result") {
+      if (event === "task.result") {
         const d = data as { taskId?: string; status?: string };
         if (d?.taskId === taskId && typeof d?.status === "string") {
           onStatusChange?.(d.status);
@@ -141,7 +141,7 @@ export function useTaskConversationStream(taskId: string) {
       });
 
     const off = subscribeGatewayEvent((event, data) => {
-      if (cancelled || event !== "task-terminal") return;
+      if (cancelled || event !== "task.terminal") return;
       const d = data as { taskId?: string; line?: string };
       if (d?.taskId !== taskId || typeof d?.line !== "string") return;
       const line = d.line;

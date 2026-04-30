@@ -136,7 +136,7 @@ class TaskRunnerManager {
         state.finishedAt = new Date().toISOString();
         cleanupSignals(taskId);
         appendLog(`[task-runner] ${taskId} 거절됨 → 완료 처리 (review 스킵)`);
-        publish("task-result", { taskId, status: "completed" });
+        publish("task.result", { taskId, status: "completed" });
         return;
       }
 
@@ -147,7 +147,7 @@ class TaskRunnerManager {
         updateTaskFileStatus(taskId, "failed");
         cleanupSignals(taskId);
         appendLog(`[task-runner] ${taskId} task 실패`);
-        publish("task-result", { taskId, status: "failed" });
+        publish("task.result", { taskId, status: "failed" });
         return;
       }
 
@@ -175,7 +175,7 @@ class TaskRunnerManager {
         updateTaskFileStatus(taskId, "failed");
         cleanupSignals(taskId);
         appendLog(`[task-runner] ${taskId} review 수정요청 → 실패 처리`);
-        publish("task-result", { taskId, status: "failed" });
+        publish("task.result", { taskId, status: "failed" });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -184,7 +184,7 @@ class TaskRunnerManager {
       state.finishedAt = new Date().toISOString();
       updateTaskFileStatus(taskId, "failed");
       appendLog(`[task-runner] ${taskId} 오류: ${msg}`);
-      publish("task-result", { taskId, status: "failed" });
+      publish("task.result", { taskId, status: "failed" });
     }
   }
 
@@ -216,13 +216,13 @@ class TaskRunnerManager {
       state.phase = "done";
       state.exitCode = 0;
       appendLog(`[task-runner] ${taskId} merge 완료 → done`);
-      publish("task-result", { taskId, status: "completed" });
+      publish("task.result", { taskId, status: "completed" });
     } else {
       state.status = "failed";
       state.exitCode = 1;
       updateTaskFileStatus(taskId, "failed");
       appendLog(`[task-runner] ${taskId} merge 실패`);
-      publish("task-result", { taskId, status: "failed" });
+      publish("task.result", { taskId, status: "failed" });
     }
   }
 
@@ -281,7 +281,7 @@ class TaskRunnerManager {
           taskId,
           entry: normalizeLogEntry(line, { defaultSource: "task-runner" }),
         }),
-      (status) => publish("task-result", { taskId, status }),
+      (status) => publish("task.result", { taskId, status }),
       this.watcherMgr,
       (tid, st) => this.handleStartReviewIterm(tid, st),
       (tid, st) => this.startMergeLegacy(tid, st),
@@ -301,7 +301,7 @@ class TaskRunnerManager {
           taskId,
           entry: normalizeLogEntry(line, { defaultSource: "task-runner" }),
         }),
-      (status) => publish("task-result", { taskId, status }),
+      (status) => publish("task.result", { taskId, status }),
       this.watcherMgr,
       (tid, st) => this.startReviewLegacy(tid, st),
       (tid, st) => this.startMergeLegacy(tid, st),
@@ -328,13 +328,13 @@ class TaskRunnerManager {
           state.finishedAt = new Date().toISOString();
           updateTaskFileStatus(taskId, "failed");
           cleanupSignals(taskId);
-          publish("task-result", { taskId, status: "failed" });
+          publish("task.result", { taskId, status: "failed" });
         }
       })
       .catch(() => {
         state.status = "failed";
         state.finishedAt = new Date().toISOString();
-        publish("task-result", { taskId, status: "failed" });
+        publish("task.result", { taskId, status: "failed" });
       });
   }
 
@@ -368,7 +368,7 @@ class TaskRunnerManager {
     run.state.finishedAt = new Date().toISOString();
     updateTaskFileStatus(taskId, "stopped");
     cleanupSignals(taskId);
-    publish("task-result", { taskId, status: "failed" });
+    publish("task.result", { taskId, status: "failed" });
 
     return { success: true };
   }

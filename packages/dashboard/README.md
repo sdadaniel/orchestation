@@ -82,7 +82,6 @@ src/
 │   └── query-keys.ts             #   쿼리 키 팩토리
 │
 ├── cli/                          # CLI 진입점 (tsx로 실행)
-│   ├── run-engine.ts             #   orchestrate run
 │   ├── run-night-worker.ts       #   orchestrate night
 │   ├── run-task.ts               #   단일 태스크 (iTerm용)
 │   └── run-review.ts             #   코드 리뷰 (iTerm용)

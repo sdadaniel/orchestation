@@ -31,7 +31,7 @@ export async function runJobReview(
 ): Promise<JobReviewResult> {
   const log = (msg: string) => onLog?.(`[${taskId}/review] ${msg}`);
   const emitTerminalLine = (line: string) => {
-    publish("task-terminal", { taskId, phase: "review", line });
+    publish("task.terminal", { taskId, phase: "review", line });
     log(line);
   };
 

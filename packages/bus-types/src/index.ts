@@ -1,9 +1,11 @@
 export type BusEventType =
   | "log"
-  | "orchestration-status"
-  | "task-result"
-  | "task-changed"
-  | "task-terminal";
+  | "log.console"
+  | "log.dashboard"
+  | "orchestration.status"
+  | "task.result"
+  | "task.changed"
+  | "task.terminal";
 
 export interface BusEventEnvelope<T = unknown> {
   id: string;
@@ -17,3 +19,5 @@ export interface EventBus {
 }
 
 export type BusListener = (env: BusEventEnvelope) => void;
+
+export * from "./gateway-ws";

@@ -67,7 +67,7 @@ const Controls = () => {
     setError(null);
     try {
       await gateway.call("orchestrate.run");
-      // UI state update handled by orchestration-status event
+      // UI state update handled by orchestration.status event
     } catch (err) {
       const e = err as { code?: string; message?: string };
       setError(e.message ?? getErrorMessage(err, "Failed to start"));

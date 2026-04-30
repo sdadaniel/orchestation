@@ -41,7 +41,7 @@ class OrchestrationManager {
       taskResults: state.taskResults,
     };
     if (log) this.logStatusChangeIfNeeded(snapshot);
-    publish("orchestration-status", snapshot);
+    publish("orchestration.status", snapshot);
   }
 
   publishCurrentStatus(opts?: { log?: boolean }) {
@@ -122,8 +122,7 @@ class OrchestrationManager {
     this.state.taskResults = [];
     this.state.exitCode = null;
 
-    this.appendLog("[orchestrate] Starting Node.js engine");
-    this.emitStatusChange({ log: false });
+    this.emitStatusChange();
 
     // 엔진 생성 및 hooks 연결 (EventEmitter 제거)
     this.engine = new OrchestrateEngine({
@@ -135,12 +134,12 @@ class OrchestrationManager {
           this.state.finishedAt = new Date().toISOString();
           this.state.exitCode ??= 0;
           this.saveRunHistory();
-          this.emitStatusChange({ log: false });
+          this.emitStatusChange();
         }
       },
       onTaskResult: (result) => {
         this.state.taskResults.push(result);
-        publish("task-result", {
+        publish("task.result", {
           taskId: result.taskId,
           status: result.status === "success" ? "completed" : "failed",
         });
@@ -231,12 +230,20 @@ class OrchestrationManager {
     this.pruneOrchestrateLogsIfNeeded(day);
   }
 
+  /**
+   * 브라우저 콘솔에만 노출되는 로그 (Logs 탭/파일/상태 logs에는 축적하지 않음)
+   */
+  private publishConsoleLog(line: string) {
+    const entry = normalizeLogEntry(line, { defaultSource: "orchestrate" });
+    publish("log.console", { scope: "orchestrate", entry });
+  }
+
   private appendLog(line: string) {
     const normalized = normalizeLogLine(line, { defaultSource: "orchestrate" });
     this.state.logs.push(normalized);
     this.appendOrchestrateLogToFile(normalized);
     const entry = normalizeLogEntry(normalized, { defaultSource: "orchestrate" });
-    publish("log", { scope: "orchestrate", entry });
+    publish("log.dashboard", { scope: "orchestrate", entry });
     if (this.state.logs.length > MAX_STATE_LOG_LINES) {
       const drop = this.state.logs.length - MAX_STATE_LOG_LINES;
       this.state.logs.splice(0, drop);
@@ -249,21 +256,10 @@ class OrchestrationManager {
     if (this.lastEmittedSnapshotJson === stable) return;
     this.lastEmittedSnapshotJson = stable;
 
-    // OpenClaw-ish: HH:MM:SS info orchestrate message
-    // Keep it human-readable but include key fields for future extensibility.
-    const ok = snapshot.taskResults.filter((r) => r.status === "success").length;
-    const fail = snapshot.taskResults.filter((r) => r.status === "failure").length;
-    const timing =
-      snapshot.startedAt || snapshot.finishedAt
-        ? ` startedAt=${snapshot.startedAt ?? "-"} finishedAt=${snapshot.finishedAt ?? "-"}`
-        : "";
-    const exit = snapshot.exitCode !== null ? ` exitCode=${snapshot.exitCode}` : "";
-    const counts = snapshot.taskResults.length > 0 ? ` ok=${ok} fail=${fail}` : "";
-
     this.appendLog(
       formatLogLine({
         source: "orchestrate",
-        message: `status=${snapshot.status}${timing}${exit}${counts}`,
+        message: `status=${snapshot.status}`,
       }),
     );
   }

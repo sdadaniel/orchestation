@@ -1,8 +1,10 @@
 "use client";
 
+import { GatewayWsMsgType, type BusEventType } from "@orchestration/bus-types";
+
 type AnyObject = Record<string, unknown>;
 
-type EventHandler = (eventType: string, data: unknown, id: string) => void;
+type EventHandler = (eventType: BusEventType, data: unknown, id: string) => void;
 type SnapshotHandler = (data: AnyObject) => void;
 
 interface PendingRpc {
@@ -28,6 +30,23 @@ export interface GatewayClient {
 
 const BACKOFF_MIN = 500;
 const BACKOFF_MAX = 30_000;
+
+const BUS_EVENT_TYPES = [
+  "log",
+  "log.console",
+  "log.dashboard",
+  "orchestration.status",
+  "task.result",
+  "task.changed",
+  "task.terminal",
+] as const satisfies readonly BusEventType[];
+
+function isBusEventType(value: unknown): value is BusEventType {
+  return (
+    typeof value === "string" &&
+    (BUS_EVENT_TYPES as readonly string[]).includes(value)
+  );
+}
 
 function createRequestId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -61,21 +80,21 @@ export function createGatewayClient(opts: GatewayClientOpts): GatewayClient {
 
     ws.addEventListener("open", () => {
       backoff = BACKOFF_MIN;
-      ws?.send(JSON.stringify({ type: "hello" }));
     });
 
     ws.addEventListener("message", (e: MessageEvent) => {
       let msg: AnyObject;
       try { msg = JSON.parse(String(e.data ?? "")); } catch { return; }
 
-      if (msg.type === "snapshot") {
+      if (msg.type === GatewayWsMsgType.Snapshot) {
         opts.onSnapshot(msg.data as AnyObject);
         return;
       }
 
-      if (msg.type === "event") {
+      if (msg.type === GatewayWsMsgType.Event) {
         const id = typeof msg.id === "string" ? msg.id : "";
-        opts.onEvent(String(msg.eventType), msg.data, id);
+        if (!isBusEventType(msg.eventType)) return;
+        opts.onEvent(msg.eventType, msg.data, id);
         return;
       }
 

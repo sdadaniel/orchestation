@@ -84,7 +84,7 @@ export async function finalizeTask(
 
   if (success) {
     // Merge success is the single source of truth for completion.
-    // Persist done status so the dashboard can reflect completion via task-changed.
+    // Persist done status so the dashboard can reflect completion via task.changed.
     setTaskStatus(taskId, "done", ctx.log);
     writeNotice(
       "info",
