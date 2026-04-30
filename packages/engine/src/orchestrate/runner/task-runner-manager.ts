@@ -113,7 +113,7 @@ class TaskRunnerManager {
 
     const appendLog = (line: string) => {
       state.logs.push(line);
-      publish("log", {
+      publish("log.dashboard", {
         scope: "task",
         taskId,
         entry: normalizeLogEntry(line, { defaultSource: "task-runner" }),
@@ -192,7 +192,7 @@ class TaskRunnerManager {
     state.phase = "merge";
     const appendLog = (line: string) => {
       state.logs.push(line);
-      publish("log", {
+      publish("log.dashboard", {
         scope: "task",
         taskId,
         entry: normalizeLogEntry(line, { defaultSource: "task-runner" }),
@@ -244,7 +244,7 @@ class TaskRunnerManager {
       state.logs.push(
         "[task-runner] iTerm2가 실행 중이지 않습니다. 백그라운드로 전환합니다.",
       );
-      publish("log", {
+      publish("log.dashboard", {
         scope: "task",
         taskId,
         entry: normalizeLogEntry(state.logs[state.logs.length - 1] ?? "", {
@@ -255,7 +255,7 @@ class TaskRunnerManager {
     }
 
     state.logs.push(`[task-runner] ${taskId}: iTerm 탭에서 실행 중`);
-    publish("log", {
+    publish("log.dashboard", {
       scope: "task",
       taskId,
       entry: normalizeLogEntry(state.logs[state.logs.length - 1] ?? "", {
@@ -276,7 +276,7 @@ class TaskRunnerManager {
       logFile,
       dummy,
       (line) =>
-        publish("log", {
+        publish("log.dashboard", {
           scope: "task",
           taskId,
           entry: normalizeLogEntry(line, { defaultSource: "task-runner" }),
@@ -296,7 +296,7 @@ class TaskRunnerManager {
       taskId,
       state,
       (line) =>
-        publish("log", {
+        publish("log.dashboard", {
           scope: "task",
           taskId,
           entry: normalizeLogEntry(line, { defaultSource: "task-runner" }),
@@ -313,7 +313,7 @@ class TaskRunnerManager {
 
     runJobReview(taskId, (line) => {
       state.logs.push(line);
-      publish("log", {
+      publish("log.dashboard", {
         scope: "task",
         taskId,
         entry: normalizeLogEntry(line, { defaultSource: "task-runner" }),

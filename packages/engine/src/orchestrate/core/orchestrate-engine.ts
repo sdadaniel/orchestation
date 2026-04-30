@@ -350,7 +350,7 @@ export class OrchestrateEngine {
     const abortController = new AbortController();
     const writeLine = (line: string) => {
       this.log(`  ${line}`);
-      publish("log", {
+      publish("log.dashboard", {
         scope: "task",
         taskId,
         entry: normalizeLogEntry(line, { defaultSource: "task" }),

@@ -1,5 +1,4 @@
 export type BusEventType =
-  | "log"
   | "log.console"
   | "log.dashboard"
   | "orchestration.status"
