@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { OrchestrationStatusData } from "@/orchestrate/orchestration-manager";
 import { formatStructuredLogLine, type StructuredLogEntry } from "@/bus/logging/log-format";
-import autoImproveManager from "@/orchestrate/auto-improve-manager";
 import nightWorkerManager from "@/orchestrate/night-worker";
 import { getLatestEvent, getRecentEvents } from "../bus/bus";
 import { registerRpc } from "../rpc/registry";
@@ -45,77 +44,6 @@ registerRpc({
       .map((env) => toOrchestrateLogLine(env.data))
       .filter((line): line is string => typeof line === "string");
     return { logs, total: logs.length };
-  },
-});
-
-registerRpc({
-  name: "auto-improve.run",
-  idempotent: false,
-  paramsSchema: z.object({}).strict(),
-  handler: async () => {
-    if (autoImproveManager.isRunning()) {
-      throw {
-        code: "ALREADY_RUNNING",
-        message: "Auto-improve is already running",
-      };
-    }
-
-    const result = autoImproveManager.run();
-    if (!result.success) {
-      throw {
-        code: "RUN_FAILED",
-        message: result.error ?? "auto-improve run failed",
-      };
-    }
-
-    const state = autoImproveManager.getState();
-    return {
-      message: "Auto-improve started",
-      status: autoImproveManager.getStatus(),
-      startedAt: state.startedAt,
-    };
-  },
-});
-
-registerRpc({
-  name: "auto-improve.stop",
-  idempotent: true,
-  paramsSchema: z.object({}).strict(),
-  handler: async () => {
-    if (autoImproveManager.getStatus() !== "running") {
-      throw {
-        code: "NOT_RUNNING",
-        message: "Auto-improve is not running",
-      };
-    }
-
-    const result = autoImproveManager.stop();
-    if (!result.success) {
-      throw {
-        code: "STOP_FAILED",
-        message: result.error ?? "auto-improve stop failed",
-      };
-    }
-
-    return {
-      message: "Graceful stop signal sent",
-      status: autoImproveManager.getStatus(),
-    };
-  },
-});
-
-registerRpc({
-  name: "auto-improve.status",
-  idempotent: true,
-  paramsSchema: z.object({}).strict(),
-  handler: async () => {
-    const state = autoImproveManager.getState();
-    return {
-      status: state.status,
-      startedAt: state.startedAt,
-      finishedAt: state.finishedAt,
-      exitCode: state.exitCode,
-    };
   },
 });
 

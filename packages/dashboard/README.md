@@ -46,7 +46,6 @@ src/
 │   ├── model-selector.ts         #   복잡도 → 모델 선택
 │   ├── signal.ts                 #   시그널 파일 관리
 │   ├── night-worker.ts           #   야간 코드 스캔/태스크 생성
-│   ├── auto-improve-manager.ts   #   자동 개선 루프
 │   └── runner/                   #   태스크 러너
 │       ├── task-runner-manager.ts  # 병렬 태스크 실행 관리
 │       ├── task-runner-iterm.ts    # iTerm2 탭 통합
