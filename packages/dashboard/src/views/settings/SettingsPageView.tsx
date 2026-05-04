@@ -15,9 +15,57 @@ import { FieldRow } from "@/components/ui/FieldRow";
 import { SettingSection } from "@/components/ui/SettingSection";
 import type { AppSettings } from "./types";
 
+function asString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function asFiniteNumber(value: unknown, fallback: number): number {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function asStringArray(value: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(value)) return fallback;
+  const out = value.filter((v): v is string => typeof v === "string");
+  return out.length > 0 ? out : fallback;
+}
+
+function isWorkerMode(value: unknown): value is WorkerMode {
+  return value === "background" || value === "iterm";
+}
+
 function toFormSettings(data: Record<string, unknown>): AppSettings {
-  const { engineConfigReload: _e, ...rest } = data;
-  return rest as AppSettings;
+  const engineConfigReloadRaw = data.engineConfigReload;
+  const engineConfigReload =
+    engineConfigReloadRaw &&
+    typeof engineConfigReloadRaw === "object" &&
+    !Array.isArray(engineConfigReloadRaw) &&
+    typeof (engineConfigReloadRaw as { reloaded?: unknown }).reloaded === "boolean"
+      ? {
+          reloaded: (engineConfigReloadRaw as { reloaded: boolean }).reloaded,
+          reason: asString((engineConfigReloadRaw as { reason?: unknown }).reason),
+        }
+      : null;
+
+  const workerModeRaw = data.workerMode;
+  const workerMode: WorkerMode = isWorkerMode(workerModeRaw)
+    ? workerModeRaw
+    : "background";
+
+  return {
+    apiKey: asString(data.apiKey, ""),
+    srcPaths: asStringArray(data.srcPaths, [""]),
+    model: asString(data.model, "claude-sonnet-4-6"),
+    baseBranch: asString(data.baseBranch, "main"),
+    maxParallel: Math.max(1, Math.floor(asFiniteNumber(data.maxParallel, 3))),
+    maxReviewRetry: Math.max(0, Math.floor(asFiniteNumber(data.maxReviewRetry, 2))),
+    orchestrateLogRetentionDays: Math.max(
+      1,
+      Math.floor(asFiniteNumber(data.orchestrateLogRetentionDays, 7)),
+    ),
+    workerMode,
+    engineConfigReload,
+  };
 }
 
 export default function SettingsPageView() {
@@ -127,7 +175,9 @@ export default function SettingsPageView() {
                   type={showApiKey ? "text" : "password"}
                   value={draft.apiKey}
                   onChange={(e) =>
-                    setDraft((prev) => ({ ...prev, apiKey: e.target.value }))
+                    setDraft((prev) =>
+                      prev ? { ...prev, apiKey: e.target.value } : prev,
+                    )
                   }
                   placeholder="sk-ant-api03-..."
                   className="font-mono flex-1"
@@ -151,7 +201,9 @@ export default function SettingsPageView() {
               <Select
                 value={draft.model}
                 onChange={(e) =>
-                  setDraft((prev) => ({ ...prev, model: e.target.value }))
+                  setDraft((prev) =>
+                    prev ? { ...prev, model: e.target.value } : prev,
+                  )
                 }
               >
                 <option value="claude-haiku-4-5-20251001">
@@ -169,7 +221,9 @@ export default function SettingsPageView() {
               <Input
                 value={draft.baseBranch}
                 onChange={(e) =>
-                  setDraft((prev) => ({ ...prev, baseBranch: e.target.value }))
+                  setDraft((prev) =>
+                    prev ? { ...prev, baseBranch: e.target.value } : prev,
+                  )
                 }
                 placeholder="main"
                 className="font-mono"
@@ -187,7 +241,9 @@ export default function SettingsPageView() {
                     onChange={(e) => {
                       const next = [...draft.srcPaths];
                       next[i] = e.target.value;
-                      setDraft((prev) => ({ ...prev, srcPaths: next }));
+                      setDraft((prev) =>
+                        prev ? { ...prev, srcPaths: next } : prev,
+                      );
                     }}
                     className="font-mono flex-1"
                     placeholder="src/"
@@ -197,10 +253,14 @@ export default function SettingsPageView() {
                       variant="ghost"
                       size="icon"
                       onClick={() =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          srcPaths: prev.srcPaths.filter((_, j) => j !== i),
-                        }))
+                        setDraft((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                srcPaths: prev.srcPaths.filter((_, j) => j !== i),
+                              }
+                            : prev,
+                        )
                       }
                       className="text-muted-foreground hover:text-red-400"
                     >
@@ -213,10 +273,11 @@ export default function SettingsPageView() {
                 variant="ghost"
                 size="sm"
                 onClick={() =>
-                  setDraft((prev) => ({
-                    ...prev,
-                    srcPaths: [...prev.srcPaths, ""],
-                  }))
+                  setDraft((prev) =>
+                    prev
+                      ? { ...prev, srcPaths: [...prev.srcPaths, ""] }
+                      : prev,
+                  )
                 }
                 className="text-muted-foreground hover:text-foreground"
               >
@@ -232,10 +293,14 @@ export default function SettingsPageView() {
               <Select
                 value={draft.workerMode}
                 onChange={(e) =>
-                  setDraft((prev) => ({
-                    ...prev,
-                    workerMode: e.target.value as WorkerMode,
-                  }))
+                  setDraft((prev) => {
+                    if (!prev) return prev;
+                    const next = e.target.value;
+                    return {
+                      ...prev,
+                      workerMode: isWorkerMode(next) ? next : prev.workerMode,
+                    };
+                  })
                 }
               >
                 <option value="background">background</option>
@@ -256,7 +321,7 @@ export default function SettingsPageView() {
                 max={10}
                 value={draft.maxParallel}
                 onChange={(v) =>
-                  setDraft((prev) => ({ ...prev, maxParallel: v }))
+                  setDraft((prev) => (prev ? { ...prev, maxParallel: v } : prev))
                 }
               />
             </div>
@@ -274,7 +339,9 @@ export default function SettingsPageView() {
                 max={5}
                 value={draft.maxReviewRetry}
                 onChange={(v) =>
-                  setDraft((prev) => ({ ...prev, maxReviewRetry: v }))
+                  setDraft((prev) =>
+                    prev ? { ...prev, maxReviewRetry: v } : prev,
+                  )
                 }
               />
             </div>
@@ -291,13 +358,17 @@ export default function SettingsPageView() {
                 max={365}
                 value={draft.orchestrateLogRetentionDays}
                 onChange={(e) =>
-                  setDraft((prev) => ({
-                    ...prev,
-                    orchestrateLogRetentionDays: Math.max(
-                      1,
-                      Number.parseInt(e.target.value || "1", 10) || 1,
-                    ),
-                  }))
+                  setDraft((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          orchestrateLogRetentionDays: Math.max(
+                            1,
+                            Number.parseInt(e.target.value || "1", 10) || 1,
+                          ),
+                        }
+                      : prev,
+                  )
                 }
                 className="font-mono"
               />

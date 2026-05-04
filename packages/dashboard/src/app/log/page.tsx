@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import LogPageView from "@/views/log";
 
 export default function LogPage() {
-  return <LogPageView />;
+  return (
+    <Suspense fallback={null}>
+      <LogPageView />
+    </Suspense>
+  );
 }

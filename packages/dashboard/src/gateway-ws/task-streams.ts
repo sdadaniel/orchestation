@@ -70,7 +70,7 @@ export function useTaskLogStream(
     const off = subscribeGatewayEvent((event, data) => {
       if (cancelled) return;
 
-      if (event === "log") {
+      if (event === "log.dashboard" || event === "log.console") {
         const d = data as {
           scope?: string;
           taskId?: string;

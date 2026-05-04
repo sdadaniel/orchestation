@@ -32,7 +32,6 @@ const BACKOFF_MIN = 500;
 const BACKOFF_MAX = 30_000;
 
 const BUS_EVENT_TYPES = [
-  "log",
   "log.console",
   "log.dashboard",
   "orchestration.status",
