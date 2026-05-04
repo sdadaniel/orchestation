@@ -8,7 +8,6 @@ import { parseDependsOn, parseScope } from "../lib/task-row-parsers";
 export interface TaskFrontmatter {
   id: string;
   display_id?: string;
-  canonical_id?: string;
   title: string;
   status: TaskStatus;
   phase?: string | null;
@@ -17,7 +16,7 @@ export interface TaskFrontmatter {
   blocks: string[];
   parallel_with: string[];
   role: string;
-  affected_files: string[];
+  scope: string[];
 }
 
 const VALID_STATUSES: readonly TaskStatus[] = [
@@ -62,7 +61,6 @@ function taskRowToFrontmatter(row: TaskEntity): TaskFrontmatter {
   return {
     id: row.id,
     display_id: row.display_id ?? row.id,
-    canonical_id: row.id,
     title: row.title,
     status: toTaskStatus(row.status),
     phase: row.phase ?? null,
@@ -71,7 +69,7 @@ function taskRowToFrontmatter(row: TaskEntity): TaskFrontmatter {
     blocks: [],
     parallel_with: [],
     role: row.role ?? "",
-    affected_files: parseScope(row),
+    scope: parseScope(row),
   };
 }
 

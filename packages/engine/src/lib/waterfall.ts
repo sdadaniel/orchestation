@@ -23,7 +23,7 @@ function toWaterfallTask(task: TaskFrontmatter): WaterfallTask {
     depends_on: task.depends_on,
     blocks: task.blocks,
     parallel_with: task.parallel_with,
-    affected_files: task.affected_files,
+    scope: task.scope,
   };
 }
 

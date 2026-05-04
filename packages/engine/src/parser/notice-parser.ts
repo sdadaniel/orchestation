@@ -2,11 +2,16 @@ import fs from "fs";
 import path from "path";
 import { NOTICES_DIR } from "../lib/config/paths";
 import { parseFrontmatter, getString, getBool } from "../lib/content/frontmatter-utils";
+import {
+  createNotice as createNoticeInDb,
+  getNextNoticeDisplayId,
+} from "../service/notice-store";
 
 export type NoticeType = "info" | "warning" | "error" | "request";
 
 export interface NoticeData {
   id: string;
+  display_id?: string;
   title: string;
   type: NoticeType;
   read: boolean;
@@ -38,7 +43,16 @@ export function parseNoticeFile(filePath: string): NoticeData | null {
     const created = getString(data, "created");
     const updated = getString(data, "updated") || created;
 
-    return { id, title, type, read, created, updated, content };
+    return {
+      id,
+      display_id: id,
+      title,
+      type,
+      read,
+      created,
+      updated,
+      content,
+    };
   } catch {
     return null;
   }
@@ -82,20 +96,7 @@ export function writeNotice(
       fs.mkdirSync(NOTICES_DIR, { recursive: true });
     }
 
-    const files = fs
-      .readdirSync(NOTICES_DIR)
-      .filter((f) => f.startsWith("NOTICE-") && f.endsWith(".md"));
-    let maxNum = 0;
-    for (const f of files) {
-      const m = f.match(/NOTICE-(\d+)/);
-      if (m) {
-        const num = parseInt(m[1]!, 10);
-        if (num > maxNum) maxNum = num;
-      }
-    }
-
-    const nextNum = maxNum + 1;
-    const noticeId = `NOTICE-${String(nextNum).padStart(3, "0")}`;
+    const noticeId = getNextNoticeDisplayId();
     const today = new Date().toISOString().split("T")[0];
     const slug = title
       .toLowerCase()
@@ -113,11 +114,16 @@ updated: ${today}
 ${content.trim()}
 `;
 
-    fs.writeFileSync(
-      path.join(NOTICES_DIR, `${noticeId}-${slug}.md`),
-      fileContent,
-      "utf-8",
-    );
+    fs.writeFileSync(path.join(NOTICES_DIR, `${noticeId}-${slug}.md`), fileContent, "utf-8");
+
+    createNoticeInDb({
+      title,
+      content,
+      type,
+      display_id: noticeId,
+      legacy_notice_key: noticeId,
+      read: false,
+    });
   } catch {
     /* ignore */
   }

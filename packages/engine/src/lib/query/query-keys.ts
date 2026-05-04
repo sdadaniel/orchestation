@@ -4,21 +4,15 @@
  * 모든 쿼리 키는 이 파일에서 관리합니다.
  * invalidation 시 상위 키를 사용하면 하위 쿼리도 함께 무효화됩니다.
  *
- * 예) queryClient.invalidateQueries({ queryKey: queryKeys.requests.all })
- *     → requests 하위 모든 쿼리 무효화
+ * 예) queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
+ *     → tasks 하위 모든 쿼리 무효화
  */
 export const queryKeys = {
-  // 태스크 목록 (waterfall groups)
   tasks: {
     all: ["tasks"] as const,
     list: () => [...queryKeys.tasks.all, "list"] as const,
-  },
-
-  // 요청(태스크) 목록
-  requests: {
-    all: ["requests"] as const,
-    list: () => [...queryKeys.requests.all, "list"] as const,
-    detail: (id: string) => [...queryKeys.requests.all, id] as const,
+    graph: () => [...queryKeys.tasks.all, "graph"] as const,
+    detail: (id: string) => [...queryKeys.tasks.all, "detail", id] as const,
   },
 
   // 오케스트레이션 상태
@@ -31,6 +25,7 @@ export const queryKeys = {
   notices: {
     all: ["notices"] as const,
     list: () => [...queryKeys.notices.all, "list"] as const,
+    summary: () => [...queryKeys.notices.all, "summary"] as const,
   },
 
   // 비용
@@ -77,4 +72,3 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.plans.all, id] as const,
   },
 } as const;
-

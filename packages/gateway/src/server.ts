@@ -30,6 +30,7 @@ import {
   TERM_NAME,
   TERM_ROWS,
 } from "./const";
+import { getTaskLookupKeys } from "@/service/task-store";
 
 // NOTE: Path constants live in ./paths
 
@@ -61,7 +62,15 @@ process.on("unhandledRejection", (reason) => {
 const hostname = DEFAULT_HOSTNAME;
 const port = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
 
-const app = next({ dev: IS_DEV, hostname, port, dir: DASHBOARD_DIR });
+// Next 16 defaults to Turbopack for `next dev`, but embedded custom servers use `next({ dev: true })`.
+// Turbopack is still evolving; for stability in this repo's gateway+monorepo setup, prefer Webpack in dev.
+const app = next({
+  dev: IS_DEV,
+  hostname,
+  port,
+  dir: DASHBOARD_DIR,
+  ...(IS_DEV ? { webpack: true, turbopack: false } : {}),
+});
 const handle = app.getRequestHandler();
 // Next dev server uses a WebSocket upgrade endpoint for HMR (/_next/webpack-hmr).
 // When we attach our own `upgrade` listener, we must delegate all non-gateway WS
@@ -126,10 +135,15 @@ app.prepare().then(() => {
     }
 
     console.log(`[ws:task-terminal] connected for ${taskId}`);
+    const taskKeys = getTaskLookupKeys(taskId);
 
     const jsonlFiles = [
-      resolve(OUTPUT_DIR, `${taskId}-task-conversation.jsonl`),
-      resolve(ORCH_OUTPUT_DIR, `${taskId}-task-conversation.jsonl`),
+      ...taskKeys.map((taskKey) =>
+        resolve(OUTPUT_DIR, `${taskKey}-task-conversation.jsonl`),
+      ),
+      ...taskKeys.map((taskKey) =>
+        resolve(ORCH_OUTPUT_DIR, `${taskKey}-task-conversation.jsonl`),
+      ),
     ];
     const fileOffsets = new Map<string, number>();
 
@@ -180,6 +194,26 @@ app.prepare().then(() => {
   });
 
   // ── Task Logs WebSocket ───────────────────────────────────────
+  const lineFromLogDashboardData = (data: unknown, taskId: string): string | null => {
+    const d = data as {
+      scope?: string;
+      taskId?: string;
+      line?: string;
+      entry?: { atIso: string; level: string; source: string; message: string };
+    };
+    if (d?.scope !== "task" || d?.taskId !== taskId) return null;
+    if (d.entry && typeof d.entry.message === "string") {
+      const e = d.entry;
+      const t = new Date(e.atIso);
+      const hh = String(t.getHours()).padStart(2, "0");
+      const mm = String(t.getMinutes()).padStart(2, "0");
+      const ss = String(t.getSeconds()).padStart(2, "0");
+      return `${hh}:${mm}:${ss} ${e.level} ${e.source} ${e.message}`;
+    }
+    if (typeof d.line === "string") return d.line;
+    return null;
+  };
+
   wssTaskLogs.on("connection", (ws: WebSocket, req) => {
     const taskId = req.url?.replace("/ws/task-logs/", "") ?? "";
     if (!/^[A-Za-z0-9][\w-]*$/.test(taskId)) {
@@ -188,6 +222,7 @@ app.prepare().then(() => {
     }
 
     console.log(`[ws:task-logs] connected for ${taskId}`);
+    const taskKeys = getTaskLookupKeys(taskId);
 
     // ── Source 1: TaskRunnerManager (UI-triggered runs) ──
     const runState = taskRunnerManager.getState(taskId);
@@ -209,11 +244,9 @@ app.prepare().then(() => {
     // Subscribe to event bus events (task-scoped)
     const unsubscribe = subscribe((env) => {
       if (ws.readyState !== WebSocket.OPEN) return;
-      if (env.type === "log") {
-        const d = env.data as any;
-        if (d?.scope === "task" && d?.taskId === taskId && typeof d?.line === "string") {
-          ws.send(JSON.stringify({ type: "log", line: d.line }));
-        }
+      if (env.type === "log.dashboard") {
+        const line = lineFromLogDashboardData(env.data, taskId);
+        if (line) ws.send(JSON.stringify({ type: "log", line }));
       } else if (env.type === "task.result") {
         const d = env.data as any;
         if (d?.taskId === taskId && typeof d?.status === "string") {
@@ -225,8 +258,10 @@ app.prepare().then(() => {
     // ── Source 2: File-based logs (orchestrate.sh pipeline runs) ──
     // Watch multiple log sources across both output directories
     const watchedFiles: string[] = [
-      resolve(OUTPUT_DIR, "logs", `${taskId}.log`),
-      resolve(ORCH_OUTPUT_DIR, "logs", `${taskId}.log`),
+      ...taskKeys.map((taskKey) => resolve(OUTPUT_DIR, "logs", `${taskKey}.log`)),
+      ...taskKeys.map((taskKey) =>
+        resolve(ORCH_OUTPUT_DIR, "logs", `${taskKey}.log`),
+      ),
     ];
     const fileOffsets = new Map<string, number>();
 

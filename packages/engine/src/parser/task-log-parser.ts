@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { OUTPUT_DIR } from "../lib/config/paths";
-import { getTask } from "../service/task-store";
+import { getTask, getTaskLookupKeys } from "../service/task-store";
 
 export interface TaskLogEntry {
   timestamp: string;
@@ -61,6 +61,7 @@ export function taskExists(taskId: string): boolean {
 function parseTokenUsageLogs(taskId: string): TaskLogEntry[] {
   if (!fs.existsSync(TOKEN_LOG)) return [];
 
+  const taskKeys = new Set(getTaskLookupKeys(taskId));
   const content = fs.readFileSync(TOKEN_LOG, "utf-8");
   const lines = content.split("\n");
   const entries: TaskLogEntry[] = [];
@@ -75,7 +76,7 @@ function parseTokenUsageLogs(taskId: string): TaskLogEntry[] {
       /^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+([\w-]+)\s+\|/,
     );
     if (!timestampMatch) continue;
-    if (timestampMatch[2] !== taskId) continue;
+    if (!taskKeys.has(timestampMatch[2] ?? "")) continue;
 
     const timestamp = timestampMatch[1] ?? "";
 
@@ -113,38 +114,41 @@ function parseTokenUsageLogs(taskId: string): TaskLogEntry[] {
 function parseConversationLogs(taskId: string): TaskLogEntry[] {
   const entries: TaskLogEntry[] = [];
   const suffixes = ["-task-conversation.jsonl", "-review-conversation.jsonl"];
+  const taskKeys = getTaskLookupKeys(taskId);
 
   for (const suffix of suffixes) {
-    const filePath = path.join(OUTPUT_DIR, `${taskId}${suffix}`);
-    if (!fs.existsSync(filePath)) continue;
+    for (const taskKey of taskKeys) {
+      const filePath = path.join(OUTPUT_DIR, `${taskKey}${suffix}`);
+      if (!fs.existsSync(filePath)) continue;
 
-    const content = fs.readFileSync(filePath, "utf-8");
-    const lines = content.split("\n");
-    const phase = suffix.includes("task") ? "task" : "review";
+      const content = fs.readFileSync(filePath, "utf-8");
+      const lines = content.split("\n");
+      const phase = suffix.includes("task") ? "task" : "review";
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
 
-      try {
-        const entry: ConversationLogEntry = JSON.parse(trimmed);
-        const timestamp =
-          entry.timestamp ||
-          entry.created_at ||
-          new Date().toISOString().replace("T", " ").substring(0, 19);
-        const role = entry.role || "system";
-        const msg =
-          typeof entry.content === "string"
-            ? entry.content.substring(0, 500)
-            : `[${phase}] ${role} message`;
+        try {
+          const entry: ConversationLogEntry = JSON.parse(trimmed);
+          const timestamp =
+            entry.timestamp ||
+            entry.created_at ||
+            new Date().toISOString().replace("T", " ").substring(0, 19);
+          const role = entry.role || "system";
+          const msg =
+            typeof entry.content === "string"
+              ? entry.content.substring(0, 500)
+              : `[${phase}] ${role} message`;
 
-        entries.push({
-          timestamp,
-          level: role === "error" ? "error" : "info",
-          message: msg,
-        });
-      } catch {
-        // Skip malformed JSON lines
+          entries.push({
+            timestamp,
+            level: role === "error" ? "error" : "info",
+            message: msg,
+          });
+        } catch {
+          // Skip malformed JSON lines
+        }
       }
     }
   }
@@ -158,30 +162,33 @@ function parseConversationLogs(taskId: string): TaskLogEntry[] {
 function parseResultLogs(taskId: string): TaskLogEntry[] {
   const entries: TaskLogEntry[] = [];
   const suffixes = ["-task.json", "-review.json"];
+  const taskKeys = getTaskLookupKeys(taskId);
 
   for (const suffix of suffixes) {
-    const filePath = path.join(OUTPUT_DIR, `${taskId}${suffix}`);
-    if (!fs.existsSync(filePath)) continue;
+    for (const taskKey of taskKeys) {
+      const filePath = path.join(OUTPUT_DIR, `${taskKey}${suffix}`);
+      if (!fs.existsSync(filePath)) continue;
 
-    try {
-      const content = fs.readFileSync(filePath, "utf-8");
-      const data: TaskResultData = JSON.parse(content);
-      const phase = suffix.includes("task") ? "task" : "review";
-      const timestamp =
-        data.timestamp ||
-        data.created_at ||
-        new Date().toISOString().replace("T", " ").substring(0, 19);
+      try {
+        const content = fs.readFileSync(filePath, "utf-8");
+        const data: TaskResultData = JSON.parse(content);
+        const phase = suffix.includes("task") ? "task" : "review";
+        const timestamp =
+          data.timestamp ||
+          data.created_at ||
+          new Date().toISOString().replace("T", " ").substring(0, 19);
 
-      const resultStatus = data.result || data.is_error ? "error" : "success";
-      const level = data.is_error ? "error" : "info";
+        const resultStatus = data.result || data.is_error ? "error" : "success";
+        const level = data.is_error ? "error" : "info";
 
-      entries.push({
-        timestamp,
-        level,
-        message: `[${phase}] result=${resultStatus}${data.num_turns ? ` turns=${data.num_turns}` : ""}${data.cost_usd ? ` cost=$${data.cost_usd}` : ""}`,
-      });
-    } catch {
-      // Skip malformed JSON
+        entries.push({
+          timestamp,
+          level,
+          message: `[${phase}] result=${resultStatus}${data.num_turns ? ` turns=${data.num_turns}` : ""}${data.cost_usd ? ` cost=$${data.cost_usd}` : ""}`,
+        });
+      } catch {
+        // Skip malformed JSON
+      }
     }
   }
 
@@ -193,8 +200,11 @@ function parseResultLogs(taskId: string): TaskLogEntry[] {
  */
 function parseSignalLogs(taskId: string): TaskLogEntry[] {
   // Worker logs stored in output/logs/ by orchestrate engine
-  const logFile = path.join(OUTPUT_DIR, "logs", `${taskId}.log`);
-  if (!fs.existsSync(logFile)) return [];
+  const taskKeys = getTaskLookupKeys(taskId);
+  const logFile = taskKeys
+    .map((taskKey) => path.join(OUTPUT_DIR, "logs", `${taskKey}.log`))
+    .find((filePath) => fs.existsSync(filePath));
+  if (!logFile) return [];
 
   const content = fs.readFileSync(logFile, "utf-8");
   const lines = content.split("\n");
@@ -251,10 +261,11 @@ export function getTaskLogs(taskId: string): TaskLogEntry[] {
  * Check if any log sources exist for a task
  */
 export function hasLogSources(taskId: string): boolean {
+  const taskKeys = getTaskLookupKeys(taskId);
   // Check token-usage.log for entries
   if (fs.existsSync(TOKEN_LOG)) {
     const content = fs.readFileSync(TOKEN_LOG, "utf-8");
-    if (content.includes(taskId)) return true;
+    if (taskKeys.some((taskKey) => content.includes(taskKey))) return true;
   }
 
   // Check output files
@@ -265,10 +276,20 @@ export function hasLogSources(taskId: string): boolean {
     "-review.json",
   ];
   for (const suffix of suffixes) {
-    if (fs.existsSync(path.join(OUTPUT_DIR, `${taskId}${suffix}`))) return true;
+    if (
+      taskKeys.some((taskKey) =>
+        fs.existsSync(path.join(OUTPUT_DIR, `${taskKey}${suffix}`)),
+      )
+    ) {
+      return true;
+    }
   }
   // Check worker log in output/logs/
-  if (fs.existsSync(path.join(OUTPUT_DIR, "logs", `${taskId}.log`)))
+  if (
+    taskKeys.some((taskKey) =>
+      fs.existsSync(path.join(OUTPUT_DIR, "logs", `${taskKey}.log`)),
+    )
+  )
     return true;
 
   return false;

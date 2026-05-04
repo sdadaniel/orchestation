@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { z } from "zod";
+import { getTaskLookupKeys } from "@/service/task-store";
 import { registerRpc } from "../registry";
 
 const PACKAGE_DIR = path.resolve(__dirname, "..", "..", "..");
@@ -14,10 +15,15 @@ function readConversationLines(taskId: string): string[] {
     "-task-conversation.jsonl",
     "-review-conversation.jsonl",
   ];
+  const taskKeys = getTaskLookupKeys(taskId);
   const orderedFiles = [
-    ...suffixes.map((suffix) => path.resolve(OUTPUT_DIR, `${taskId}${suffix}`)),
-    ...suffixes.map((suffix) =>
-      path.resolve(ORCH_OUTPUT_DIR, `${taskId}${suffix}`),
+    ...taskKeys.flatMap((taskKey) =>
+      suffixes.map((suffix) => path.resolve(OUTPUT_DIR, `${taskKey}${suffix}`)),
+    ),
+    ...taskKeys.flatMap((taskKey) =>
+      suffixes.map((suffix) =>
+        path.resolve(ORCH_OUTPUT_DIR, `${taskKey}${suffix}`),
+      ),
     ),
   ];
 

@@ -39,9 +39,22 @@ export function getTaskDisplayId(task: Pick<TaskEntity, "id" | "display_id">): s
   return task.display_id || task.id;
 }
 
+export function getTaskLookupKeys(
+  taskOrId:
+    | string
+    | Pick<TaskEntity, "id" | "display_id" | "legacy_task_key">,
+): string[] {
+  const task =
+    typeof taskOrId === "string" ? resolveTaskRef(taskOrId)?.task : taskOrId;
+  if (!task) return typeof taskOrId === "string" ? [taskOrId] : [];
+  return [...new Set([task.id, task.display_id, task.legacy_task_key].filter(
+    (value): value is string => typeof value === "string" && value.length > 0,
+  ))];
+}
+
 type ResolvedTaskRef = {
   task: TaskEntity;
-  matchedBy: "id" | "display_id";
+  matchedBy: "id" | "display_id" | "legacy_task_key";
 };
 
 function notifyTaskChanged(
@@ -71,6 +84,12 @@ export function resolveTaskRef(taskId: string): ResolvedTaskRef | null {
     | TaskEntity
     | undefined;
   if (byDisplayId) return { task: byDisplayId, matchedBy: "display_id" };
+
+  const byLegacyKey = db
+    .prepare("SELECT * FROM tasks WHERE legacy_task_key = ?").get(taskId) as
+    | TaskEntity
+    | undefined;
+  if (byLegacyKey) return { task: byLegacyKey, matchedBy: "legacy_task_key" };
 
   return null;
 }
@@ -214,13 +233,14 @@ export function createTask(task: {
     try {
       db.prepare(
         `INSERT INTO tasks (id, display_id, display_number, title, status, phase, priority, branch, worktree, role, reviewer_role,
-          scope, context, depends_on, complexity, sort_order, content, created, updated)
+          legacy_task_key, scope, context, depends_on, complexity, sort_order, content, created, updated)
          VALUES (@id, @display_id, @display_number, @title, @status, @phase, @priority, @branch, @worktree, @role, @reviewer_role,
-          @scope, @context, @depends_on, @complexity, @sort_order, @content, @created, @updated)`,
+          @legacy_task_key, @scope, @context, @depends_on, @complexity, @sort_order, @content, @created, @updated)`,
       ).run({
         id: canonicalId,
         display_id: displayId,
         display_number: displayNumber,
+        legacy_task_key: null,
         title: task.title,
         status: task.status ?? "pending",
         phase: task.phase ?? null,
@@ -480,7 +500,7 @@ export function taskRowToMarkdown(task: TaskEntity): string {
   const lines = [
     "---",
     `id: ${getTaskDisplayId(task)}`,
-    `canonical_id: ${task.id}`,
+    ...(task.legacy_task_key ? [`legacy_task_key: ${task.legacy_task_key}`] : []),
     `title: ${task.title}`,
     `status: ${task.status}`,
     ...(task.phase ? [`phase: ${task.phase}`] : []),

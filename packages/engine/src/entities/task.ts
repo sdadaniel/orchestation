@@ -16,6 +16,7 @@ export interface TaskEntity {
   id: string;
   display_id: string | null;
   display_number: number | null;
+  legacy_task_key: string | null;
   title: string;
   status: TaskStatus;
   phase: string | null;

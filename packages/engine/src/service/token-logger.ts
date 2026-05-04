@@ -20,7 +20,11 @@ function formatLocalTimestampForCostLog(d: Date): string {
 }
 
 /** 대시보드 등 오케스트레이션 태스크 밖의 AI 호출 — 파일만 기록(DB는 task_id FK로 생략). */
-export type DashboardAiPhase = "chat" | "suggest" | "analyze";
+export type DashboardAiPhase =
+  | "chat"
+  | "suggest"
+  | "analyze"
+  | "analyze_refine";
 
 export function logDashboardAiUsage(
   phase: DashboardAiPhase,

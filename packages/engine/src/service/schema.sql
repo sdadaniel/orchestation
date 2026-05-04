@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
   display_id TEXT UNIQUE,
   display_number INTEGER UNIQUE,
+  legacy_task_key TEXT UNIQUE,
   title TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
   phase TEXT,                   -- fine-grained state (e.g. working, reviewing)
@@ -90,12 +91,16 @@ CREATE TABLE IF NOT EXISTS conversations (
 
 -- Notices (replaces .orchestration/notices/*.md)
 CREATE TABLE IF NOT EXISTS notices (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  notice_id TEXT UNIQUE,
+  id TEXT PRIMARY KEY,
+  display_id TEXT UNIQUE,
+  display_number INTEGER UNIQUE,
+  legacy_notice_key TEXT UNIQUE,
   title TEXT,
   content TEXT,
   type TEXT DEFAULT 'info',     -- info, warning, error
-  created TEXT DEFAULT (datetime('now','localtime'))
+  read INTEGER DEFAULT 0,
+  created TEXT DEFAULT (datetime('now','localtime')),
+  updated TEXT DEFAULT (datetime('now','localtime'))
 );
 
 -- Docs (replaces docs/**/*.md file scanning)
@@ -125,12 +130,14 @@ CREATE TABLE IF NOT EXISTS run_history (
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_display_id ON tasks(display_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_display_number ON tasks(display_number);
+CREATE INDEX IF NOT EXISTS idx_tasks_legacy_task_key ON tasks(legacy_task_key);
 CREATE INDEX IF NOT EXISTS idx_task_events_task_id ON task_events(task_id);
 CREATE INDEX IF NOT EXISTS idx_task_events_step_id ON task_events(step_id);
 CREATE INDEX IF NOT EXISTS idx_token_usage_task_id ON token_usage(task_id);
 CREATE INDEX IF NOT EXISTS idx_token_usage_step_id ON token_usage(step_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_task_id ON conversations(task_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_step_id ON conversations(step_id);
-CREATE INDEX IF NOT EXISTS idx_notices_notice_id ON notices(notice_id);
+CREATE INDEX IF NOT EXISTS idx_notices_display_id ON notices(display_id);
+CREATE INDEX IF NOT EXISTS idx_notices_legacy_notice_key ON notices(legacy_notice_key);
 CREATE INDEX IF NOT EXISTS idx_docs_category ON docs(category);
 CREATE INDEX IF NOT EXISTS idx_task_steps_task_id ON task_steps(task_id);

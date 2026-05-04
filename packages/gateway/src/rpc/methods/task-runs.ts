@@ -12,6 +12,7 @@ import {
   getAllTasks,
   updateTaskStatus,
   getTaskDisplayId,
+  getTaskLookupKeys,
   resolveTaskId,
   resolveTaskRef,
 } from "@/service/task-store";
@@ -84,15 +85,17 @@ registerRpc({
       }
     }
 
-    for (const filePath of [
-      path.join(OUTPUT_DIR, `${canonicalTaskId}-task.json`),
-      path.join(OUTPUT_DIR, `${canonicalTaskId}-task-conversation.jsonl`),
-      path.join(OUTPUT_DIR, `${canonicalTaskId}-rejection-reason.txt`),
-    ]) {
-      try {
-        fs.unlinkSync(filePath);
-      } catch {
-        /* ignore */
+    for (const taskKey of getTaskLookupKeys(taskRow)) {
+      for (const filePath of [
+        path.join(OUTPUT_DIR, `${taskKey}-task.json`),
+        path.join(OUTPUT_DIR, `${taskKey}-task-conversation.jsonl`),
+        path.join(OUTPUT_DIR, `${taskKey}-rejection-reason.txt`),
+      ]) {
+        try {
+          fs.unlinkSync(filePath);
+        } catch {
+          /* ignore */
+        }
       }
     }
 
