@@ -36,3 +36,7 @@ reviewer_role: reviewer-strict # 리뷰어 역할
 1. `docs/roles/역할명.md` 파일 생성
 2. Task frontmatter에서 `role: 역할명` 또는 `reviewer_role: 역할명` 지정
 3. 끝
+
+## 참고
+
+- 대시보드 태스크 분석·API와의 연동, 폴백 동작, 개선 후보: [role-catalog-task-analysis-improvements.md](../architecture/role-catalog-task-analysis-improvements.md)
