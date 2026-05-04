@@ -10,9 +10,8 @@ import type { OrchestrationStatusData } from "@/orchestrate/orchestration-manage
 import { toDisplayLogLine, type GatewayLogEntry } from "./log-entry";
 
 export function createEventHandlers(queryClient: QueryClient) {
-  const invalidateTasksAndRequests = () => {
-    queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
-    queryClient.invalidateQueries({ queryKey: queryKeys.requests.all });
+  const invalidateTasks = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
   };
 
   const handleTaskChanged = (data: unknown) => {
@@ -26,21 +25,13 @@ export function createEventHandlers(queryClient: QueryClient) {
       phase?: string | null;
     };
     if (d.full || d.deleted) {
-      invalidateTasksAndRequests();
-      useTasksStore.getState().fetchAll();
+      invalidateTasks();
+      useTasksStore.getState().fetchTasksSummary();
       return;
     }
     if (d.taskId) {
-      const patch: Record<string, unknown> = {};
-      if (d.status) patch.status = d.status;
-      if (d.priority) patch.priority = d.priority;
-      if (d.title) patch.title = d.title;
-      if ("phase" in d) patch.phase = d.phase ?? null;
-      const store = useTasksStore.getState();
-      const exists = store.requests.some((r) => r.id === d.taskId);
-      if (exists) store.patchRequest(d.taskId, patch as never);
-      else store.fetchAll();
-      invalidateTasksAndRequests();
+      useTasksStore.getState().fetchTasksSummary();
+      invalidateTasks();
     }
   };
 
@@ -133,10 +124,9 @@ export function createEventHandlers(queryClient: QueryClient) {
         useLogsStore.getState().setStatus(s.orchestration.status);
       }
       if (s.tasksFullHint) {
-        useTasksStore.getState().fetchAll();
-        invalidateTasksAndRequests();
+        useTasksStore.getState().fetchTasksSummary();
+        invalidateTasks();
       }
     },
-
   };
 }

@@ -2,203 +2,194 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { TaskFrontmatter } from "@/parser/parser";
 import type { TaskPriority, TaskStatus } from "@/entities/task";
 import { getErrorMessage } from "@/lib/errors/error-utils";
-import { buildWaterfallGroups } from "@/lib/waterfall";
-import type { WaterfallGroup } from "@/types/waterfall";
+import { getQueryClient } from "@/lib/query-client";
+import { queryKeys } from "@/lib/query/query-keys";
+import type { TaskGraphItem } from "@/types/task-graph";
 
-export interface RequestItem {
+export type TaskSummaryItem = {
   id: string;
   display_id?: string;
   title: string;
   status: TaskStatus;
-  phase?: string | null;
-  priority: TaskPriority;
   created: string;
   updated: string;
-  content: string;
-  scope: string[];
-  sort_order: number;
+};
+
+export interface TaskSummaryCounts {
+  pending: number;
+  reviewing: number;
+  in_progress: number;
+  failed: number;
+  rejected: number;
+  done: number;
+  stopped: number;
+  total: number;
+}
+
+export interface TaskSummaryData {
+  items: TaskSummaryItem[];
+  total: number;
+  page: number;
+  size: number;
+  counts: TaskSummaryCounts;
+  active: TaskSummaryItem[];
+  pending: TaskSummaryItem[];
+}
+
+function invalidateTaskQueries() {
+  void getQueryClient().invalidateQueries({ queryKey: queryKeys.tasks.all });
 }
 
 interface TasksState {
-  /* ── Tasks (WaterfallGroups) ── */
-  groups: WaterfallGroup[];
-  isTasksLoading: boolean;
-  tasksError: string | null;
+  tasksSummary: TaskSummaryData;
+  isTasksSummaryLoading: boolean;
+  tasksSummaryError: string | null;
 
-  /* ── Requests ── */
-  requests: RequestItem[];
-  isRequestsLoading: boolean;
-  requestsError: string | null;
-
-  /* ── Actions ── */
-  fetchTasks: () => Promise<void>;
-  fetchRequests: () => Promise<void>;
-  fetchAll: () => Promise<void>;
-  createRequest: (
+  fetchTasksSummary: () => Promise<void>;
+  createTask: (
     title: string,
     content: string,
     priority: string,
   ) => Promise<unknown>;
-  updateRequest: (
+  updateTask: (
     id: string,
     updates: Partial<
-      Pick<RequestItem, "status" | "title" | "content" | "priority">
+      Pick<TaskGraphItem, "status" | "title" | "content" | "priority">
     >,
   ) => Promise<void>;
-  deleteRequest: (id: string) => Promise<void>;
-  reorderRequest: (id: string, direction: "up" | "down") => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  reorderTask: (id: string, direction: "up" | "down") => Promise<void>;
   stopTask: (id: string) => Promise<void>;
-  patchRequest: (
-    id: string,
-    patch: Partial<Pick<RequestItem, "status" | "priority" | "title" | "phase">>,
-  ) => void;
 }
 
 export const useTasksStore = create<TasksState>()(
   devtools(
     (set, get) => ({
-      groups: [],
-      isTasksLoading: true,
-      tasksError: null,
-
-      requests: [],
-      isRequestsLoading: true,
-      requestsError: null,
-
-      fetchTasks: async () => {
-        try {
-          set({ isTasksLoading: true }, false, "tasks/fetchTasks/start");
-          const tasksRes = await fetch("/api/tasks");
-          if (!tasksRes.ok)
-            throw new Error("데이터를 불러오는데 실패했습니다.");
-          const tasks: TaskFrontmatter[] = await tasksRes.json();
-          set(
-            { groups: buildWaterfallGroups(tasks), tasksError: null },
-            false,
-            "tasks/fetchTasks/done",
-          );
-        } catch (err) {
-          set(
-            {
-              tasksError: getErrorMessage(err, "알 수 없는 오류"),
-            },
-            false,
-            "tasks/fetchTasks/error",
-          );
-        } finally {
-          set({ isTasksLoading: false }, false, "tasks/fetchTasks/finally");
-        }
+      tasksSummary: {
+        items: [],
+        total: 0,
+        page: 1,
+        size: 10,
+        counts: {
+          pending: 0,
+          reviewing: 0,
+          in_progress: 0,
+          failed: 0,
+          rejected: 0,
+          done: 0,
+          stopped: 0,
+          total: 0,
+        },
+        active: [],
+        pending: [],
       },
+      isTasksSummaryLoading: true,
+      tasksSummaryError: null,
 
-      fetchRequests: async () => {
+      fetchTasksSummary: async () => {
         try {
-          set({ isRequestsLoading: true }, false, "tasks/fetchRequests/start");
-          const res = await fetch("/api/requests");
+          set(
+            { isTasksSummaryLoading: true },
+            false,
+            "tasks/fetchTasksSummary/start",
+          );
+          const res = await fetch("/api/tasks?page=1&size=10&summary=1");
           if (!res.ok)
-            throw new Error("요청 데이터를 불러오는데 실패했습니다.");
-          const data: RequestItem[] = await res.json();
+            throw new Error("요약 태스크 데이터를 불러오는데 실패했습니다.");
+          const data: TaskSummaryData = await res.json();
           set(
-            { requests: data, requestsError: null },
+            { tasksSummary: data, tasksSummaryError: null },
             false,
-            "tasks/fetchRequests/done",
+            "tasks/fetchTasksSummary/done",
           );
         } catch (err) {
           set(
             {
-              requestsError: getErrorMessage(err, "오류 발생"),
+              tasksSummaryError: getErrorMessage(err, "오류 발생"),
             },
             false,
-            "tasks/fetchRequests/error",
+            "tasks/fetchTasksSummary/error",
           );
         } finally {
           set(
-            { isRequestsLoading: false },
+            { isTasksSummaryLoading: false },
             false,
-            "tasks/fetchRequests/finally",
+            "tasks/fetchTasksSummary/finally",
           );
         }
       },
 
-      fetchAll: async () => {
-        await Promise.all([get().fetchTasks(), get().fetchRequests()]);
-      },
-
-      createRequest: async (
-        title: string,
-        content: string,
-        priority: string,
-      ) => {
-        const res = await fetch("/api/requests", {
+      createTask: async (title: string, content: string, priority: string) => {
+        const res = await fetch("/api/tasks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title, content, priority }),
         });
-        if (!res.ok) throw new Error("요청 생성에 실패했습니다.");
+        if (!res.ok) throw new Error("태스크 생성에 실패했습니다.");
         const data = await res.json();
-        await get().fetchRequests();
+        await get().fetchTasksSummary();
+        invalidateTaskQueries();
         return data;
       },
 
-      updateRequest: async (id, updates) => {
-        const res = await fetch(`/api/requests/${id}`, {
+      updateTask: async (id, updates) => {
+        const res = await fetch(`/api/tasks/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updates),
         });
-        if (!res.ok) throw new Error("요청 수정에 실패했습니다.");
-        await get().fetchRequests();
+        if (!res.ok) throw new Error("태스크 수정에 실패했습니다.");
+        await get().fetchTasksSummary();
+        invalidateTaskQueries();
       },
 
-      deleteRequest: async (id) => {
-        const res = await fetch(`/api/requests/${id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("요청 삭제에 실패했습니다.");
-        await get().fetchRequests();
+      deleteTask: async (id) => {
+        const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("태스크 삭제에 실패했습니다.");
+        await get().fetchTasksSummary();
+        invalidateTaskQueries();
       },
 
-      reorderRequest: async (id, direction) => {
-        // Optimistic update: swap sort_order values
-        set(
-          (state) => {
-            const target = state.requests.find((r) => r.id === id);
-            if (!target) return state;
-            const siblings = state.requests
-              .filter((r) => r.status === target.status)
-              .sort(
-                (a, b) =>
-                  (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
-                  a.id.localeCompare(b.id),
-              );
-            const sibIdx = siblings.findIndex((r) => r.id === id);
-            const swapSibIdx = direction === "up" ? sibIdx - 1 : sibIdx + 1;
-            if (swapSibIdx < 0 || swapSibIdx >= siblings.length) return state;
-            const other = siblings[swapSibIdx];
-            const tmpOrder = target.sort_order;
-            return {
-              requests: state.requests.map((r) => {
-                if (r.id === target.id)
-                  return { ...r, sort_order: other.sort_order };
-                if (r.id === other.id) return { ...r, sort_order: tmpOrder };
-                return r;
-              }),
-            };
-          },
-          false,
-          "tasks/reorderRequest/optimistic",
-        );
+      reorderTask: async (id, direction) => {
+        const qc = getQueryClient();
+        const key = queryKeys.tasks.graph();
 
-        // Persist to server; rollback on failure
+        qc.setQueryData<TaskGraphItem[]>(key, (old) => {
+          if (!old) return old;
+          const target = old.find((r) => r.id === id);
+          if (!target) return old;
+          const siblings = old
+            .filter((r) => r.status === target.status)
+            .sort(
+              (a, b) =>
+                (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
+                a.id.localeCompare(b.id),
+            );
+          const sibIdx = siblings.findIndex((r) => r.id === id);
+          const swapSibIdx = direction === "up" ? sibIdx - 1 : sibIdx + 1;
+          if (swapSibIdx < 0 || swapSibIdx >= siblings.length) return old;
+          const other = siblings[swapSibIdx];
+          const tmpOrder = target.sort_order;
+          return old.map((r) => {
+            if (r.id === target.id)
+              return { ...r, sort_order: other.sort_order };
+            if (r.id === other.id) return { ...r, sort_order: tmpOrder };
+            return r;
+          });
+        });
+
         try {
-          const res = await fetch(`/api/requests/${id}/reorder`, {
-            method: "PUT",
+          const res = await fetch(`/api/tasks/${id}/reorder`, {
+            method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ direction }),
           });
           if (!res.ok) throw new Error();
         } catch {
-          await get().fetchRequests();
+          invalidateTaskQueries();
+          await get().fetchTasksSummary();
         }
       },
 
@@ -208,24 +199,9 @@ export const useTasksStore = create<TasksState>()(
         } catch {
           // process may not exist
         }
-        await get().updateRequest(id, { status: "stopped" });
-      },
-
-      patchRequest: (id, patch) => {
-        const now = new Date().toISOString().slice(0, 19).replace("T", " ");
-        set(
-          (state) => ({
-            requests: state.requests.map((r) =>
-              r.id === id ? { ...r, ...patch, updated: now } : r,
-            ),
-          }),
-          false,
-          "tasks/patchRequest",
-        );
+        await get().updateTask(id, { status: "stopped" });
       },
     }),
     { name: "TasksStore" },
   ),
 );
-
-// 변경 감지는 Gateway WS 이벤트가 담당 — 중복 폴링 제거됨

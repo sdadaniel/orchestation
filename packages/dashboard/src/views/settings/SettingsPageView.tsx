@@ -349,7 +349,7 @@ export default function SettingsPageView() {
             <FieldRow
               label="Orchestrate log retention (days)"
               htmlFor="orchestrateLogRetentionDays"
-              description="Delete orchestrate log files older than this number of days"
+              description="Delete orchestrate daily logs and dashboard AI JSONL (dashboard-ai-*.jsonl) older than this many days (UTC date in filename)"
             >
               <Input
                 id="orchestrateLogRetentionDays"

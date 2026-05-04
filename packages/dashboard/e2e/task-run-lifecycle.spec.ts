@@ -183,7 +183,7 @@ test.describe("Task Run Lifecycle - 개별 실행 상태 전이", () => {
 
   // ── refetch로 status 변경 반영 ────────────────────────────────────────────
 
-  test("GET /requests 재호출 시 변경된 status 반영", async ({ page }) => {
+  test("GET /tasks/:id 재호출 시 변경된 status 반영", async ({ page }) => {
     let currentTask = makeTask({ status: "pending" });
 
     await setupTaskDetailMocks(page, {
@@ -191,7 +191,7 @@ test.describe("Task Run Lifecycle - 개별 실행 상태 전이", () => {
       task: currentTask,
     });
 
-    await page.route(`**/api/requests/${TASK_ID}`, async (route) => {
+    await page.route(`**/api/tasks/${TASK_ID}`, async (route) => {
       if (route.request().method() === "GET") {
         await route.fulfill({ json: currentTask });
       } else {

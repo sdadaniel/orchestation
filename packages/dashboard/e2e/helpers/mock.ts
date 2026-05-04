@@ -89,83 +89,132 @@ export const CHAIN_REQUESTS = [
 export const MOCK_TASKS = [
   {
     id: "TASK-001",
+    display_id: "TASK-001",
     title: "Alpha Task",
     status: "in_progress",
+    phase: null,
     priority: "high",
     depends_on: [],
     role: "",
     blocks: [],
     parallel_with: [],
-    affected_files: [],
+    scope: [],
+    content: "",
+    created: "2026-03-01T10:00:00",
+    updated: "2026-03-10T10:00:00",
+    sort_order: 1,
+    branch: "",
   },
   {
     id: "TASK-002",
+    display_id: "TASK-002",
     title: "Beta Task",
     status: "pending",
+    phase: null,
     priority: "medium",
     depends_on: [],
     role: "",
     blocks: [],
     parallel_with: [],
-    affected_files: [],
+    scope: [],
+    content: "",
+    created: "2026-03-02T10:00:00",
+    updated: "2026-03-02T10:00:00",
+    sort_order: 2,
+    branch: "",
   },
   {
     id: "TASK-003",
+    display_id: "TASK-003",
     title: "Gamma Task",
     status: "pending",
+    phase: null,
     priority: "high",
     depends_on: [],
     role: "",
     blocks: [],
     parallel_with: [],
-    affected_files: [],
+    scope: [],
+    content: "",
+    created: "2026-03-03T10:00:00",
+    updated: "2026-03-03T10:00:00",
+    sort_order: 3,
+    branch: "",
   },
   {
     id: "TASK-004",
+    display_id: "TASK-004",
     title: "Delta Task",
     status: "done",
+    phase: null,
     priority: "low",
     depends_on: [],
     role: "",
     blocks: [],
     parallel_with: [],
-    affected_files: [],
+    scope: [],
+    content: "",
+    created: "2026-03-04T10:00:00",
+    updated: "2026-03-04T10:00:00",
+    sort_order: 4,
+    branch: "",
   },
   {
     id: "TASK-005",
+    display_id: "TASK-005",
     title: "Epsilon Task",
     status: "reviewing",
+    phase: null,
     priority: "medium",
     depends_on: [],
     role: "",
     blocks: [],
     parallel_with: [],
-    affected_files: [],
+    scope: [],
+    content: "",
+    created: "2026-03-05T10:00:00",
+    updated: "2026-03-05T10:00:00",
+    sort_order: 5,
+    branch: "",
   },
 ];
 
 export const CHAIN_TASKS = [
   {
     id: "TASK-006",
+    display_id: "TASK-006",
     title: "Parent Task",
     status: "pending",
+    phase: null,
     priority: "high",
     depends_on: [],
     role: "",
     blocks: [],
     parallel_with: [],
-    affected_files: [],
+    scope: [],
+    content: "",
+    created: "2026-03-06T10:00:00",
+    updated: "2026-03-06T10:00:00",
+    sort_order: 1,
+    branch: "",
   },
   {
     id: "TASK-007",
+    display_id: "TASK-007",
     title: "Child Task",
     status: "pending",
+    phase: null,
     priority: "medium",
     depends_on: ["TASK-006"],
     role: "",
     blocks: [],
     parallel_with: [],
-    affected_files: [],
+    scope: [],
+    content: "",
+    created: "2026-03-07T10:00:00",
+    updated: "2026-03-07T10:00:00",
+    sort_order: 2,
+    branch: "",
   },
 ];
 
@@ -228,22 +277,112 @@ async function mockAppShellApis(
     });
   });
 
-  // Requests list
-  await page.route("**/api/requests", (route) => {
+  await page.route("**/api/tasks/graph", (route) => {
     if (route.request().method() === "GET") {
-      route.fulfill({ json: requests });
+      route.fulfill({ json: tasks });
     } else {
       route.continue();
     }
   });
 
-  // Tasks list
   await page.route("**/api/tasks", (route) => {
-    if (!route.request().url().includes("/run") && !route.request().url().includes("/logs") && !route.request().url().includes("/result") && !route.request().url().includes("/watch")) {
-      route.fulfill({ json: tasks });
-    } else {
+    const url = route.request().url();
+    if (url.includes("/graph")) {
       route.continue();
+      return;
     }
+    if (
+      url.includes("/run") ||
+      url.includes("/logs") ||
+      url.includes("/result") ||
+      url.includes("/watch") ||
+      url.includes("/analyze") ||
+      url.includes("/suggest") ||
+      url.includes("/reorder")
+    ) {
+      route.continue();
+      return;
+    }
+    if (route.request().method() !== "GET") {
+      route.continue();
+      return;
+    }
+    try {
+      const path = new URL(url).pathname;
+      const segs = path.split("/").filter(Boolean);
+      if (segs.length >= 3 && segs[0] === "api" && segs[1] === "tasks") {
+        route.continue();
+        return;
+      }
+    } catch {
+      route.continue();
+      return;
+    }
+    if (url.includes("summary=1")) {
+      const rows = (requests.length > 0 ? requests : tasks) as {
+        id: string;
+        title: string;
+        status: string;
+        created?: string;
+        updated?: string;
+        display_id?: string;
+      }[];
+      const summarySorted = [...rows].sort((a, b) => {
+        const w = (s: string) => {
+          switch (s) {
+            case "in_progress":
+              return 0;
+            case "reviewing":
+              return 1;
+            case "pending":
+              return 2;
+            case "stopped":
+              return 3;
+            default:
+              return 4;
+          }
+        };
+        const wd = w(a.status) - w(b.status);
+        if (wd !== 0) return wd;
+        return (b.updated || b.created || "").localeCompare(
+          a.updated || a.created || "",
+        );
+      });
+      const total = rows.length;
+      route.fulfill({
+        json: {
+          items: summarySorted.slice(0, 10).map((r) => ({
+            id: r.id,
+            display_id: r.display_id ?? r.id,
+            title: r.title,
+            status: r.status,
+            created: r.created ?? "",
+            updated: r.updated ?? "",
+          })),
+          total,
+          page: 1,
+          size: 10,
+          counts: {
+            pending: rows.filter((r) => r.status === "pending").length,
+            reviewing: rows.filter((r) => r.status === "reviewing").length,
+            in_progress: rows.filter((r) => r.status === "in_progress").length,
+            failed: rows.filter((r) => r.status === "failed").length,
+            rejected: rows.filter((r) => r.status === "rejected").length,
+            done: rows.filter((r) => r.status === "done").length,
+            stopped: rows.filter((r) => r.status === "stopped").length,
+            total,
+          },
+          active: rows.filter((r) => r.status === "in_progress"),
+          pending: rows.filter(
+            (r) => r.status === "pending" || r.status === "reviewing",
+          ),
+        },
+      });
+      return;
+    }
+    route.fulfill({
+      json: { items: [], total: 0, page: 1, size: 20 },
+    });
   });
   // Orchestration status
   await page.route("**/api/orchestrate/status", (route) => {
@@ -370,7 +509,7 @@ export async function setupTaskDetailMocks(
   });
 
   // Task detail endpoint
-  await page.route(`**/api/requests/${taskId}`, async (route) => {
+  await page.route(`**/api/tasks/${taskId}`, async (route) => {
     if (route.request().method() === "GET") {
       await route.fulfill({ json: task });
     } else if (route.request().method() === "PUT") {

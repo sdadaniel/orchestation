@@ -310,7 +310,7 @@ test.describe("Tasks List Page", () => {
 
     await setupTaskListMocks(page);
 
-    await page.route("**/api/requests/*/reorder", (route) => {
+    await page.route("**/api/tasks/*/reorder", (route) => {
       if (route.request().method() === "PUT") {
         reorderCalled = true;
         route.fulfill({ json: { ok: true } });

@@ -9,6 +9,7 @@ import {
   type ClaudeCliUsageSnapshot,
 } from "@/lib/ai/claude-cli-result";
 import { jsonErrorResponse } from "@/lib/errors/error-utils";
+import { appendDashboardAiConversationLog } from "@/service/dashboard-ai-conversation-log";
 import { logDashboardAiUsage } from "@/service/token-logger";
 
 export const dynamic = "force-dynamic";
@@ -52,6 +53,8 @@ export async function POST(request: Request) {
       });
       let controllerClosed = false;
       let stdoutBuf = "";
+      /** stream-json 원문 누적 (jsonl 보관용) */
+      let cliRawStdout = "";
       let lastUsage: ClaudeCliUsageSnapshot | null = null;
 
       function safeEnqueue(data: Uint8Array) {
@@ -76,7 +79,9 @@ export async function POST(request: Request) {
       }
 
       child.stdout.on("data", (chunk: Buffer) => {
-        stdoutBuf += chunk.toString("utf-8");
+        const text = chunk.toString("utf-8");
+        cliRawStdout += text;
+        stdoutBuf += text;
         const lines = stdoutBuf.split("\n");
         stdoutBuf = lines.pop() ?? "";
         for (const line of lines) {
@@ -112,7 +117,6 @@ export async function POST(request: Request) {
 
       child.on("close", (code) => {
         clearTimeout(timeoutTimer);
-        if (timedOut) return; // 타임아웃 핸들러가 이미 처리했음
 
         if (stdoutBuf.trim()) {
           try {
@@ -129,11 +133,34 @@ export async function POST(request: Request) {
           }
         }
 
-        if (
-          !timedOut &&
-          code === 0 &&
+        const usageSnapshot =
           lastUsage !== null
-        ) {
+            ? {
+                costUsd: lastUsage.costUsd,
+                inputTokens: lastUsage.inputTokens,
+                outputTokens: lastUsage.outputTokens,
+                durationMs: Date.now() - startedAt,
+                cacheCreate: lastUsage.cacheCreate,
+                cacheRead: lastUsage.cacheRead,
+                turns: lastUsage.turns,
+              }
+            : undefined;
+
+        appendDashboardAiConversationLog({
+          phase: "chat",
+          model,
+          exitCode: code,
+          durationMs: Date.now() - startedAt,
+          timedOut,
+          prompt,
+          stdout: cliRawStdout,
+          stderr: stderrData,
+          usage: usageSnapshot,
+        });
+
+        if (timedOut) return; // 타임아웃 핸들러가 이미 처리했음
+
+        if (code === 0 && lastUsage !== null) {
           logDashboardAiUsage("chat", model, {
             costUsd: lastUsage.costUsd,
             inputTokens: lastUsage.inputTokens,
@@ -153,6 +180,16 @@ export async function POST(request: Request) {
 
       child.on("error", (err) => {
         clearTimeout(timeoutTimer);
+        appendDashboardAiConversationLog({
+          phase: "chat",
+          model,
+          exitCode: null,
+          durationMs: Date.now() - startedAt,
+          spawnError: err.message,
+          prompt,
+          stdout: cliRawStdout,
+          stderr: stderrData,
+        });
         console.error("Claude CLI spawn error:", err.message);
         safeEnqueue(
           new TextEncoder().encode(

@@ -15,7 +15,7 @@ import {
   FileText,
   FolderOpen,
 } from "lucide-react";
-import { type RequestItem } from "@/hooks/useRequests";
+import type { TaskGraphItem } from "@/types/task-graph";
 import { PRIORITY_COLORS, STATUS_DOT } from "@/app/tasks/constants";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { Input } from "@/components/ui/input";
@@ -32,11 +32,11 @@ export const RequestCard = memo(
     isFirst,
     isLast,
   }: {
-    req: RequestItem;
+    req: TaskGraphItem;
     onUpdate: (
       id: string,
       updates: Partial<
-        Pick<RequestItem, "status" | "title" | "content" | "priority">
+        Pick<TaskGraphItem, "status" | "title" | "content" | "priority">
       >,
     ) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
@@ -240,7 +240,7 @@ export const RequestCard = memo(
                         value={editPriority}
                         onChange={(e) =>
                           setEditPriority(
-                            e.target.value as RequestItem["priority"],
+                            e.target.value as TaskGraphItem["priority"],
                           )
                         }
                       >

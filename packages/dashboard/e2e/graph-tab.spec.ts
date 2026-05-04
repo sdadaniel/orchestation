@@ -47,7 +47,7 @@ const GRAPH_TASKS_WITH_DEP = [
     role: "",
     blocks: [],
     parallel_with: [],
-    affected_files: [],
+    scope: [],
   },
   {
     id: "TASK-B",
@@ -58,7 +58,7 @@ const GRAPH_TASKS_WITH_DEP = [
     role: "",
     blocks: [],
     parallel_with: [],
-    affected_files: [],
+    scope: [],
   },
   {
     id: "TASK-C",
@@ -69,7 +69,7 @@ const GRAPH_TASKS_WITH_DEP = [
     role: "",
     blocks: [],
     parallel_with: [],
-    affected_files: [],
+    scope: [],
   },
 ];
 

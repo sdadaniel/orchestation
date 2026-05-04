@@ -6,41 +6,42 @@ import { buildWaterfallGroups } from "@/lib/waterfall";
 import type { WaterfallGroup } from "@/types/waterfall";
 import { queryKeys } from "@/lib/query/query-keys";
 import { getErrorMessage } from "@/lib/errors/error-utils";
+import { fetchTaskGraphItems } from "@/lib/task-graph-fetch";
+import type { TaskGraphItem } from "@/types/task-graph";
 
-type UseTasksResult = {
+type UseTasksSelected = {
   groups: WaterfallGroup[];
+  tasks: TaskGraphItem[];
+};
+
+export type UseTasksResult = {
+  groups: WaterfallGroup[];
+  tasks: TaskGraphItem[];
   isLoading: boolean;
   error: string | null;
   refetch: () => void;
 };
 
-async function fetchTasks(): Promise<WaterfallGroup[]> {
-  const res = await fetch("/api/tasks");
-  if (!res.ok) {
-    throw new Error("데이터를 불러오는데 실패했습니다.");
-  }
-  const tasks: TaskFrontmatter[] = await res.json();
-  return buildWaterfallGroups(tasks);
-}
-
-export function useTasks(): UseTasksResult {
+export function useTasks(enabled = true): UseTasksResult {
   const queryClient = useQueryClient();
 
-  const {
-    data: groups = [],
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: queryKeys.tasks.list(),
-    queryFn: fetchTasks,
+  const { data, isLoading, error } = useQuery({
+    queryKey: queryKeys.tasks.graph(),
+    queryFn: fetchTaskGraphItems,
     staleTime: 5_000,
+    enabled,
+    select: (items): UseTasksSelected => ({
+      groups: buildWaterfallGroups(items as TaskFrontmatter[]),
+      tasks: items,
+    }),
   });
 
   const refetch = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
 
   return {
-    groups,
+    groups: data?.groups ?? [],
+    tasks: data?.tasks ?? [],
     isLoading,
     error: error ? getErrorMessage(error) : null,
     refetch,

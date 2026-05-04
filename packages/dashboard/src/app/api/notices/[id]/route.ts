@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import { findNoticeFile, parseNoticeFile } from "@/parser/notice-parser";
+import {
+  deleteNotice,
+  getNotice,
+  getNoticeLookupKeys,
+  updateNotice,
+} from "@/service/notice-store";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +15,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const dbNotice = getNotice(id);
+  if (dbNotice) return NextResponse.json(dbNotice);
   const filePath = findNoticeFile(id);
   if (!filePath) {
     return NextResponse.json({ error: "Notice not found" }, { status: 404 });
@@ -30,12 +38,32 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const body = await req.json();
+  const updatedDb = updateNotice(id, body);
+  if (updatedDb) {
+    const filePath = getNoticeLookupKeys(updatedDb)
+      .map((key) => findNoticeFile(key))
+      .find((value): value is string => Boolean(value));
+    if (filePath) {
+      const raw = fs.readFileSync(filePath, "utf-8");
+      let updated = raw
+        .replace(/^read:\s*.+$/m, `read: ${updatedDb.read}`)
+        .replace(/^title:\s*.+$/m, `title: ${updatedDb.title}`)
+        .replace(/^type:\s*.+$/m, `type: ${updatedDb.type}`)
+        .replace(/^updated:\s*.+$/m, `updated: ${updatedDb.updated}`);
+      updated = updated.replace(
+        /(^---\n[\s\S]*?\n---\n?)[\s\S]*/,
+        `$1${updatedDb.content}\n`,
+      );
+      fs.writeFileSync(filePath, updated, "utf-8");
+    }
+    return NextResponse.json(updatedDb);
+  }
   const filePath = findNoticeFile(id);
   if (!filePath) {
     return NextResponse.json({ error: "Notice not found" }, { status: 404 });
   }
 
-  const body = await req.json();
   const raw = fs.readFileSync(filePath, "utf-8");
 
   let updated = raw;
@@ -71,6 +99,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  if (deleteNotice(id)) {
+    for (const key of getNoticeLookupKeys(id)) {
+      const filePath = findNoticeFile(key);
+      if (!filePath) continue;
+      try {
+        fs.unlinkSync(filePath);
+      } catch {
+        /* ignore */
+      }
+    }
+    return NextResponse.json({ ok: true });
+  }
   const filePath = findNoticeFile(id);
   if (!filePath) {
     return NextResponse.json({ error: "Notice not found" }, { status: 404 });

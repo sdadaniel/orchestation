@@ -119,6 +119,7 @@ export default function NoticesPageView() {
           const cfg = TYPE_CONFIG[notice.type] || TYPE_CONFIG.info;
           const Icon = cfg.icon;
           const isExpanded = expandedId === notice.id;
+          const displayId = notice.display_id ?? notice.id;
 
           return (
             <div
@@ -149,7 +150,7 @@ export default function NoticesPageView() {
                   )}
                 />
                 <span className="font-mono text-[11px] text-muted-foreground shrink-0">
-                  {notice.id}
+                  {displayId}
                 </span>
                 <span
                   className={cn(
@@ -194,9 +195,9 @@ export default function NoticesPageView() {
                       </button>
                     )}
                     <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm(`${notice.id} 삭제?`))
+                        type="button"
+                        onClick={() => {
+                        if (confirm(`${displayId} 삭제?`))
                           deleteNotice(notice.id);
                       }}
                       className="filter-pill text-xs flex items-center gap-1 hover:text-red-400"

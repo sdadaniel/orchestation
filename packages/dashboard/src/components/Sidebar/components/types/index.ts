@@ -1,7 +1,7 @@
 import type { DocNode } from "@/hooks/useDocTree";
-import type { NoticeItem } from "@/hooks/useNotices";
+import type { NoticeSummaryData } from "@/hooks/useNoticeSummary";
 import type { DocActions } from "@/components/Sidebar/types";
-import type { RequestItem } from "@/store/tasksStore";
+import type { TaskSummaryItem } from "@/store/tasksStore";
 
 export interface InlineRenameProps {
   initialValue: string;
@@ -20,7 +20,8 @@ export interface SidebarFooterProps {
 }
 
 export interface TaskListSectionProps {
-  requestItems: RequestItem[];
+  summaryItems: TaskSummaryItem[];
+  totalCount: number;
   currentPath: string;
   onStopTask?: (id: string) => Promise<void>;
 }
@@ -53,6 +54,6 @@ export interface DocsSectionProps {
 }
 
 export interface NoticesSectionProps {
-  noticeItems: NoticeItem[];
+  noticeSummary: NoticeSummaryData;
   currentPath: string;
 }

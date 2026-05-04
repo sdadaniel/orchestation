@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import type { RunHistoryEntry } from "@/hooks/useRunHistory";
-import type { CostEntry, TaskCostSummary } from "@/parser/cost-parser";
+import type { CostEntry } from "@/parser/cost-parser";
 import type { SortDirection } from "../useSortableTable";
 
 export interface SortIconProps {
@@ -9,18 +10,22 @@ export interface SortIconProps {
 
 export interface SummaryCardsProps {
   entries: CostEntry[];
-  summaryByTask: TaskCostSummary[];
 }
 
-export interface CumulativeCostChartProps {
+export interface DailyCostChartProps {
   entries: CostEntry[];
+  /** 기간 pill 왼쪽에 붙는 컨트롤 (예: phase 필터) */
+  toolbarStart?: ReactNode;
 }
+
+export type CostChartRange = "1D" | "1W" | "1M" | "ALL";
 
 export interface ChartDataPoint {
-  timestamp: string;
+  /** 정렬·툴팁용 전체 키 (날짜 또는 `YYYY-MM-DD HH`) */
+  bucketKey: string;
+  /** X축 짧은 라벨 */
   label: string;
-  cost: number;
-  cumulative: number;
+  costUsd: number;
 }
 
 export interface CostTableProps {

@@ -26,7 +26,7 @@ test.describe("Task Detail Page", () => {
     await setupTaskDetailMocks(page, { taskId: TASK_ID, task: currentTask });
 
     // Override: PUT updates, then re-GET returns updated task
-    await page.route(`**/api/requests/${TASK_ID}`, async (route) => {
+    await page.route(`**/api/tasks/${TASK_ID}`, async (route) => {
       if (route.request().method() === "PUT") {
         const body = JSON.parse(route.request().postData() ?? "{}");
         currentTask = { ...currentTask, ...body };

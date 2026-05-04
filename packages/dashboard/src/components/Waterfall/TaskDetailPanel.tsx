@@ -113,10 +113,10 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                 <TaskIdList ids={task.parallel_with} />
               </DetailSection>
 
-              <DetailSection label="Affected Files">
-                {task.affected_files.length > 0 ? (
+              <DetailSection label="Scope">
+                {task.scope.length > 0 ? (
                   <ul className="flex flex-col gap-1">
-                    {task.affected_files.map((file) => (
+                    {task.scope.map((file) => (
                       <li
                         key={file}
                         className="truncate rounded-md bg-muted px-2 py-1 font-mono text-xs"

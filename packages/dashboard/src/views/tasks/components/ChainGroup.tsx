@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import { ChevronDown, ChevronRight, ChevronUp, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { RequestItem } from "@/store/tasksStore";
 import { PRIORITY_COLORS, STATUS_DOT } from "@/app/tasks/constants";
 import { RequestCard } from "./RequestCard";
 import type { ChainGroupProps } from "./types";

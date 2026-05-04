@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useTasksStore } from "@/store/tasksStore";
 import { useDocTree } from "@/hooks/useDocTree";
-import { useNotices } from "@/hooks/useNotices";
+import { useNoticeSummary } from "@/hooks/useNoticeSummary";
 import {
   DocsSection,
   NoticesSection,
@@ -14,8 +14,9 @@ import {
 import useDocActions from "./hooks/useDocActions";
 
 const Sidebar = () => {
-  const requestItems = useTasksStore((s) => s.requests);
-  const handleStopTask = useTasksStore((s) => s.stopTask);
+  const tasksSummary = useTasksStore((s) => s.tasksSummary);
+  const stopTask = useTasksStore((s) => s.stopTask);
+  const fetchTasksSummary = useTasksStore((s) => s.fetchTasksSummary);
   const { tree: docTree, createDoc, updateDoc, deleteDoc, reorderDoc, fetchTree } =
     useDocTree();
   const docActions = useDocActions({
@@ -25,9 +26,8 @@ const Sidebar = () => {
     reorderDoc,
     fetchTree,
   });
-  const { notices: storeNotices } = useNotices();
+  const { summary: noticeSummary } = useNoticeSummary();
   const pathname = usePathname();
-  const noticeItems = storeNotices ?? [];
   const currentPath = pathname ?? "/";
 
   return (
@@ -51,12 +51,16 @@ const Sidebar = () => {
         />
 
         <TaskListSection
-          requestItems={requestItems}
+          summaryItems={tasksSummary.items}
+          totalCount={tasksSummary.total}
           currentPath={currentPath}
-          onStopTask={handleStopTask}
+          onStopTask={async (id) => {
+            await stopTask(id);
+            await fetchTasksSummary();
+          }}
         />
 
-        <NoticesSection noticeItems={noticeItems} currentPath={currentPath} />
+        <NoticesSection noticeSummary={noticeSummary} currentPath={currentPath} />
       </div>
       <SidebarFooter currentPath={currentPath} />
     </div>

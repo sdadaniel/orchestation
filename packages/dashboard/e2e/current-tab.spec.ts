@@ -54,7 +54,7 @@ const GRAPH_TASKS_WITH_DEP = [
     role: "",
     blocks: [],
     parallel_with: [],
-    affected_files: [],
+    scope: [],
   },
   {
     id: "TASK-B",
@@ -65,7 +65,7 @@ const GRAPH_TASKS_WITH_DEP = [
     role: "",
     blocks: [],
     parallel_with: [],
-    affected_files: [],
+    scope: [],
   },
   {
     id: "TASK-C",
@@ -76,7 +76,7 @@ const GRAPH_TASKS_WITH_DEP = [
     role: "",
     blocks: [],
     parallel_with: [],
-    affected_files: [],
+    scope: [],
   },
 ];
 
@@ -253,7 +253,7 @@ test.describe("Current Tab (DAG Graph View)", () => {
     });
 
     // Mock task detail route
-    await page.route("**/api/requests/TASK-A", (route) => {
+    await page.route("**/api/tasks/TASK-A", (route) => {
       route.fulfill({
         json: {
           id: "TASK-A",

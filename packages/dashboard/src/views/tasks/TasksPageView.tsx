@@ -2,7 +2,9 @@
 
 import { useState, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTasksStore, type RequestItem } from "@/store/tasksStore";
+import { useTasks } from "@/hooks/useTasks";
+import { useTasksStore } from "@/store/tasksStore";
+import type { TaskGraphItem } from "@/types/task-graph";
 import { cn } from "@/lib/utils";
 import {
   Plus,
@@ -32,13 +34,10 @@ import type { SortKey } from "./types";
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
 function TasksPageInner() {
-  const requests = useTasksStore((s) => s.requests);
-  const isLoading = useTasksStore((s) => s.isRequestsLoading);
-  const error = useTasksStore((s) => s.requestsError);
-  const updateRequest = useTasksStore((s) => s.updateRequest);
-  const deleteRequest = useTasksStore((s) => s.deleteRequest);
-  const reorderRequest = useTasksStore((s) => s.reorderRequest);
-  const groups = useTasksStore((s) => s.groups);
+  const { tasks, groups, isLoading, error } = useTasks(true);
+  const updateTask = useTasksStore((s) => s.updateTask);
+  const deleteTask = useTasksStore((s) => s.deleteTask);
+  const reorderTask = useTasksStore((s) => s.reorderTask);
   const allWaterfallTasks = groups.flatMap((g) => g.tasks);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -50,6 +49,7 @@ function TasksPageInner() {
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(20);
+
   const setActiveTab = (tab: string) => {
     router.push(`/tasks?tab=${tab}`, { scroll: false });
     setPage(1);
@@ -59,7 +59,7 @@ function TasksPageInner() {
   const resetPage = () => setPage(1);
 
   const filtered = useMemo(() => {
-    let result = requests;
+    let result = tasks;
     // Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -84,12 +84,12 @@ function TasksPageInner() {
       result = result.filter((r) => (r.updated || r.created) <= toEnd);
     }
     return result;
-  }, [requests, searchQuery, priorityFilter, activeTab, dateFrom, dateTo]);
+  }, [tasks, searchQuery, priorityFilter, activeTab, dateFrom, dateTo]);
 
   const sorted = useMemo(() => {
     const items = [...filtered];
     // sort_order as tiebreaker (ascending) so reorder is reflected immediately
-    const byOrder = (a: RequestItem, b: RequestItem) =>
+    const byOrder = (a: TaskGraphItem, b: TaskGraphItem) =>
       (a.sort_order ?? 0) - (b.sort_order ?? 0);
     switch (sortKey) {
       case "newest":
@@ -129,7 +129,7 @@ function TasksPageInner() {
       failed: byStatus("failed"),
       rejected: byStatus("rejected"),
       done: byStatus("done"),
-    } as Record<string, RequestItem[]>;
+    } as Record<string, TaskGraphItem[]>;
   }, [sorted]);
 
   // Flat list for pagination (non-ALL tabs)
@@ -176,7 +176,7 @@ function TasksPageInner() {
     }
 
     // 그룹별로 모으기 (원래 순서 유지)
-    const groups: { items: RequestItem[]; isChain: boolean }[] = [];
+    const groups: { items: TaskGraphItem[]; isChain: boolean }[] = [];
     const seen = new Set<string>();
     for (const item of paginatedItems) {
       const root = find(item.id);
@@ -185,7 +185,7 @@ function TasksPageInner() {
       const members = paginatedItems.filter((r) => find(r.id) === root);
       // 체인 내 토폴로지 정렬 (의존 대상이 먼저)
       if (members.length > 1) {
-        const sorted: RequestItem[] = [];
+        const sorted: TaskGraphItem[] = [];
         const memberIds = new Set(members.map((m) => m.id));
         const visited = new Set<string>();
         const visit = (id: string) => {
@@ -232,7 +232,7 @@ function TasksPageInner() {
         {TABS.map((tab) => {
           const count =
             tab === TAB_STACK
-              ? requests.length
+              ? tasks.length
               : tab === TAB_ALL
                 ? filtered.length
                 : (grouped[tab]?.length ?? 0);
@@ -396,7 +396,7 @@ function TasksPageInner() {
         <div className="flex items-center justify-between">
           <span className="text-[11px] text-muted-foreground">
             {totalItems}개 결과
-            {hasActiveFilters && ` (전체 ${requests.length}개 중)`}
+            {hasActiveFilters && ` (전체 ${tasks.length}개 중)`}
           </span>
         </div>
       )}
@@ -404,7 +404,7 @@ function TasksPageInner() {
       {/* Views */}
       {activeTab === TAB_STACK &&
         (() => {
-          const inProgressTasks = requests.filter(
+          const inProgressTasks = tasks.filter(
             (r) => r.status === "in_progress",
           );
           // scope를 태스크별로 그룹핑
@@ -464,7 +464,7 @@ function TasksPageInner() {
                 </div>
               )}
               <DAGCanvas
-                requests={filtered}
+                listTasks={filtered}
                 tasks={allWaterfallTasks}
                 onClickItem={(req) => router.push(`/tasks/${req.id}`)}
               />
@@ -480,11 +480,11 @@ function TasksPageInner() {
               <ChainGroup
                 key={group.items[0].id}
                 items={group.items}
-                onUpdate={updateRequest}
-                onDelete={deleteRequest}
+                onUpdate={updateTask}
+                onDelete={deleteTask}
                 onReorder={
                   group.items[0].status === "pending"
-                    ? reorderRequest
+                    ? reorderTask
                     : undefined
                 }
                 isFirst={gi === 0}
@@ -495,10 +495,10 @@ function TasksPageInner() {
                 <RequestCard
                   key={req.id}
                   req={req}
-                  onUpdate={updateRequest}
-                  onDelete={deleteRequest}
+                  onUpdate={updateTask}
+                  onDelete={deleteTask}
                   onReorder={
-                    req.status === "pending" ? reorderRequest : undefined
+                    req.status === "pending" ? reorderTask : undefined
                   }
                   isFirst={gi === 0 && i === 0}
                   isLast={
@@ -515,7 +515,7 @@ function TasksPageInner() {
       {activeTab !== TAB_STACK && totalItems === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <p className="text-sm">
-            {requests.length === 0
+            {tasks.length === 0
               ? "No tasks yet."
               : "해당 조건의 태스크가 없습니다."}
           </p>

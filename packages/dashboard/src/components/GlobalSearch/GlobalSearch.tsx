@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { SearchIcon, FileTextIcon, ListTodoIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDocTree } from "@/hooks/useDocTree";
-import { useTasksStore } from "@/store/tasksStore";
+import { useTasks } from "@/hooks/useTasks";
 import type { SearchResultItem } from "./types";
 
 /* ── Helpers ── */
@@ -34,7 +34,7 @@ function padId(num: string): string {
 
 const GlobalSearch = () => {
   const router = useRouter();
-  const requestItems = useTasksStore((s) => s.requests);
+  const { tasks: taskGraphItems } = useTasks(true);
   const { tree: docTree } = useDocTree();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -61,7 +61,7 @@ const GlobalSearch = () => {
 
   // Build searchable items
   const allItems = useMemo<SearchResultItem[]>(() => {
-    const tasks: SearchResultItem[] = requestItems.map((r) => ({
+    const tasks: SearchResultItem[] = taskGraphItems.map((r) => ({
       type: "task",
       id: r.id,
       displayId: r.display_id ?? r.id,
@@ -79,7 +79,7 @@ const GlobalSearch = () => {
     }));
 
     return [...tasks, ...docs];
-  }, [requestItems, docTree]);
+  }, [taskGraphItems, docTree]);
 
   // Filter results based on query
   const results = useMemo<SearchResultItem[]>(() => {
@@ -189,11 +189,13 @@ const GlobalSearch = () => {
           type="text"
           placeholder="검색 — task:001, doc:제목 (⌘K)"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setIsOpen(true);
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setIsOpen(true);
+            }}
+          onFocus={() => {
+            if (query.trim()) setIsOpen(true);
           }}
-          onFocus={() => query.trim() && setIsOpen(true)}
           onKeyDown={handleKeyDown}
         />
         {query && (

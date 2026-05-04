@@ -24,7 +24,7 @@ export default function PlanPageView() {
       depends_on: task.depends_on,
       blocks: task.blocks,
       parallel_with: task.parallel_with,
-      affected_files: task.affected_files,
+      scope: task.scope,
     };
   }, [selectedTaskId, allTasks]);
 

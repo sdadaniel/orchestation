@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { OUTPUT_DIR } from "@/lib/config/paths";
-import { resolveTaskRef } from "@/service/task-store";
+import { getTaskLookupKeys, resolveTaskRef } from "@/service/task-store";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +11,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const taskId = resolveTaskRef(id)?.task.id ?? id;
+  const task = resolveTaskRef(id)?.task;
+  const taskKeys = getTaskLookupKeys(task ?? id);
 
   // task 결과만 읽기 (review 결과는 사용하지 않음)
-  const taskPath = path.join(OUTPUT_DIR, `${taskId}-task.json`);
+  const taskPath = taskKeys
+    .map((taskKey) => path.join(OUTPUT_DIR, `${taskKey}-task.json`))
+    .find((filePath) => fs.existsSync(filePath));
 
-  if (!fs.existsSync(taskPath)) {
+  if (!taskPath) {
     return NextResponse.json({ status: null, result: null });
   }
 
@@ -35,18 +38,19 @@ export async function GET(
     }
 
     // rejection reason 파일이 있으면 rejected
-    const rejectionPath = path.join(
-      OUTPUT_DIR,
-      `${taskId}-rejection-reason.txt`,
-    );
-    if (fs.existsSync(rejectionPath)) {
+    const rejectionPath = taskKeys
+      .map((taskKey) => path.join(OUTPUT_DIR, `${taskKey}-rejection-reason.txt`))
+      .find((filePath) => fs.existsSync(filePath));
+    if (rejectionPath) {
       status = "rejected";
     }
 
     // review 피드백 (실패 시 사유 표시용)
     let reviewFeedback: string | null = null;
-    const feedbackPath = path.join(OUTPUT_DIR, `${taskId}-review-feedback.txt`);
-    if (fs.existsSync(feedbackPath)) {
+    const feedbackPath = taskKeys
+      .map((taskKey) => path.join(OUTPUT_DIR, `${taskKey}-review-feedback.txt`))
+      .find((filePath) => fs.existsSync(filePath));
+    if (feedbackPath) {
       try {
         reviewFeedback = fs.readFileSync(feedbackPath, "utf-8").trim();
       } catch {

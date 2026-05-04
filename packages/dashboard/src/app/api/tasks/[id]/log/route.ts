@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { PROJECT_ROOT } from "@/lib/config/paths";
-import { resolveTaskRef } from "@/service/task-store";
+import { getTaskLookupKeys, resolveTaskRef } from "@/service/task-store";
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +11,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const taskId = resolveTaskRef(id)?.task.id ?? id;
+  const taskKeys = getTaskLookupKeys(resolveTaskRef(id)?.task ?? id);
 
-  const logPath = path.join(PROJECT_ROOT, "output", "logs", `${taskId}.log`);
+  const logPath = taskKeys
+    .map((taskKey) => path.join(PROJECT_ROOT, "output", "logs", `${taskKey}.log`))
+    .find((filePath) => fs.existsSync(filePath));
 
-  if (!fs.existsSync(logPath)) {
+  if (!logPath) {
     return new NextResponse("", {
       status: 200,
       headers: { "Content-Type": "text/plain" },

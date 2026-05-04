@@ -1,50 +1,53 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import { parseAllNotices, getNoticesDir } from "@/parser/notice-parser";
-import type { NoticeData, NoticeType } from "@/parser/notice-parser";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 import { generateSlug } from "@/lib/strings/slug-utils";
-import { getDb, isDbAvailable } from "@/service/db";
+import { isDbAvailable } from "@/service/db";
+import {
+  createNotice,
+  getAllNotices,
+  getNextNoticeDisplayId,
+} from "@/service/notice-store";
 
 export const dynamic = "force-dynamic";
 
-interface NoticeRow {
-  notice_id: string | null;
-  title: string | null;
-  content: string | null;
-  type: string | null;
-  created: string | null;
-}
-
 const VALID_NOTICE_TYPES = ["info", "warning", "error", "request"] as const;
 
-function toNoticeType(value: string | null): NoticeType {
-  if (value && (VALID_NOTICE_TYPES as readonly string[]).includes(value)) {
-    return value as NoticeType;
-  }
-  return "info";
+function parsePositiveInt(value: string | null, fallback: number): number {
+  const parsed = Number.parseInt(value ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const page = parsePositiveInt(searchParams.get("page"), 1);
+  const size = parsePositiveInt(searchParams.get("size"), 20);
+  const summary = searchParams.get("summary") === "1";
+  const unreadOnly = searchParams.get("filter") === "unread";
+
   if (isDbAvailable()) {
-    const db = getDb()!;
     try {
-      const rows = db
-        .prepare(
-          "SELECT notice_id, title, content, type, created FROM notices ORDER BY notice_id DESC",
-        )
-        .all() as NoticeRow[];
-
-      const notices: NoticeData[] = rows.map((row) => ({
-        id: row.notice_id ?? "",
-        title: row.title ?? "",
-        type: toNoticeType(row.type),
-        read: false,
-        created: row.created ?? "",
-        updated: row.created ?? "",
-        content: row.content ?? "",
-      }));
-
+      const notices = getAllNotices();
+      if (summary) {
+        const filtered = unreadOnly ? notices.filter((notice) => !notice.read) : notices;
+        const start = (page - 1) * size;
+        const items = filtered.slice(start, start + size).map((notice) => ({
+          id: notice.id,
+          display_id: notice.display_id,
+          title: notice.title,
+          type: notice.type,
+          created: notice.created,
+          updated: notice.updated,
+        }));
+        return NextResponse.json({
+          items,
+          total: filtered.length,
+          unreadCount: notices.filter((notice) => !notice.read).length,
+          page,
+          size,
+        });
+      }
       return NextResponse.json(notices);
     } catch {
       // Fall through to file-based
@@ -52,6 +55,25 @@ export async function GET() {
   }
 
   const notices = parseAllNotices();
+  if (summary) {
+    const filtered = unreadOnly ? notices.filter((notice) => !notice.read) : notices;
+    const start = (page - 1) * size;
+    const items = filtered.slice(start, start + size).map((notice) => ({
+      id: notice.id,
+      display_id: notice.display_id,
+      title: notice.title,
+      type: notice.type,
+      created: notice.created,
+      updated: notice.updated,
+    }));
+    return NextResponse.json({
+      items,
+      total: filtered.length,
+      unreadCount: notices.filter((notice) => !notice.read).length,
+      page,
+      size,
+    });
+  }
   return NextResponse.json(notices);
 }
 
@@ -73,21 +95,7 @@ export async function POST(request: Request) {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    const existingFiles = fs
-      .readdirSync(dir)
-      .filter((f) => f.startsWith("NOTICE-") && f.endsWith(".md"));
-
-    let maxNum = 0;
-    for (const f of existingFiles) {
-      const m = f.match(/NOTICE-(\d+)/);
-      if (m) {
-        const num = parseInt(m[1]!, 10);
-        if (num > maxNum) maxNum = num;
-      }
-    }
-
-    const nextNum = maxNum + 1;
-    const noticeId = `NOTICE-${String(nextNum).padStart(3, "0")}`;
+    const noticeId = getNextNoticeDisplayId();
     const sanitizedTitle = title.trim();
     const bodyContent =
       content && typeof content === "string" ? content.trim() : "";
@@ -109,18 +117,16 @@ ${bodyContent}
     const filePath = `${dir}/${noticeId}-${slug}.md`;
     fs.writeFileSync(filePath, fileContent, "utf-8");
 
-    return NextResponse.json(
-      {
-        id: noticeId,
-        title: sanitizedTitle,
-        type: noticeType,
-        read: false,
-        created: today,
-        updated: today,
-        content: bodyContent,
-      },
-      { status: 201 },
-    );
+    const created = createNotice({
+      title: sanitizedTitle,
+      content: bodyContent,
+      type: noticeType,
+      display_id: noticeId,
+      legacy_notice_key: noticeId,
+      read: false,
+    });
+
+    return NextResponse.json(created, { status: 201 });
   } catch (err) {
     return NextResponse.json(
       { error: getErrorMessage(err, "Failed to create notice") },

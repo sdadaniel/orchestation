@@ -23,7 +23,7 @@ type UsePlanTreeResult = {
 async function fetchPlanTree(): Promise<PlanTreeResult> {
   const [plansRes, tasksRes] = await Promise.all([
     fetch("/api/plans"),
-    fetch("/api/tasks"),
+    fetch("/api/tasks/graph"),
   ]);
 
   if (!plansRes.ok || !tasksRes.ok) {

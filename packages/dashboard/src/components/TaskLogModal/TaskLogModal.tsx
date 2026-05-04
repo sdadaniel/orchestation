@@ -187,13 +187,13 @@ export function TaskLogModal({ task, onClose }: TaskLogModalProps) {
               {task.blocks.length > 0 && (
                 <InfoRow label="블로킹" value={task.blocks.join(", ")} />
               )}
-              {task.affected_files.length > 0 && (
+              {task.scope.length > 0 && (
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">
                     영향 파일
                   </div>
                   <div className="space-y-0.5">
-                    {task.affected_files.map((f) => (
+                    {task.scope.map((f) => (
                       <div
                         key={f}
                         className="text-xs font-mono text-foreground bg-muted/50 px-2 py-0.5 rounded"

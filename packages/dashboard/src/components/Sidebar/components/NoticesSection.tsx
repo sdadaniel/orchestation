@@ -5,13 +5,10 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { NoticesSectionProps } from "./types";
 
-const NoticesSection = ({ noticeItems, currentPath }: NoticesSectionProps) => {
+const NoticesSection = ({ noticeSummary, currentPath }: NoticesSectionProps) => {
   const [noticesExpanded, setNoticesExpanded] = useState(true);
 
-  const unreadNotices = useMemo(
-    () => noticeItems.filter((notice) => !notice.read),
-    [noticeItems],
-  );
+  const unreadNotices = useMemo(() => noticeSummary.items, [noticeSummary.items]);
 
   return (
     <div className="mb-2">
@@ -43,10 +40,10 @@ const NoticesSection = ({ noticeItems, currentPath }: NoticesSectionProps) => {
         </button>
         {unreadNotices.length > 0 ? (
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold leading-tight">
-            {unreadNotices.length}
+            {noticeSummary.unreadCount}
           </span>
         ) : (
-          <span className="text-[10px] text-muted-foreground">{noticeItems.length}</span>
+          <span className="text-[10px] text-muted-foreground">{noticeSummary.total}</span>
         )}
       </div>
 
@@ -57,20 +54,21 @@ const NoticesSection = ({ noticeItems, currentPath }: NoticesSectionProps) => {
         )}
       >
         <div className="sidebar-collapsible-inner">
-          {unreadNotices.slice(0, 5).map((notice) => (
+          {unreadNotices.map((notice) => (
             <Link
               key={notice.id}
               href="/notices"
               className="tree-item w-full text-left no-underline text-sidebar-foreground"
+              title={notice.display_id ?? notice.id}
             >
               <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
               <span className="truncate flex-1 text-xs font-medium">{notice.title}</span>
             </Link>
           ))}
-          {unreadNotices.length === 0 && noticeItems.length > 0 && (
+          {noticeSummary.unreadCount === 0 && noticeSummary.total > 0 && (
             <div className="px-2 py-1 text-[11px] text-muted-foreground">All read</div>
           )}
-          {noticeItems.length === 0 && (
+          {noticeSummary.total === 0 && (
             <div className="px-2 py-1 text-[11px] text-muted-foreground">No notices</div>
           )}
         </div>

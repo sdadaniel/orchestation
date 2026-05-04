@@ -1,11 +1,11 @@
-import type { RequestItem } from "@/store/tasksStore";
+import type { TaskGraphItem } from "@/types/task-graph";
 
 export interface ChainGroupProps {
-  items: RequestItem[];
+  items: TaskGraphItem[];
   onUpdate: (
     id: string,
     updates: Partial<
-      Pick<RequestItem, "status" | "title" | "content" | "priority">
+      Pick<TaskGraphItem, "status" | "title" | "content" | "priority">
     >,
   ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -20,7 +20,7 @@ export type NodeLayout = {
   id: string;
   x: number;
   y: number;
-  req: RequestItem;
+  req: TaskGraphItem;
   isNextUp: boolean;
 };
 

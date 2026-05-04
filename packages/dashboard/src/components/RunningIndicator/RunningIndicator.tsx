@@ -2,8 +2,8 @@
 
 import type { RunningIndicatorProps } from "./types";
 
-export function RunningIndicator({ requestItems }: RunningIndicatorProps) {
-  const runningTasks = requestItems.filter((t) => t.status === "in_progress");
+export function RunningIndicator({ taskItems }: RunningIndicatorProps) {
+  const runningTasks = taskItems.filter((t) => t.status === "in_progress");
   const count = runningTasks.length;
 
   if (count === 0) return null;

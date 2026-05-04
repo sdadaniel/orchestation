@@ -6,6 +6,7 @@ import { getErrorMessage } from "@/lib/errors/error-utils";
 
 export interface NoticeItem {
   id: string;
+  display_id?: string;
   title: string;
   type: "info" | "warning" | "error" | "request";
   read: boolean;

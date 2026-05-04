@@ -1,6 +1,6 @@
 import type { UseFunnelReturn } from "@/hooks/useFunnel";
 import type { AnalyzedTask } from "@/app/tasks/new/types";
-import type { Suggestion } from "@/store/suggestStore";
+import type { Suggestion } from "@/store/newTaskPageDraftStore";
 import type { TaskOption } from "../components/types";
 import type { NewTaskIntakeTab, Phase } from "../types";
 
@@ -40,6 +40,9 @@ export type NewTaskPageGetValue = {
   suggestError: string | null;
   selectedSuggestions: Set<number>;
   canConfirm: boolean;
+  /** 리뷰 단계: 추가 자연어 요청으로 AI 재생성 */
+  revisionNotes: string;
+  revising: boolean;
   creationRecovery: NewTaskCreationRecoveryGet;
 };
 
@@ -57,6 +60,11 @@ export type NewTaskPageSetValue = {
   deselectAll: () => void;
   createFromSuggestions: () => Promise<void>;
   handleAnalyze: () => Promise<void>;
+  /** 현재 미리보기 tasks + revisionNotes로 analyze API refine 분기 호출 */
+  handleRefineTasks: () => Promise<void>;
+  /** 진행 중인 AI 태스크 수정 요청 중단 (fetch abort + 서버 프로세스 종료) */
+  cancelRefineTasks: () => void;
+  setRevisionNotes: (v: string) => void;
   handleConfirm: () => Promise<void>;
   updateTask: (idx: number, updates: Partial<AnalyzedTask>) => void;
   removeTask: (idx: number) => void;

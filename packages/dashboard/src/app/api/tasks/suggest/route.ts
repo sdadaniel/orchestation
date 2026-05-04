@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { spawnClaude, ClaudeChildProcess } from "@/lib/ai/claude-cli";
 import { parseClaudePrintJsonEnvelope } from "@/lib/ai/claude-cli-result";
 import { readTemplate } from "@/lib/template";
+import { appendDashboardAiConversationLog } from "@/service/dashboard-ai-conversation-log";
 import { logDashboardAiUsage } from "@/service/token-logger";
 
 export const dynamic = "force-dynamic";
@@ -100,6 +101,39 @@ export async function POST() {
 
     child.on("close", (code) => {
       clearTimeout(timeoutTimer);
+
+      let printEnvelope: ReturnType<typeof parseClaudePrintJsonEnvelope> | null =
+        null;
+      try {
+        printEnvelope = parseClaudePrintJsonEnvelope(stdout);
+      } catch {
+        /* envelope 파싱 실패 시에도 stdout 원문은 jsonl에 남김 */
+      }
+
+      const usageFromEnvelope = printEnvelope
+        ? {
+            costUsd: printEnvelope.usage.costUsd,
+            inputTokens: printEnvelope.usage.inputTokens,
+            outputTokens: printEnvelope.usage.outputTokens,
+            durationMs: Date.now() - startedAt,
+            cacheCreate: printEnvelope.usage.cacheCreate,
+            cacheRead: printEnvelope.usage.cacheRead,
+            turns: printEnvelope.usage.turns,
+          }
+        : undefined;
+
+      appendDashboardAiConversationLog({
+        phase: "suggest",
+        model: SUGGEST_MODEL,
+        exitCode: code,
+        durationMs: Date.now() - startedAt,
+        timedOut,
+        prompt,
+        stdout,
+        stderr,
+        usage: usageFromEnvelope,
+      });
+
       if (timedOut) return;
 
       if (code !== 0) {
@@ -115,10 +149,7 @@ export async function POST() {
         return;
       }
 
-      let printEnvelope: ReturnType<typeof parseClaudePrintJsonEnvelope> | null =
-        null;
-      try {
-        printEnvelope = parseClaudePrintJsonEnvelope(stdout);
+      if (printEnvelope) {
         logDashboardAiUsage("suggest", SUGGEST_MODEL, {
           costUsd: printEnvelope.usage.costUsd,
           inputTokens: printEnvelope.usage.inputTokens,
@@ -128,8 +159,6 @@ export async function POST() {
           cacheRead: printEnvelope.usage.cacheRead,
           turns: printEnvelope.usage.turns,
         });
-      } catch {
-        /* CLI가 json 래퍼가 아니면 비용 로그 생략 */
       }
 
       try {
@@ -178,6 +207,16 @@ export async function POST() {
 
     child.on("error", (err) => {
       clearTimeout(timeoutTimer);
+      appendDashboardAiConversationLog({
+        phase: "suggest",
+        model: SUGGEST_MODEL,
+        exitCode: null,
+        durationMs: Date.now() - startedAt,
+        spawnError: String(err.message || err),
+        prompt,
+        stdout,
+        stderr,
+      });
       resolve(
         NextResponse.json(
           {

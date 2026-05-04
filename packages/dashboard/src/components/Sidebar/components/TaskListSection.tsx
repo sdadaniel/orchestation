@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 import type { TaskListSectionProps } from "./types";
 
 export function TaskListSection({
-  requestItems,
+  summaryItems,
+  totalCount,
   currentPath,
   onStopTask,
 }: TaskListSectionProps) {
@@ -30,7 +31,7 @@ export function TaskListSection({
     }
   };
 
-  const uniqueItems = [...new Map(requestItems.map((r) => [r.id, r])).values()];
+  const uniqueItems = [...new Map(summaryItems.map((r) => [r.id, r])).values()];
   const recentItems = uniqueItems
     .sort((a, b) => {
       const sw = statusWeight(a.status) - statusWeight(b.status);
@@ -75,7 +76,7 @@ export function TaskListSection({
               : "text-muted-foreground",
           )}
         >
-          {requestItems.length}
+          {totalCount}
         </span>
       </div>
 
@@ -163,7 +164,7 @@ export function TaskListSection({
             <span className="text-xs">New Task</span>
           </Link>
 
-          {requestItems.length === 0 && (
+          {totalCount === 0 && (
             <div className="px-2 py-2 text-[11px] text-muted-foreground">
               No tasks yet
             </div>

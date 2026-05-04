@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Layers, Maximize2 } from "lucide-react";
-import { type RequestItem } from "@/hooks/useRequests";
+import type { TaskGraphItem } from "@/types/task-graph";
 import type { WaterfallTask } from "@/types/waterfall";
 import {
   PRIORITY_COLORS,
@@ -20,31 +20,31 @@ import type { EdgeLayout, NodeLayout, SectionLayout } from "./types";
 // ── Layout computation ───────────────────────────────
 
 export function computeDAGLayout(
-  requests: RequestItem[],
+  listTasks: TaskGraphItem[],
   tasks: WaterfallTask[],
   maxParallel = 3,
 ) {
-  const reqMap = new Map(requests.map((r) => [r.id, r]));
+  const reqMap = new Map(listTasks.map((r) => [r.id, r]));
   const taskMap = new Map(tasks.map((t) => [t.id, t]));
 
   const depsOf = new Map<string, string[]>();
-  for (const req of requests) {
+  for (const req of listTasks) {
     const wt = taskMap.get(req.id);
     depsOf.set(req.id, wt ? wt.depends_on.filter((d) => reqMap.has(d)) : []);
   }
 
   const priWeight = (p: string) =>
     p === "high" ? 0 : p === "medium" ? 1 : p === "low" ? 2 : 3;
-  const allPending = requests.filter(
+  const allPending = listTasks.filter(
     (r) => r.status === "pending" || r.status === "stopped",
   );
-  const current = requests.filter(
+  const current = listTasks.filter(
     (r) => r.status === "in_progress" || r.status === "reviewing",
   );
-  const allDone = requests.filter(
+  const allDone = listTasks.filter(
     (r) => r.status === "done" || r.status === "rejected",
   );
-  const allFailed = requests.filter((r) => r.status === "failed");
+  const allFailed = listTasks.filter((r) => r.status === "failed");
 
   // 의존 depth 계산: depth 0 = 의존 없거나 모두 done → 즉시 실행 가능
   const pendingSet = new Set(allPending.map((r) => r.id));
@@ -67,7 +67,7 @@ export function computeDAGLayout(
 
   // depth별 그룹: Queue1(depth 0), Queue2(depth 1), 나머지는 ghost
   const MAX_PENDING_QUEUES = 2;
-  const pendingByDepth: RequestItem[][] = [];
+  const pendingByDepth: TaskGraphItem[][] = [];
   const maxDepth =
     allPending.length > 0
       ? Math.max(...allPending.map((r) => depthOf.get(r.id) ?? 0))
@@ -95,7 +95,7 @@ export function computeDAGLayout(
   const sections: {
     key: string;
     label: string;
-    items: RequestItem[];
+    items: TaskGraphItem[];
     color: string;
     extra: number;
   }[] = [];
@@ -376,13 +376,13 @@ export function computeDAGLayout(
 // ── Component ────────────────────────────────────────
 
 export default function DAGCanvas({
-  requests,
+  listTasks,
   tasks,
   onClickItem,
 }: {
-  requests: RequestItem[];
+  listTasks: TaskGraphItem[];
   tasks: WaterfallTask[];
-  onClickItem: (req: RequestItem) => void;
+  onClickItem: (req: TaskGraphItem) => void;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
@@ -410,8 +410,8 @@ export default function DAGCanvas({
   const [, kick] = useState(0);
   const [hovEdge, setHovEdge] = useState<string | null>(null);
   const layout = useMemo(
-    () => computeDAGLayout(requests, tasks, maxParallel),
-    [requests, tasks, maxParallel],
+    () => computeDAGLayout(listTasks, tasks, maxParallel),
+    [listTasks, tasks, maxParallel],
   );
 
   const apply = useCallback(() => {
@@ -493,7 +493,7 @@ export default function DAGCanvas({
     [apply],
   );
 
-  if (requests.length === 0)
+  if (listTasks.length === 0)
     return (
       <div className="text-center py-12 text-muted-foreground">
         <Layers className="h-8 w-8 mx-auto mb-3 opacity-40" />

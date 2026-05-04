@@ -6,15 +6,15 @@ import { Play, Square, Loader2 } from "lucide-react";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 import { useTasksStore } from "@/store/tasksStore";
-import { useGatewayClient } from "@/gateway-ws/provider";
+import { useOptionalGatewayClient } from "@/gateway-ws/provider";
 
 const Controls = () => {
-  const gateway = useGatewayClient();
+  const gateway = useOptionalGatewayClient();
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const runningTaskCount = useTasksStore(
-    (s) => s.requests.filter((t) => t.status === "in_progress").length,
+    (s) => s.tasksSummary.counts.in_progress,
   );
 
   // Orchestration 상태를 store에서 직접 구독 (별도 polling 제거)
@@ -63,6 +63,10 @@ const Controls = () => {
     !isStopping;
 
   const handleRun = async () => {
+    if (!gateway) {
+      setError("Gateway 연결 대기 중");
+      return;
+    }
     setIsStarting(true);
     setError(null);
     try {
@@ -76,6 +80,10 @@ const Controls = () => {
   };
 
   const handleStop = async () => {
+    if (!gateway) {
+      setError("Gateway 연결 대기 중");
+      return;
+    }
     setError(null);
     setIsStopping(true);
     try {
@@ -118,10 +126,10 @@ const Controls = () => {
         <button
           type="button"
           onClick={handleStop}
-          disabled={isStopping}
+          disabled={isStopping || !gateway}
           className={cn(
             "filter-pill flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300",
-            isStopping && "opacity-50 cursor-not-allowed",
+            (isStopping || !gateway) && "opacity-50 cursor-not-allowed",
           )}
         >
           <Square className="h-3 w-3" />
@@ -131,15 +139,15 @@ const Controls = () => {
     );
   } else {
     statusContent = (
-      <button
-        type="button"
-        onClick={handleRun}
-        disabled={isStarting}
-        className={cn(
-          "filter-pill active flex items-center gap-1.5 text-xs",
-          isStarting && "opacity-50 cursor-not-allowed",
-        )}
-      >
+        <button
+          type="button"
+          onClick={handleRun}
+          disabled={isStarting || !gateway}
+          className={cn(
+            "filter-pill active flex items-center gap-1.5 text-xs",
+            (isStarting || !gateway) && "opacity-50 cursor-not-allowed",
+          )}
+        >
         <Play className="h-3 w-3" />
         Run
       </button>

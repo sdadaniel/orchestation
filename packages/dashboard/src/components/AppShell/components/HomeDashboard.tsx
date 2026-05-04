@@ -4,14 +4,10 @@ import { useTasksStore } from "@/store/tasksStore";
 import OverviewCard from "./OverviewCard";
 
 const HomeDashboard = () => {
-  const requestItems = useTasksStore((s) => s.requests);
-  const inProgress = requestItems.filter((t) => t.status === "in_progress");
-  const pending = requestItems.filter(
-    (t) => t.status === "pending" || t.status === "reviewing",
-  );
-  const done = requestItems.filter((t) => t.status === "done");
-  const failed = requestItems.filter((t) => t.status === "failed");
-  const rejected = requestItems.filter((t) => t.status === "rejected");
+  const tasksSummary = useTasksStore((s) => s.tasksSummary);
+  const inProgress = tasksSummary.active;
+  const pending = tasksSummary.pending;
+  const counts = tasksSummary.counts;
 
   return (
     <div className="space-y-6">
@@ -20,31 +16,31 @@ const HomeDashboard = () => {
         <div className="grid grid-cols-5 gap-3">
           <OverviewCard
             label="In Progress"
-            count={inProgress.length}
+            count={counts.in_progress}
             color="text-blue-500"
             href="/tasks?tab=in_progress"
           />
           <OverviewCard
             label="Pending"
-            count={pending.length}
+            count={counts.pending + counts.reviewing}
             color="text-yellow-500"
             href="/tasks?tab=pending"
           />
           <OverviewCard
             label="Done"
-            count={done.length}
+            count={counts.done}
             color="text-emerald-500"
             href="/tasks?tab=done"
           />
           <OverviewCard
             label="Failed"
-            count={failed.length}
+            count={counts.failed}
             color="text-red-500"
             href="/tasks?tab=failed"
           />
           <OverviewCard
             label="Rejected"
-            count={rejected.length}
+            count={counts.rejected}
             color="text-red-400"
             href="/tasks?tab=rejected"
           />
@@ -97,13 +93,13 @@ const HomeDashboard = () => {
         </div>
       )}
 
-      {inProgress.length === 0 && pending.length === 0 && requestItems.length > 0 && (
+      {inProgress.length === 0 && pending.length === 0 && counts.total > 0 && (
         <div className="text-center py-8 text-muted-foreground">
           <p className="text-sm">All tasks completed.</p>
         </div>
       )}
 
-      {requestItems.length === 0 && (
+      {counts.total === 0 && (
         <div className="text-center py-8 text-muted-foreground">
           <p className="text-sm">No tasks yet. Create a new task from the sidebar.</p>
         </div>

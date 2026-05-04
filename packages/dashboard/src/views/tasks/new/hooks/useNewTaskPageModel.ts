@@ -1,12 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFunnel } from "@/hooks/useFunnel";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 import { useNewTaskCreationStore } from "@/store/newTaskCreationStore";
-import { useSuggestStore } from "@/store/suggestStore";
+import {
+  selectedSuggestionIndicesToSet,
+  useNewTaskPageDraftStore,
+} from "@/store/newTaskPageDraftStore";
 import { useTasksStore } from "@/store/tasksStore";
+import { getQueryClient } from "@/lib/query-client";
+import { queryKeys } from "@/lib/query/query-keys";
 import type { AnalyzedTask } from "@/app/tasks/new/types";
 import { EFFORT_LABEL } from "@/app/tasks/new/types";
 import type { NewTaskIntakeTab, Phase } from "../types";
@@ -20,55 +25,99 @@ export function useNewTaskPageModel(): {
   setValue: NewTaskPageSetValue;
 } {
   const router = useRouter();
-  const [intakeTab, setIntakeTab] = useState<NewTaskIntakeTab>("create");
   const createFunnel = useFunnel<Phase, CreateFunnelContext>({
     initialStep: "draft",
     initialContext: {} as CreateFunnelContext,
   });
+  const createFunnelRef = useRef(createFunnel);
+  createFunnelRef.current = createFunnel;
+
+  const intakeTab = useNewTaskPageDraftStore((s) => s.intakeTab);
+  const title = useNewTaskPageDraftStore((s) => s.title);
+  const description = useNewTaskPageDraftStore((s) => s.description);
+  const analyzing = useNewTaskPageDraftStore((s) => s.analyzing);
+  const revising = useNewTaskPageDraftStore((s) => s.revising);
+  const revisionNotes = useNewTaskPageDraftStore((s) => s.revisionNotes);
+  const refineAbortRef = useRef<AbortController | null>(null);
+  const analyzeError = useNewTaskPageDraftStore((s) => s.analyzeError);
+  const tasks = useNewTaskPageDraftStore((s) => s.tasks);
+  const editingIdx = useNewTaskPageDraftStore((s) => s.editingIdx);
+  const confirming = useNewTaskPageDraftStore((s) => s.confirming);
+  const creatingSuggestions = useNewTaskPageDraftStore((s) => s.creatingSuggestions);
+  const inputExternalDeps = useNewTaskPageDraftStore((s) => s.inputExternalDeps);
+  const [existingTasks, setExistingTasks] = useState<TaskOption[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<string[]>(["general"]);
+
+  const suggestions = useNewTaskPageDraftStore((s) => s.suggestions);
+  const suggestLoading = useNewTaskPageDraftStore((s) => s.suggestLoading);
+  const suggestError = useNewTaskPageDraftStore((s) => s.suggestError);
+  const selectedSuggestionIndices = useNewTaskPageDraftStore(
+    (s) => s.selectedSuggestionIndices,
+  );
+  const selectedSuggestions = useMemo(
+    () => selectedSuggestionIndicesToSet(selectedSuggestionIndices),
+    [selectedSuggestionIndices],
+  );
+
+  const setIntakeTab = useCallback((tab: NewTaskIntakeTab) => {
+    useNewTaskPageDraftStore.getState().setIntakeTab(tab);
+  }, []);
+
   const phase = createFunnel.step;
 
   const setPhase = useCallback(
     (next: Phase) => {
+      const draft = useNewTaskPageDraftStore.getState();
       if (next === "review") {
         if (createFunnel.step !== "review") createFunnel.push("review");
+        draft.setFunnelStep("review");
       } else if (createFunnel.step !== "draft") {
         createFunnel.back();
+        draft.setFunnelStep("draft");
       }
     },
     [createFunnel.back, createFunnel.push, createFunnel.step],
   );
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [analyzing, setAnalyzing] = useState(false);
-  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<AnalyzedTask[]>([]);
-  const [editingIdx, setEditingIdx] = useState<number | null>(null);
-  const [confirming, setConfirming] = useState(false);
-  const [creatingSuggestions, setCreatingSuggestions] = useState(false);
-  const [existingTasks, setExistingTasks] = useState<TaskOption[]>([]);
-  const [inputExternalDeps, setInputExternalDeps] = useState<string[]>([]);
-  const [availableRoles, setAvailableRoles] = useState<string[]>(["general"]);
-
-  const suggestions = useSuggestStore((s) => s.suggestions);
-  const suggestLoading = useSuggestStore((s) => s.isLoading);
-  const suggestError = useSuggestStore((s) => s.error);
-  const selectedSuggestions = useSuggestStore((s) => s.selectedIndices);
-
-  const handleSuggest = useCallback(() => {
-    void useSuggestStore.getState().fetchSuggestions();
+  const setTitle = useCallback((v: string) => {
+    useNewTaskPageDraftStore.getState().setTitle(v);
   }, []);
 
-  const toggleSuggestion = useCallback((index: number) => {
-    useSuggestStore.getState().toggleSelection(index);
+  const setDescription = useCallback((v: string) => {
+    useNewTaskPageDraftStore.getState().setDescription(v);
   }, []);
 
-  const selectAll = useCallback(() => {
-    useSuggestStore.getState().selectAll();
+  const setInputExternalDeps = useCallback((ids: string[]) => {
+    useNewTaskPageDraftStore.getState().setInputExternalDeps(ids);
   }, []);
 
-  const deselectAll = useCallback(() => {
-    useSuggestStore.getState().deselectAll();
+  const setEditingIdx = useCallback((idx: number | null) => {
+    useNewTaskPageDraftStore.getState().setEditingIdx(idx);
+  }, []);
+
+  const setRevisionNotes = useCallback((v: string) => {
+    useNewTaskPageDraftStore.getState().setRevisionNotes(v);
+  }, []);
+
+  useLayoutEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await useNewTaskPageDraftStore.persist.rehydrate();
+      await useNewTaskCreationStore.persist.rehydrate();
+      if (cancelled) return;
+      const d = useNewTaskPageDraftStore.getState();
+      const cf = createFunnelRef.current;
+      if (d.funnelStep === "review" && d.tasks.length > 0) {
+        if (cf.step === "draft") {
+          cf.push("review");
+        }
+      } else if (d.funnelStep === "review" && d.tasks.length === 0) {
+        d.setFunnelStep("draft");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const wizardCreatedItems = useNewTaskCreationStore((s) => s.createdItems);
@@ -103,7 +152,7 @@ export function useNewTaskPageModel(): {
   ]);
 
   useEffect(() => {
-    fetch("/api/tasks")
+    fetch("/api/tasks/graph")
       .then((r) => r.json())
       .then((data: TaskOption[]) => {
         if (Array.isArray(data)) setExistingTasks(data);
@@ -117,17 +166,42 @@ export function useNewTaskPageModel(): {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    return () => {
+      refineAbortRef.current?.abort();
+    };
+  }, []);
+
   const goToTasks = useCallback(() => {
     router.push("/tasks");
   }, [router]);
 
+  const handleSuggest = useCallback(() => {
+    void useNewTaskPageDraftStore.getState().fetchSuggestions();
+  }, []);
+
+  const toggleSuggestion = useCallback((index: number) => {
+    useNewTaskPageDraftStore.getState().toggleSuggestionSelection(index);
+  }, []);
+
+  const selectAll = useCallback(() => {
+    useNewTaskPageDraftStore.getState().selectAllSuggestions();
+  }, []);
+
+  const deselectAll = useCallback(() => {
+    useNewTaskPageDraftStore.getState().deselectAllSuggestions();
+  }, []);
+
   const createFromSuggestions = useCallback(async () => {
-    setCreatingSuggestions(true);
+    const draft = useNewTaskPageDraftStore.getState();
+    draft.setCreatingSuggestions(true);
     const creation = useNewTaskCreationStore.getState();
     creation.startBatch();
+    const idxList = draft.selectedSuggestionIndices;
+    const sugList = draft.suggestions;
     try {
-      for (const idx of selectedSuggestions) {
-        const s = suggestions[idx];
+      for (const idx of idxList) {
+        const s = sugList[idx];
         const content = [
           s.description,
           "",
@@ -137,7 +211,7 @@ export function useNewTaskPageModel(): {
           "## Completion Criteria",
           "- 위 설명의 개선 사항이 반영되었다",
         ].join("\n");
-        const res = await fetch("/api/requests", {
+        const res = await fetch("/api/tasks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -154,22 +228,26 @@ export function useNewTaskPageModel(): {
           creation.recordCreated({ id: String(created.id), title: s.title });
         }
       }
-      useSuggestStore.getState().clear();
+      draft.clearSuggestions();
       creation.completeBatchSuccess();
-      await useTasksStore.getState().fetchRequests();
+      useNewTaskPageDraftStore.getState().resetDraft();
+      useNewTaskCreationStore.getState().clearRecovery();
+      await useTasksStore.getState().fetchTasksSummary();
+      void getQueryClient().invalidateQueries({ queryKey: queryKeys.tasks.all });
       router.push("/tasks");
     } catch {
-      useSuggestStore.setState({ error: "태스크 생성 실패" });
+      useNewTaskPageDraftStore.getState().setSuggestError("태스크 생성 실패");
       creation.completeBatchError("태스크 생성 실패");
     } finally {
-      setCreatingSuggestions(false);
+      useNewTaskPageDraftStore.getState().setCreatingSuggestions(false);
     }
-  }, [router, selectedSuggestions, suggestions]);
+  }, [router]);
 
   const handleAnalyze = useCallback(async () => {
     if (!title.trim()) return;
-    setAnalyzing(true);
-    setAnalyzeError(null);
+    const draft = useNewTaskPageDraftStore.getState();
+    draft.setAnalyzing(true);
+    draft.setAnalyzeError(null);
     try {
       const res = await fetch("/api/tasks/analyze", {
         method: "POST",
@@ -201,18 +279,82 @@ export function useNewTaskPageModel(): {
           external_depends_on: inputExternalDeps,
         };
       }
-      setTasks(analyzedTasks);
-      setIntakeTab("create");
+      draft.setTasks(analyzedTasks);
+      draft.setIntakeTab("create");
+      draft.setFunnelStep("review");
       createFunnel.push("review");
     } catch (err) {
-      setAnalyzeError(getErrorMessage(err, "Analysis failed"));
+      draft.setAnalyzeError(getErrorMessage(err, "Analysis failed"));
     } finally {
-      setAnalyzing(false);
+      draft.setAnalyzing(false);
     }
   }, [createFunnel.push, description, inputExternalDeps, title]);
 
+  const cancelRefineTasks = useCallback(() => {
+    refineAbortRef.current?.abort();
+  }, []);
+
+  const handleRefineTasks = useCallback(async () => {
+    const notes = revisionNotes.trim();
+    if (!title.trim() || !notes || tasks.length === 0) return;
+    refineAbortRef.current?.abort();
+    const controller = new AbortController();
+    refineAbortRef.current = controller;
+    const draft = useNewTaskPageDraftStore.getState();
+    draft.setRevising(true);
+    draft.setAnalyzeError(null);
+    try {
+      const res = await fetch("/api/tasks/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          revision_notes: notes,
+          current_tasks: tasks,
+        }),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        let errMsg = `Refine failed (HTTP ${res.status})`;
+        try {
+          const data = await res.json();
+          errMsg = data.error || errMsg;
+        } catch {
+          // non-JSON error response
+        }
+        if (res.status === 500) {
+          errMsg +=
+            "\n\nClaude CLI가 설치되어 있고 인증되었는지 확인하세요. (터미널에서 'claude --version' 실행)";
+        }
+        throw new Error(errMsg);
+      }
+      const data = await res.json();
+      const analyzedTasks: AnalyzedTask[] = data.tasks;
+      const merged: AnalyzedTask[] = analyzedTasks.map((t, i) => ({
+        ...t,
+        external_depends_on:
+          i === 0 && inputExternalDeps.length > 0
+            ? inputExternalDeps
+            : tasks[i]?.external_depends_on,
+      }));
+      draft.setTasks(merged);
+      draft.setRevisionNotes("");
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        draft.setAnalyzeError(null);
+        return;
+      }
+      draft.setAnalyzeError(getErrorMessage(err, "Refine failed"));
+    } finally {
+      refineAbortRef.current = null;
+      draft.setRevising(false);
+    }
+  }, [description, inputExternalDeps, revisionNotes, tasks, title]);
+
   const handleConfirm = useCallback(async () => {
-    setConfirming(true);
+    const draft = useNewTaskPageDraftStore.getState();
+    draft.setConfirming(true);
     const creation = useNewTaskCreationStore.getState();
     creation.startBatch();
     try {
@@ -232,7 +374,7 @@ export function useNewTaskPageModel(): {
           ...resolvedBatchDeps,
           ...(task.external_depends_on ?? []),
         ];
-        const res = await fetch("/api/requests", {
+        const res = await fetch("/api/tasks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -254,41 +396,50 @@ export function useNewTaskPageModel(): {
         });
       }
       creation.completeBatchSuccess();
-      await useTasksStore.getState().fetchRequests();
+      draft.resetDraft();
+      useNewTaskCreationStore.getState().clearRecovery();
+      await useTasksStore.getState().fetchTasksSummary();
+      void getQueryClient().invalidateQueries({ queryKey: queryKeys.tasks.all });
       router.push("/tasks");
     } catch (err) {
       const msg = getErrorMessage(err, "Failed to create tasks");
       creation.completeBatchError(msg);
-      setAnalyzeError(msg);
+      draft.setAnalyzeError(msg);
     } finally {
-      setConfirming(false);
+      draft.setConfirming(false);
     }
   }, [router, tasks]);
 
   const updateTask = useCallback((idx: number, updates: Partial<AnalyzedTask>) => {
-    setTasks((prev) =>
+    useNewTaskPageDraftStore.getState().setTasks((prev) =>
       prev.map((t, i) => (i === idx ? { ...t, ...updates } : t)),
     );
   }, []);
 
   const removeTask = useCallback((idx: number) => {
-    setTasks((prev) => prev.filter((_, i) => i !== idx));
+    useNewTaskPageDraftStore.getState().setTasks((prev) => prev.filter((_, i) => i !== idx));
   }, []);
 
   const addTask = useCallback(() => {
-    setTasks((prev) => [
-      ...prev,
-      { title: "", description: "", priority: "medium", criteria: [""] },
-    ]);
-    setEditingIdx(tasks.length);
-  }, [tasks.length]);
+    useNewTaskPageDraftStore.setState((s) => {
+      const nextTasks = [
+        ...s.tasks,
+        { title: "", description: "", priority: "medium" as const, criteria: [""] },
+      ];
+      return {
+        tasks: nextTasks,
+        editingIdx: nextTasks.length - 1,
+      };
+    });
+  }, []);
 
   const canConfirm = useMemo(
     () =>
       !confirming &&
+      !revising &&
       tasks.length > 0 &&
       tasks.every((t) => t.title.trim()),
-    [confirming, tasks],
+    [confirming, revising, tasks],
   );
 
   const getValue = useMemo<NewTaskPageGetValue>(
@@ -312,6 +463,8 @@ export function useNewTaskPageModel(): {
       suggestError,
       selectedSuggestions,
       canConfirm,
+      revisionNotes,
+      revising,
       creationRecovery,
     }),
     [
@@ -327,6 +480,8 @@ export function useNewTaskPageModel(): {
       existingTasks,
       inputExternalDeps,
       intakeTab,
+      revisionNotes,
+      revising,
       selectedSuggestions,
       suggestError,
       suggestLoading,
@@ -351,6 +506,9 @@ export function useNewTaskPageModel(): {
       deselectAll,
       createFromSuggestions,
       handleAnalyze,
+      handleRefineTasks,
+      cancelRefineTasks,
+      setRevisionNotes,
       handleConfirm,
       updateTask,
       removeTask,
@@ -359,17 +517,25 @@ export function useNewTaskPageModel(): {
     }),
     [
       addTask,
+      cancelRefineTasks,
       createFromSuggestions,
       deselectAll,
       handleAnalyze,
+      handleRefineTasks,
       handleConfirm,
       handleSuggest,
       removeTask,
       selectAll,
       setPhase,
+      setRevisionNotes,
       toggleSuggestion,
       updateTask,
       goToTasks,
+      setIntakeTab,
+      setTitle,
+      setDescription,
+      setInputExternalDeps,
+      setEditingIdx,
     ],
   );
 

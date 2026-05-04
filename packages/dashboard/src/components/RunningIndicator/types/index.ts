@@ -1,5 +1,5 @@
-import type { RequestItem } from "@/hooks/useRequests";
+import type { TaskSummaryItem } from "@/store/tasksStore";
 
 export interface RunningIndicatorProps {
-  requestItems: RequestItem[];
+  taskItems: TaskSummaryItem[];
 }

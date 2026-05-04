@@ -13,22 +13,22 @@ import { GlobalHeader, HomeDashboard } from "./components";
 
 const AppShell = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
-  const { groups, isLoading } = useTasks();
+  const shouldLoadTaskGroups = (pathname ?? "").startsWith("/tasks");
+  const { groups, isLoading } = useTasks(shouldLoadTaskGroups);
   const { addToast } = useToast();
+  const fetchTasksSummary = useTasksStore((s) => s.fetchTasksSummary);
 
-  // 초기 데이터 로드 — 이후 변경 감지는 Gateway WS 이벤트로 처리
+  // 초기 데이터 로드 — 홈/사이드바는 요약만 먼저 가져오고, 상세 목록은 해당 화면에서 로드
   useEffect(() => {
-    useTasksStore.getState().fetchAll();
-  }, []);
+    fetchTasksSummary();
+  }, [fetchTasksSummary]);
 
   // Orchestration 상태를 store에서 직접 구독
   const justFinished = useOrchestrationStore((s) => s.justFinished);
   const clearFinished = useOrchestrationStore((s) => s.clearFinished);
 
   // Requests는 store에서 직접 구독
-  const requestItems = useTasksStore((s) => s.requests);
-
-  const fetchAll = useTasksStore((s) => s.fetchAll);
+  const fetchTasksSummaryOnFinish = useTasksStore((s) => s.fetchTasksSummary);
 
   // Track previous task statuses for change detection
   const prevTaskStatusRef = useRef<Map<string, string>>(new Map());
@@ -72,10 +72,10 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
   // Auto-refresh all data when orchestration finishes
   useEffect(() => {
     if (justFinished) {
-      fetchAll();
+      fetchTasksSummaryOnFinish();
       clearFinished();
     }
-  }, [justFinished, fetchAll, clearFinished]);
+  }, [justFinished, fetchTasksSummaryOnFinish, clearFinished]);
 
   const isHome = pathname === "/";
 

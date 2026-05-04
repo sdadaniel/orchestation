@@ -13,6 +13,10 @@ interface DetailTabProps {
   task: TaskDetail;
 }
 
+/** Markdown ## … headings (e.g. Completion Criteria) match the Description section label. */
+const detailMarkdownSectionHeading =
+  "[&_h2]:text-xs [&_h2]:font-semibold [&_h2]:uppercase [&_h2]:tracking-wider [&_h2]:text-muted-foreground [&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:border-0 [&_h2]:pb-0";
+
 export function DetailTab({ task }: DetailTabProps) {
   return (
     <div className="space-y-5">
@@ -21,7 +25,9 @@ export function DetailTab({ task }: DetailTabProps) {
           Description
         </h2>
         {task.content ? (
-          <MarkdownContent>{task.content}</MarkdownContent>
+          <MarkdownContent className={detailMarkdownSectionHeading}>
+            {task.content}
+          </MarkdownContent>
         ) : (
           <p className="text-sm text-muted-foreground">(No description)</p>
         )}

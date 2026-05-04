@@ -54,6 +54,9 @@
       "@/lib/utils": [
         "./src/lib/utils.ts"
       ],
+      "@/lib/task-graph-fetch": [
+        "./src/lib/task-graph-fetch.ts"
+      ],
       "@/lib/*": [
         "../engine/src/lib/*"
       ],
