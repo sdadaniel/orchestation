@@ -4,12 +4,21 @@ Request title: {{title}}
 {{description_line}}
 
 Rules:
-- If the request is simple, return 1 task. If complex, split into 2-5 tasks.
+- Default to **1 task** unless splitting is clearly justified. Avoid over-splitting small UI changes into multiple tasks.
+- If you split, produce **2-5 tasks max**, and only when at least one of these is true:
+  - The work is **independently shippable/reviewable** (separate PRs would make sense).
+  - There is a **real blocking dependency** between parts (e.g., contract/schema/API first, then consumer).
+  - Risk is meaningfully reduced by separation (large migration, dangerous refactor, multi-surface rollout).
+  - Parallelization is **actually possible** (not a fake pipeline).
+- If you split, prefer **sequential dependencies only when truly blocking**. Do not create `depends_on` chains for “nice ordering” within the same feature.
 - Each task must have: title, description, priority (high/medium/low), criteria (completion criteria as string array), scope (files to modify), context (files to read but not modify), depends_on (array of 0-based step indices this task depends on, e.g. [0] means depends on step 1), role (the best-fit worker role for this task).
 - scope = 수정할 파일/디렉토리. context = 수정하지 않지만 반드시 읽어야 하는 참조 파일/디렉토리. 둘 다 glob 패턴(**) 사용.
-- Use relative paths from project root (e.g. "src/frontend/src/components/**", "scripts/lib/**"). Only go to the directory level, never specify exact filenames.
+- Keep `scope` **minimal** and **small**: include only directories you expect to edit; prefer starting tight (e.g. a single feature folder) and expand only when necessary. **At most 5 glob entries** per task unless absolutely necessary.
+- `context` is optional: use `[]` unless there are reference areas you truly must read to implement safely.
+- Use relative paths from project root (e.g. "packages/dashboard/src/components/**", "packages/engine/src/service/**"). Only go to the directory level, never specify exact filenames.
 - depends_on defines execution order. If step 2 depends on step 1, set depends_on:[0] on step 2. First step should have depends_on:[].
 - role must be one of the available roles. Pick the best fit based on the task's scope and nature:
 {{available_roles}}
+- Output must be **strict JSON only** (no markdown fences, no commentary, no trailing text). If you feel tempted to wrap JSON in ``` fences, **do not** — return raw JSON only.
 - Return ONLY valid JSON in this exact format, no markdown, no explanation:
-{"tasks":[{"title":"...","description":"...","priority":"medium","criteria":["criterion 1"],"scope":["src/frontend/src/components/**"],"context":["scripts/lib/**"],"depends_on":[],"role":"frontend-dev"}]}
+{"tasks":[{"title":"...","description":"...","priority":"medium","criteria":["criterion 1"],"scope":["packages/dashboard/src/components/**"],"context":["packages/engine/src/lib/**"],"depends_on":[],"role":"frontend-dev"}]}
