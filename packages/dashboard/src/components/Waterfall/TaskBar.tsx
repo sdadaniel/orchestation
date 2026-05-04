@@ -7,6 +7,7 @@ import type { TaskBarProps } from "./types";
 
 export function TaskBar({ task, onClick }: TaskBarProps) {
   const statusStyle = STATUS_STYLES[task.status];
+  const displayId = task.display_id ?? task.id;
 
   return (
     <button
@@ -21,7 +22,7 @@ export function TaskBar({ task, onClick }: TaskBarProps) {
       <span className={cn("status-dot", statusStyle.dot)} />
 
       <span className="shrink-0 font-mono text-[11px] text-muted-foreground w-20 truncate">
-        {task.id}
+        {displayId}
       </span>
       <span className="truncate text-sm">{task.title}</span>
 

@@ -3,6 +3,7 @@
  * 마크다운 파일 대신 SQLite를 source of truth로 사용
  */
 import { getWritableDb, getDb } from "./db";
+import crypto from "crypto";
 import { formatTimestamp } from "../lib/time/date-utils";
 import {
   parseContext,
@@ -23,6 +24,26 @@ function now(): string {
   return formatTimestamp(new Date());
 }
 
+export function formatTaskDisplayId(displayNumber: number): string {
+  return `TASK-${String(displayNumber).padStart(3, "0")}`;
+}
+
+function parseDisplayNumber(value: string): number | null {
+  const match = value.match(/^TASK-(\d+)$/i);
+  if (!match) return null;
+  const parsed = parseInt(match[1] ?? "", 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function getTaskDisplayId(task: Pick<TaskEntity, "id" | "display_id">): string {
+  return task.display_id || task.id;
+}
+
+type ResolvedTaskRef = {
+  task: TaskEntity;
+  matchedBy: "id" | "display_id";
+};
+
 function notifyTaskChanged(
   taskId?: string,
   extra?: Record<string, unknown>,
@@ -33,20 +54,49 @@ function notifyTaskChanged(
 // ── Read ──────────────────────────────────────────────
 
 export function getTask(taskId: string): TaskEntity | null {
+  const resolved = resolveTaskRef(taskId);
+  return resolved?.task ?? null;
+}
+
+export function resolveTaskRef(taskId: string): ResolvedTaskRef | null {
   const db = getDb();
   if (!db) return null;
-  return (
-    (db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId) as
-      | TaskEntity
-      | undefined) ?? null
-  );
+  const byId = db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId) as
+    | TaskEntity
+    | undefined;
+  if (byId) return { task: byId, matchedBy: "id" };
+
+  const byDisplayId = db
+    .prepare("SELECT * FROM tasks WHERE display_id = ?").get(taskId) as
+    | TaskEntity
+    | undefined;
+  if (byDisplayId) return { task: byDisplayId, matchedBy: "display_id" };
+
+  return null;
+}
+
+export function resolveTaskId(taskId: string): string | null {
+  return resolveTaskRef(taskId)?.task.id ?? null;
+}
+
+export function getNextTaskDisplayNumber(): number {
+  const db = getDb();
+  if (!db) return 1;
+  const row = db
+    .prepare(
+      "SELECT COALESCE(MAX(display_number), 0) AS max_display_number FROM tasks",
+    )
+    .get() as { max_display_number?: number | null } | undefined;
+  return (row?.max_display_number ?? 0) + 1;
 }
 
 export function getAllTasks(): TaskEntity[] {
   const db = getDb();
   if (!db) return [];
   return db
-    .prepare("SELECT * FROM tasks ORDER BY sort_order, id")
+    .prepare(
+      "SELECT * FROM tasks ORDER BY sort_order, COALESCE(display_number, 2147483647), display_id, id",
+    )
     .all() as TaskEntity[];
 }
 
@@ -56,7 +106,7 @@ export function getTasksByStatus(...statuses: TaskStatus[]): TaskEntity[] {
   const placeholders = statuses.map(() => "?").join(",");
   return db
     .prepare(
-      `SELECT * FROM tasks WHERE status IN (${placeholders}) ORDER BY sort_order, id`,
+      `SELECT * FROM tasks WHERE status IN (${placeholders}) ORDER BY sort_order, COALESCE(display_number, 2147483647), display_id, id`,
     )
     .all(...statuses) as TaskEntity[];
 }
@@ -125,22 +175,14 @@ export function updateTaskStep(
 }
 
 export function getNextTaskId(): string {
-  const db = getDb();
-  if (!db) return "TASK-001";
-  const row = db
-    .prepare(
-      "SELECT id FROM tasks ORDER BY CAST(SUBSTR(id, 6) AS INTEGER) DESC LIMIT 1",
-    )
-    .get() as { id: string } | undefined;
-  if (!row) return "TASK-001";
-  const num = parseInt(row.id.replace("TASK-", ""), 10);
-  return `TASK-${String(num + 1).padStart(3, "0")}`;
+  return formatTaskDisplayId(getNextTaskDisplayNumber());
 }
 
 // ── Write ─────────────────────────────────────────────
 
 export function createTask(task: {
-  id: string;
+  id?: string;
+  display_id?: string;
   title: string;
   status?: TaskStatus;
   phase?: string | null;
@@ -160,36 +202,61 @@ export function createTask(task: {
   if (!db) throw new Error("Database not available");
 
   const ts = now();
-  db.prepare(
-    `INSERT INTO tasks (id, title, status, phase, priority, branch, worktree, role, reviewer_role,
-      scope, context, depends_on, complexity, sort_order, content, created, updated)
-     VALUES (@id, @title, @status, @phase, @priority, @branch, @worktree, @role, @reviewer_role,
-      @scope, @context, @depends_on, @complexity, @sort_order, @content, @created, @updated)`,
-  ).run({
-    id: task.id,
-    title: task.title,
-    status: task.status ?? "pending",
-    phase: task.phase ?? null,
-    priority: task.priority ?? "medium",
-    branch: task.branch ?? null,
-    worktree: task.worktree ?? null,
-    role: task.role ?? "general",
-    reviewer_role: task.reviewer_role ?? null,
-    scope: JSON.stringify(task.scope ?? []),
-    context: JSON.stringify(task.context ?? []),
-    depends_on: JSON.stringify(task.depends_on ?? []),
-    complexity: task.complexity ?? null,
-    sort_order: task.sort_order ?? 0,
-    content: task.content ?? "",
-    created: ts,
-    updated: ts,
-  });
+  const canonicalId = task.id?.trim() || crypto.randomUUID();
+  const dependsOn = (task.depends_on ?? []).map((depId) => resolveTaskId(depId) ?? depId);
+  const requestedDisplayNumber = parseDisplayNumber(task.display_id ?? "");
 
-  const created = getTask(task.id)!;
+  let displayNumber = requestedDisplayNumber ?? getNextTaskDisplayNumber();
+  let displayId = task.display_id?.trim() || formatTaskDisplayId(displayNumber);
+  let inserted = false;
+
+  for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
+    try {
+      db.prepare(
+        `INSERT INTO tasks (id, display_id, display_number, title, status, phase, priority, branch, worktree, role, reviewer_role,
+          scope, context, depends_on, complexity, sort_order, content, created, updated)
+         VALUES (@id, @display_id, @display_number, @title, @status, @phase, @priority, @branch, @worktree, @role, @reviewer_role,
+          @scope, @context, @depends_on, @complexity, @sort_order, @content, @created, @updated)`,
+      ).run({
+        id: canonicalId,
+        display_id: displayId,
+        display_number: displayNumber,
+        title: task.title,
+        status: task.status ?? "pending",
+        phase: task.phase ?? null,
+        priority: task.priority ?? "medium",
+        branch: task.branch ?? null,
+        worktree: task.worktree ?? null,
+        role: task.role ?? "general",
+        reviewer_role: task.reviewer_role ?? null,
+        scope: JSON.stringify(task.scope ?? []),
+        context: JSON.stringify(task.context ?? []),
+        depends_on: JSON.stringify(dependsOn),
+        complexity: task.complexity ?? null,
+        sort_order: task.sort_order ?? 0,
+        content: task.content ?? "",
+        created: ts,
+        updated: ts,
+      });
+      inserted = true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const isDisplayConflict =
+        message.includes("tasks.display_id") ||
+        message.includes("tasks.display_number");
+      if (!isDisplayConflict || requestedDisplayNumber !== null || attempt === 4) {
+        throw error;
+      }
+      displayNumber = getNextTaskDisplayNumber();
+      displayId = formatTaskDisplayId(displayNumber);
+    }
+  }
+
+  const created = getTask(canonicalId)!;
   // 태스크 생성 시점에 workflow(frontmatter)를 파싱해서 step 레코드도 함께 생성한다.
   // (엔진 디스패치 전에 UI/DB에서도 step을 볼 수 있게 하기 위함)
-  ensureTaskSteps(task.id, parseWorkflowFromTaskContent(created.content || ""));
-  notifyTaskChanged(task.id, { status: created.status, phase: created.phase });
+  ensureTaskSteps(canonicalId, parseWorkflowFromTaskContent(created.content || ""));
+  notifyTaskChanged(canonicalId, { status: created.status, phase: created.phase });
   return created;
 }
 
@@ -273,15 +340,21 @@ export function updateTask(
 ): boolean {
   const db = getWritableDb();
   if (!db) return false;
+  const resolvedTaskId = resolveTaskId(taskId);
+  if (!resolvedTaskId) return false;
 
   const sets: string[] = [];
-  const values: Record<string, unknown> = { id: taskId };
+  const values: Record<string, unknown> = { id: resolvedTaskId };
 
   for (const [key, val] of Object.entries(fields)) {
     if (val === undefined) continue;
     if (key === "scope" || key === "context" || key === "depends_on") {
       sets.push(`${key} = @${key}`);
-      values[key] = JSON.stringify(val);
+      values[key] = JSON.stringify(
+        key === "depends_on"
+          ? (val as string[]).map((depId) => resolveTaskId(depId) ?? depId)
+          : val,
+      );
     } else {
       sets.push(`${key} = @${key}`);
       values[key] = val;
@@ -295,9 +368,9 @@ export function updateTask(
   db.prepare(`UPDATE tasks SET ${sets.join(", ")} WHERE id = @id`).run(values);
 
   // 필드 변경 후 최신 task를 읽어서 변경된 필드와 함께 현재 상태를 함께 emit
-  const updated = getTask(taskId);
+  const updated = getTask(resolvedTaskId);
   if (updated) {
-    notifyTaskChanged(taskId, {
+    notifyTaskChanged(resolvedTaskId, {
       // 변경된 필드 + 함께 보낼 관련 필드
       ...(fields.status ? { status: updated.status } : {}),
       ...("phase" in fields ? { phase: updated.phase, status: updated.status } : {}),
@@ -306,7 +379,7 @@ export function updateTask(
     });
   } else {
     // fallback: task 조회 실패 시 전달된 필드로만 emit
-    notifyTaskChanged(taskId, {
+    notifyTaskChanged(resolvedTaskId, {
       ...(fields.status ? { status: fields.status } : {}),
       ...("phase" in fields ? { phase: fields.phase } : {}),
       ...(fields.priority ? { priority: fields.priority } : {}),
@@ -328,9 +401,11 @@ export function recordStepEvent(
 ): void {
   const db = getWritableDb();
   if (!db) return;
+  const resolvedTaskId = resolveTaskId(taskId);
+  if (!resolvedTaskId) return;
   db.prepare(
     "INSERT INTO task_events (task_id, step_id, event_type, detail, timestamp) VALUES (?, ?, ?, ?, ?)",
-  ).run(taskId, stepId, eventType, detail ?? null, now());
+  ).run(resolvedTaskId, stepId, eventType, detail ?? null, now());
 }
 
 export function updateTaskStatus(
@@ -340,6 +415,8 @@ export function updateTaskStatus(
 ): boolean {
   const db = getWritableDb();
   if (!db) return false;
+  const resolvedTaskId = resolveTaskId(taskId);
+  if (!resolvedTaskId) return false;
 
   const ts = now();
   const shouldClearPhase =
@@ -352,32 +429,32 @@ export function updateTaskStatus(
     db.prepare("UPDATE tasks SET status = ?, phase = NULL, updated = ? WHERE id = ?").run(
       newStatus,
       ts,
-      taskId,
+      resolvedTaskId,
     );
   } else {
     db.prepare("UPDATE tasks SET status = ?, updated = ? WHERE id = ?").run(
       newStatus,
       ts,
-      taskId,
+      resolvedTaskId,
     );
   }
 
   // 이벤트 기록
   db.prepare(
     "INSERT INTO task_events (task_id, event_type, from_status, to_status, timestamp) VALUES (?, 'status_change', ?, ?, ?)",
-  ).run(taskId, fromStatus ?? null, newStatus, ts);
+  ).run(resolvedTaskId, fromStatus ?? null, newStatus, ts);
 
   // 상태 변경 후 최신 task를 읽어서 변경된 status 및 현재 phase를 함께 emit
-  const updated = getTask(taskId);
+  const updated = getTask(resolvedTaskId);
   if (updated) {
-    notifyTaskChanged(taskId, {
+    notifyTaskChanged(resolvedTaskId, {
       status: updated.status,
       phase: updated.phase,
       ...(shouldClearPhase ? { phaseClearedAt: ts } : {}),
     });
   } else {
     // fallback: task 조회 실패 시 변경한 값으로만 emit
-    notifyTaskChanged(taskId, { status: newStatus, ...(shouldClearPhase ? { phase: null } : {}) });
+    notifyTaskChanged(resolvedTaskId, { status: newStatus, ...(shouldClearPhase ? { phase: null } : {}) });
   }
   return true;
 }
@@ -385,9 +462,11 @@ export function updateTaskStatus(
 export function deleteTask(taskId: string): boolean {
   const db = getWritableDb();
   if (!db) return false;
-  const result = db.prepare("DELETE FROM tasks WHERE id = ?").run(taskId);
+  const resolvedTaskId = resolveTaskId(taskId);
+  if (!resolvedTaskId) return false;
+  const result = db.prepare("DELETE FROM tasks WHERE id = ?").run(resolvedTaskId);
   if (result.changes > 0) {
-    notifyTaskChanged(taskId, { deleted: true });
+    notifyTaskChanged(resolvedTaskId, { deleted: true });
   }
   return result.changes > 0;
 }
@@ -400,7 +479,8 @@ export function taskRowToMarkdown(task: TaskEntity): string {
 
   const lines = [
     "---",
-    `id: ${task.id}`,
+    `id: ${getTaskDisplayId(task)}`,
+    `canonical_id: ${task.id}`,
     `title: ${task.title}`,
     `status: ${task.status}`,
     ...(task.phase ? [`phase: ${task.phase}`] : []),

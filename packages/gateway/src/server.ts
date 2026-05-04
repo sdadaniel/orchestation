@@ -120,7 +120,7 @@ app.prepare().then(() => {
   // ── Task Terminal WebSocket (JSONL conversation stream) ──────
   wssTaskTerminal.on("connection", (ws: WebSocket, req) => {
     const taskId = req.url?.replace("/ws/task-terminal/", "") ?? "";
-    if (!/^TASK-\d+$/.test(taskId)) {
+    if (!/^[A-Za-z0-9][\w-]*$/.test(taskId)) {
       ws.close(4001, "invalid-task-id");
       return;
     }
@@ -182,7 +182,7 @@ app.prepare().then(() => {
   // ── Task Logs WebSocket ───────────────────────────────────────
   wssTaskLogs.on("connection", (ws: WebSocket, req) => {
     const taskId = req.url?.replace("/ws/task-logs/", "") ?? "";
-    if (!/^TASK-\d+$/.test(taskId)) {
+    if (!/^[A-Za-z0-9][\w-]*$/.test(taskId)) {
       ws.close(4001, "invalid-task-id");
       return;
     }

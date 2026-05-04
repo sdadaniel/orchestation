@@ -7,6 +7,8 @@ import { parseDependsOn, parseScope } from "../lib/task-row-parsers";
 
 export interface TaskFrontmatter {
   id: string;
+  display_id?: string;
+  canonical_id?: string;
   title: string;
   status: TaskStatus;
   phase?: string | null;
@@ -59,6 +61,8 @@ const CACHE_TTL_MS = 3000;
 function taskRowToFrontmatter(row: TaskEntity): TaskFrontmatter {
   return {
     id: row.id,
+    display_id: row.display_id ?? row.id,
+    canonical_id: row.id,
     title: row.title,
     status: toTaskStatus(row.status),
     phase: row.phase ?? null,

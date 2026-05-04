@@ -10,6 +10,7 @@ import type { WaterfallGroup } from "@/types/waterfall";
 
 export interface RequestItem {
   id: string;
+  display_id?: string;
   title: string;
   status: TaskStatus;
   phase?: string | null;

@@ -2,6 +2,7 @@ import type { TaskPriority, TaskStatus } from "@/entities/task";
 
 export type WaterfallTask = {
   id: string;
+  display_id?: string;
   title: string;
   status: TaskStatus;
   priority: TaskPriority;

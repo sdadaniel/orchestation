@@ -66,6 +66,48 @@ function ensureDb(): void {
 
     // tasks.phase (fine-grained status; e.g. working/reviewing)
     addColumn("tasks", "phase TEXT");
+    addColumn("tasks", "display_id TEXT");
+    addColumn("tasks", "display_number INTEGER");
+
+    try {
+      db.exec(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_display_id ON tasks(display_id)",
+      );
+      db.exec(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_display_number ON tasks(display_number)",
+      );
+    } catch {
+      // ignore index creation failures on partially migrated DBs
+    }
+
+    try {
+      const rows = db
+        .prepare("SELECT id, display_id, display_number FROM tasks")
+        .all() as Array<{
+        id: string;
+        display_id?: string | null;
+        display_number?: number | null;
+      }>;
+
+      const updateDisplay = db.prepare(
+        "UPDATE tasks SET display_id = ?, display_number = ? WHERE id = ?",
+      );
+
+      for (const row of rows) {
+        if (row.display_id && row.display_number !== null && row.display_number !== undefined) {
+          continue;
+        }
+
+        const match = row.id.match(/^TASK-(\d+)$/i);
+        if (!match) continue;
+        const displayNumber = parseInt(match[1] ?? "", 10);
+        if (!Number.isFinite(displayNumber)) continue;
+        const displayId = `TASK-${String(displayNumber).padStart(3, "0")}`;
+        updateDisplay.run(displayId, displayNumber, row.id);
+      }
+    } catch {
+      // ignore backfill errors; new rows will still populate the columns
+    }
 
     // task_steps table might exist only on newer installs: create if missing
     db.exec(`

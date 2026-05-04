@@ -10,6 +10,8 @@ npm run dev        # http://localhost:3000
 npm run storybook  # http://localhost:6006
 ```
 
+태스크 **식별자 vs 표시 번호** 설계 가이드는 레포 루트 [docs/architecture/task-id-and-numbering.md](../../docs/architecture/task-id-and-numbering.md)를 참고한다.
+
 ## 디렉토리 구조
 
 ```

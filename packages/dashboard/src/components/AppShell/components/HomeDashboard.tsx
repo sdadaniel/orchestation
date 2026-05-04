@@ -62,7 +62,7 @@ const HomeDashboard = () => {
               >
                 <span className="w-3 h-3 shrink-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                 <span className="font-mono text-[11px] text-muted-foreground shrink-0">
-                  {task.id}
+                  {task.display_id ?? task.id}
                 </span>
                 <span className="text-sm flex-1 truncate">{task.title}</span>
                 <span className="text-[11px] px-1.5 py-0.5 rounded text-blue-500 bg-blue-500/10">
@@ -85,7 +85,7 @@ const HomeDashboard = () => {
               >
                 <span className="w-2 h-2 rounded-full shrink-0 bg-yellow-500" />
                 <span className="font-mono text-[11px] text-muted-foreground shrink-0">
-                  {task.id}
+                  {task.display_id ?? task.id}
                 </span>
                 <span className="text-sm flex-1 truncate">{task.title}</span>
                 <span className="text-[11px] px-1.5 py-0.5 rounded text-yellow-500 bg-yellow-500/10">

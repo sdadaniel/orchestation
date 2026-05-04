@@ -64,7 +64,7 @@ const GlobalSearch = () => {
     const tasks: SearchResultItem[] = requestItems.map((r) => ({
       type: "task",
       id: r.id,
-      displayId: r.id,
+      displayId: r.display_id ?? r.id,
       title: r.title,
       status: r.status,
       href: `/tasks/${r.id}`,

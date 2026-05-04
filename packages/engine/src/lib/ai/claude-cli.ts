@@ -19,9 +19,13 @@ function buildClaudeEnv(): NodeJS.ProcessEnv {
   };
 }
 
+export type ClaudeCliOutputFormat = "text" | "json" | "stream-json";
+
 export interface SpawnClaudeOptions {
   model?: string;
   timeout?: number;
+  /** 기본 text. 대시보드 비용 추적은 json 또는 stream-json 필요 */
+  outputFormat?: ClaudeCliOutputFormat;
   /** additional CLI flags (e.g. ["--dangerously-skip-permissions"]) */
   extraArgs?: string[];
 }
@@ -41,10 +45,18 @@ export function spawnClaude(
   const model = options.model ?? CLAUDE_DEFAULT_MODEL;
   const timeoutMs = options.timeout ?? CLAUDE_DEFAULT_TIMEOUT_MS;
   const extraArgs = options.extraArgs ?? [];
+  const outputFormat = options.outputFormat ?? "text";
 
   const child = spawn(
     "claude",
-    ["--print", "--model", model, "--output-format", "text", ...extraArgs],
+    [
+      "--print",
+      "--model",
+      model,
+      "--output-format",
+      outputFormat,
+      ...extraArgs,
+    ],
     {
       cwd: PROJECT_ROOT,
       env: buildClaudeEnv(),

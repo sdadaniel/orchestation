@@ -3,13 +3,14 @@ import fs from "fs";
 import { getErrorMessage } from "@/lib/errors/error-utils";
 import { ROLES_DIR } from "@/lib/config/paths";
 import { getDb, isDbAvailable } from "@/service/db";
-import { getNextTaskId, createTask } from "@/service/task-store";
+import { getNextTaskId, createTask, getTaskDisplayId } from "@/service/task-store";
 import { formatTimestamp } from "@/lib/time/date-utils";
 
 export const dynamic = "force-dynamic";
 
 interface RequestRow {
   id: string;
+  display_id: string | null;
   title: string;
   status: string;
   priority: string;
@@ -37,7 +38,7 @@ export async function GET() {
     const db = getDb()!;
     const rows = db
       .prepare(
-        "SELECT id, title, status, priority, created, updated, content, depends_on, scope, sort_order, branch FROM tasks ORDER BY id",
+        "SELECT id, display_id, title, status, priority, created, updated, content, depends_on, scope, sort_order, branch FROM tasks ORDER BY sort_order, COALESCE(display_number, 2147483647), display_id, id",
       )
       .all() as RequestRow[];
 
@@ -50,6 +51,7 @@ export async function GET() {
     };
     const requests = rows.map((row) => ({
       id: row.id,
+      display_id: getTaskDisplayId(row),
       title: row.title,
       status: row.status,
       priority: row.priority,
@@ -113,8 +115,8 @@ export async function POST(request: Request) {
     const taskRole =
       typeof role === "string" && validRoles.includes(role) ? role : "";
 
-    createTask({
-      id: taskId,
+    const created = createTask({
+      display_id: taskId,
       title: sanitizedTitle,
       status: "pending",
       priority: taskPriority,
@@ -127,7 +129,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        id: taskId,
+        id: created.id,
+        display_id: getTaskDisplayId(created),
         title: sanitizedTitle,
         status: "pending",
         priority: taskPriority,

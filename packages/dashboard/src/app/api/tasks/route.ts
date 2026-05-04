@@ -6,6 +6,7 @@ import {
   getAllTasks,
   createTask,
   getNextTaskId,
+  getTaskDisplayId,
 } from "@/service/task-store";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,8 @@ export async function GET() {
   const rows = getAllTasks();
   const tasks: TaskFrontmatter[] = rows.map((row) => ({
     id: row.id,
+    display_id: getTaskDisplayId(row),
+    canonical_id: row.id,
     title: row.title,
     status: row.status as TaskFrontmatter["status"],
     phase: (row as unknown as { phase?: string | null }).phase ?? null,
@@ -57,8 +60,8 @@ export async function POST(request: Request) {
         )
       : [];
 
-    createTask({
-      id: taskId,
+    const created = createTask({
+      display_id: taskId,
       title: sanitizedTitle,
       status: "pending",
       priority: taskPriority,
@@ -69,7 +72,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        id: taskId,
+        id: created.id,
+        display_id: getTaskDisplayId(created),
         title: sanitizedTitle,
         status: "pending",
         priority: taskPriority,

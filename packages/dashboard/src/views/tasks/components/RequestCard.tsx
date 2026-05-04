@@ -44,6 +44,7 @@ export const RequestCard = memo(
     isFirst?: boolean;
     isLast?: boolean;
   }) {
+    const displayId = req.display_id ?? req.id;
     const [expanded, setExpanded] = useState(false);
     const [editing, setEditing] = useState(false);
     const [editTitle, setEditTitle] = useState(req.title);
@@ -121,7 +122,7 @@ export const RequestCard = memo(
             onClick={(e) => e.stopPropagation()}
             className="font-mono text-[10px] text-muted-foreground/70 shrink-0 hover:text-primary hover:underline transition-colors"
           >
-            {req.id}
+            {displayId}
           </Link>
           <span
             className={cn(

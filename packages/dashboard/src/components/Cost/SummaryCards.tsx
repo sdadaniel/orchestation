@@ -2,12 +2,17 @@
 
 import { aggregateByModel } from "@/lib/cost-aggregation";
 import { aggregateCostByPhase } from "@/lib/cost-phase";
+import { isOrchestrationTaskCostEntry } from "@/parser/cost-task-scope";
 import type { SummaryCardsProps } from "./types";
 
 export function SummaryCards({ entries, summaryByTask }: SummaryCardsProps) {
   const totalCost = entries.reduce((sum, e) => sum + e.costUsd, 0);
   const totalTasks = summaryByTask.length;
-  const avgCostPerTask = totalTasks > 0 ? totalCost / totalTasks : 0;
+  const orchestrationTaskCost = entries
+    .filter(isOrchestrationTaskCostEntry)
+    .reduce((sum, e) => sum + e.costUsd, 0);
+  const avgCostPerTask =
+    totalTasks > 0 ? orchestrationTaskCost / totalTasks : 0;
   const totalTokens = entries.reduce(
     (sum, e) =>
       sum + e.inputTokens + e.outputTokens + e.cacheCreate + e.cacheRead,

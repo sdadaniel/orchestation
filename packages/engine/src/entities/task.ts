@@ -14,6 +14,8 @@ export type TaskPriority = "high" | "medium" | "low";
 
 export interface TaskEntity {
   id: string;
+  display_id: string | null;
+  display_number: number | null;
   title: string;
   status: TaskStatus;
   phase: string | null;

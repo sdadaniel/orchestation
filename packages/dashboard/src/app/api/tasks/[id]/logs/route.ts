@@ -8,6 +8,7 @@ import {
 } from "@/parser/task-log-parser";
 import type { TaskLogEntry } from "@/parser/task-log-parser";
 import { getDb, isDbAvailable } from "@/service/db";
+import { resolveTaskRef } from "@/service/task-store";
 
 export const dynamic = "force-dynamic";
 
@@ -39,9 +40,11 @@ function getLogsFromDb(taskId: string): TaskLogEntry[] | null {
   if (!isDbAvailable()) return null;
 
   const db = getDb()!;
+  const resolvedTaskId = resolveTaskRef(taskId)?.task.id;
+  if (!resolvedTaskId) return null;
 
   // Check task exists in DB
-  const task = db.prepare("SELECT id FROM tasks WHERE id = ?").get(taskId) as
+  const task = db.prepare("SELECT id FROM tasks WHERE id = ?").get(resolvedTaskId) as
     | { id: string }
     | undefined;
   if (!task) return null;
@@ -58,7 +61,7 @@ function getLogsFromDb(taskId: string): TaskLogEntry[] | null {
          WHERE u.task_id = ?
          ORDER BY u.timestamp`,
       )
-      .all(taskId) as TokenUsageRow[];
+      .all(resolvedTaskId) as TokenUsageRow[];
 
     for (const row of tokenRows) {
       const stepPart =
@@ -85,7 +88,7 @@ function getLogsFromDb(taskId: string): TaskLogEntry[] | null {
          WHERE e.task_id = ?
          ORDER BY e.timestamp`,
       )
-      .all(taskId) as TaskEventRow[];
+      .all(resolvedTaskId) as TaskEventRow[];
 
     for (const row of eventRows) {
       const stepTag =
@@ -125,6 +128,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const resolvedTask = resolveTaskRef(id)?.task;
 
     // Validate task ID format
     if (!isValidTaskId(id)) {
@@ -141,18 +145,18 @@ export async function GET(
     }
 
     // Fall back to file-based
-    if (!taskExists(id)) {
+    if (!resolvedTask || !taskExists(resolvedTask.id)) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    if (!hasLogSources(id)) {
+    if (!hasLogSources(resolvedTask.id)) {
       return NextResponse.json(
         { error: "No logs found for this task" },
         { status: 404 },
       );
     }
 
-    const logs = getTaskLogs(id);
+    const logs = getTaskLogs(resolvedTask.id);
 
     return NextResponse.json(logs);
   } catch (err) {

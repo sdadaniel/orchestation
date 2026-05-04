@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { OUTPUT_DIR } from "../lib/config/paths";
+import { isOrchestrationTaskCostEntry as isTaskScopedCostEntry } from "./cost-task-scope";
 
 export interface CostEntry {
   timestamp: string;
@@ -38,8 +39,12 @@ export interface CostData {
 // [2026-03-23 12:15:45] TASK-029 | phase=task | model=claude-sonnet-4-20250514 | input=1500 cache_create=100 cache_read=0 output=2400 | turns=3 | duration=5230ms | cost=$0.045
 // Log format (legacy, without model):
 // [2026-03-23 12:15:45] TASK-029 | phase=task | input=1500 cache_create=100 cache_read=0 output=2400 | turns=3 | duration=5230ms | cost=$0.045
+// Dashboard (no task id) — must match token-logger logDashboardAiUsage:
+// [2026-03-23 12:15:45] phase=chat | model=... | input=... | turns=... | duration=...ms | cost=$...
 const LOG_LINE_REGEX_WITH_MODEL =
   /^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+([\w-]+)\s+\|\s+phase=(\w+)\s+\|\s+model=([\w.:/\[\]-]+)\s+\|\s+input=(\d+)\s+cache_create=(\d+)\s+cache_read=(\d+)\s+output=(\d+)\s+\|\s+turns=(\d+)\s+\|\s+duration=(\d+)ms\s+\|\s+cost=\$([\d.]+)/;
+const LOG_LINE_REGEX_DASHBOARD =
+  /^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+phase=(\w+)\s+\|\s+model=([\w.:/\[\]-]+)\s+\|\s+input=(\d+)\s+cache_create=(\d+)\s+cache_read=(\d+)\s+output=(\d+)\s+\|\s+turns=(\d+)\s+\|\s+duration=(\d+)ms\s+\|\s+cost=\$([\d.]+)/;
 const LOG_LINE_REGEX_LEGACY =
   /^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+([\w-]+)\s+\|\s+phase=(\w+)\s+\|\s+input=(\d+)\s+cache_create=(\d+)\s+cache_read=(\d+)\s+output=(\d+)\s+\|\s+turns=(\d+)\s+\|\s+duration=(\d+)ms\s+\|\s+cost=\$([\d.]+)/;
 
@@ -64,6 +69,23 @@ export function parseCostLogLine(line: string): CostEntry | null {
       turns: parseInt(matchWithModel[9] ?? "0", 10),
       durationMs: parseInt(matchWithModel[10] ?? "0", 10),
       costUsd: parseFloat(matchWithModel[11] ?? "0"),
+    };
+  }
+
+  const matchDashboard = trimmed.match(LOG_LINE_REGEX_DASHBOARD);
+  if (matchDashboard) {
+    return {
+      timestamp: matchDashboard[1] ?? "",
+      taskId: "",
+      phase: matchDashboard[2] ?? "",
+      model: matchDashboard[3] ?? "",
+      inputTokens: parseInt(matchDashboard[4] ?? "0", 10),
+      cacheCreate: parseInt(matchDashboard[5] ?? "0", 10),
+      cacheRead: parseInt(matchDashboard[6] ?? "0", 10),
+      outputTokens: parseInt(matchDashboard[7] ?? "0", 10),
+      turns: parseInt(matchDashboard[8] ?? "0", 10),
+      durationMs: parseInt(matchDashboard[9] ?? "0", 10),
+      costUsd: parseFloat(matchDashboard[10] ?? "0"),
     };
   }
 
@@ -116,6 +138,8 @@ export function aggregateByTask(entries: CostEntry[]): TaskCostSummary[] {
   const modelsMap = new Map<string, Set<string>>();
 
   for (const e of entries) {
+    if (!isTaskScopedCostEntry(e)) continue;
+
     let summary = map.get(e.taskId);
     if (!summary) {
       summary = {

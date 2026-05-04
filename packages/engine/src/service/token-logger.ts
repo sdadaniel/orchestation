@@ -19,6 +19,37 @@ function formatLocalTimestampForCostLog(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
+/** 대시보드 등 오케스트레이션 태스크 밖의 AI 호출 — 파일만 기록(DB는 task_id FK로 생략). */
+export type DashboardAiPhase = "chat" | "suggest" | "analyze";
+
+export function logDashboardAiUsage(
+  phase: DashboardAiPhase,
+  model: string,
+  result: TokenUsageResult,
+): void {
+  const ts = formatLocalTimestampForCostLog(new Date());
+  const cacheCreate = Math.max(0, Math.trunc(result.cacheCreate ?? 0));
+  const cacheRead = Math.max(0, Math.trunc(result.cacheRead ?? 0));
+  const turns = Math.max(0, Math.trunc(result.turns ?? 0));
+  const input = Math.max(0, Math.trunc(result.inputTokens ?? 0));
+  const output = Math.max(0, Math.trunc(result.outputTokens ?? 0));
+  const durationMs = Math.max(0, Math.trunc(result.durationMs ?? 0));
+
+  // Must match cost-parser.ts LOG_LINE_REGEX_DASHBOARD
+  const logLine =
+    `[${ts}] phase=${phase} | model=${model} | ` +
+    `input=${input} cache_create=${cacheCreate} cache_read=${cacheRead} output=${output} | ` +
+    `turns=${turns} | duration=${durationMs}ms | cost=$${Number(result.costUsd ?? 0).toFixed(6)}\n`;
+
+  try {
+    const logPath = path.join(OUTPUT_DIR, "token-usage.log");
+    fs.mkdirSync(path.dirname(logPath), { recursive: true });
+    fs.appendFileSync(logPath, logLine);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function logTokenUsage(
   taskId: string,
   phase: TokenUsageEntity["phase"],

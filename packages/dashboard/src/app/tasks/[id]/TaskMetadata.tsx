@@ -26,6 +26,8 @@ export function TaskMetadata({
   onStop,
   onDelete,
 }: TaskMetadataProps) {
+  const displayId = task.display_id ?? task.id;
+
   return (
     <>
       {/* Meta */}
@@ -111,7 +113,7 @@ export function TaskMetadata({
                     ? "이미 실행 중인 태스크입니다"
                     : task.status === "done" || task.status === "rejected"
                       ? "완료된 태스크입니다"
-                      : `${task.id} 실행`
+                      : `${displayId} 실행`
               }
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md transition-colors",

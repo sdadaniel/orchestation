@@ -11,11 +11,14 @@ import {
   getTask,
   getAllTasks,
   updateTaskStatus,
+  getTaskDisplayId,
+  resolveTaskId,
+  resolveTaskRef,
 } from "@/service/task-store";
 import { registerRpc } from "../registry";
 
 const SIGNAL_DIR = path.join(PROJECT_ROOT, ".orchestration", "signals");
-const TASK_ID_PATTERN = /^TASK-\d{3}$/;
+const TASK_ID_PATTERN = /^[A-Za-z0-9][\w-]*$/;
 
 function isValidTaskId(id: string): boolean {
   return TASK_ID_PATTERN.test(id);
@@ -24,7 +27,7 @@ function isValidTaskId(id: string): boolean {
 function markTaskAsStopped(taskId: string): void {
   const task = getTask(taskId);
   if (!task) return;
-  updateTaskStatus(taskId, "stopped", task.status as TaskStatus);
+  updateTaskStatus(task.id, "stopped", task.status as TaskStatus);
 }
 
 function createStopRequest(taskId: string): void {
@@ -47,6 +50,12 @@ registerRpc({
     if (!isValidTaskId(taskId)) {
       throw { code: "INVALID_PARAMS", message: "Invalid task ID format" };
     }
+    const resolved = resolveTaskRef(taskId);
+    if (!resolved) {
+      throw { code: "NOT_FOUND", message: "Task not found" };
+    }
+    const canonicalTaskId = resolved.task.id;
+    const displayTaskId = getTaskDisplayId(resolved.task);
 
     if (orchestrationManager.isRunning()) {
       throw {
@@ -55,13 +64,15 @@ registerRpc({
       };
     }
 
-    const taskRow = getTask(taskId);
+    const taskRow = resolved.task;
     if (taskRow) {
       const dependsOnIds = parseDependsOn(taskRow);
       if (dependsOnIds.length > 0) {
         const allTasks = getAllTasks();
         const unmetDeps = dependsOnIds.filter((depId) => {
-          const dep = allTasks.find((task) => task.id === depId);
+          const dep = allTasks.find(
+            (task) => task.id === depId || task.display_id === depId,
+          );
           return !dep || dep.status !== "done";
         });
         if (unmetDeps.length > 0) {
@@ -74,9 +85,9 @@ registerRpc({
     }
 
     for (const filePath of [
-      path.join(OUTPUT_DIR, `${taskId}-task.json`),
-      path.join(OUTPUT_DIR, `${taskId}-task-conversation.jsonl`),
-      path.join(OUTPUT_DIR, `${taskId}-rejection-reason.txt`),
+      path.join(OUTPUT_DIR, `${canonicalTaskId}-task.json`),
+      path.join(OUTPUT_DIR, `${canonicalTaskId}-task-conversation.jsonl`),
+      path.join(OUTPUT_DIR, `${canonicalTaskId}-rejection-reason.txt`),
     ]) {
       try {
         fs.unlinkSync(filePath);
@@ -85,17 +96,17 @@ registerRpc({
       }
     }
 
-    const result = taskRunnerManager.run(taskId);
+    const result = taskRunnerManager.run(canonicalTaskId);
     if (!result.success) {
       throw {
         code: "ALREADY_RUNNING",
-        message: result.error ?? `Task ${taskId} is already running`,
+        message: result.error ?? `Task ${displayTaskId} is already running`,
       };
     }
 
     return {
-      message: `Task ${taskId} started`,
-      taskId,
+      message: `Task ${displayTaskId} started`,
+      taskId: canonicalTaskId,
     };
   },
 });
@@ -108,12 +119,20 @@ registerRpc({
     if (!isValidTaskId(taskId)) {
       throw { code: "INVALID_PARAMS", message: "Invalid task ID format" };
     }
-
-    const state = taskRunnerManager.getState(taskId);
-    if (!state) {
+    const canonicalTaskId = resolveTaskId(taskId);
+    if (!canonicalTaskId) {
       return {
         status: "idle",
         taskId,
+        logs: [],
+      };
+    }
+
+    const state = taskRunnerManager.getState(canonicalTaskId);
+    if (!state) {
+      return {
+        status: "idle",
+        taskId: canonicalTaskId,
         logs: [],
       };
     }
@@ -130,18 +149,22 @@ registerRpc({
     if (!isValidTaskId(taskId)) {
       throw { code: "INVALID_PARAMS", message: "Invalid task ID format" };
     }
+    const canonicalTaskId = resolveTaskId(taskId);
+    if (!canonicalTaskId) {
+      throw { code: "NOT_FOUND", message: "Task not found" };
+    }
 
-    createStopRequest(taskId);
-    const result = taskRunnerManager.stop(taskId);
+    createStopRequest(canonicalTaskId);
+    const result = taskRunnerManager.stop(canonicalTaskId);
 
     if (!result.success) {
       try {
-        const pids = execSync(`pgrep -f "claude.*${taskId}" 2>/dev/null || true`, {
+        const pids = execSync(`pgrep -f "claude.*${canonicalTaskId}" 2>/dev/null || true`, {
           encoding: "utf-8",
         }).trim();
 
         if (!pids) {
-          markTaskAsStopped(taskId);
+          markTaskAsStopped(canonicalTaskId);
           throw {
             code: "NOT_RUNNING",
             message: `${taskId}에 대한 실행 중인 프로세스를 찾을 수 없습니다.`,
@@ -165,7 +188,7 @@ registerRpc({
         if ((err as { code?: string }).code === "NOT_RUNNING") {
           throw err;
         }
-        markTaskAsStopped(taskId);
+        markTaskAsStopped(canonicalTaskId);
         throw {
           code: "STOP_FAILED",
           message: `${taskId} 중지 실패`,
@@ -173,7 +196,7 @@ registerRpc({
       }
     }
 
-    markTaskAsStopped(taskId);
+    markTaskAsStopped(canonicalTaskId);
     return {
       message: `Task ${taskId} stopped`,
       status: "stopped",

@@ -49,6 +49,7 @@ export default function TaskDetailPageView({
     "idle" | "running" | "completed" | "failed"
   >("idle");
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
+  const taskKey = task?.id ?? id;
 
   const fetchTask = useCallback(async () => {
     try {
@@ -71,11 +72,11 @@ export default function TaskDetailPageView({
   // Gateway WS가 store를 업데이트하면 자동 refetch (중복 연결 방지)
   const storeRequests = useTasksStore((s) => s.requests);
   useEffect(() => {
-    const match = storeRequests.find((r) => r.id === id);
+    const match = storeRequests.find((r) => r.id === taskKey);
     if (match && task && match.status !== task.status) {
       fetchTask();
     }
-  }, [storeRequests, id, task, fetchTask]);
+  }, [storeRequests, taskKey, task, fetchTask]);
 
   // Lazy-load AI result
   useEffect(() => {
@@ -143,7 +144,7 @@ export default function TaskDetailPageView({
         setRunStatus(status as "completed" | "failed");
         // 사이드바 즉시 반영: done 또는 failed로 전환
         const finalStatus = status === "completed" ? "done" : "failed";
-        useTasksStore.getState().patchRequest(id, { status: finalStatus });
+        useTasksStore.getState().patchRequest(taskKey, { status: finalStatus });
         // 최신 task 데이터 refetch
         try {
           const taskRes = await fetch(`/api/requests/${id}`);
@@ -153,14 +154,14 @@ export default function TaskDetailPageView({
         }
       }
     },
-    [id],
+    [id, taskKey],
   );
 
   const handleStatusChange = async (newStatus: string) => {
     // 사이드바 즉시 반영
     useTasksStore
       .getState()
-      .patchRequest(id, { status: newStatus as RequestItem["status"] });
+      .patchRequest(taskKey, { status: newStatus as RequestItem["status"] });
     await fetch(`/api/requests/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -184,7 +185,7 @@ export default function TaskDetailPageView({
         prev ? { ...prev, status: "in_progress" } : null
       );
       // 사이드바 즉시 반영
-      useTasksStore.getState().patchRequest(id, { status: "in_progress" });
+      useTasksStore.getState().patchRequest(taskKey, { status: "in_progress" });
       setActiveTab("logs");
       // task 데이터 refetch (status 확정)
       setTimeout(async () => {
@@ -203,7 +204,7 @@ export default function TaskDetailPageView({
       setRunStatus("idle");
       setTask((prev) => (prev ? { ...prev, status: "stopped" } : null));
       // 사이드바 즉시 반영
-      useTasksStore.getState().patchRequest(id, { status: "stopped" });
+      useTasksStore.getState().patchRequest(taskKey, { status: "stopped" });
       // 파일 상태도 반영된 최신 데이터로 refetch
       setTimeout(async () => {
         const taskRes = await fetch(`/api/requests/${id}`);
@@ -218,12 +219,12 @@ export default function TaskDetailPageView({
       // 네트워크 오류도 UI는 즉시 반영
       setRunStatus("idle");
       setTask((prev) => (prev ? { ...prev, status: "stopped" } : null));
-      useTasksStore.getState().patchRequest(id, { status: "stopped" });
+      useTasksStore.getState().patchRequest(taskKey, { status: "stopped" });
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm(`${task?.id} 삭제하시겠습니까?`)) return;
+    if (!confirm(`${task?.display_id ?? task?.id} 삭제하시겠습니까?`)) return;
     const res = await fetch(`/api/requests/${id}`, { method: "DELETE" });
     if (res.ok) router.push("/tasks");
   };
@@ -263,7 +264,7 @@ export default function TaskDetailPageView({
           <ArrowLeft className="h-4 w-4" />
         </button>
         <span className="font-mono text-xs text-muted-foreground">
-          {task.id}
+          {task.display_id ?? task.id}
         </span>
         <h1 className="text-lg font-semibold flex-1">{task.title}</h1>
       </div>
@@ -311,14 +312,14 @@ export default function TaskDetailPageView({
       {activeTab === "cost" && <CostTab task={task} />}
       {activeTab === "logs" && (
         <LogsTab
-          taskId={id}
+          taskId={task.id}
           runStatus={runStatus}
           taskStatus={task.status}
           hasExecutionLog={!!task.executionLog}
           onStatusChange={handleRunStatusChange}
         />
       )}
-      {activeTab === "terminal" && <LiveTerminalPanel taskId={id} />}
+      {activeTab === "terminal" && <LiveTerminalPanel taskId={task.id} />}
     </div>
   );
 }

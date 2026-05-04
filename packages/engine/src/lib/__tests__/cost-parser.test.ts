@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseCostLogLine, aggregateByTask } from "../../parser/cost-parser";
+import { isOrchestrationTaskCostEntry } from "../../parser/cost-task-scope";
 
 // ─── parseCostLogLine ───────────────────────────────────────────────────────
 
@@ -78,6 +79,19 @@ describe("parseCostLogLine", () => {
     expect(entry).not.toBeNull();
     expect(entry!.costUsd).toBe(0);
     expect(entry!.inputTokens).toBe(0);
+  });
+
+  it("parses dashboard line (no task id) with empty taskId", () => {
+    const line =
+      "[2026-05-04 10:00:00] phase=chat | model=claude-sonnet-4-6 | input=100 cache_create=0 cache_read=0 output=50 | turns=1 | duration=1200ms | cost=$0.000500";
+    const entry = parseCostLogLine(line);
+    expect(entry).not.toBeNull();
+    expect(entry!.taskId).toBe("");
+    expect(entry!.phase).toBe("chat");
+    expect(entry!.model).toBe("claude-sonnet-4-6");
+    expect(entry!.inputTokens).toBe(100);
+    expect(entry!.outputTokens).toBe(50);
+    expect(entry!.costUsd).toBeCloseTo(0.0005);
   });
 });
 
@@ -269,6 +283,40 @@ describe("aggregateByTask", () => {
 
   it("returns empty array for empty input", () => {
     expect(aggregateByTask([])).toEqual([]);
+  });
+
+  it("excludes dashboard (non-TASK-) entries from task summaries", () => {
+    const entries = [
+      makeEntry(
+        "TASK-001",
+        "claude-sonnet-4-20250514",
+        100,
+        50,
+        0,
+        0,
+        1,
+        1000,
+        0.01,
+      ),
+      {
+        timestamp: "2026-05-04 10:00:00",
+        taskId: "",
+        phase: "chat",
+        model: "claude-sonnet-4-6",
+        inputTokens: 200,
+        cacheCreate: 0,
+        cacheRead: 0,
+        outputTokens: 100,
+        turns: 1,
+        durationMs: 500,
+        costUsd: 0.02,
+      },
+    ];
+    expect(isOrchestrationTaskCostEntry(entries[1]!)).toBe(false);
+    const result = aggregateByTask(entries);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.taskId).toBe("TASK-001");
+    expect(result[0]!.totalCostUsd).toBeCloseTo(0.01);
   });
 
   it("preserves floating-point precision via toFixed(6)", () => {

@@ -12,6 +12,8 @@ import {
   updateTask,
   updateTaskStatus,
   deleteTask,
+  getTaskDisplayId,
+  resolveTaskRef,
 } from "@/service/task-store";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +23,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const task = getTask(id);
+  const resolved = resolveTaskRef(id);
+  const task = resolved?.task ?? null;
 
   if (!task) {
     return NextResponse.json({ error: "Request not found" }, { status: 404 });
@@ -29,7 +32,7 @@ export async function GET(
 
   // Execution log (file-based, remains in OUTPUT_DIR)
   let executionLog: Record<string, unknown> | null = null;
-  const taskJsonPath = path.join(OUTPUT_DIR, `${id}-task.json`);
+  const taskJsonPath = path.join(OUTPUT_DIR, `${task.id}-task.json`);
   if (fs.existsSync(taskJsonPath)) {
     try {
       executionLog = JSON.parse(fs.readFileSync(taskJsonPath, "utf-8"));
@@ -40,7 +43,7 @@ export async function GET(
 
   // Review result
   let reviewResult: Record<string, unknown> | null = null;
-  const reviewJsonPath = path.join(OUTPUT_DIR, `${id}-review.json`);
+  const reviewJsonPath = path.join(OUTPUT_DIR, `${task.id}-review.json`);
   if (fs.existsSync(reviewJsonPath)) {
     try {
       reviewResult = JSON.parse(fs.readFileSync(reviewJsonPath, "utf-8"));
@@ -62,7 +65,7 @@ export async function GET(
       const lines = fs
         .readFileSync(tokenLogPath, "utf-8")
         .split("\n")
-        .filter((l) => l.includes(id) && !l.includes("model_selection"));
+        .filter((l) => l.includes(task.id) && !l.includes("model_selection"));
       costEntries = lines.map((line) => ({
         phase: line.match(/phase=(\w+)/)?.[1] || "unknown",
         cost: `$${parseFloat(line.match(/cost=\$([0-9.]+)/)?.[1] || "0").toFixed(4)}`,
@@ -78,16 +81,21 @@ export async function GET(
   const dependsOnIds = parseDependsOn(task);
   const dependedBy = allTasks
     .filter((t) => parseDependsOn(t).includes(task.id))
-    .map((t) => ({ id: t.id, title: t.title, status: t.status }));
+    .map((t) => ({
+      id: t.id,
+      display_id: getTaskDisplayId(t),
+      title: t.title,
+      status: t.status,
+    }));
   const dependsOnResolved = dependsOnIds.map((depId) => {
-    const dep = allTasks.find((t) => t.id === depId);
+    const dep = allTasks.find((t) => t.id === depId || t.display_id === depId);
     return dep
-      ? { id: dep.id, title: dep.title, status: dep.status }
-      : { id: depId, title: "", status: "unknown" };
+      ? { id: dep.id, display_id: getTaskDisplayId(dep), title: dep.title, status: dep.status }
+      : { id: depId, display_id: depId, title: "", status: "unknown" };
   });
 
   const workflowDefs = parseWorkflowFromTaskContent(task.content ?? "");
-  const workflowRows = getTaskSteps(id);
+  const workflowRows = getTaskSteps(task.id);
   const rowByKey = new Map(workflowRows.map((r) => [r.step_key, r]));
   const workflowSteps = workflowDefs.map((def) => {
     const row = rowByKey.get(def.key);
@@ -110,6 +118,7 @@ export async function GET(
 
   return NextResponse.json({
     id: task.id,
+    display_id: getTaskDisplayId(task),
     title: task.title,
     status: task.status,
     phase: task.phase ?? null,

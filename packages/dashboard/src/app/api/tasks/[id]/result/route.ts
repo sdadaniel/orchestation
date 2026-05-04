@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { OUTPUT_DIR } from "@/lib/config/paths";
+import { resolveTaskRef } from "@/service/task-store";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const taskId = id.replace(/^REQ-/, "TASK-");
+  const taskId = resolveTaskRef(id)?.task.id ?? id;
 
   // task 결과만 읽기 (review 결과는 사용하지 않음)
   const taskPath = path.join(OUTPUT_DIR, `${taskId}-task.json`);

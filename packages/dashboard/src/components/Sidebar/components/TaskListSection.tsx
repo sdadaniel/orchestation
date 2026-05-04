@@ -87,7 +87,7 @@ export function TaskListSection({
       >
         <div className="sidebar-collapsible-inner">
           {recentItems.map((task) => {
-            const taskDisplayId = task.id;
+            const taskDisplayId = task.display_id ?? task.id;
             const isDone = task.status === "done";
             const isInProgress = task.status === "in_progress";
             const statusIndicator = isInProgress ? (

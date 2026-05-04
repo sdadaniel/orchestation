@@ -10,6 +10,7 @@ interface DependencyFlowProps {
 
 export function DependencyFlow({ task }: DependencyFlowProps) {
   const router = useRouter();
+  const taskDisplayId = task.display_id ?? task.id;
 
   const hasUpstream = (task.depends_on_detail?.length ?? 0) > 0;
   const hasDownstream = (task.depended_by?.length ?? 0) > 0;
@@ -47,7 +48,7 @@ export function DependencyFlow({ task }: DependencyFlowProps) {
                   />
                 )}
                 <span className="font-mono text-[10px] text-muted-foreground">
-                  {dep.id}
+                  {dep.display_id ?? dep.id}
                 </span>
               </div>
               <span className="text-[11px] leading-tight truncate">
@@ -72,7 +73,7 @@ export function DependencyFlow({ task }: DependencyFlowProps) {
               />
             )}
             <span className="font-mono text-[10px] font-semibold">
-              {task.id}
+              {taskDisplayId}
             </span>
           </div>
           <span className="text-[11px] leading-tight font-medium truncate">
@@ -104,7 +105,7 @@ export function DependencyFlow({ task }: DependencyFlowProps) {
                   />
                 )}
                 <span className="font-mono text-[10px] text-muted-foreground">
-                  {dep.id}
+                  {dep.display_id ?? dep.id}
                 </span>
               </div>
               <span className="text-[11px] leading-tight truncate">

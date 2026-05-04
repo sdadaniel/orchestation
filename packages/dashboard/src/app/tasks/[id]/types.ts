@@ -7,6 +7,7 @@ export interface CostEntry {
 
 export interface DepRef {
   id: string;
+  display_id?: string;
   title: string;
   status: string;
 }
@@ -42,6 +43,7 @@ export interface TaskWorkflow {
 
 export interface TaskDetail {
   id: string;
+  display_id?: string;
   title: string;
   status: string;
   phase: string | null;

@@ -45,6 +45,7 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
       for (const task of allTasks) {
         const prev = prevMap.get(task.id);
         if (prev === undefined || prev === task.status) continue;
+        const displayId = task.display_id ?? task.id;
 
         // 동일 task+status 조합에 대해 중복 토스트 방지
         const toastKey = `${task.id}:${task.status}`;
@@ -52,11 +53,11 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
         toastedRef.current.add(toastKey);
 
         if (task.status === "done") {
-          addToast(`${task.id}: "${task.title}" 완료됨`, "success");
+          addToast(`${displayId}: "${task.title}" 완료됨`, "success");
         } else if (task.status === "in_progress" && prev === "pending") {
-          addToast(`${task.id}: "${task.title}" 시작됨`, "info");
+          addToast(`${displayId}: "${task.title}" 시작됨`, "info");
         } else if (task.status === "reviewing") {
-          addToast(`${task.id}: "${task.title}" 리뷰 중`, "info");
+          addToast(`${displayId}: "${task.title}" 리뷰 중`, "info");
         }
       }
     }

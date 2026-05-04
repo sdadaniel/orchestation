@@ -2,12 +2,15 @@ import fs from "fs";
 import type { TaskPriority } from "@/entities/task";
 import {
   spawnClaude,
+  CLAUDE_DEFAULT_MODEL,
   CLAUDE_DEFAULT_TIMEOUT_MS,
   ClaudeChildProcess,
 } from "@/lib/ai/claude-cli";
+import { parseClaudePrintJsonEnvelope } from "@/lib/ai/claude-cli-result";
 import { renderTemplate } from "@/lib/template";
 import { ROLES_DIR } from "@/lib/config/paths";
 import { jsonErrorResponse } from "@/lib/errors/error-utils";
+import { logDashboardAiUsage } from "@/service/token-logger";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -76,7 +79,11 @@ export async function POST(request: Request) {
   });
 
   return new Promise<Response>((resolve) => {
-    const child: ClaudeChildProcess = spawnClaude(prompt);
+    const startedAt = Date.now();
+    const child: ClaudeChildProcess = spawnClaude(prompt, {
+      outputFormat: "json",
+      extraArgs: ["--dangerously-skip-permissions"],
+    });
 
     let stdout = "";
     let stderr = "";
@@ -115,11 +122,27 @@ export async function POST(request: Request) {
         return;
       }
 
+      let printEnvelope: ReturnType<typeof parseClaudePrintJsonEnvelope> | null =
+        null;
       try {
-        // Extract JSON from response (may have surrounding text)
-        const jsonMatch = stdout.match(/\{[\s\S]*"tasks"[\s\S]*\}/);
+        printEnvelope = parseClaudePrintJsonEnvelope(stdout);
+        logDashboardAiUsage("analyze", CLAUDE_DEFAULT_MODEL, {
+          costUsd: printEnvelope.usage.costUsd,
+          inputTokens: printEnvelope.usage.inputTokens,
+          outputTokens: printEnvelope.usage.outputTokens,
+          durationMs: Date.now() - startedAt,
+          cacheCreate: printEnvelope.usage.cacheCreate,
+          cacheRead: printEnvelope.usage.cacheRead,
+          turns: printEnvelope.usage.turns,
+        });
+      } catch {
+        /* 비-json 래퍼면 비용 로그 생략 */
+      }
+
+      try {
+        const resultText = printEnvelope?.resultText ?? stdout;
+        const jsonMatch = resultText.match(/\{[\s\S]*"tasks"[\s\S]*\}/);
         if (!jsonMatch) {
-          // Fallback: create a single task from the original request
           const fallback: { tasks: AnalyzedTask[] } = {
             tasks: [
               {
@@ -142,7 +165,7 @@ export async function POST(request: Request) {
           return;
         }
 
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
         if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
           throw new Error("Invalid response structure");
         }
@@ -179,8 +202,7 @@ export async function POST(request: Request) {
             headers: { "Content-Type": "application/json" },
           }),
         );
-      } catch (err) {
-        // Fallback
+      } catch {
         resolve(
           new Response(
             JSON.stringify({

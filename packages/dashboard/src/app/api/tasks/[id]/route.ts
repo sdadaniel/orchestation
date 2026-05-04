@@ -5,11 +5,12 @@ import {
   getTask,
   updateTask,
   deleteTask,
+  getTaskDisplayId,
 } from "@/service/task-store";
 
 export const dynamic = "force-dynamic";
 
-const TASK_ID_PATTERN = /^TASK-\d{3}$/;
+const TASK_ID_PATTERN = /^[A-Za-z0-9][\w-]*$/;
 
 function isValidTaskId(taskId: string): boolean {
   return TASK_ID_PATTERN.test(taskId);
@@ -130,6 +131,7 @@ export async function PUT(
     const updated = getTask(id)!;
     return NextResponse.json({
       id: updated.id,
+      display_id: getTaskDisplayId(updated),
       title: updated.title,
       status: updated.status,
       priority: updated.priority,

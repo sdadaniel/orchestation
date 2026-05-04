@@ -7,6 +7,7 @@ import { getErrorMessage } from "@/lib/errors/error-utils";
 
 export interface RequestItem {
   id: string;
+  display_id?: string;
   title: string;
   status: TaskStatus;
   priority: TaskPriority;

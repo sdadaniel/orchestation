@@ -15,6 +15,7 @@ const VALID_STATUSES: Set<TaskStatus> = new Set([
 function toWaterfallTask(task: TaskFrontmatter): WaterfallTask {
   return {
     id: task.id,
+    display_id: task.display_id ?? task.id,
     title: task.title,
     status: VALID_STATUSES.has(task.status) ? task.status : "pending",
     priority: task.priority,

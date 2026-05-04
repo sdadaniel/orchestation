@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { PROJECT_ROOT } from "@/lib/config/paths";
+import { resolveTaskRef } from "@/service/task-store";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const taskId = id.replace(/^REQ-/, "TASK-");
+  const taskId = resolveTaskRef(id)?.task.id ?? id;
 
   const logPath = path.join(PROJECT_ROOT, "output", "logs", `${taskId}.log`);
 

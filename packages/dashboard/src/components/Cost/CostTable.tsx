@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { CostEntry } from "@/parser/cost-parser";
+import { isOrchestrationTaskCostEntry } from "@/parser/cost-task-scope";
 import { useSortableTable } from "./useSortableTable";
 import { SortIcon } from "./SortIcon";
 import { cn } from "@/lib/utils";
@@ -126,9 +127,17 @@ export function CostTable({ entries }: CostTableProps) {
               const isHighest = entry.costUsd === maxCost && maxCost > 0;
               const totalTokens = getTotalTokens(entry);
 
+              const taskLinked = isOrchestrationTaskCostEntry(entry);
+              const phaseStyle =
+                entry.phase === "task"
+                  ? "bg-blue-500/15 text-blue-400"
+                  : entry.phase === "review"
+                    ? "bg-purple-500/15 text-purple-400"
+                    : "bg-muted text-muted-foreground";
+
               return (
                 <tr
-                  key={`${entry.taskId}-${entry.phase}-${entry.timestamp}-${idx}`}
+                  key={`${entry.taskId || "app"}-${entry.phase}-${entry.timestamp}-${idx}`}
                   className={cn(
                     "border-b border-border last:border-b-0 transition-colors",
                     isHighest
@@ -137,23 +146,25 @@ export function CostTable({ entries }: CostTableProps) {
                   )}
                 >
                   <td>
-                    <Link
-                      href={`/tasks/${entry.taskId}`}
-                      className={cn(
-                        "font-mono hover:underline",
-                        isHighest ? "text-amber-500" : "hover:text-foreground",
-                      )}
-                    >
-                      {entry.taskId}
-                    </Link>
+                    {taskLinked ? (
+                      <Link
+                        href={`/tasks/${entry.taskId}`}
+                        className={cn(
+                          "font-mono hover:underline",
+                          isHighest ? "text-amber-500" : "hover:text-foreground",
+                        )}
+                      >
+                        {entry.taskId}
+                      </Link>
+                    ) : (
+                      <span className="font-mono text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td>
                     <span
                       className={cn(
                         "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
-                        entry.phase === "task"
-                          ? "bg-blue-500/15 text-blue-400"
-                          : "bg-purple-500/15 text-purple-400",
+                        phaseStyle,
                       )}
                     >
                       {entry.phase}

@@ -1,9 +1,15 @@
 import {
   spawnClaude,
+  CLAUDE_DEFAULT_MODEL,
   CLAUDE_DEFAULT_TIMEOUT_MS,
   ClaudeChildProcess,
 } from "@/lib/ai/claude-cli";
+import {
+  handleStreamJsonLine,
+  type ClaudeCliUsageSnapshot,
+} from "@/lib/ai/claude-cli-result";
 import { jsonErrorResponse } from "@/lib/errors/error-utils";
+import { logDashboardAiUsage } from "@/service/token-logger";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -38,8 +44,15 @@ export async function POST(request: Request) {
 
   const stream = new ReadableStream({
     start(controller) {
-      const child: ClaudeChildProcess = spawnClaude(prompt);
+      const startedAt = Date.now();
+      const model = CLAUDE_DEFAULT_MODEL;
+      const child: ClaudeChildProcess = spawnClaude(prompt, {
+        outputFormat: "stream-json",
+        extraArgs: ["--verbose", "--dangerously-skip-permissions"],
+      });
       let controllerClosed = false;
+      let stdoutBuf = "";
+      let lastUsage: ClaudeCliUsageSnapshot | null = null;
 
       function safeEnqueue(data: Uint8Array) {
         if (!controllerClosed) {
@@ -63,7 +76,24 @@ export async function POST(request: Request) {
       }
 
       child.stdout.on("data", (chunk: Buffer) => {
-        safeEnqueue(new TextEncoder().encode(chunk.toString()));
+        stdoutBuf += chunk.toString("utf-8");
+        const lines = stdoutBuf.split("\n");
+        stdoutBuf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const obj = JSON.parse(line) as Record<string, unknown>;
+            const h = handleStreamJsonLine(obj);
+            if (h.textDelta) {
+              safeEnqueue(new TextEncoder().encode(h.textDelta));
+            }
+            if (h.usage) {
+              lastUsage = h.usage;
+            }
+          } catch {
+            /* non-JSON line */
+          }
+        }
       });
 
       let stderrData = "";
@@ -83,6 +113,38 @@ export async function POST(request: Request) {
       child.on("close", (code) => {
         clearTimeout(timeoutTimer);
         if (timedOut) return; // 타임아웃 핸들러가 이미 처리했음
+
+        if (stdoutBuf.trim()) {
+          try {
+            const obj = JSON.parse(stdoutBuf.trim()) as Record<string, unknown>;
+            const h = handleStreamJsonLine(obj);
+            if (h.textDelta) {
+              safeEnqueue(new TextEncoder().encode(h.textDelta));
+            }
+            if (h.usage) {
+              lastUsage = h.usage;
+            }
+          } catch {
+            /* ignore trailing parse errors */
+          }
+        }
+
+        if (
+          !timedOut &&
+          code === 0 &&
+          lastUsage !== null
+        ) {
+          logDashboardAiUsage("chat", model, {
+            costUsd: lastUsage.costUsd,
+            inputTokens: lastUsage.inputTokens,
+            outputTokens: lastUsage.outputTokens,
+            durationMs: Date.now() - startedAt,
+            cacheCreate: lastUsage.cacheCreate,
+            cacheRead: lastUsage.cacheRead,
+            turns: lastUsage.turns,
+          });
+        }
+
         if (code !== 0 && stderrData) {
           console.error("Claude CLI stderr:", stderrData);
         }

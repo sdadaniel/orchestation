@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { spawnClaude, ClaudeChildProcess } from "@/lib/ai/claude-cli";
+import { parseClaudePrintJsonEnvelope } from "@/lib/ai/claude-cli-result";
 import { readTemplate } from "@/lib/template";
+import { logDashboardAiUsage } from "@/service/token-logger";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -62,9 +64,11 @@ export async function POST() {
   const prompt = readTemplate("prompt/task-suggest.md");
 
   return new Promise<Response>((resolve) => {
+    const startedAt = Date.now();
     const child: ClaudeChildProcess = spawnClaude(prompt, {
       model: SUGGEST_MODEL,
       timeout: SUGGEST_TIMEOUT_MS,
+      outputFormat: "json",
       extraArgs: ["--dangerously-skip-permissions"],
     });
 
@@ -111,8 +115,30 @@ export async function POST() {
         return;
       }
 
+      let printEnvelope: ReturnType<typeof parseClaudePrintJsonEnvelope> | null =
+        null;
       try {
-        const jsonMatch = stdout.match(/\{[\s\S]*"suggestions"[\s\S]*\}/);
+        printEnvelope = parseClaudePrintJsonEnvelope(stdout);
+        logDashboardAiUsage("suggest", SUGGEST_MODEL, {
+          costUsd: printEnvelope.usage.costUsd,
+          inputTokens: printEnvelope.usage.inputTokens,
+          outputTokens: printEnvelope.usage.outputTokens,
+          durationMs: Date.now() - startedAt,
+          cacheCreate: printEnvelope.usage.cacheCreate,
+          cacheRead: printEnvelope.usage.cacheRead,
+          turns: printEnvelope.usage.turns,
+        });
+      } catch {
+        /* CLI가 json 래퍼가 아니면 비용 로그 생략 */
+      }
+
+      try {
+        const resultText = printEnvelope?.resultText ?? stdout;
+        const jsonMatch =
+          resultText.match(/\{[\s\S]*"suggestions"[\s\S]*\}/) ??
+          (resultText.trim().startsWith("{")
+            ? [resultText.trim()]
+            : null);
         if (!jsonMatch) {
           resolve(
             NextResponse.json({
@@ -126,12 +152,27 @@ export async function POST() {
         const data = JSON.parse(jsonMatch[0]);
         resolve(NextResponse.json(data));
       } catch {
-        resolve(
-          NextResponse.json({
-            suggestions: fallbackSuggestions(),
-            error: "추천 결과를 파싱할 수 없습니다. fallback 추천을 표시합니다.",
-          }),
-        );
+        try {
+          const jsonMatch = stdout.match(/\{[\s\S]*"suggestions"[\s\S]*\}/);
+          if (!jsonMatch) {
+            resolve(
+              NextResponse.json({
+                suggestions: fallbackSuggestions(),
+                error: "추천 결과를 파싱할 수 없습니다. fallback 추천을 표시합니다.",
+              }),
+            );
+            return;
+          }
+          const data = JSON.parse(jsonMatch[0]);
+          resolve(NextResponse.json(data));
+        } catch {
+          resolve(
+            NextResponse.json({
+              suggestions: fallbackSuggestions(),
+              error: "추천 결과를 파싱할 수 없습니다. fallback 추천을 표시합니다.",
+            }),
+          );
+        }
       }
     });
 

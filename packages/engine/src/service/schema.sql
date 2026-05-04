@@ -4,6 +4,8 @@
 -- Tasks table (replaces .orchestration/tasks/*.md frontmatter)
 CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
+  display_id TEXT UNIQUE,
+  display_number INTEGER UNIQUE,
   title TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
   phase TEXT,                   -- fine-grained state (e.g. working, reviewing)
@@ -121,6 +123,8 @@ CREATE TABLE IF NOT EXISTS run_history (
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_display_id ON tasks(display_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_display_number ON tasks(display_number);
 CREATE INDEX IF NOT EXISTS idx_task_events_task_id ON task_events(task_id);
 CREATE INDEX IF NOT EXISTS idx_task_events_step_id ON task_events(step_id);
 CREATE INDEX IF NOT EXISTS idx_token_usage_task_id ON token_usage(task_id);

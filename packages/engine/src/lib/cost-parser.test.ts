@@ -158,6 +158,25 @@ describe("parseCostLog — multiple tasks", () => {
   });
 });
 
+describe("parseCostLog — dashboard lines mixed with tasks", () => {
+  it("includes dashboard rows in entries but not in summaryByTask", () => {
+    mockExistsSync.mockReturnValue(true);
+    const lines = [
+      "[2026-03-27 10:00:00] TASK-001 | phase=task | model=m | input=10 cache_create=0 cache_read=0 output=10 | turns=1 | duration=100ms | cost=$0.001",
+      "[2026-03-27 10:05:00] phase=chat | model=m | input=20 cache_create=0 cache_read=0 output=5 | turns=1 | duration=200ms | cost=$0.002",
+    ].join("\n");
+    mockReadFileSync.mockReturnValue(lines);
+
+    const { entries, summaryByTask } = parseCostLog();
+    expect(entries).toHaveLength(2);
+    expect(summaryByTask).toHaveLength(1);
+    expect(summaryByTask[0]!.taskId).toBe("TASK-001");
+    const chat = entries.find((e) => e.phase === "chat");
+    expect(chat?.taskId).toBe("");
+    expect(chat?.costUsd).toBeCloseTo(0.002, 6);
+  });
+});
+
 // ──────────────────────────────────────────────────────────────
 // parseCostLog — invalid / empty lines
 // ──────────────────────────────────────────────────────────────
