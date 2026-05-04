@@ -16,6 +16,7 @@ export * from "./skeleton";
 export * from "./slider";
 export * from "./textarea";
 export * from "./tabs";
+export * from "./tab-group";
 export * from "./toast";
 export * from "./toggle";
 export * from "./types";
