@@ -36,6 +36,8 @@ export const NOTICES_DIR = path.join(ORCH_DIR, "notices");
 export const LOGS_DIR = path.join(ORCH_DIR, "output", "logs");
 export const TEMPLATE_DIR = path.join(ORCH_DIR, "template");
 export const CONFIG_PATH = path.join(ORCH_DIR, "config.json");
+/** 리포에 포함되는 기본 설정 템플릿 (`config.json` 없을 때 `loadSettings` 폴백) */
+export const CONFIG_DEFAULT_PATH = path.join(PACKAGE_DIR, "config-default.json");
 export const DB_DIR = ORCH_DIR;
 
 /** docs/roles/ 경로 — 패키지 내부 우선, 프로젝트 fallback */

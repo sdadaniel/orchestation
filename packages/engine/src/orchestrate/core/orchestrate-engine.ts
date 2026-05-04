@@ -9,7 +9,7 @@ import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { PROJECT_ROOT, OUTPUT_DIR, CONFIG_PATH } from "../../lib/config/paths";
-import { loadSettings } from "../../lib/config/settings";
+import { loadSettings, type Settings } from "../../lib/config/settings";
 import {
   getTask,
   getTaskStep,
@@ -40,11 +40,7 @@ import { formatLogLine } from "@/bus/logging/log-format";
 import { taskStatusToResultOutcome } from "../../lib/task-status";
 import type { TaskStatus } from "../../entities/task";
 import type { StepType } from "../runner/step-runner";
-import {
-  CONFIG_WATCH_INTERVAL_MS,
-  HEALTHCHECK_EVERY_N_LOOPS,
-  LOOP_INTERVAL_MS,
-} from "./const";
+import { HEALTHCHECK_EVERY_N_LOOPS, LOOP_INTERVAL_MS } from "./const";
 
 export type EngineStatus = "idle" | "running";
 
@@ -63,6 +59,16 @@ export type EngineHooks = {
   onTaskResult?: (result: { taskId: string; status: "success" | "failure" }) => void;
 };
 
+/**
+ * `loadConfig` 적용 직후 스냅샷 (JSON 직렬화 가능).
+ * - `settings`: `config.json` → `loadSettings()` 전체
+ * - `maxParallelSlots`: 스케줄러에 쓰는 동시 실행 한도(파일에 `maxParallel: { task, review }`면 우선)
+ */
+export interface OrchestrateEngineLoadedConfig {
+  settings: Settings;
+  maxParallelSlots: { task: number; review: number };
+}
+
 interface WorkerEntry {
   abortController: AbortController;
   promise: Promise<void>;
@@ -75,8 +81,6 @@ interface WorkerEntry {
 export class OrchestrateEngine {
   private workers = new Map<string, WorkerEntry>();
   private loopTimer: ReturnType<typeof setInterval> | null = null;
-  private configWatchArmed = false;
-  private lastConfigMtimeMs: number | null = null;
   private _status: EngineStatus = "idle";
   private baseBranchValue = "main";
   private maxParallelTask = 2;
@@ -124,78 +128,46 @@ export class OrchestrateEngine {
     return this.workers.size;
   }
 
-  start(): { success: boolean; error?: string } {
+  async start(): Promise<{ success: boolean; error?: string }> {
     if (this._status === "running")
       return { success: false, error: "Already running" };
-
     this.loadConfig();
-    this.armConfigWatch();
     this._status = "running";
-    this.logInfo("Engine started");
     this.emitStatusChanged(this._status);
     this.cleanupZombies();
     this.loopTimer = setInterval(() => this.mainLoop(), LOOP_INTERVAL_MS);
     this.mainLoop(); // 첫 턴도 즉시 실행
+    this.logInfo("Engine started");
     return { success: true };
   }
 
-  stop(): { success: boolean } {
-    // Keep stop quiet; the manager will emit a single final log line.
-    for (const [taskId, entry] of this.workers) {
+  /**
+   * abort → 루프 정리 → idle 전환 후, 워커 `promise` 체인이 모두 settle될 때까지 대기한다.
+   * (호출자는 “정지 요청”이 아니라 워커 후처리까지 포함한 완료를 기다릴 수 있다.)
+   */
+  async stop(): Promise<{ success: boolean }> {
+    const entries = [...this.workers.values()];
+    for (const entry of entries) {
       entry.abortController.abort();
-      this.setStatus(taskId, "stopped");
+      this.setStatus(entry.taskId, "stopped");
     }
-    this.workers.clear();
+    const promises = entries.map((e) => e.promise);
     if (this.loopTimer) {
       clearInterval(this.loopTimer);
       this.loopTimer = null;
     }
-    this.disarmConfigWatch();
     this._status = "idle";
+    this.workers.clear();
+    await Promise.allSettled(promises);
     return { success: true };
   }
 
-  private armConfigWatch() {
-    if (this.configWatchArmed) return;
-    this.configWatchArmed = true;
-
-    try {
-      this.lastConfigMtimeMs = fs.existsSync(CONFIG_PATH)
-        ? fs.statSync(CONFIG_PATH).mtimeMs
-        : null;
-    } catch {
-      this.lastConfigMtimeMs = null;
-    }
-
-    fs.watchFile(
-      CONFIG_PATH,
-      { interval: CONFIG_WATCH_INTERVAL_MS },
-      (curr, prev) => {
-        if (this._status !== "running") return;
-        if (!this.configWatchArmed) return;
-        // mtime 기반으로 “저장”만 감지해서 리로드한다.
-        const currMs = Number(curr?.mtimeMs) || 0;
-        const prevMs = Number(prev?.mtimeMs) || 0;
-        if (currMs === 0 || currMs === prevMs) return;
-        if (this.lastConfigMtimeMs !== null && currMs === this.lastConfigMtimeMs)
-          return;
-        this.lastConfigMtimeMs = currMs;
-        this.loadConfig();
-      },
-    );
+  /** 디스크의 `config.json`을 다시 읽어 엔진 필드에 반영 (설정 저장 RPC 등에서 호출). */
+  reloadConfigFromDisk(): OrchestrateEngineLoadedConfig {
+    return this.loadConfig();
   }
 
-  private disarmConfigWatch() {
-    if (!this.configWatchArmed) return;
-    this.configWatchArmed = false;
-    try {
-      fs.unwatchFile(CONFIG_PATH);
-    } catch {
-      // ignore
-    }
-  }
-
-  private loadConfig() {
+  private loadConfig(): OrchestrateEngineLoadedConfig {
     const settings = loadSettings();
     this.baseBranchValue = settings.baseBranch;
     this.maxReviewRetryValue = settings.maxReviewRetry;
@@ -213,6 +185,13 @@ export class OrchestrateEngine {
       this.maxParallelTask = settings.maxParallel;
       this.maxParallelReview = settings.maxParallel;
     }
+    return {
+      settings,
+      maxParallelSlots: {
+        task: this.maxParallelTask,
+        review: this.maxParallelReview,
+      },
+    };
   }
 
   /** task-transitions 용 컨텍스트. */

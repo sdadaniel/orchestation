@@ -17,6 +17,7 @@
         "cli.js",
         "docs/roles/",
         "config.json",
+        "config-default.json",
         "packages/dashboard/",
         "packages/engine/"
     ],

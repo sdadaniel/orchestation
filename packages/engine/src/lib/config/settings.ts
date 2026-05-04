@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { CONFIG_PATH } from "./paths";
+import { CONFIG_DEFAULT_PATH, CONFIG_PATH } from "./paths";
 
 export type WorkerMode = "background" | "iterm";
 
@@ -44,48 +44,90 @@ function getConfigPath(): string {
   return CONFIG_PATH;
 }
 
+/** `parsed` JSON을 `fallback` 기준으로 `Settings` 형태로 정규화한다. */
+function normalizeSettings(parsed: unknown, fallback: Settings): Settings {
+  if (!parsed || typeof parsed !== "object") {
+    return { ...fallback };
+  }
+  const p = parsed as Record<string, unknown>;
+  const nw = p.nightWorker;
+  const nwObj =
+    nw && typeof nw === "object"
+      ? (nw as Record<string, unknown>)
+      : undefined;
+  return {
+    apiKey: typeof p.apiKey === "string" ? p.apiKey : fallback.apiKey,
+    srcPaths: Array.isArray(p.srcPaths) ? p.srcPaths : fallback.srcPaths,
+    model: typeof p.model === "string" ? p.model : fallback.model,
+    baseBranch:
+      typeof p.baseBranch === "string" ? p.baseBranch : fallback.baseBranch,
+    maxParallel:
+      typeof p.maxParallel === "number" && p.maxParallel >= 1
+        ? Math.floor(p.maxParallel)
+        : fallback.maxParallel,
+    maxReviewRetry:
+      typeof p.maxReviewRetry === "number" && p.maxReviewRetry >= 0
+        ? Math.floor(p.maxReviewRetry)
+        : fallback.maxReviewRetry,
+    orchestrateLogRetentionDays:
+      typeof p.orchestrateLogRetentionDays === "number" &&
+      p.orchestrateLogRetentionDays >= 1
+        ? Math.floor(p.orchestrateLogRetentionDays)
+        : fallback.orchestrateLogRetentionDays,
+    workerMode:
+      p.workerMode === "iterm" || p.workerMode === "background"
+        ? p.workerMode
+        : fallback.workerMode,
+    nightWorker: {
+      until:
+        (typeof nwObj?.until === "string" ? nwObj.until : "") ||
+        fallback.nightWorker.until,
+      budget:
+        nwObj && "budget" in nwObj
+          ? nwObj.budget === null || typeof nwObj.budget === "number"
+            ? (nwObj.budget as number | null)
+            : fallback.nightWorker.budget
+          : fallback.nightWorker.budget,
+      maxTasks:
+        typeof nwObj?.maxTasks === "number"
+          ? nwObj.maxTasks || fallback.nightWorker.maxTasks
+          : fallback.nightWorker.maxTasks,
+      types:
+        (typeof nwObj?.types === "string" ? nwObj.types : "") ||
+        fallback.nightWorker.types,
+    },
+  };
+}
+
+/**
+ * 리포 루트 `config-default.json`에서 기본 설정을 읽는다.
+ * 파일이 없거나 깨지면 인코드된 `DEFAULTS`를 쓴다.
+ */
+export function loadRepoDefaultSettings(): Settings {
+  try {
+    if (!fs.existsSync(CONFIG_DEFAULT_PATH)) {
+      return { ...DEFAULTS };
+    }
+    const raw = fs.readFileSync(CONFIG_DEFAULT_PATH, "utf-8");
+    const parsed = JSON.parse(raw);
+    return normalizeSettings(parsed, DEFAULTS);
+  } catch {
+    return { ...DEFAULTS };
+  }
+}
+
 export function loadSettings(): Settings {
+  const repoDefaults = loadRepoDefaultSettings();
   const configPath = getConfigPath();
+  if (!fs.existsSync(configPath)) {
+    return { ...repoDefaults };
+  }
   try {
     const raw = fs.readFileSync(configPath, "utf-8");
     const parsed = JSON.parse(raw);
-    return {
-      apiKey:
-        typeof parsed.apiKey === "string" ? parsed.apiKey : DEFAULTS.apiKey,
-      srcPaths: Array.isArray(parsed.srcPaths)
-        ? parsed.srcPaths
-        : DEFAULTS.srcPaths,
-      model: typeof parsed.model === "string" ? parsed.model : DEFAULTS.model,
-      baseBranch:
-        typeof parsed.baseBranch === "string"
-          ? parsed.baseBranch
-          : DEFAULTS.baseBranch,
-      maxParallel:
-        typeof parsed.maxParallel === "number" && parsed.maxParallel >= 1
-          ? Math.floor(parsed.maxParallel)
-          : DEFAULTS.maxParallel,
-      maxReviewRetry:
-        typeof parsed.maxReviewRetry === "number" && parsed.maxReviewRetry >= 0
-          ? Math.floor(parsed.maxReviewRetry)
-          : DEFAULTS.maxReviewRetry,
-      orchestrateLogRetentionDays:
-        typeof parsed.orchestrateLogRetentionDays === "number" &&
-        parsed.orchestrateLogRetentionDays >= 1
-          ? Math.floor(parsed.orchestrateLogRetentionDays)
-          : DEFAULTS.orchestrateLogRetentionDays,
-      workerMode:
-        parsed.workerMode === "iterm" || parsed.workerMode === "background"
-          ? parsed.workerMode
-          : DEFAULTS.workerMode,
-      nightWorker: {
-        until: parsed.nightWorker?.until || DEFAULTS.nightWorker.until,
-        budget: parsed.nightWorker?.budget ?? DEFAULTS.nightWorker.budget,
-        maxTasks: parsed.nightWorker?.maxTasks || DEFAULTS.nightWorker.maxTasks,
-        types: parsed.nightWorker?.types || DEFAULTS.nightWorker.types,
-      },
-    };
+    return normalizeSettings(parsed, repoDefaults);
   } catch {
-    return { ...DEFAULTS };
+    return { ...repoDefaults };
   }
 }
 

@@ -10,7 +10,7 @@ registerRpc({
     if (orchestrationManager.isRunning()) {
       throw { code: "ALREADY_RUNNING", message: "orchestration is already running" };
     }
-    const result = orchestrationManager.run();
+    const result = await orchestrationManager.run();
     if (!result.success) {
       throw { code: "RUN_FAILED", message: result.error ?? "run-failed" };
     }
@@ -26,10 +26,17 @@ registerRpc({
     if (!orchestrationManager.isRunning()) {
       return { status: orchestrationManager.getStatus(), alreadyStopped: true };
     }
-    const result = orchestrationManager.stop();
+    const result = await orchestrationManager.stop();
     if (!result.success) {
       throw { code: "STOP_FAILED", message: result.error ?? "stop-failed" };
     }
     return { status: orchestrationManager.getStatus() };
   },
+});
+
+registerRpc({
+  name: "orchestrate.reloadConfig",
+  idempotent: true,
+  paramsSchema: z.object({}).strict(),
+  handler: async () => orchestrationManager.reloadEngineConfigFromDisk(),
 });

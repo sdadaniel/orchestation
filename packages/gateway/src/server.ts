@@ -10,7 +10,7 @@ import { setEngineEventBus } from "@/bus/bus";
 import orchestrationManager from "@/orchestrate/orchestration-manager";
 import taskRunnerManager from "@/orchestrate/runner/task-runner-manager";
 import { getErrorMessage } from "@/lib/errors/error-utils";
-import "./rpc/methods/orchestrate"; // side-effect: registers orchestrate.run and orchestrate.stop
+import "./rpc/methods/orchestrate"; // side-effect: orchestrate.run | .stop | .reloadConfig
 import "./rpc/methods/task-runs";
 import "./rpc/methods/task-streams"; // side-effect: registers task stream RPCs
 import "./lib/gateway-rpc";

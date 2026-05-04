@@ -15,30 +15,27 @@ import { FieldRow } from "@/components/ui/FieldRow";
 import { SettingSection } from "@/components/ui/SettingSection";
 import type { AppSettings } from "./types";
 
+function toFormSettings(data: Record<string, unknown>): AppSettings {
+  const { engineConfigReload: _e, ...rest } = data;
+  return rest as AppSettings;
+}
+
 export default function SettingsPageView() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
-  const [draft, setDraft] = useState<AppSettings>({
-    apiKey: "",
-    srcPaths: ["src/"],
-    model: "claude-sonnet-4-6",
-    baseBranch: "main",
-    maxParallel: 3,
-    maxReviewRetry: 2,
-    orchestrateLogRetentionDays: 7,
-    workerMode: "background",
-  });
+  const [draft, setDraft] = useState<AppSettings | null>(null);
   const { addToast } = useToast();
 
   const fetchSettings = useCallback(async () => {
     try {
       const res = await fetch("/api/settings");
       if (res.ok) {
-        const data = await res.json();
-        setSettings(data);
-        setDraft(data);
+        const data = (await res.json()) as Record<string, unknown>;
+        const form = toFormSettings(data);
+        setSettings(form);
+        setDraft(form);
       }
     } catch {
       addToast("Failed to load settings", "error");
@@ -52,6 +49,7 @@ export default function SettingsPageView() {
   }, [fetchSettings]);
 
   const handleSave = async () => {
+    if (draft === null) return;
     setSaving(true);
     try {
       const res = await fetch("/api/settings", {
@@ -60,7 +58,8 @@ export default function SettingsPageView() {
         body: JSON.stringify(draft),
       });
       if (res.ok) {
-        const updated = await res.json();
+        const raw = (await res.json()) as Record<string, unknown>;
+        const updated = toFormSettings(raw);
         setSettings(updated);
         setDraft(updated);
         addToast("Settings saved", "success");
@@ -75,7 +74,9 @@ export default function SettingsPageView() {
   };
 
   const isDirty =
-    settings !== null && JSON.stringify(draft) !== JSON.stringify(settings);
+    settings !== null &&
+    draft !== null &&
+    JSON.stringify(draft) !== JSON.stringify(settings);
 
   return (
     <PageLayout className="max-w-2xl mx-auto">
@@ -101,6 +102,8 @@ export default function SettingsPageView() {
           <Loader2 className="h-4 w-4 animate-spin" />
           <span>Loading...</span>
         </div>
+      ) : draft === null ? (
+        <div className="text-sm text-muted-foreground">No settings loaded.</div>
       ) : (
         <div className="space-y-4">
           {/* API Section */}

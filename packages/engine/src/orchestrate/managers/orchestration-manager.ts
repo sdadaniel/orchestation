@@ -13,6 +13,9 @@ import { MAX_STATE_LOG_LINES, ORCHESTRATION_STATUS } from "./const";
 class OrchestrationManager {
   private engine: OrchestrateEngine | null = null;
 
+  /** `await engine.start()` 동안에는 `state`가 아직 RUNNING이 아니므로, 중복 기동만 막는다. */
+  private engineStartInProgress = false;
+
   private lastEmittedSnapshotJson: string | null = null;
 
   private lastLogPruneDay: string | null = null;
@@ -108,65 +111,105 @@ class OrchestrationManager {
     return this.state.status === ORCHESTRATION_STATUS.RUNNING;
   }
 
+  /**
+   * `config.json` 저장 직후: 실행 중인 엔진이 있으면 디스크에서 다시 읽어 반영한다.
+   * idle이면 엔진 인스턴스가 없으므로 no-op(다음 `run()` 시 `loadConfig`로 반영).
+   */
+  reloadEngineConfigFromDisk(): { reloaded: boolean; reason?: "engine_idle" } {
+    if (!this.isRunning() || !this.engine) {
+      return { reloaded: false, reason: "engine_idle" };
+    }
+    this.engine.reloadConfigFromDisk();
+    return { reloaded: true };
+  }
+
+  /** 엔진 start 실패 시: 엔진 정리 + 세션 종료 상태로 롤백 (logs는 유지) */
+  private async handleEngineStartFailure(message: string) {
+    if (this.engine) {
+      await this.engine.stop();
+      this.engine = null;
+    }
+    this.state.status = ORCHESTRATION_STATUS.IDLE;
+    this.state.finishedAt = new Date().toISOString();
+    this.state.exitCode = 1;
+    this.appendLog(`[orchestrate] Engine start failed: ${message}`);
+    this.saveRunHistory();
+    this.emitStatusChange();
+  }
+
   // ── Run ────────────────────────────────────────────────
 
-  run(): { success: boolean; error?: string } {
+  async run(): Promise<{ success: boolean; error?: string }> {
     if (this.isRunning()) {
       return { success: false, error: "Orchestration is already running" };
     }
-
-    // 상태는 리셋하되, logs는 유지한다. (run/stop 이벤트도 포함해 연속 로그로 관측)
-    this.state.status = ORCHESTRATION_STATUS.RUNNING;
-    this.state.startedAt = new Date().toISOString();
-    this.state.finishedAt = null;
-    this.state.taskResults = [];
-    this.state.exitCode = null;
-
-    this.emitStatusChange();
-
-    // 엔진 생성 및 hooks 연결 (EventEmitter 제거)
-    this.engine = new OrchestrateEngine({
-      // 엔진 내부 로그는 외부 오케스트레이션 로그로 노출하지 않는다.
-      onLog: () => {},
-      onStatusChanged: (status: EngineStatus) => {
-        if (status === "idle") {
-          this.state.status = ORCHESTRATION_STATUS.IDLE;
-          this.state.finishedAt = new Date().toISOString();
-          this.state.exitCode ??= 0;
-          this.saveRunHistory();
-          this.emitStatusChange();
-        }
-      },
-      onTaskResult: (result) => {
-        this.state.taskResults.push(result);
-        publish("task.result", {
-          taskId: result.taskId,
-          status: result.status === "success" ? "completed" : "failed",
-        });
-        this.emitStatusChange({ log: false });
-      },
-    });
-
-    const result = this.engine.start();
-    if (!result.success) {
-      this.state.status = ORCHESTRATION_STATUS.IDLE;
-      this.state.finishedAt = new Date().toISOString();
-      this.state.exitCode = 1;
-      this.appendLog(`[orchestrate] Engine start failed: ${result.error}`);
-      this.saveRunHistory();
-      this.emitStatusChange();
+    if (this.engineStartInProgress) {
+      return {
+        success: false,
+        error: "Orchestration start already in progress",
+      };
     }
 
-    return result;
+    this.engineStartInProgress = true;
+    try {
+      // 엔진 생성 및 hooks 연결 (EventEmitter 제거)
+      this.engine = new OrchestrateEngine({
+        // 엔진 내부 로그는 외부 오케스트레이션 로그로 노출하지 않는다.
+        onLog: () => {},
+        onStatusChanged: (status: EngineStatus) => {
+          if (status === "idle") {
+            this.state.status = ORCHESTRATION_STATUS.IDLE;
+            this.state.finishedAt = new Date().toISOString();
+            this.state.exitCode ??= 0;
+            this.saveRunHistory();
+            this.emitStatusChange();
+          }
+        },
+        onTaskResult: (result) => {
+          this.state.taskResults.push(result);
+          publish("task.result", {
+            taskId: result.taskId,
+            status: result.status === "success" ? "completed" : "failed",
+          });
+          this.emitStatusChange({ log: false });
+        },
+      });
+
+      let result: { success: boolean; error?: string };
+      try {
+        result = await this.engine.start();
+      } catch (err) {
+        const msg = getErrorMessage(err);
+        await this.handleEngineStartFailure(msg);
+        return { success: false, error: msg };
+      }
+
+      if (!result.success) {
+        await this.handleEngineStartFailure(result.error ?? "run-failed");
+        return result;
+      }
+
+      // 상태는 리셋하되, logs는 유지한다. (run/stop 이벤트도 포함해 연속 로그로 관측)
+      this.state.status = ORCHESTRATION_STATUS.RUNNING;
+      this.state.startedAt = new Date().toISOString();
+      this.state.finishedAt = null;
+      this.state.taskResults = [];
+      this.state.exitCode = null;
+      this.emitStatusChange();
+
+      return result;
+    } finally {
+      this.engineStartInProgress = false;
+    }
   }
 
   // ── Stop ───────────────────────────────────────────────
 
-  stop(): { success: boolean; error?: string } {
+  async stop(): Promise<{ success: boolean; error?: string }> {
     const wasRunning = this.state.status === ORCHESTRATION_STATUS.RUNNING;
 
     if (this.engine) {
-      this.engine.stop();
+      await this.engine.stop();
       this.engine = null;
     }
 
@@ -177,8 +220,8 @@ class OrchestrationManager {
       this.saveRunHistory();
     }
 
-    this.appendLog("[orchestrate] 전체 종료 완료");
     this.emitStatusChange({ log: false });
+    this.appendLog("[orchestrate] 전체 종료 완료");
     return { success: true };
   }
 
