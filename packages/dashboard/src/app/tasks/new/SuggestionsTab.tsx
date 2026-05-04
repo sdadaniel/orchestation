@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import {
   Loader2,
@@ -7,41 +9,25 @@ import {
   Square as SquareIcon,
 } from "lucide-react";
 import { PRIORITY_COLORS, CATEGORY_ICON, EFFORT_LABEL } from "./types";
+import {
+  useNewTaskPageGet,
+  useNewTaskPageSet,
+} from "@/views/tasks/new/hooks/useNewTaskPage";
 
-interface Suggestion {
-  title: string;
-  description: string;
-  category: string;
-  priority: string;
-  effort: string;
-  scope: string[];
-}
+export function SuggestionsTab() {
+  const get = useNewTaskPageGet();
+  const set = useNewTaskPageSet();
 
-export interface SuggestionsTabProps {
-  suggestions: Suggestion[];
-  suggestLoading: boolean;
-  suggestError: string | null;
-  selectedSuggestions: Set<number>;
-  creatingSuggestions: boolean;
-  onSuggest: () => void;
-  onToggle: (index: number) => void;
-  onSelectAll: () => void;
-  onDeselectAll: () => void;
-  onCreateFromSuggestions: () => void;
-}
+  if (get.phase !== "draft") return null;
 
-export function SuggestionsTab({
-  suggestions,
-  suggestLoading,
-  suggestError,
-  selectedSuggestions,
-  creatingSuggestions,
-  onSuggest,
-  onToggle,
-  onSelectAll,
-  onDeselectAll,
-  onCreateFromSuggestions,
-}: SuggestionsTabProps) {
+  const {
+    suggestions,
+    suggestLoading,
+    suggestError,
+    selectedSuggestions,
+    creatingSuggestions,
+  } = get;
+
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
@@ -52,7 +38,7 @@ export function SuggestionsTab({
       {!suggestLoading && suggestions.length === 0 && (
         <button
           type="button"
-          onClick={onSuggest}
+          onClick={set.handleSuggest}
           className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-md bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/25 transition-colors font-medium"
         >
           <Sparkles className="h-3.5 w-3.5" />
@@ -81,8 +67,8 @@ export function SuggestionsTab({
               type="button"
               onClick={() => {
                 if (selectedSuggestions.size === suggestions.length)
-                  onDeselectAll();
-                else onSelectAll();
+                  set.deselectAll();
+                else set.selectAll();
               }}
               className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
             >
@@ -97,7 +83,7 @@ export function SuggestionsTab({
               <button
                 key={i}
                 type="button"
-                onClick={() => onToggle(i)}
+                onClick={() => set.toggleSuggestion(i)}
                 className={cn(
                   "w-full text-left rounded-lg border p-3 transition-colors",
                   selectedSuggestions.has(i)
@@ -149,7 +135,7 @@ export function SuggestionsTab({
           {selectedSuggestions.size > 0 && (
             <button
               type="button"
-              onClick={onCreateFromSuggestions}
+              onClick={() => void set.createFromSuggestions()}
               disabled={creatingSuggestions}
               className={cn(
                 "flex items-center gap-1.5 px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium",

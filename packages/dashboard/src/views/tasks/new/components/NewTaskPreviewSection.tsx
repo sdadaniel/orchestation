@@ -3,26 +3,27 @@
 import { Check, Loader2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskPreviewCard } from "@/app/tasks/new/TaskPreviewCard";
-import type { NewTaskPreviewSectionProps } from "../types";
+import {
+  useNewTaskPageGet,
+  useNewTaskPageSet,
+} from "../hooks/useNewTaskPage";
 
-const NewTaskPreviewSection = ({
-  title,
-  description,
-  tasks,
-  editingIdx,
-  analyzeError,
-  confirming,
-  canConfirm,
-  existingTasks,
-  availableRoles,
-  onReturnToDraft,
-  onGoToTasks,
-  onEditToggle,
-  onTaskUpdate,
-  onTaskRemove,
-  onAddTask,
-  onConfirm,
-}: NewTaskPreviewSectionProps) => {
+const NewTaskPreviewSection = () => {
+  const get = useNewTaskPageGet();
+  const set = useNewTaskPageSet();
+
+  const {
+    title,
+    description,
+    tasks,
+    editingIdx,
+    analyzeError,
+    confirming,
+    canConfirm,
+    existingTasks,
+    availableRoles,
+  } = get;
+
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-border bg-muted/30 p-3">
@@ -46,9 +47,11 @@ const NewTaskPreviewSection = ({
           task={task}
           index={idx}
           isEditing={editingIdx === idx}
-          onEdit={() => onEditToggle(idx)}
-          onUpdate={(updates) => onTaskUpdate(idx, updates)}
-          onRemove={() => onTaskRemove(idx)}
+          onEdit={() =>
+            set.setEditingIdx(editingIdx === idx ? null : idx)
+          }
+          onUpdate={(updates) => set.updateTask(idx, updates)}
+          onRemove={() => set.removeTask(idx)}
           totalTasks={tasks.length}
           existingTasks={existingTasks}
           availableRoles={availableRoles}
@@ -56,7 +59,7 @@ const NewTaskPreviewSection = ({
       ))}
       <button
         type="button"
-        onClick={onAddTask}
+        onClick={set.addTask}
         className="w-full rounded-lg border border-dashed border-border bg-card/50 p-3 text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors flex items-center justify-center gap-1.5"
       >
         <Plus className="h-3 w-3" /> Add Task
@@ -69,21 +72,21 @@ const NewTaskPreviewSection = ({
       <div className="flex items-center justify-end gap-2 pt-2">
         <button
           type="button"
-          onClick={onGoToTasks}
+          onClick={set.goToTasks}
           className="filter-pill text-xs"
         >
           Cancel
         </button>
         <button
           type="button"
-          onClick={onReturnToDraft}
+          onClick={() => set.setPhase("draft")}
           className="filter-pill text-xs"
         >
           Back
         </button>
         <button
           type="button"
-          onClick={onConfirm}
+          onClick={() => void set.handleConfirm()}
           disabled={!canConfirm}
           className={cn(
             "filter-pill text-xs flex items-center gap-1.5",

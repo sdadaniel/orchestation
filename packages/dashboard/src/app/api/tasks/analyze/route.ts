@@ -39,6 +39,15 @@ function getAvailableRoles(): string[] {
   }
 }
 
+function accumulateStreamText(
+  stream: NodeJS.ReadableStream,
+  append: (chunk: string) => void,
+): void {
+  stream.on("data", (chunk: Buffer) => {
+    append(chunk.toString());
+  });
+}
+
 export async function POST(request: Request) {
   let title: string;
   let description: string;
@@ -72,12 +81,11 @@ export async function POST(request: Request) {
     let stdout = "";
     let stderr = "";
 
-    child.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString();
+    accumulateStreamText(child.stdout, (t) => {
+      stdout += t;
     });
-
-    child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString();
+    accumulateStreamText(child.stderr, (t) => {
+      stderr += t;
     });
 
     // 90초 타임아웃: SIGTERM은 spawnClaude 내부에서 처리됨.

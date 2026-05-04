@@ -2,22 +2,19 @@
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  useNewTaskPageGet,
+  useNewTaskPageSet,
+} from "../hooks/useNewTaskPage";
 
-export interface NewTaskCreationRecoveryBannerProps {
-  variant: "success" | "error";
-  items: { id: string; title: string }[];
-  message?: string | null;
-  onDismiss: () => void;
-  onGoToTasks: () => void;
-}
+const NewTaskCreationRecoveryBanner = () => {
+  const get = useNewTaskPageGet();
+  const set = useNewTaskPageSet();
+  const recovery = get.creationRecovery;
 
-const NewTaskCreationRecoveryBanner = ({
-  variant,
-  items,
-  message,
-  onDismiss,
-  onGoToTasks,
-}: NewTaskCreationRecoveryBannerProps) => {
+  if (!recovery) return null;
+
+  const { variant, items, message, onDismiss } = recovery;
   const isSuccess = variant === "success";
 
   return (
@@ -48,7 +45,7 @@ const NewTaskCreationRecoveryBanner = ({
         ))}
       </ul>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" variant="default" onClick={onGoToTasks}>
+        <Button type="button" size="sm" variant="default" onClick={set.goToTasks}>
           요청 목록으로
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={onDismiss}>
