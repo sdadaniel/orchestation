@@ -116,14 +116,14 @@ function printHelp() {
   console.log(`orchestrate v${pkg.version} — AI Development Orchestration CLI\n`);
   console.log("Usage:  orchestrate <command> [options]\n");
   console.log("Commands:");
-  console.log("  start [-p PORT]  Init + deps + dashboard (background) + run pipeline (foreground)");
-  console.log("  stop             Stop dashboard + pipeline");
-  console.log("  restart          Restart dashboard + pipeline (stop both, then start)");
+  console.log("  start [-p PORT]  Init + deps + dashboard/gateway (background; orchestration in-process)");
+  console.log("  stop             Stop dashboard (and any headless `orchestrate run` process)");
+  console.log("  restart          Stop then start dashboard/gateway");
   console.log("  init        Initialize project (creates .orchestration/)");
   console.log("  run         Run the orchestration pipeline only (no dashboard)");
   console.log("  night       Start Night Worker (autonomous overnight runs)");
   console.log("  dashboard   Launch the web dashboard (localhost:3000)");
-  console.log("  status      Dashboard/gateway reachability + run-engine + project summary");
+  console.log("  status      Dashboard/gateway reachability + headless pipeline + project summary");
   console.log("");
   console.log("Options (run / night):");
   console.log("  --until HH:MM       Stop time");
@@ -138,19 +138,6 @@ function printHelp() {
 function printVersion() {
   const pkg = require(path.join(__dirname, "package.json"));
   console.log(`orchestrate v${pkg.version}`);
-}
-
-/** Remove -p / --port and its value (dashboard bind port, not passed to run-engine). */
-function stripDashboardPortArgs(argv) {
-  const out = [];
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "-p" || argv[i] === "--port") {
-      if (i + 1 < argv.length) i++;
-      continue;
-    }
-    out.push(argv[i]);
-  }
-  return out;
 }
 
 /** HTTP GET / on loopback — true if something responds with a non–5xx status (e.g. Next.js dev server). */
@@ -324,18 +311,16 @@ if (command === "--version" || command === "-v") {
 
 switch (command) {
   case "start": {
-    // init + deps + dashboard (background) + run pipeline (foreground)
+    // init + deps + dashboard/gateway (orchestration runs in-process with gateway)
     void (async () => {
-      // If already running, don't spawn anything again.
+      // If dashboard is already up, do not spawn another.
       const HOST = "127.0.0.1";
       const alreadyDashPort = await findListeningDashboardPort(HOST, 3000, 3019, 200).catch(() => null);
-      const alreadyEnginePids = findRunEnginePids();
       if (process.env.ORCH_FORCE_START !== "1") {
-        if (alreadyDashPort != null && alreadyEnginePids.length > 0) {
+        if (alreadyDashPort != null) {
           console.log("Already running.");
           console.log(`Dashboard: http://${HOST}:${alreadyDashPort}/`);
           console.log(`Gateway:   ws://${HOST}:${alreadyDashPort}/ws/gateway`);
-          console.log(`Pipeline:  run-engine pid(s): ${alreadyEnginePids.join(", ")}`);
           return;
         }
       }
@@ -433,8 +418,6 @@ switch (command) {
       return null;
     }
 
-      const runEngineArgs = stripDashboardPortArgs(args);
-
       findPort(requestedPort).then((port) => {
         if (!port) {
           console.error(`Error: No available port found (tried ${requestedPort}-${requestedPort + 19})`);
@@ -446,7 +429,6 @@ switch (command) {
           console.log(`Port ${requestedPort} in use, using ${port} instead.`);
         }
         const dashPort = alreadyDashPort ?? port;
-        const enginePids = alreadyEnginePids;
 
         if (alreadyDashPort != null) {
           console.log(`Dashboard already running: http://${HOST}:${alreadyDashPort}/`);
@@ -466,33 +448,9 @@ switch (command) {
           dashProc.unref();
         }
 
-        if (enginePids.length > 0) {
-          console.log(`Pipeline already running: pid(s) ${enginePids.join(", ")}`);
-          process.exit(0);
-        }
-
-      const engineScript = path.join(RUNTIME_DIR, "src", "cli", "run-engine.ts");
-
-      if (!fs.existsSync(engineScript)) {
-        console.error("Error: run-engine.ts not found at", engineScript);
-        process.exit(1);
-      }
-
-        console.log("Starting pipeline (background)...\n");
-        const runProc = spawnTsxNode(engineScript, runEngineArgs, {
-          cwd: RUNTIME_DIR,
-          detached: true,
-          stdio: "ignore",
-          env: { ...process.env, PACKAGE_DIR: __dirname, PROJECT_ROOT: process.cwd() },
-        });
-        runProc.on("error", (err) => {
-          console.error("Failed to start pipeline:", err.message);
-          process.exit(1);
-        });
-        runProc.unref();
-        if (runProc?.pid) {
-          console.log(`Pipeline started (background): pid ${runProc.pid}\n`);
-        }
+        console.log(
+          "Orchestration is served in-process with the gateway (open the UI and press Run, or use `orchestrate run` for headless).\n",
+        );
       });
     })().catch((err) => {
       console.error(err);
@@ -507,12 +465,12 @@ switch (command) {
       const enginePids = findRunEnginePids();
 
       if (dashPids.all.length === 0 && enginePids.length === 0) {
-        console.log("Nothing to stop (dashboard and pipeline are not running).");
+        console.log("Nothing to stop (dashboard and headless orchestration are not running).");
         return;
       }
 
       logDashboardStopPids(dashPids);
-      if (enginePids.length > 0) console.log(`Stopping pipeline:  pid(s) ${enginePids.join(", ")}`);
+      if (enginePids.length > 0) console.log(`Stopping headless orchestration:  pid(s) ${enginePids.join(", ")}`);
 
       killPids([...enginePids, ...dashPids.all], "SIGTERM");
       await new Promise((r) => setTimeout(r, 600));
@@ -533,10 +491,10 @@ switch (command) {
       const enginePids = findRunEnginePids();
 
       if (dashPids.all.length === 0 && enginePids.length === 0) {
-        console.log("Nothing to restart (dashboard and pipeline are not running).");
+        console.log("Nothing to restart (dashboard and headless orchestration are not running).");
       } else {
         logDashboardStopPids(dashPids);
-        if (enginePids.length > 0) console.log(`Stopping pipeline:  pid(s) ${enginePids.join(", ")}`);
+        if (enginePids.length > 0) console.log(`Stopping headless orchestration:  pid(s) ${enginePids.join(", ")}`);
 
         killPids([...enginePids, ...dashPids.all], "SIGTERM");
         await new Promise((r) => setTimeout(r, 600));
@@ -708,9 +666,9 @@ switch (command) {
       const runEnginePids = findRunEnginePids();
       if (runEnginePids.length > 0) {
         const pidLabel = runEnginePids.length > 1 ? "pids" : "pid";
-        console.log(`Pipeline:     run-engine running (${pidLabel} ${runEnginePids.join(", ")})`);
+        console.log(`Headless:     \`orchestrate run\` active (${pidLabel} ${runEnginePids.join(", ")})`);
       } else {
-        console.log(`Pipeline:     run-engine not running`);
+        console.log(`Headless:     no \`orchestrate run\` process (orchestration from UI uses gateway in-process)`);
       }
 
       if (dashPort != null) {

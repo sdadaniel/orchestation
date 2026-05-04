@@ -682,7 +682,7 @@ git commit -m "feat(gateway): add RPC registry skeleton"
 
 ---
 
-### Task 3.2: `orchestrate.run` / `orchestrate.stop` 메서드 등록
+### Task 3.2: `orchestrate.start` / `orchestrate.stop` 메서드 등록
 
 **Files:**
 
@@ -695,16 +695,16 @@ import orchestrationManager from "@/orchestrate/orchestration-manager";
 import { registerRpc } from "../registry";
 
 registerRpc({
-  name: "orchestrate.run",
+  name: "orchestrate.start",
   idempotent: false,
   paramsSchema: z.object({}).strict(),
   handler: async () => {
     if (orchestrationManager.isRunning()) {
       throw { code: "ALREADY_RUNNING", message: "orchestration is already running" };
     }
-    const result = orchestrationManager.run();
+    const result = orchestrationManager.start();
     if (!result.success) {
-      throw { code: "RUN_FAILED", message: result.error ?? "run-failed" };
+      throw { code: "START_FAILED", message: result.error ?? "start-failed" };
     }
     return { status: orchestrationManager.getStatus() };
   },
@@ -732,7 +732,7 @@ registerRpc({
 
 ```bash
 git add packages/gateway/src/rpc/methods
-git commit -m "feat(gateway): register orchestrate.run (non-idempotent) and orchestrate.stop (idempotent)"
+git commit -m "feat(gateway): register orchestrate.start (non-idempotent) and orchestrate.stop (idempotent)"
 ```
 
 ---
@@ -1332,7 +1332,7 @@ git commit -m "feat(dashboard): GatewayWsProvider (replaces SseProvider in layou
 
 - Modify: `packages/dashboard/src/components/AutoImproveControl.tsx`
 
-기존 구현은 자체 WebSocket을 생성해 `/ws/orchestrate`로 연결하고 `run`/`stop`을 보냄. 이를 `useGatewayClient().call("orchestrate.run" | "orchestrate.stop")`로 교체.
+기존 구현은 자체 WebSocket을 생성해 `/ws/orchestrate`로 연결하고 `run`/`stop`을 보냄. 이를 `useGatewayClient().call("orchestrate.start" | "orchestrate.stop")`로 교체.
 
 - **Step 1: import 변경 + WS 직접 생성 로직 제거**
 
@@ -1348,7 +1348,7 @@ const gateway = useGatewayClient();
 
 async function startOrchestration() {
   try {
-    await gateway.call("orchestrate.run");
+    await gateway.call("orchestrate.start");
     // UI 상태 갱신은 orchestration-status 이벤트로 반영
   } catch (err) {
     // 토스트
@@ -1479,7 +1479,7 @@ PORT=3001 npm run dev --prefix packages/dashboard
 - 브라우저 접속(`http://localhost:3001`), 초기 태스크 목록 표시
 - DevTools Network에 `/ws/gateway` 연결 확인, `snapshot` 메시지 도착
 - 태스크 상태 변화(예: task 생성) 시 `event`(`task-changed`) 수신
-- Orchestration run 버튼 → `orchestrate.run` RPC 성공 응답
+- Orchestration run 버튼 → `orchestrate.start` RPC 성공 응답
 - Orchestration stop 버튼 → `orchestrate.stop` RPC 성공 응답
 - DevTools Network에서 WebSocket `/ws/gateway` 강제 close 후 재연결, `hello` + `replay` 수신, UI 정합 유지
 - `/sse`, `/ws/orchestrate` 연결 없음 확인
@@ -1587,7 +1587,7 @@ DevTools 콘솔:
 ```js
 // 잘못된 RPC params 시도
 const ws = new WebSocket("ws://localhost:3001/ws/gateway");
-ws.onopen = () => ws.send(JSON.stringify({ type: "req", id: "x", method: "orchestrate.run", params: { unknown: 1 } }));
+ws.onopen = () => ws.send(JSON.stringify({ type: "req", id: "x", method: "orchestrate.start", params: { unknown: 1 } }));
 ws.onmessage = (e) => console.log(e.data);
 ```
 
@@ -1745,7 +1745,7 @@ Expected: 기존 그린 테스트 유지. WS 관련 테스트는 `/ws/gateway` �
 
 - **Step 3: 시나리오 3 — run/idle 전환 중 WS 유지**
 
-1. `orchestrate.run` 호출
+1. `orchestrate.start` 호출
 2. running 상태 확인
 3. `orchestrate.stop` 호출
 4. idle 전환 동안 WS 커넥션 유지(close 이벤트 발생하지 않음) 확인
@@ -1779,7 +1779,7 @@ gh pr create --title "feat: gateway unification (rename, 3-pkg split, ws /ws/gat
 - `/sse` 라우트 404, `/ws/orchestrate` 404, `/ws/gateway` 200 upgrade
 - 레이아웃에 `SseProvider` 없음, `GatewayWsProvider` 존재
 - `AutoImproveControl`, `OrchestrateLogViewer` 모두 GatewayClient 의존
-- `orchestrate.run`은 non-idempotent, `orchestrate.stop`은 idempotent로 등록
+- `orchestrate.start`는 non-idempotent, `orchestrate.stop`은 idempotent로 등록
 - 전 패키지 tsc --noEmit 그린
 - dev/prod 모두 한 포트(`PORT`)에서 페이지 + WS 동작
 - Origin 검증 작동(다른 origin 403)

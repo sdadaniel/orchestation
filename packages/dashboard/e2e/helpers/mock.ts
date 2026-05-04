@@ -250,8 +250,8 @@ async function mockAppShellApis(
     route.fulfill({ json: { status: orchestrateStatus } });
   });
 
-  // Orchestration run/stop
-  await page.route("**/api/orchestrate/run", (route) => {
+  // Orchestration start/stop (legacy REST mocks; live UI uses gateway WS-RPC)
+  await page.route("**/api/orchestrate/start", (route) => {
     route.fulfill({ json: { ok: true } });
   });
   await page.route("**/api/orchestrate/stop", (route) => {

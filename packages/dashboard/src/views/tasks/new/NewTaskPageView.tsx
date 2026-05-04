@@ -28,18 +28,16 @@ const NewTaskPageView = () => {
         />
       ) : null}
 
-      <TabGroup value={vm.pageTab} onValueChange={vm.setPageTab}>
+      <TabGroup value={vm.intakeTab} onValueChange={vm.setIntakeTab}>
         <TabList aria-label="태스크 작성 방식">
-          <Tab value="write" icon={Pencil}>
+          <Tab value="create" icon={Pencil}>
             직접 작성
           </Tab>
           <Tab value="suggest" icon={Sparkles} tone="highlight">
             추천받기
           </Tab>
         </TabList>
-        {vm.phase}
-        <TabPanel value="write">
-        123
+        <TabPanel value="create">
           {vm.phase === "draft" ? (
             <InputForm
               title={vm.title}
@@ -54,7 +52,28 @@ const NewTaskPageView = () => {
               onAnalyze={vm.handleAnalyze}
               onCancel={vm.goToTasks}
             />
-          ) : null}
+          ) : (
+            <NewTaskPreviewSection
+              title={vm.title}
+              description={vm.description}
+              tasks={vm.tasks}
+              editingIdx={vm.editingIdx}
+              analyzeError={vm.analyzeError}
+              confirming={vm.confirming}
+              canConfirm={vm.canConfirm}
+              existingTasks={vm.existingTasks}
+              availableRoles={vm.availableRoles}
+              onReturnToDraft={() => vm.setPhase("draft")}
+              onGoToTasks={vm.goToTasks}
+              onEditToggle={(idx) =>
+                vm.setEditingIdx(vm.editingIdx === idx ? null : idx)
+              }
+              onTaskUpdate={vm.updateTask}
+              onTaskRemove={vm.removeTask}
+              onAddTask={vm.addTask}
+              onConfirm={vm.handleConfirm}
+            />
+          )}
         </TabPanel>
         <TabPanel value="suggest">
           {vm.phase === "draft" ? (
@@ -73,29 +92,6 @@ const NewTaskPageView = () => {
           ) : null}
         </TabPanel>
       </TabGroup>
-
-      {vm.phase === "review" && (
-        <NewTaskPreviewSection
-          title={vm.title}
-          description={vm.description}
-          tasks={vm.tasks}
-          editingIdx={vm.editingIdx}
-          analyzeError={vm.analyzeError}
-          confirming={vm.confirming}
-          canConfirm={vm.canConfirm}
-          existingTasks={vm.existingTasks}
-          availableRoles={vm.availableRoles}
-          onReturnToDraft={() => vm.setPhase("draft")}
-          onGoToTasks={vm.goToTasks}
-          onEditToggle={(idx) =>
-            vm.setEditingIdx(vm.editingIdx === idx ? null : idx)
-          }
-          onTaskUpdate={vm.updateTask}
-          onTaskRemove={vm.removeTask}
-          onAddTask={vm.addTask}
-          onConfirm={vm.handleConfirm}
-        />
-      )}
     </div>
   );
 };

@@ -5,6 +5,7 @@
     "baseBranch": "main",
     "maxParallel": 3,
     "maxReviewRetry": 2,
+    "orchestrateLogRetentionDays": 5,
     "workerMode": "background",
     "nightWorker": {
         "until": "07:00",

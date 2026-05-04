@@ -66,7 +66,7 @@ const Controls = () => {
     setIsStarting(true);
     setError(null);
     try {
-      await gateway.call("orchestrate.run");
+      await gateway.call("orchestrate.start");
       // UI state update handled by orchestration.status event
     } catch (err) {
       const e = err as { code?: string; message?: string };

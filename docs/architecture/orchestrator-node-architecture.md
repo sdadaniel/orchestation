@@ -141,7 +141,7 @@ sequenceDiagram
     UI->>GW: (재연결 → snapshot 재수신)
   end
 
-  UI->>GW: { type:"req", id:"abc", method:"orchestrate.run", params:{...} }
+  UI->>GW: { type:"req", id:"abc", method:"orchestrate.start", params:{...} }
   GW->>GW: zod paramsSchema.safeParse(params)
   GW->>Eng: handler(params)
   GW-->>UI: { type:"res", id:"abc", ok:true, payload:{...} }

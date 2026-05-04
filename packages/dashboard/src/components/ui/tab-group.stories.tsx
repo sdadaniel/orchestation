@@ -15,20 +15,20 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function TabGroupWriteSuggestDemo() {
-  const [tab, setTab] = useState<"write" | "suggest">("write");
+  const [tab, setTab] = useState<"create" | "suggest">("create");
 
   return (
     <div className="w-[min(100vw-2rem,480px)] bg-background p-4 space-y-2">
       <TabGroup value={tab} onValueChange={setTab}>
         <TabList aria-label="작성 방식">
-          <Tab value="write" icon={Pencil}>
+          <Tab value="create" icon={Pencil}>
             직접 작성
           </Tab>
           <Tab value="suggest" icon={Sparkles} tone="highlight">
             추천받기
           </Tab>
         </TabList>
-        <TabPanel value="write">
+        <TabPanel value="create">
           <div className="rounded-md border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
             직접 작성 패널 (예시)
           </div>
@@ -45,7 +45,7 @@ function TabGroupWriteSuggestDemo() {
 
 export const UnderlinePanels: Story = {
   args: {
-    value: "write",
+    value: "create",
     onValueChange: () => {},
     children: null,
   },

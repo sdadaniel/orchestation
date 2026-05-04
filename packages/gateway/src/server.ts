@@ -10,7 +10,7 @@ import { setEngineEventBus } from "@/bus/bus";
 import orchestrationManager from "@/orchestrate/orchestration-manager";
 import taskRunnerManager from "@/orchestrate/runner/task-runner-manager";
 import { getErrorMessage } from "@/lib/errors/error-utils";
-import "./rpc/methods/orchestrate"; // side-effect: orchestrate.run | .stop | .reloadConfig
+import "./rpc/methods/orchestrate"; // side-effect: orchestrate.start | .stop | .reloadConfig
 import "./rpc/methods/task-runs";
 import "./rpc/methods/task-streams"; // side-effect: registers task stream RPCs
 import "./lib/gateway-rpc";
@@ -34,7 +34,7 @@ import {
 // NOTE: Path constants live in ./paths
 
 setEngineEventBus(gatewayBus);
-orchestrationManager.publishCurrentStatus({ log: false });
+orchestrationManager.publishCurrentStatus();
 
 function logCrash(type: string, err: Error | unknown) {
   const ts = new Date().toISOString();

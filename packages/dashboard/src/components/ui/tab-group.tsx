@@ -141,7 +141,7 @@ const TabPanel = <T extends string>({
       hidden={!isSelected}
       className={className}
     >
-      {children}
+      {isSelected ? children : null}
     </div>
   );
 };

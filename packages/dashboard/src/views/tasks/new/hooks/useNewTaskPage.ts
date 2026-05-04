@@ -6,14 +6,14 @@ import { getErrorMessage } from "@/lib/errors/error-utils";
 import { useNewTaskCreationStore } from "@/store/newTaskCreationStore";
 import { useSuggestStore } from "@/store/suggestStore";
 import { useTasksStore } from "@/store/tasksStore";
-import type { TaskOption } from "../types";
+import type { NewTaskIntakeTab, TaskOption } from "../types";
 import type { AnalyzedTask } from "@/app/tasks/new/types";
 import { EFFORT_LABEL } from "@/app/tasks/new/types";
 import type { Phase } from "../types";
 
 export const useNewTaskPage = () => {
   const router = useRouter();
-  const [pageTab, setPageTab] = useState<"write" | "suggest">("write");
+  const [intakeTab, setIntakeTab] = useState<NewTaskIntakeTab>("create");
   const [phase, setPhase] = useState<Phase>("draft");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -164,6 +164,7 @@ export const useNewTaskPage = () => {
         };
       }
       setTasks(analyzedTasks);
+      setIntakeTab("create");
       setPhase("review");
     } catch (err) {
       setAnalyzeError(getErrorMessage(err, "Analysis failed"));
@@ -253,8 +254,8 @@ export const useNewTaskPage = () => {
   );
 
   return {
-    pageTab,
-    setPageTab,
+    intakeTab,
+    setIntakeTab,
     phase,
     setPhase,
     title,

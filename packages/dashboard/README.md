@@ -248,8 +248,8 @@ lib/ (순수 유틸)  <--  parser/  <--  service/  <--  engine/
 | `/api/tasks/[id]`         | GET, PUT, DELETE  | 태스크 상세/수정/삭제     |
 | `/api/tasks/[id]/run`     | POST, DELETE      | 태스크 실행/중지        |
 | `/api/tasks/[id]/logs`    | GET               | 태스크 로그           |
-| `/api/orchestrate/run`    | POST              | 파이프라인 시작         |
-| `/api/orchestrate/stop`   | POST              | 파이프라인 중지         |
+| `orchestrate.start`       | WS-RPC (gateway)  | 파이프라인 시작         |
+| `orchestrate.stop`        | WS-RPC (gateway)  | 파이프라인 중지         |
 | `/api/orchestrate/status` | GET               | 파이프라인 상태         |
 | `/ws/gateway`             | WS                | 파이프라인 상태/이벤트 스트림 |
 | `/api/run-history`        | GET               | 실행 이력            |

@@ -9,8 +9,8 @@
 │                 Web Dashboard (:3000)                 │
 │  Next.js + zustand + React Query                     │
 │                                                      │
-│  [Run] → POST /api/orchestrate/run                   │
-│  [Stop] → POST /api/orchestrate/stop                 │
+│  [Run] → WS-RPC orchestrate.start (/ws/gateway)      │
+│  [Stop] → WS-RPC orchestrate.stop (/ws/gateway)      │
 │  status polling → GET /api/orchestrate/status (5s)   │
 │  tasks polling → GET /api/tasks/watch (5s)           │
 └──────────────────┬──────────────────────────────────┘
@@ -97,8 +97,8 @@ in_progress                            │
 ### 1. Run 버튼 클릭
 
 ```
-브라우저 → POST /api/orchestrate/run
-  → orchestration-manager.run()
+브라우저 → WS-RPC orchestrate.start
+  → orchestration-manager.start()
     → lock PID 체크 (중복 방지)
     → runId 증가
     → spawn("bash", ["orchestrate.sh"])

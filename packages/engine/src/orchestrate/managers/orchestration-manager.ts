@@ -2,7 +2,7 @@ import { OrchestrateEngine, EngineStatus } from "../core/orchestrate-engine";
 import { appendRunHistory, type RunHistoryEntry } from "../../service/run-history";
 import { parseCostLog } from "../../parser/cost-parser";
 import { getErrorMessage } from "../../lib/errors/error-utils";
-import { formatLogLine, normalizeLogEntry, normalizeLogLine, publish } from "@/bus/index";
+import { normalizeLogEntry, normalizeLogLine, publish } from "@/bus/index";
 import fs from "fs";
 import path from "path";
 import { LOGS_DIR } from "../../lib/config/paths";
@@ -16,7 +16,8 @@ class OrchestrationManager {
   /** `await engine.start()` 동안에는 `state`가 아직 RUNNING이 아니므로, 중복 기동만 막는다. */
   private engineStartInProgress = false;
 
-  private lastEmittedSnapshotJson: string | null = null;
+  /** RUNNING 세션에 대해 아직 `Orchestration shutdown complete`를 남기지 않았을 때만 true */
+  private pendingOrchestrationEndLog = false;
 
   private lastLogPruneDay: string | null = null;
 
@@ -32,9 +33,8 @@ class OrchestrationManager {
 
   constructor() {}
 
-  /** 상태 변경 시 이벤트 버스에 발행 (WS gateway channel이 구독해 클라이언트로 전달) */
-  private emitStatusChange(opts?: { log?: boolean }) {
-    const log = opts?.log ?? true;
+  /** 현재 상태 스냅샷을 이벤트 버스에 발행 (WS gateway channel이 구독해 클라이언트로 전달) */
+  private emitStatusSnapshot() {
     const state = this.getState();
     const snapshot: OrchestrationStatusData = {
       status: state.status,
@@ -43,12 +43,11 @@ class OrchestrationManager {
       exitCode: state.exitCode,
       taskResults: state.taskResults,
     };
-    if (log) this.logStatusChangeIfNeeded(snapshot);
     publish("orchestration.status", snapshot);
   }
 
-  publishCurrentStatus(opts?: { log?: boolean }) {
-    this.emitStatusChange(opts);
+  publishCurrentStatus() {
+    this.emitStatusSnapshot();
   }
 
   // ── Public API ─────────────────────────────────────────
@@ -113,7 +112,7 @@ class OrchestrationManager {
 
   /**
    * `config.json` 저장 직후: 실행 중인 엔진이 있으면 디스크에서 다시 읽어 반영한다.
-   * idle이면 엔진 인스턴스가 없으므로 no-op(다음 `run()` 시 `loadConfig`로 반영).
+   * idle이면 엔진 인스턴스가 없으므로 no-op(다음 `start()` 시 `loadConfig`로 반영).
    */
   reloadEngineConfigFromDisk(): { reloaded: boolean; reason?: "engine_idle" } {
     if (!this.isRunning() || !this.engine) {
@@ -134,12 +133,12 @@ class OrchestrationManager {
     this.state.exitCode = 1;
     this.appendLog(`[orchestrate] Engine start failed: ${message}`);
     this.saveRunHistory();
-    this.emitStatusChange();
+    this.emitStatusSnapshot();
   }
 
-  // ── Run ────────────────────────────────────────────────
+  // ── Start (orchestration session) ─────────────────────
 
-  async run(): Promise<{ success: boolean; error?: string }> {
+  async start(): Promise<{ success: boolean; error?: string }> {
     if (this.isRunning()) {
       return { success: false, error: "Orchestration is already running" };
     }
@@ -158,11 +157,19 @@ class OrchestrationManager {
         onLog: () => {},
         onStatusChanged: (status: EngineStatus) => {
           if (status === "idle") {
+            const wasRunning =
+              this.state.status === ORCHESTRATION_STATUS.RUNNING;
             this.state.status = ORCHESTRATION_STATUS.IDLE;
             this.state.finishedAt = new Date().toISOString();
             this.state.exitCode ??= 0;
             this.saveRunHistory();
-            this.emitStatusChange();
+            this.emitStatusSnapshot();
+            if (wasRunning && this.pendingOrchestrationEndLog) {
+              this.appendLog(
+                "[orchestrate] Orchestration shutdown complete",
+              );
+              this.pendingOrchestrationEndLog = false;
+            }
           }
         },
         onTaskResult: (result) => {
@@ -171,7 +178,7 @@ class OrchestrationManager {
             taskId: result.taskId,
             status: result.status === "success" ? "completed" : "failed",
           });
-          this.emitStatusChange({ log: false });
+          this.emitStatusSnapshot();
         },
       });
 
@@ -185,17 +192,19 @@ class OrchestrationManager {
       }
 
       if (!result.success) {
-        await this.handleEngineStartFailure(result.error ?? "run-failed");
+        await this.handleEngineStartFailure(result.error ?? "start-failed");
         return result;
       }
 
-      // 상태는 리셋하되, logs는 유지한다. (run/stop 이벤트도 포함해 연속 로그로 관측)
+      // 상태는 리셋하되, logs는 유지한다. (start/stop 이벤트도 포함해 연속 로그로 관측)
       this.state.status = ORCHESTRATION_STATUS.RUNNING;
       this.state.startedAt = new Date().toISOString();
       this.state.finishedAt = null;
       this.state.taskResults = [];
       this.state.exitCode = null;
-      this.emitStatusChange();
+      this.pendingOrchestrationEndLog = true;
+      this.emitStatusSnapshot();
+      this.appendLog("[orchestrate] Orchestration startup complete");
 
       return result;
     } finally {
@@ -220,8 +229,11 @@ class OrchestrationManager {
       this.saveRunHistory();
     }
 
-    this.emitStatusChange({ log: false });
-    this.appendLog("[orchestrate] 전체 종료 완료");
+    this.emitStatusSnapshot();
+    if (wasRunning && this.pendingOrchestrationEndLog) {
+      this.appendLog("[orchestrate] Orchestration shutdown complete");
+      this.pendingOrchestrationEndLog = false;
+    }
     return { success: true };
   }
 
@@ -294,19 +306,6 @@ class OrchestrationManager {
     }
   }
 
-  private logStatusChangeIfNeeded(snapshot: OrchestrationStatusData) {
-    const stable = JSON.stringify(snapshot);
-    if (this.lastEmittedSnapshotJson === stable) return;
-    this.lastEmittedSnapshotJson = stable;
-
-    this.appendLog(
-      formatLogLine({
-        source: "orchestrate",
-        message: `status=${snapshot.status}`,
-      }),
-    );
-  }
-
   private saveRunHistory() {
     try {
       if (!this.state.startedAt || !this.state.finishedAt) return;
@@ -339,7 +338,7 @@ class OrchestrationManager {
         this.state.exitCode === 0 ? "completed" : "failed";
 
       const entry: RunHistoryEntry = {
-        id: `run-${this.state.startedAt.replace(/[^0-9]/g, "").slice(0, 14)}`,
+        id: `start-${this.state.startedAt.replace(/[^0-9]/g, "").slice(0, 14)}`,
         startedAt: this.state.startedAt,
         finishedAt: this.state.finishedAt,
         status: historyStatus,

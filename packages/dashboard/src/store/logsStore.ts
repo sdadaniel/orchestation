@@ -10,7 +10,6 @@ interface LogsState {
   status: string;
   connected: boolean;
 
-  clear: () => void;
   setStatus: (status: string) => void;
   markConnected: () => void;
   applyIncoming: (payload: { logs?: string[]; total?: number }) => void;
@@ -26,13 +25,6 @@ export const useLogsStore = create<LogsState>()(
         lines: [],
         status: "idle",
         connected: false,
-
-        clear: () => {
-          knownIds.clear();
-          lastTotal = null;
-          maxSeenId = -1;
-          set({ lines: [] }, false, "logs/clear");
-        },
 
         setStatus: (status) => set({ status }, false, "logs/setStatus"),
 

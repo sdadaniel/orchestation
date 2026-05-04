@@ -33,14 +33,14 @@
 | 패키지 경계 | **3분할**. `engine` 패키지는 브라우저/Next 의존 금지. `gateway`가 Next + WS + HTTP 호스트. `dashboard`는 Next 앱 디렉터리. |
 | 실행 | 리스닝 프로세스를 `packages/gateway`에 두고, 루트 `cli.js`에 `orchestrate gateway`를 추가(`start`/`dashboard`는 위임). |
 | 실시간 | SSE 완전 제거. `orchestration-status`, `task-changed` 등 **브라우저로의 푸시는 WS 이벤트**만. 내부 pub/sub(`packages/engine/src/lib/sse/` → **rename `bus/`**)은 유지하되 브라우저 팬아웃은 WS 한 경로. |
-| 액션 | UI·사용자의 변경 동작은 **WS-RPC**. 프레이밍은 기존 `/ws/orchestrate`의 `orchestrate.run` / `stop`과 동일한 `req`/`res` 패턴을 표준으로 확장하고 `method` 메타에 `idempotent: boolean` 명시. |
+| 액션 | UI·사용자의 변경 동작은 **WS-RPC**. 프레이밍은 기존 `/ws/orchestrate`의 `orchestrate.start` / `stop`과 동일한 `req`/`res` 패턴을 표준으로 확장하고 `method` 메타에 `idempotent: boolean` 명시. |
 | 전송 vs 앱 상태 | **원칙 A**: `running`/`idle` 전환으로 WS를 닫지 않는다. **원칙 B**: 네트워크·재시작 등으로 끊기면 **자동 재연결**한다. React `useEffect`가 상태 변화마다 소켓을 재생성하지 않도록 점검한다. |
 
 ### 2.3 소켓 토폴로지(확정)
 
 **하이브리드**:
 
-- **`/ws/gateway`** — 글로벌 이벤트(`orchestration-status`, `task-changed` 등) + WS-RPC(`orchestrate.run`, `orchestrate.stop`, 향후 확장)를 단일 소켓으로 멀티플렉스.
+- **`/ws/gateway`** — 글로벌 이벤트(`orchestration-status`, `task-changed` 등) + WS-RPC(`orchestrate.start`, `orchestrate.stop`, 향후 확장)를 단일 소켓으로 멀티플렉스.
 - **`/ws/terminal`** — 전역 인터랙티브 터미널(node-pty). 기존 유지.
 - **`/ws/task-terminal/:id`** — 태스크별 JSONL 대화 스트림. 기존 유지.
 - **`/ws/task-logs/:id`** — 태스크별 로그 tail. 기존 유지.
@@ -53,7 +53,7 @@
 
 - **원칙 A (앱 상태)**: 오케스트레이션이 `running`이든 `idle`이든 **의도적으로 WS를 닫아서 상태를 바꾸지 않는다**. `run` ↔ `idle`은 애플리케이션 상태만 변경한다.
 - **원칙 B (전송 장애)**: 끊기면 클라이언트는 **재연결**한다(§5).
-- **참고(현재 서버)**: `packages/dashboard/server.ts`의 `/ws/orchestrate`는 연결 후 `ready`를 보내고, `orchestrate.run` / `orchestrate.stop`에 대해 `{ type: "res", ... }`로 응답하며 **성공 시 소켓을 닫지 않는다**.
+- **참고(현재 서버)**: `packages/dashboard/server.ts`의 `/ws/orchestrate`는 연결 후 `ready`를 보내고, `orchestrate.start` / `orchestrate.stop`에 대해 `{ type: "res", ... }`로 응답하며 **성공 시 소켓을 닫지 않는다**.
 
 ---
 
@@ -116,7 +116,7 @@ SSE의 DB 폴링 + 타임스탬프 커서 방식은 **이식하지 않는다**. 
 
 ```ts
 interface RpcMethodDef<P, R> {
-  name: string;            // 예: "orchestrate.run"
+  name: string;            // 예: "orchestrate.start"
   idempotent: boolean;     // 재연결 시 클라이언트 자동 재전송 허용 여부
   paramsSchema: z.ZodType<P>;
   handler: (params: P) => Promise<R>;
@@ -127,7 +127,7 @@ interface RpcMethodDef<P, R> {
 
 | method | idempotent | 재연결 시 정책 |
 |---|---|---|
-| `orchestrate.run` | false | 자동 재전송 금지. 클라이언트는 in-flight id 타임아웃 후 스냅샷으로 상태 확인. |
+| `orchestrate.start` | false | 자동 재전송 금지. 클라이언트는 in-flight id 타임아웃 후 스냅샷으로 상태 확인. |
 | `orchestrate.stop` | true | 자동 재전송 허용. 서버는 이미 멈춰있으면 성공 응답. |
 
 향후 RPC 추가 시 `idempotent` 메타를 반드시 정의해야 한다.
@@ -135,7 +135,7 @@ interface RpcMethodDef<P, R> {
 ### 6.3 HTTP와의 관계
 
 - 초기 로드·정적 자산·(선택) REST **조회**는 Next HTTP로 유지 가능하다.
-- **변경 계열(POST/PUT/DELETE)**은 WS-RPC로 이전하는 것을 목표로 한다. 본 플랜에서는 `orchestrate.run`/`stop`만 WS로 완전 이전하고, 나머지 REST 변경 route들의 RPC 이전은 후속 작업으로 분리(별도 플랜).
+- **변경 계열(POST/PUT/DELETE)**은 WS-RPC로 이전하는 것을 목표로 한다. 본 플랜에서는 `orchestrate.start`/`stop`만 WS로 완전 이전하고, 나머지 REST 변경 route들의 RPC 이전은 후속 작업으로 분리(별도 플랜).
 
 ### 6.4 보안 1차 스코프
 
@@ -188,7 +188,7 @@ flowchart LR
 ### Phase 3 — `/ws/gateway` + SSE 제거(단일 PR)
 
 9. `gateway/src/ws/gateway-channel.ts` 신설: 연결 핸들러, 스냅샷, `hello`/`replay`/`replay-gap`, RPC 레지스트리.
-10. RPC 레지스트리에 `orchestrate.run`(idempotent=false) / `orchestrate.stop`(idempotent=true) 등록. 기존 `/ws/orchestrate`는 **제거**하고 클라이언트를 `/ws/gateway`로 이전.
+10. RPC 레지스트리에 `orchestrate.start`(idempotent=false) / `orchestrate.stop`(idempotent=true) 등록. 기존 `/ws/orchestrate`는 **제거**하고 클라이언트를 `/ws/gateway`로 이전.
 11. 클라이언트: `GatewayWsProvider` 신설(`packages/dashboard/src/gateway-ws/provider.tsx`), 백오프·seq·in-flight RPC·idempotent 재전송 규칙 구현.
 12. `SseProvider`·`useSseHandlers`·`src/sse/`·`src/app/sse/route.ts` 제거, 레이아웃에서 `GatewayWsProvider`로 교체.
 13. `useSseHandlers`의 React Query invalidate / Zustand patch 로직을 WS 이벤트 핸들러로 이전.
