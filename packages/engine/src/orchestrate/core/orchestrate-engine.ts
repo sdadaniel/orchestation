@@ -31,8 +31,8 @@ import {
   canDispatch,
 } from "./scheduler";
 import {
-  onStepFinished,
   markTaskFailed,
+  onStepFinished,
   type TransitionContext,
 } from "./task-transitions";
 import { normalizeLogEntry, publish } from "@/bus/index";
@@ -134,7 +134,9 @@ export class OrchestrateEngine {
     this.loadConfig();
     this._status = "running";
     this.emitStatusChanged(this._status);
-    this.cleanupZombies();
+    this.reconcileOrphanInProgress(
+      "이전 엔진 세션의 고아 in_progress 복구",
+    );
     this.loopTimer = setInterval(() => this.mainLoop(), LOOP_INTERVAL_MS);
     this.mainLoop(); // 첫 턴도 즉시 실행
     this.logInfo("Engine started");
@@ -147,18 +149,21 @@ export class OrchestrateEngine {
    */
   async stop(): Promise<{ success: boolean }> {
     const entries = [...this.workers.values()];
+    if (this.loopTimer) {
+      clearInterval(this.loopTimer);
+      this.loopTimer = null;
+    }
     for (const entry of entries) {
       entry.abortController.abort();
       this.setStatus(entry.taskId, "stopped");
     }
     const promises = entries.map((e) => e.promise);
-    if (this.loopTimer) {
-      clearInterval(this.loopTimer);
-      this.loopTimer = null;
-    }
-    this._status = "idle";
-    this.workers.clear();
     await Promise.allSettled(promises);
+    this.reconcileOrphanInProgress(
+      "엔진 stop 이후 active worker 없는 in_progress 정리",
+    );
+    this.workers.clear();
+    this._status = "idle";
     return { success: true };
   }
 
@@ -467,23 +472,22 @@ export class OrchestrateEngine {
     }
   }
 
-  private cleanupZombies() {
+  private hasActiveWorkerForTask(taskId: string): boolean {
+    return [...this.workers.values()].some((entry) => entry.taskId === taskId);
+  }
+
+  private reconcileOrphanInProgress(reason: string) {
     const zombies = getTasksByStatus("in_progress");
     let cleaned = 0;
-    const ctx = this.buildTransitionContext();
     for (const row of zombies) {
-      if (this.workers.has(row.id)) continue;
-      // 엔진이 모르는 in_progress = 프로세스 크래시/재시작으로 인한 고아 태스크.
-      // 재실행하지 않도록 failed로 마킹 (무한 루프/토큰 낭비 방지)
-      markTaskFailed(
-        row.id,
-        "고아 상태 감지 (엔진 크래시 또는 비정상 종료 추정)",
-        ctx,
-      );
+      if (this.hasActiveWorkerForTask(row.id)) continue;
+      updateTaskStatus(row.id, "stopped", row.status);
       cleaned++;
-      this.log(`  🧹 zombie: ${row.id} in_progress → failed`);
+      this.log(`  🧹 orphan: ${row.id} in_progress → stopped (${reason})`);
     }
-    if (cleaned > 0) this.log(`  🧹 ${cleaned}개 좀비 태스크 failed 처리`);
+    if (cleaned > 0) {
+      this.log(`  🧹 ${cleaned}개 orphan in_progress 정리 완료`);
+    }
   }
 
   private setStatus(taskId: string, newStatus: TaskStatus) {

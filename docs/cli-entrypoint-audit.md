@@ -2,6 +2,13 @@
 
 사용자가 **설치·실행·중지**할 때 실제로 거치는 경로를 한 번에 점검할 때 쓰는 **상위(마스터) 프롬프트**다. 에이전트나 사람이 주기적으로 복붙해 전수 감사를 돌리면, 단일 파일 비대화·플랫폼 의존·exit/시그널 불일치를 일괄 발견하기 쉽다.
 
+## 기준 시점 (스냅샷 검증)
+
+아래 **감사 범위 표**의 구체 경로·`package.json` 인용은 특정 시점의 트리에 맞춰 적어 두었다. 리팩터 후에는 표와 이 블록을 함께 갱신한다.
+
+- **확인일**: 2026-05-05 — 루트 `package.json`, `packages/engine/src/cli/`, `docs/architecture/packaging-guide.md` 존재, 루트 `scripts/`·`*.sh` 없음을 기준으로 표를 맞춤.
+- **재현**: 큰 변경 직후에는 확인일을 오늘로 바꾸고, 필요하면 같은 줄에 `git rev-parse --short HEAD` 결과를 덧붙인다.
+
 ## 사용 시점
 
 - `cli.js` 또는 엔진 CLI를 대규모로 손볼 때 (리팩터 전/후)
@@ -22,12 +29,12 @@
 |------|------|
 | 메인 CLI | 루트 `cli.js` |
 | npm bin | 루트 `package.json`의 `"bin": { "orchestrate": "./cli.js" }` — 별도 `bin/` 디렉터리 없음 |
-| npm scripts | 루트 `package.json`의 `start` / `status` / `restart` / `stop` 등 |
-| 엔진 TS 엔트리 | `packages/engine/src/cli/` (`run-engine.ts`, `run-task.ts`, `run-review.ts`, `run-night-worker.ts`) — 현재 다른 패키지에는 `src/cli` 없음 |
-| 문서상 실행 경로 | 루트 `README.md`, `docs/architecture/packaging-guide.md`, `packages/dashboard/README.md` 등에서 `cli.js` / `orchestrate` 언급 |
-| 레거시 셸 진입점 | `scripts/*.sh` — 여전히 문서·워크플로에 남아 있으면 사용자 대면 경로와의 **불일치** 여부를 같이 본다 |
+| npm scripts | 루트 `package.json`의 `start` / `status` / `restart` / `stop` (각각 `node cli.js …`) |
+| 엔진 TS 엔트리 | `packages/engine/src/cli/` (`run-engine.ts`, `run-task.ts`, `run-review.ts`, `run-night-worker.ts`) — **기준 시점** 기준으로 다른 패키지에는 `packages/*/src/cli` 없음 |
+| 문서상 실행 경로 | 루트 `README.md`, `docs/architecture/packaging-guide.md`(존재 확인됨), `packages/dashboard/README.md` 등 — `cli.js`·`orchestrate`·과거 셸 진입점 설명의 **상호 일치**를 본다 |
+| 레거시 셸·문서상 셸 | 과거 `scripts/*.sh` 등은 **문서·태스크 기록에 남아 있을 수 있으나**, 기준 시점 트리에는 루트 `*.sh` / `scripts/` 실체가 **없을 수 있음**. 존재 여부를 `find` 등으로 확인하고, 문서만 남은 경우는 사용자 대면 경로(`cli.js`)와의 **불일치**로 취급한다 |
 
-**참고**: 루트 `package.json`에는 `"os": ["darwin", "linux"]`가 있어 npm 관점에서 공식 OS가 한정돼 있다. 감사에서는 (1) 선언과 실제 코드(`pgrep`/`ps`/`which` 등)의 일치, (2) Windows를 지원하지 않을 명시적 정책인지, (3) CI가 Linux만이면 충분한지까지 정리하면 좋다.
+**참고**: 루트 `package.json`에는 `"os": ["darwin", "linux"]`, `"engines": { "node": ">=18" }`가 있다. 감사에서는 (1) 선언과 실제 코드(`pgrep`/`ps`/`which` 등)의 일치, (2) Windows를 지원하지 않을 명시적 정책인지, (3) CI가 Linux만이면 충분한지까지 정리하면 좋다.
 
 ## 기대 산출물
 
@@ -56,4 +63,5 @@ cli.js와 packages/engine/src/cli 전체를 점검해줘:
 
 ## 관련 문서
 
-- 일반적인 프롬프트 작성 원칙: [`docs/prd/doc-prompt-guide.md`](prd/doc-prompt-guide.md)
+- 일반적인 프롬프트 작성 원칙: `[docs/prd/doc-prompt-guide.md](prd/doc-prompt-guide.md)`
+

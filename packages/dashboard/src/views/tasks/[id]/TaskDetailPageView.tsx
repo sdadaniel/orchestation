@@ -64,6 +64,28 @@ function tabKeyFromQuery(tabParam: string | null): TaskDetailTabKey {
   return QUERY_TO_TAB_KEY[tabParam.toLowerCase()] ?? "detail";
 }
 
+/**
+ * 실행 중 자동으로 로그 탭으로 옮길지. scope/cost/terminal/ai-result처럼 URL에
+ * 명시된 탭은 유지한다. 그렇지 않으면 in_progress + ?tab=scope 일 때
+ * router.replace가 반복되어 dev 서버가 불안정해질 수 있다.
+ */
+function shouldAutoSwitchToLogsTab(tabQuery: string | null): boolean {
+  const t = tabQuery?.toLowerCase() ?? "";
+  if (!t) return true;
+  if (t === "logs") return false;
+  // URL `tab=content` → Content 탭; 명시한 탭은 실행 중에도 유지
+  if (
+    t === "content" ||
+    t === "scope" ||
+    t === "cost" ||
+    t === "terminal" ||
+    t === "ai-result"
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function syncTasksCaches() {
   void getQueryClient().invalidateQueries({ queryKey: queryKeys.tasks.all });
   void useTasksStore.getState().fetchTasksSummary();
@@ -93,7 +115,8 @@ function TaskDetailPageViewInner({
     },
   });
   const error = loadError ? getErrorMessage(loadError, "Failed to load task") : null;
-  const activeTab = tabKeyFromQuery(searchParams.get("tab"));
+  const tabQueryRaw = searchParams.get("tab");
+  const activeTab = tabKeyFromQuery(tabQueryRaw);
 
   const navigateToTaskTab = useCallback((key: TaskDetailTabKey) => {
     const next = new URLSearchParams(window.location.search);
@@ -125,12 +148,12 @@ function TaskDetailPageViewInner({
     }
   }, [activeTab, aiResult, aiResultLoading, id]);
 
-  // Auto-switch to logs tab when task is running
+  // 실행 중이면 기본적으로 로그 탭으로 — 단 URL이 scope 등이면 사용자 선택 유지
   useEffect(() => {
-    if (task?.status === "in_progress" || runStatus === "running") {
-      navigateToTaskTab("logs");
-    }
-  }, [task?.status, runStatus, navigateToTaskTab]);
+    if (task?.status !== "in_progress" && runStatus !== "running") return;
+    if (!shouldAutoSwitchToLogsTab(tabQueryRaw)) return;
+    navigateToTaskTab("logs");
+  }, [task?.status, runStatus, navigateToTaskTab, tabQueryRaw]);
 
   // Orchestration 상태는 store에서 구독 (중복 interval 제거)
   const isPipelineRunningFromStore = useOrchestrationStore((s) => s.isRunning);
@@ -149,7 +172,9 @@ function TaskDetailPageViewInner({
     // in_progress 상태면 running으로 간주
     if (task.status === "in_progress") {
       setRunStatus("running");
-      navigateToTaskTab("logs");
+      if (shouldAutoSwitchToLogsTab(tabQueryRaw)) {
+        navigateToTaskTab("logs");
+      }
       return;
     }
     async function checkRunStatus() {
@@ -167,7 +192,7 @@ function TaskDetailPageViewInner({
       }
     }
     checkRunStatus();
-  }, [id, task, navigateToTaskTab]);
+  }, [id, task, navigateToTaskTab, tabQueryRaw]);
 
   // Refetch task data when run finishes (status 반영)
   const handleRunStatusChange = useCallback(

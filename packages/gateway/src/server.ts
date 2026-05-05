@@ -1,3 +1,4 @@
+import "@/lib/ws-disable-native-addons";
 import { createServer } from "http";
 import fs, { appendFileSync, watchFile, unwatchFile } from "fs";
 import next from "next";

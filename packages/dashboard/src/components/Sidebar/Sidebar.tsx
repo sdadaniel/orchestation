@@ -17,6 +17,7 @@ const Sidebar = () => {
   const tasksSummary = useTasksStore((s) => s.tasksSummary);
   const stopTask = useTasksStore((s) => s.stopTask);
   const fetchTasksSummary = useTasksStore((s) => s.fetchTasksSummary);
+  
   const { tree: docTree, createDoc, updateDoc, deleteDoc, reorderDoc, fetchTree } =
     useDocTree();
   const docActions = useDocActions({
@@ -49,6 +50,7 @@ const Sidebar = () => {
           currentPath={currentPath}
           docActions={docActions}
         />
+
 
         <TaskListSection
           summaryItems={tasksSummary.items}

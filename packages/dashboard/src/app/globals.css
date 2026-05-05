@@ -334,14 +334,26 @@ body {
 }
 .prose-custom p {
   margin: 0.6em 0;
+  font-size: 14px;
+  line-height: 1.7;
 }
 .prose-custom ul,
 .prose-custom ol {
   margin: 0.5em 0;
   padding-left: 1.5em;
+  font-size: 14px;
+  line-height: 1.7;
 }
 .prose-custom li {
   margin: 0.2em 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+/* Loose list items (CommonMark): li > p — match body paragraph size */
+.prose-custom li p {
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 0.35em 0;
 }
 .prose-custom code {
   background: var(--muted);

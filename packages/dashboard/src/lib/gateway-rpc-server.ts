@@ -1,3 +1,4 @@
+import "@/lib/ws-disable-native-addons";
 import { randomUUID } from "crypto";
 import { WebSocket } from "ws";
 

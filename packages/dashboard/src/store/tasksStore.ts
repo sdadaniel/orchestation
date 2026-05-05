@@ -96,6 +96,7 @@ export const useTasksStore = create<TasksState>()(
             "tasks/fetchTasksSummary/start",
           );
           const res = await fetch("/api/tasks?page=1&size=10&summary=1");
+          
           if (!res.ok)
             throw new Error("요약 태스크 데이터를 불러오는데 실패했습니다.");
           const data: TaskSummaryData = await res.json();

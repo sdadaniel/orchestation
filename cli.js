@@ -418,7 +418,7 @@ switch (command) {
       return null;
     }
 
-      findPort(requestedPort).then((port) => {
+      findPort(requestedPort).then(async (port) => {
         if (!port) {
           console.error(`Error: No available port found (tried ${requestedPort}-${requestedPort + 19})`);
           process.exit(1);
@@ -433,19 +433,63 @@ switch (command) {
         if (alreadyDashPort != null) {
           console.log(`Dashboard already running: http://${HOST}:${alreadyDashPort}/`);
         } else {
-          console.log(`Dashboard (background): http://localhost:${dashPort}\n`);
+          const dashLog = path.join(ORCH_DIR, "output", "dashboard-dev.log");
+          fs.mkdirSync(path.dirname(dashLog), { recursive: true });
+          const logFd = fs.openSync(dashLog, "a");
+          const stamp = `\n--- ${new Date().toISOString()} dashboard dev (port ${dashPort}) ---\n`;
+          fs.writeSync(logFd, stamp);
+
+          console.log(`Starting dashboard on port ${dashPort}…`);
+          console.log(`  Log file: ${dashLog}`);
 
           const dashProc = spawn("npm", ["run", "dev"], {
             cwd: FRONTEND_DIR,
             detached: true,
-            stdio: "ignore",
+            stdio: ["ignore", logFd, logFd],
             env: { ...process.env, PACKAGE_DIR: __dirname, PROJECT_ROOT: process.cwd(), PORT: String(dashPort) },
           });
           dashProc.on("error", (err) => {
             console.error("Failed to start dashboard:", err.message);
+            try {
+              fs.closeSync(logFd);
+            } catch {
+              /* ignore */
+            }
             process.exit(1);
           });
           dashProc.unref();
+
+          const READY_MS = 120000;
+          const STEP = 500;
+          let waited = 0;
+          let ready = false;
+          while (waited < READY_MS) {
+            if (await probeDashboardHttp(HOST, dashPort, 2000)) {
+              ready = true;
+              break;
+            }
+            await new Promise((r) => setTimeout(r, STEP));
+            waited += STEP;
+          }
+          try {
+            fs.closeSync(logFd);
+          } catch {
+            /* ignore */
+          }
+
+          if (ready) {
+            console.log(`Dashboard ready: http://${HOST}:${dashPort}/`);
+            console.log(`  (or http://localhost:${dashPort}/ — same server)\n`);
+          } else {
+            console.error(
+              `Dashboard did not respond on port ${dashPort} within ${READY_MS / 1000}s (connection refused / hang).`,
+            );
+            console.error(`  See: ${dashLog}`);
+            console.error(
+              `  Foreground (see errors in terminal): cd packages/dashboard && PORT=${dashPort} npm run dev`,
+            );
+            console.error("");
+          }
         }
 
         console.log(
