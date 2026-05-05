@@ -2,14 +2,12 @@ import Database from "better-sqlite3";
 import { resolve } from "path";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 import crypto from "crypto";
-import { PROJECT_ROOT, DB_DIR } from "../lib/config/paths";
+import { PROJECT_ROOT, DB_DIR, ENGINE_SERVICE_DIR } from "../lib/config/paths";
 import { parseNoticeFile, getNoticesDir } from "../parser/notice-parser";
 
 const DB_PATH = resolve(DB_DIR, "orchestration.db");
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SCHEMA_PATH = resolve(__dirname, "schema.sql");
+const SCHEMA_PATH = path.join(ENGINE_SERVICE_DIR, "schema.sql");
 
 let _readonlyDb: Database.Database | null = null;
 let _writableDb: Database.Database | null = null;
@@ -68,6 +66,7 @@ function ensureDb(): void {
 
     // tasks.phase (fine-grained status; e.g. working/reviewing)
     addColumn("tasks", "phase TEXT");
+    addColumn("tasks", "sort_order INTEGER DEFAULT 0");
     addColumn("tasks", "display_id TEXT");
     addColumn("tasks", "display_number INTEGER");
     addColumn("tasks", "legacy_task_key TEXT");

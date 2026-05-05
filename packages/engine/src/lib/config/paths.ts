@@ -17,6 +17,19 @@ const ENGINE_ROOT = path.resolve(__dirname, "..", "..", "..");
 export const PACKAGE_DIR =
   process.env.PACKAGE_DIR || path.resolve(ENGINE_ROOT, "..", "..");
 
+/**
+ * engine `src/service` (schema.sql 등). Next가 API 라우트를 번들하면 `import.meta.url`이
+ * `.next/server/chunks`를 가리켜 상대 경로로는 schema.sql을 찾지 못한다. PACKAGE_DIR은
+ * 여전히 리포 루트로 계산되므로 여기서 고정한다.
+ */
+export const ENGINE_SERVICE_DIR = path.join(
+  PACKAGE_DIR,
+  "packages",
+  "engine",
+  "src",
+  "service",
+);
+
 /** 사용자 프로젝트 루트 — env 없을 때는 PACKAGE_DIR과 동일(로컬 개발) */
 export const PROJECT_ROOT = process.env.PROJECT_ROOT || PACKAGE_DIR;
 
