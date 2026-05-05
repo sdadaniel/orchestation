@@ -50,6 +50,10 @@
 사용자 입력은 반드시 검증하라.
 ```
 
+### CLI·진입점 전수 감사
+
+`cli.js` / `orchestrate` 사용자 경로, npm scripts, 문서상 설치·실행 안내가 서로 맞는지 한 번에 점검할 때는 [`docs/cli-entrypoint-audit.md`](../cli-entrypoint-audit.md)의 마스터 프롬프트와 감사 범위 표를 쓴다.
+
 ### 금지
 
 - "간결하게 구현해줘" → 기능 생략
