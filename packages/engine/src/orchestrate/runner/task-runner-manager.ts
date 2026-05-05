@@ -134,6 +134,7 @@ class TaskRunnerManager {
         state.phase = "done";
         state.exitCode = 2;
         state.finishedAt = new Date().toISOString();
+        updateTaskFileStatus(taskId, "rejected");
         cleanupSignals(taskId);
         appendLog(`[task-runner] ${taskId} 거절됨 → 완료 처리 (review 스킵)`);
         publish("task.result", { taskId, status: "completed" });
@@ -215,6 +216,7 @@ class TaskRunnerManager {
       state.status = "completed";
       state.phase = "done";
       state.exitCode = 0;
+      updateTaskFileStatus(taskId, "done");
       appendLog(`[task-runner] ${taskId} merge 완료 → done`);
       publish("task.result", { taskId, status: "completed" });
     } else {

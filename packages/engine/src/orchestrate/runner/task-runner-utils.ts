@@ -46,9 +46,14 @@ end tell`;
 /** 태스크 status를 DB에서 갱신 */
 export function updateTaskFileStatus(taskId: string, status: TaskStatus): void {
   try {
-    updateTaskStatus(taskId, status);
-  } catch {
-    // silently ignore
+    const ok = updateTaskStatus(taskId, status);
+    if (!ok) {
+      console.warn(
+        `[task-runner] updateTaskStatus 실패: taskId=${taskId} → ${status} (DB 없음 또는 id 미해결)`,
+      );
+    }
+  } catch (err) {
+    console.warn(`[task-runner] updateTaskStatus 예외: taskId=${taskId}`, err);
   }
 }
 
