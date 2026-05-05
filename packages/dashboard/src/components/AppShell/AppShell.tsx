@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useTasks } from "@/hooks/useTasks";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
@@ -17,6 +17,24 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
   const { groups, isLoading } = useTasks(shouldLoadTaskGroups);
   const { addToast } = useToast();
   const fetchTasksSummary = useTasksStore((s) => s.fetchTasksSummary);
+
+  // Sidebar collapsed state with localStorage persistence
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Initialize sidebar state from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved !== null) {
+      setSidebarCollapsed(saved === "true");
+    }
+  }, []);
+
+  // Handle sidebar toggle
+  const handleToggleSidebar = () => {
+    const newState = !sidebarCollapsed;
+    setSidebarCollapsed(newState);
+    localStorage.setItem("sidebar-collapsed", String(newState));
+  };
 
   // 초기 데이터 로드 — 홈/사이드바는 요약만 먼저 가져오고, 상세 목록은 해당 화면에서 로드
   useEffect(() => {
@@ -98,7 +116,10 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="flex h-full">
-      <Sidebar />
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={handleToggleSidebar}
+      />
 
       {/* Content area */}
       <div className="flex-1 flex flex-col overflow-hidden">
