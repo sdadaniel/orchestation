@@ -11,6 +11,15 @@ Rules:
   - Risk is meaningfully reduced by separation (large migration, dangerous refactor, multi-surface rollout).
   - Parallelization is **actually possible** (not a fake pipeline).
 - If you split, prefer **sequential dependencies only when truly blocking**. Do not create `depends_on` chains for “nice ordering” within the same feature.
+- UX gate (to prevent “functional-only” output when UX is implied):
+  - First, classify whether the request touches UI/UX surfaces (layout, navigation, sidebar, pages, components, interactions, user flows).
+  - If UI/UX is involved, EACH relevant task's `criteria` MUST include:
+    - State coverage: loading / empty / error / success (and collapsed/expanded if applicable)
+    - Transition coverage: navigation, refresh, resize/collapse, realtime updates (if applicable)
+    - Accessibility minimums: keyboard navigation, focus behavior, tooltip/aria-label for icon-only UI
+  - If UI/UX is NOT involved, explicitly state "UI/UX: not applicable" in the task description and DO NOT invent UX criteria.
+- Collapsed/compact UI rule:
+  - For any collapsed/compact UI, do NOT hide the entire navigation. Define what MUST persist (icon, active indicator, critical counter/badge, tooltip/aria-label).
 - Each task must have: title, description, priority (high/medium/low), criteria (completion criteria as string array), scope (files to modify), context (files to read but not modify), depends_on (array of 0-based step indices this task depends on, e.g. [0] means depends on step 1), role (the best-fit worker role for this task).
 - scope = 수정할 파일/디렉토리. context = 수정하지 않지만 반드시 읽어야 하는 참조 파일/디렉토리. 둘 다 glob 패턴(**) 사용.
 - Keep `scope` **minimal** and **small**: include only directories you expect to edit; prefer starting tight (e.g. a single feature folder) and expand only when necessary. **At most 5 glob entries** per task unless absolutely necessary.
