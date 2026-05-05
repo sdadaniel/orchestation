@@ -164,19 +164,7 @@ function TaskDetailPageViewInner({
   // Check if task is already running on page load (task 로드 후에만)
   useEffect(() => {
     if (!task) return;
-    // pending/stopped면 이전 run 결과 무시
-    if (task.status === "pending" || task.status === "stopped") {
-      setRunStatus("idle");
-      return;
-    }
-    // in_progress 상태면 running으로 간주
-    if (task.status === "in_progress") {
-      setRunStatus("running");
-      if (shouldAutoSwitchToLogsTab(tabQueryRaw)) {
-        navigateToTaskTab("logs");
-      }
-      return;
-    }
+
     async function checkRunStatus() {
       try {
         const res = await fetch(`/api/tasks/${id}/run`);
@@ -191,7 +179,23 @@ function TaskDetailPageViewInner({
         // silently ignore check errors
       }
     }
-    checkRunStatus();
+
+    // pending/stopped여도 런타임(task runner)이 실제로 돌고 있으면 UI를 동기화한다.
+    if (task.status === "pending" || task.status === "stopped") {
+      setRunStatus("idle");
+      void checkRunStatus();
+      return;
+    }
+    // in_progress 상태면 running으로 간주
+    if (task.status === "in_progress") {
+      setRunStatus("running");
+      if (shouldAutoSwitchToLogsTab(tabQueryRaw)) {
+        navigateToTaskTab("logs");
+      }
+      return;
+    }
+
+    void checkRunStatus();
   }, [id, task, navigateToTaskTab, tabQueryRaw]);
 
   // Refetch task data when run finishes (status 반영)
