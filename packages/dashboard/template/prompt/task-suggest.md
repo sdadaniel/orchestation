@@ -19,7 +19,7 @@
       "description": "무엇을 왜 개선해야 하는지 2-3문장",
       "category": "bug",
       "priority": "high",
-      "scope": ["src/frontend/src/components/Example.tsx"],
+      "scope": ["packages/dashboard/src/components/Example.tsx"],
       "effort": "small"
     }
   ]

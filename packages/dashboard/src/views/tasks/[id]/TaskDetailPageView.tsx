@@ -11,7 +11,6 @@ import {
   Loader2,
   FileText,
   Terminal,
-  Monitor,
   CheckCircle2,
   DollarSign,
 } from "lucide-react";
@@ -27,7 +26,6 @@ import {
   CostTab,
   LogsTab,
 } from "@/app/tasks/[id]/TaskTabContent";
-import { LiveTerminalPanel } from "@/components/TaskDetail/LiveTerminalPanel";
 import { TaskWorkflowIndicator } from "@/components/TaskDetail/TaskWorkflowIndicator";
 import { Tabs } from "@/components/ui";
 import type { TaskStatus } from "@/entities/task";
@@ -38,7 +36,6 @@ export type TaskDetailTabKey =
   | "scope"
   | "cost"
   | "logs"
-  | "terminal"
   | "ai-result";
 
 const TAB_QUERY_VALUE: Record<TaskDetailTabKey, string> = {
@@ -46,7 +43,6 @@ const TAB_QUERY_VALUE: Record<TaskDetailTabKey, string> = {
   scope: "scope",
   cost: "cost",
   logs: "logs",
-  terminal: "terminal",
   "ai-result": "ai-result",
 };
 
@@ -55,13 +51,15 @@ const QUERY_TO_TAB_KEY: Record<string, TaskDetailTabKey> = {
   scope: "scope",
   cost: "cost",
   logs: "logs",
-  terminal: "terminal",
   "ai-result": "ai-result",
 };
 
 function tabKeyFromQuery(tabParam: string | null): TaskDetailTabKey {
   if (!tabParam) return "detail";
-  return QUERY_TO_TAB_KEY[tabParam.toLowerCase()] ?? "detail";
+  const t = tabParam.toLowerCase();
+  // Legacy: `tab=terminal` is now part of Logs.
+  if (t === "terminal") return "logs";
+  return QUERY_TO_TAB_KEY[t] ?? "detail";
 }
 
 /**
@@ -78,7 +76,6 @@ function shouldAutoSwitchToLogsTab(tabQuery: string | null): boolean {
     t === "content" ||
     t === "scope" ||
     t === "cost" ||
-    t === "terminal" ||
     t === "ai-result"
   ) {
     return false;
@@ -101,6 +98,7 @@ function TaskDetailPageViewInner({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const retryTask = useTasksStore((s) => s.retryTask);
   const {
     data: task,
     isLoading,
@@ -116,11 +114,20 @@ function TaskDetailPageViewInner({
   });
   const error = loadError ? getErrorMessage(loadError, "Failed to load task") : null;
   const tabQueryRaw = searchParams.get("tab");
+  const logViewQueryRaw = searchParams.get("logView");
   const activeTab = tabKeyFromQuery(tabQueryRaw);
 
   const navigateToTaskTab = useCallback((key: TaskDetailTabKey) => {
     const next = new URLSearchParams(window.location.search);
     next.set("tab", TAB_QUERY_VALUE[key]);
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [pathname, router]);
+
+  const setLogViewQuery = useCallback((view: string) => {
+    const next = new URLSearchParams(window.location.search);
+    next.set("tab", "logs");
+    next.set("logView", view);
     const qs = next.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [pathname, router]);
@@ -154,6 +161,13 @@ function TaskDetailPageViewInner({
     if (!shouldAutoSwitchToLogsTab(tabQueryRaw)) return;
     navigateToTaskTab("logs");
   }, [task?.status, runStatus, navigateToTaskTab, tabQueryRaw]);
+
+  // Legacy URL: `/tasks/:id?tab=terminal` → `/tasks/:id?tab=logs&logView=terminal`
+  useEffect(() => {
+    if (tabQueryRaw?.toLowerCase() !== "terminal") return;
+    setLogViewQuery("terminal");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabQueryRaw]);
 
   // Orchestration 상태는 store에서 구독 (중복 interval 제거)
   const isPipelineRunningFromStore = useOrchestrationStore((s) => s.isRunning);
@@ -278,6 +292,20 @@ function TaskDetailPageViewInner({
     }
   };
 
+  const handleRetry = async () => {
+    try {
+      await retryTask(id);
+      setRunStatus("idle");
+      queryClient.setQueryData<TaskDetail>(queryKeys.tasks.detail(id), (prev) =>
+        prev ? { ...prev, status: "pending", phase: null } : prev,
+      );
+      syncTasksCaches();
+      void refetchTask();
+    } catch {
+      alert("재시도 요청 실패");
+    }
+  };
+
   const handleDelete = async () => {
     if (!confirm(`${task?.display_id ?? task?.id} 삭제하시겠습니까?`)) return;
     const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
@@ -331,6 +359,7 @@ function TaskDetailPageViewInner({
         onStatusChange={handleStatusChange}
         onRun={handleRun}
         onStop={handleStop}
+        onRetry={handleRetry}
         onDelete={handleDelete}
       />
 
@@ -349,7 +378,6 @@ function TaskDetailPageViewInner({
           { key: "scope", label: "Scope", icon: FileText },
           { key: "cost", label: "Cost", icon: DollarSign },
           { key: "logs", label: "로그", icon: Terminal },
-          { key: "terminal", label: "Terminal", icon: Monitor },
           { key: "ai-result", label: "AI Result", icon: CheckCircle2 },
         ]}
       />
@@ -372,9 +400,10 @@ function TaskDetailPageViewInner({
           taskStatus={task.status}
           hasExecutionLog={!!task.executionLog}
           onStatusChange={handleRunStatusChange}
+          logView={logViewQueryRaw}
+          onLogViewChange={setLogViewQuery}
         />
       )}
-      {activeTab === "terminal" && <LiveTerminalPanel taskId={task.id} />}
     </div>
   );
 }

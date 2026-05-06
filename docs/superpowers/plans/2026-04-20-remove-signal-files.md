@@ -857,9 +857,9 @@ Expected: 없거나 비어 있음. 파일이 있으면 수동 삭제.
 
 - **Step 11.6: 수동 스모크 테스트**
 
-포트 3001로 dev 서버 기동 후 (feedback memory: 테스트 시 3001번 포트):
+포트 3001로 dev 서버 기동 후 (feedback memory: 테스트 시 3001번 포트; 경로는 현재 모노레포 기준으로 대체):
 
-Run: `cd /Users/leo/Desktop/sdadaniel/orchestation/src/frontend && PORT=3001 npm run dev`
+Run: `cd /path/to/orchestation && node cli.js start -p 3001` 또는 `cd packages/dashboard && npm run dev:3001` (스크립트가 `PROJECT_ROOT`/`PACKAGE_DIR`/`PORT`를 리포 루트·3001로 맞춤)
 
 브라우저에서:
 

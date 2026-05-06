@@ -62,6 +62,7 @@ interface TasksState {
   deleteTask: (id: string) => Promise<void>;
   reorderTask: (id: string, direction: "up" | "down") => Promise<void>;
   stopTask: (id: string) => Promise<void>;
+  retryTask: (id: string) => Promise<void>;
 }
 
 export const useTasksStore = create<TasksState>()(
@@ -197,10 +198,17 @@ export const useTasksStore = create<TasksState>()(
       stopTask: async (id) => {
         try {
           await fetch(`/api/tasks/${id}/run`, { method: "DELETE" });
-        } catch {
-          // process may not exist
+        } finally {
+          await get().fetchTasksSummary();
+          invalidateTaskQueries();
         }
-        await get().updateTask(id, { status: "stopped" });
+      },
+
+      retryTask: async (id) => {
+        const res = await fetch(`/api/tasks/${id}/retry`, { method: "POST" });
+        if (!res.ok) throw new Error("태스크 재시도에 실패했습니다.");
+        await get().fetchTasksSummary();
+        invalidateTaskQueries();
       },
     }),
     { name: "TasksStore" },

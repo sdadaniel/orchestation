@@ -76,7 +76,11 @@ cd ../engine && npm install
 
 모노레포 루트에서 한 번에 설치할 때는 `pnpm install`을 사용합니다.
 
-대시보드만 띄울 때는 `packages/dashboard`에서 `npm run dev`를 실행합니다.
+### 대시보드 개발 (에이전트·워크트리 주의)
+
+- **권장**: 리포 루트에서 `node cli.js start -p 3001` (또는 `pnpm dev:dashboard:3001` — `PORT`·`PROJECT_ROOT`·`PACKAGE_DIR` 기본 세팅).
+- **직접**: `packages/dashboard`에서 `npm run dev`는 **게이트웨이 커스텀 서버**를 띄웁니다. worktree에서는 `PROJECT_ROOT`·`PACKAGE_DIR`을 해당 리포 루트로 두는 것이 안전합니다. 자세한 체크리스트·curl 주의(zsh `?`)는 [packages/dashboard/README.md](packages/dashboard/README.md)의 **에이전트·자동화용 개발 런북**을 참고하세요.
+- **`npx next dev` 단독**은 이 레포의 공식 엔트리가 아니며, API·WS·경로 해석이 깨질 수 있습니다.
 
 ## 설정 (.orchestration/config.json)
 

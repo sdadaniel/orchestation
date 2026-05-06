@@ -169,7 +169,7 @@ affected_files}`만 있어서 list view에 필요한 `created/updated/content/so
 ### Phase 7. 검증
 
 - [ ] `pnpm -w build` 또는 패키지별 `pnpm build` typecheck 통과
-- [ ] dev server 띄우고 (포트 3001 — 메모리: `feedback_port_3001.md`):
+- [ ] dev server 띄우고 (포트 3001 — 게이트웨이 엔트리: 루트 `node cli.js start -p 3001` 또는 `packages/dashboard`에서 `npm run dev:3001` / `PROJECT_ROOT`·`PACKAGE_DIR`을 리포 루트로 둔 `npm run dev`; `npx next dev` 단독 금지):
   - `/tasks` 페이지 로드 시 네트워크 탭에서 `?full=1` 호출 0건 확인
   - List 탭 / Graph 탭 / 검색 모두 동작 확인
   - Sidebar/Home dashboard summary가 정상 갱신되는지 확인

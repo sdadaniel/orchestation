@@ -7,6 +7,7 @@ import orchestrationManager from "@/orchestrate/orchestration-manager";
 import type { TaskStatus } from "@/entities/task";
 import { parseDependsOn } from "@/lib/task-row-parsers";
 import { PROJECT_ROOT, OUTPUT_DIR } from "@/lib/config/paths";
+import { loadSettings } from "@/lib/config/settings";
 import {
   getTask,
   getAllTasks,
@@ -16,6 +17,7 @@ import {
   resolveTaskId,
   resolveTaskRef,
 } from "@/service/task-store";
+import { retryTask } from "@/orchestrate/core/task-transitions";
 import { registerRpc } from "../registry";
 
 const SIGNAL_DIR = path.join(PROJECT_ROOT, ".orchestration", "signals");
@@ -110,6 +112,72 @@ registerRpc({
     return {
       message: `Task ${displayTaskId} started`,
       taskId: canonicalTaskId,
+    };
+  },
+});
+
+registerRpc({
+  name: "task.retry",
+  idempotent: false,
+  paramsSchema: z.object({ taskId: z.string().min(1) }).strict(),
+  handler: async ({ taskId }) => {
+    if (!isValidTaskId(taskId)) {
+      throw { code: "INVALID_PARAMS", message: "Invalid task ID format" };
+    }
+    const resolved = resolveTaskRef(taskId);
+    if (!resolved) {
+      throw { code: "NOT_FOUND", message: "Task not found" };
+    }
+
+    const task = resolved.task;
+    const canonicalTaskId = task.id;
+    const displayTaskId = getTaskDisplayId(task);
+
+    if (task.status === "in_progress" || task.status === "reviewing") {
+      throw {
+        code: "TASK_ACTIVE",
+        message: "실행 중인 태스크는 먼저 Stop 하세요.",
+      };
+    }
+
+    if (!["failed", "rejected", "stopped"].includes(task.status)) {
+      throw {
+        code: "INVALID_STATE",
+        message: "Retry는 failed, rejected, stopped 상태에서만 가능합니다.",
+      };
+    }
+
+    const dependsOnIds = parseDependsOn(task);
+    if (dependsOnIds.length > 0) {
+      const allTasks = getAllTasks();
+      const unmetDeps = dependsOnIds.filter((depId) => {
+        const dep = allTasks.find(
+          (candidate) => candidate.id === depId || candidate.display_id === depId,
+        );
+        return !dep || dep.status !== "done";
+      });
+      if (unmetDeps.length > 0) {
+        throw {
+          code: "UNMET_DEPENDENCIES",
+          message: `의존성 미충족: ${unmetDeps.join(", ")}이(가) 아직 완료되지 않았습니다.`,
+        };
+      }
+    }
+
+    const settings = loadSettings();
+    const result = retryTask(canonicalTaskId, {
+      log: () => {},
+      startStep: () => false,
+      emitTaskResult: () => {},
+      maxReviewRetry: () => settings.maxReviewRetry,
+      baseBranch: () => settings.baseBranch,
+    });
+
+    return {
+      message: `Task ${displayTaskId} retried`,
+      taskId: canonicalTaskId,
+      reactivatedDependentIds: result.reactivatedDependentIds,
+      resetStepCount: result.resetStepCount,
     };
   },
 });

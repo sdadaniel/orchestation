@@ -2,11 +2,24 @@
 
 Next.js 기반 오케스트레이션 대시보드. 태스크 관리, 파이프라인 실행, 비용 모니터링을 제공한다.
 
+## 에이전트·자동화용 개발 런북 (요약)
+
+| 항목 | 내용 |
+|------|------|
+| **공식 dev 엔트리** | 이 패키지의 `npm run dev` → `tsx ../gateway/src/server.ts` (HTTP·Next API·`/ws/*`·엔진 경로 한 프로세스). **`npx next dev` 단독으로 전체 기능을 검증하지 말 것.** |
+| **권장 (리포 루트)** | `node cli.js start -p 3001` — CLI가 `PORT`·`PROJECT_ROOT` 등을 맞춤. |
+| **포트 3001 래퍼** | 리포 루트: `pnpm dev:dashboard:3001` 또는 `npm run dev:dashboard:3001`. 이 디렉터리: `npm run dev:3001` (`scripts/dev-gateway-env.mjs`가 `PORT=3001`, `PROJECT_ROOT`/`PACKAGE_DIR`=리포 루트 기본값). |
+| **수동 env** | worktree 등에서는 `PORT=… PROJECT_ROOT=<리포 루트> PACKAGE_DIR=<리포 루트> npm run dev`. DB는 `$PROJECT_ROOT/.orchestration/` 아래; 다른 클론 DB를 쓰려면 해당 루트로 맞추거나 `.orchestration` 심링크로 통일. |
+| **스모크** | 서버 기동 후 `curl -s 'http://localhost:3001/api/health'` (zsh에서는 `?`가 있는 URL은 **반드시 따옴표**). |
+| **API 500·DB 경로** | `/api/health`에서 `envProjectRootSet`, `orchestrationDirExists`, `dbFileExists` 확인 → `PROJECT_ROOT`/`PACKAGE_DIR`와 실제 `.orchestration` 위치 재점검. |
+| **E2E** | `PLAYWRIGHT_BASE_URL`로 `baseURL`·`webServer.url` 오버라이드 (기본 `http://localhost:3000`). |
+
 ## 실행
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000
+npm run dev        # 기본 PORT(미설정 시 게이트웨이 기본 포트). 게이트웨이+Next+WS
+npm run dev:3001   # PORT=3001 + PROJECT_ROOT/PACKAGE_DIR 리포 루트 권장값
 npm run storybook  # http://localhost:6006
 ```
 
@@ -246,6 +259,7 @@ lib/ (순수 유틸)  <--  parser/  <--  service/  <--  engine/
 
 | 경로                        | 메서드               | 설명               |
 | ------------------------- | ----------------- | ---------------- |
+| `/api/health`             | GET               | 로컬 점검: cwd, PROJECT_ROOT, `.orchestration`/DB 존재 여부 |
 | `/api/tasks`              | GET, POST         | 태스크 목록/생성        |
 | `/api/tasks/[id]`         | GET, PUT, DELETE  | 태스크 상세/수정/삭제     |
 | `/api/tasks/[id]/run`     | POST, DELETE      | 태스크 실행/중지        |

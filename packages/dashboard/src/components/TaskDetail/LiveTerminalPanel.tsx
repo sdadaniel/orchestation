@@ -75,7 +75,8 @@ export function LiveTerminalPanel({ taskId }: { taskId: string }) {
 
   useEffect(() => {
     const el = bodyRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    // 최신 로그가 위에 오도록 렌더링하므로, 새 로그가 오면 상단을 유지
+    if (el) el.scrollTop = 0;
   }, [entries.length]);
 
   const entryStyle = (entry: TerminalEntry) => {
@@ -121,7 +122,7 @@ export function LiveTerminalPanel({ taskId }: { taskId: string }) {
       </div>
       <div
         ref={bodyRef}
-        className="overflow-y-auto max-h-[500px] p-0 font-mono text-[11px] leading-[1.7]"
+        className="overflow-y-auto overflow-x-hidden max-h-[500px] p-0 font-mono text-[11px] leading-[1.7] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {waiting ? (
           <div className="text-zinc-600 text-center py-12 flex flex-col items-center gap-2">
@@ -129,11 +130,11 @@ export function LiveTerminalPanel({ taskId }: { taskId: string }) {
             <span>터미널 로그 대기 중...</span>
           </div>
         ) : (
-          entries.map((entry, i) => (
+          [...entries].reverse().map((entry, i) => (
             <div
               key={i}
               className={cn(
-                "px-3 py-0.5 hover:bg-white/[0.03] border-l-2 transition-colors",
+                "px-3 py-0.5 hover:bg-white/[0.03] border-l-2 transition-colors whitespace-pre-wrap break-all",
                 entry.type === "tool_use"
                   ? "border-l-cyan-500/60"
                   : "border-l-transparent",
@@ -141,7 +142,7 @@ export function LiveTerminalPanel({ taskId }: { taskId: string }) {
               )}
             >
               <span className="text-zinc-600 select-none mr-3 inline-block w-5 text-right">
-                {i + 1}
+                {entries.length - i}
               </span>
               {entry.type === "tool_use" && (
                 <>

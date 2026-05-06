@@ -428,6 +428,139 @@ export function recordStepEvent(
   ).run(resolvedTaskId, stepId, eventType, detail ?? null, now());
 }
 
+export function recordTaskEvent(
+  taskId: string,
+  eventType: string,
+  detail?: string,
+): void {
+  const db = getWritableDb();
+  if (!db) return;
+  const resolvedTaskId = resolveTaskId(taskId);
+  if (!resolvedTaskId) return;
+  db.prepare(
+    "INSERT INTO task_events (task_id, event_type, detail, timestamp) VALUES (?, ?, ?, ?)",
+  ).run(resolvedTaskId, eventType, detail ?? null, now());
+}
+
+export interface RetryTaskResetResult {
+  taskId: string;
+  reactivatedDependentIds: string[];
+  resetStepIds: string[];
+}
+
+export function resetTaskForRetry(taskId: string): RetryTaskResetResult | null {
+  const db = getWritableDb();
+  if (!db) throw new Error("Database not available");
+  const resolvedTaskId = resolveTaskId(taskId);
+  if (!resolvedTaskId) return null;
+
+  const task = getTask(resolvedTaskId);
+  if (!task) return null;
+
+  const steps = getTaskSteps(resolvedTaskId);
+  const allTasks = getAllTasks();
+  const reactivatedDependentIds: string[] = [];
+  const visited = new Set<string>();
+  const ts = now();
+
+  const findStoppedDependents = (parentId: string) => {
+    for (const candidate of allTasks) {
+      if (visited.has(candidate.id)) continue;
+      const dependsOn = parseDependsOn(candidate);
+      if (!dependsOn.includes(parentId)) continue;
+      visited.add(candidate.id);
+      if (candidate.status === "stopped") {
+        reactivatedDependentIds.push(candidate.id);
+      }
+      findStoppedDependents(candidate.id);
+    }
+  };
+  findStoppedDependents(resolvedTaskId);
+
+  const updateTaskState = db.prepare(
+    "UPDATE tasks SET status = ?, phase = NULL, updated = ? WHERE id = ?",
+  );
+  const insertTaskEvent = db.prepare(
+    "INSERT INTO task_events (task_id, step_id, event_type, from_status, to_status, detail, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  );
+  const resetStep = db.prepare(
+    "UPDATE task_steps SET status = 'pending', started_at = NULL, finished_at = NULL, attempt = 0, updated = ? WHERE id = ?",
+  );
+
+  const txn = db.transaction(() => {
+    insertTaskEvent.run(
+      resolvedTaskId,
+      null,
+      "task_retry",
+      null,
+      null,
+      task.status,
+      ts,
+    );
+
+    updateTaskState.run("pending", ts, resolvedTaskId);
+    insertTaskEvent.run(
+      resolvedTaskId,
+      null,
+      "status_change",
+      task.status,
+      "pending",
+      null,
+      ts,
+    );
+
+    for (const step of steps) {
+      resetStep.run(ts, step.id);
+      insertTaskEvent.run(
+        resolvedTaskId,
+        step.id,
+        "step_reset",
+        step.status,
+        "pending",
+        null,
+        ts,
+      );
+    }
+
+    for (const dependentId of reactivatedDependentIds) {
+      const dependent = allTasks.find((candidate) => candidate.id === dependentId);
+      if (!dependent) continue;
+      updateTaskState.run("pending", ts, dependentId);
+      insertTaskEvent.run(
+        dependentId,
+        null,
+        "status_change",
+        dependent.status,
+        "pending",
+        null,
+        ts,
+      );
+      insertTaskEvent.run(
+        resolvedTaskId,
+        null,
+        "dependents_reactivated",
+        null,
+        null,
+        dependentId,
+        ts,
+      );
+    }
+  });
+
+  txn();
+
+  notifyTaskChanged(resolvedTaskId, { status: "pending", phase: null });
+  for (const dependentId of reactivatedDependentIds) {
+    notifyTaskChanged(dependentId, { status: "pending", phase: null });
+  }
+
+  return {
+    taskId: resolvedTaskId,
+    reactivatedDependentIds,
+    resetStepIds: steps.map((step) => step.id),
+  };
+}
+
 export function updateTaskStatus(
   taskId: string,
   newStatus: TaskStatus,
