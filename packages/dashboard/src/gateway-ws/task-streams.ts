@@ -20,7 +20,7 @@ function formatLogEntry(entry: TaskLogEntry): string {
 }
 
 async function fetchTaskLogs(taskId: string): Promise<string[]> {
-  const res = await fetch(`/api/tasks/${taskId}/logs`);
+  const res = await fetch(`/api/tasks/${taskId}/logs?includeConversation=0`);
   if (!res.ok) {
     if (res.status === 404) return [];
     throw new Error(`Failed to fetch logs (${res.status})`);

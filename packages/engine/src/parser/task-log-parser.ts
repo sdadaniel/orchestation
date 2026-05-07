@@ -116,6 +116,33 @@ function parseConversationLogs(taskId: string): TaskLogEntry[] {
   const suffixes = ["-task-conversation.jsonl", "-review-conversation.jsonl"];
   const taskKeys = getTaskLookupKeys(taskId);
 
+  const takeTextPreview = (value: unknown, limit = 500): string | null => {
+    if (typeof value === "string") return value.slice(0, limit);
+    if (!value || typeof value !== "object") return null;
+
+    // Claude stream-json style blocks: [{ type: "text", text: "..." }, ...]
+    if (Array.isArray(value)) {
+      const parts: string[] = [];
+      for (const block of value) {
+        if (!block || typeof block !== "object") continue;
+        const b = block as Record<string, unknown>;
+        if (typeof b.text === "string") parts.push(b.text);
+        else if (typeof b.content === "string") parts.push(b.content);
+      }
+      if (parts.length) return parts.join("\n").slice(0, limit);
+    }
+
+    // Common nested shapes.
+    const v = value as Record<string, unknown>;
+    if (typeof v.text === "string") return v.text.slice(0, limit);
+    if (typeof v.content === "string") return v.content.slice(0, limit);
+    if (v.delta && typeof v.delta === "object") {
+      const d = v.delta as Record<string, unknown>;
+      if (typeof d.text === "string") return d.text.slice(0, limit);
+    }
+    return null;
+  };
+
   for (const suffix of suffixes) {
     for (const taskKey of taskKeys) {
       const filePath = path.join(OUTPUT_DIR, `${taskKey}${suffix}`);
@@ -130,19 +157,49 @@ function parseConversationLogs(taskId: string): TaskLogEntry[] {
         if (!trimmed) continue;
 
         try {
-          const entry: ConversationLogEntry = JSON.parse(trimmed);
-          const timestamp =
-            entry.timestamp ||
-            entry.created_at ||
-            new Date().toISOString().replace("T", " ").substring(0, 19);
-          const role = entry.role || "system";
+          const parsed = JSON.parse(trimmed) as unknown;
+          const entry = (parsed ?? {}) as ConversationLogEntry;
+
+          // Support Claude CLI `--output-format stream-json` lines.
+          // Those are not {role, content} but carry message blocks under `message.content`,
+          // deltas under `delta`, and event types under `type`.
+          const maybeObj = parsed as Record<string, unknown> | null;
+          const streamType =
+            maybeObj && typeof maybeObj === "object" && typeof maybeObj.type === "string"
+              ? (maybeObj.type as string)
+              : null;
+          const messageObj =
+            maybeObj && typeof maybeObj === "object" && maybeObj.message && typeof maybeObj.message === "object"
+              ? (maybeObj.message as Record<string, unknown>)
+              : null;
+
+          const timestampRaw =
+            (typeof entry.timestamp === "string" ? entry.timestamp : undefined) ||
+            (typeof entry.created_at === "string" ? entry.created_at : undefined) ||
+            (messageObj && typeof messageObj.timestamp === "string" ? (messageObj.timestamp as string) : undefined) ||
+            (messageObj && typeof messageObj.created_at === "string" ? (messageObj.created_at as string) : undefined) ||
+            new Date().toISOString();
+          const timestamp = timestampRaw;
+
+          const role =
+            (typeof entry.role === "string" ? entry.role : undefined) ||
+            (messageObj && typeof messageObj.role === "string" ? (messageObj.role as string) : undefined) ||
+            "system";
+
+          const directText = takeTextPreview(entry.content);
+          const messageText =
+            messageObj ? takeTextPreview(messageObj.content) : null;
+          const deltaText =
+            maybeObj && typeof maybeObj === "object" ? takeTextPreview(maybeObj.delta) : null;
+
           const msg =
-            typeof entry.content === "string"
-              ? entry.content.substring(0, 500)
-              : `[${phase}] ${role} message`;
+            directText ??
+            messageText ??
+            deltaText ??
+            (streamType ? `[${phase}] ${role} (${streamType})` : `[${phase}] ${role} message`);
 
           entries.push({
-            timestamp,
+            timestamp: timestamp.replace("T", " ").substring(0, 19),
             level: role === "error" ? "error" : "info",
             message: msg,
           });
@@ -243,10 +300,21 @@ function parseSignalLogs(taskId: string): TaskLogEntry[] {
 /**
  * Get all logs for a specific task, sorted by timestamp
  */
-export function getTaskLogs(taskId: string): TaskLogEntry[] {
+export function getTaskLogs(
+  taskId: string,
+  opts?: {
+    /**
+     * Include entries derived from `*-task-conversation.jsonl` / `*-review-conversation.jsonl`.
+     * Dashboard "Logs" tab uses this as false to avoid overlapping with the Terminal tab.
+     */
+    includeConversation?: boolean;
+  },
+): TaskLogEntry[] {
+  const includeConversation = opts?.includeConversation !== false;
+
   const allEntries: TaskLogEntry[] = [
     ...parseTokenUsageLogs(taskId),
-    ...parseConversationLogs(taskId),
+    ...(includeConversation ? parseConversationLogs(taskId) : []),
     ...parseResultLogs(taskId),
     ...parseSignalLogs(taskId),
   ];
