@@ -44,12 +44,41 @@ export function ChatBot() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sessionsRef = useRef<Session[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasLoadedRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 초기 로드 — 빈 세션은 제거하고 로드
+  // 초기 로드 — 서버(로컬 파일) 우선, 실패 시 localStorage fallback
   useEffect(() => {
-    const loaded = loadSessions().filter((s) => s.messages.length > 0);
-    setSessions(loaded);
-    setActiveSessionId(loaded[0]?.id ?? null);
+    let cancelled = false;
+
+    async function loadFromServer() {
+      try {
+        const res = await fetch("/api/chat/sessions", { method: "GET" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as {
+          sessions?: Session[];
+          activeSessionId?: string | null;
+        };
+        if (cancelled) return;
+        const loadedSessions = Array.isArray(data.sessions) ? data.sessions : [];
+        const loadedActive =
+          typeof data.activeSessionId === "string" ? data.activeSessionId : null;
+        setSessions(loadedSessions);
+        setActiveSessionId(loadedActive ?? loadedSessions[0]?.id ?? null);
+        hasLoadedRef.current = true;
+      } catch {
+        const loaded = loadSessions();
+        if (cancelled) return;
+        setSessions(loaded);
+        setActiveSessionId(loaded[0]?.id ?? null);
+        hasLoadedRef.current = true;
+      }
+    }
+
+    loadFromServer();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // sessionsRef를 항상 최신 sessions와 동기화
@@ -57,11 +86,32 @@ export function ChatBot() {
     sessionsRef.current = sessions;
   }, [sessions]);
 
-  // 세션 저장 — 메시지가 있는 세션만 저장
+  // 세션 저장
+  // - localStorage: 즉시 저장(브라우저 fallback)
+  // - server: debounce 저장(로컬 파일)
   useEffect(() => {
-    const withMessages = sessions.filter((s) => s.messages.length > 0);
-    saveSessions(withMessages);
-  }, [sessions]);
+    if (!hasLoadedRef.current) return;
+
+    saveSessions(sessions);
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      fetch("/api/chat/sessions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activeSessionId,
+          sessions,
+        }),
+      }).catch(() => {
+        // ignore
+      });
+    }, 250);
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [sessions, activeSessionId]);
 
   // 바깥 클릭 시 닫기
   useEffect(() => {
