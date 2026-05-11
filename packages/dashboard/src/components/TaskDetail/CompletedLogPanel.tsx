@@ -12,7 +12,7 @@ export function CompletedLogPanel({ taskId }: { taskId: string }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/tasks/${taskId}/logs?includeConversation=0`)
+    fetch(`/api/tasks/${taskId}/logs`)
       .then((r) => r.json())
       .then((data: { line?: string; message?: string }[]) => {
         if (Array.isArray(data)) {

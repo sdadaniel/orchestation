@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getErrorMessage } from "@/lib/errors/error-utils";
-import { isValidTaskId, taskExists, getTaskLogs } from "@/parser/task-log-parser";
+import {
+  isValidTaskId,
+  taskExists,
+  hasLogSources,
+  getTaskLogs,
+} from "@/parser/task-log-parser";
 import type { TaskLogEntry } from "@/parser/task-log-parser";
 import { getDb, isDbAvailable } from "@/service/db";
 import { resolveTaskRef } from "@/service/task-store";
@@ -117,33 +122,13 @@ function getLogsFromDb(taskId: string): TaskLogEntry[] | null {
   return entries;
 }
 
-/** SQLite 이벤트/토큰과 output/*.log·JSONL 등 파일 로그를 합친다. 동일 줄은 한 번만 남긴다. */
-function mergeTaskLogEntries(
-  fromDb: TaskLogEntry[],
-  fromFiles: TaskLogEntry[],
-): TaskLogEntry[] {
-  const seen = new Set<string>();
-  const out: TaskLogEntry[] = [];
-  for (const e of [...fromDb, ...fromFiles]) {
-    const key = `${e.timestamp}\0${e.level}\0${e.message}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(e);
-  }
-  out.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-  return out;
-}
-
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const resolvedTask = resolveTaskRef(id)?.task;
-    const url = new URL(request.url);
-    const includeConversation =
-      url.searchParams.get("includeConversation") !== "0";
 
     // Validate task ID format
     if (!isValidTaskId(id)) {
@@ -153,25 +138,25 @@ export async function GET(
       );
     }
 
+    // Try SQLite first
     const dbLogs = getLogsFromDb(id);
-    const fromDb = dbLogs ?? [];
-
-    let fromFiles: TaskLogEntry[] = [];
-    if (resolvedTask && taskExists(resolvedTask.id)) {
-      fromFiles = getTaskLogs(resolvedTask.id, { includeConversation });
+    if (dbLogs) {
+      return NextResponse.json(dbLogs);
     }
 
-    const logs = mergeTaskLogEntries(fromDb, fromFiles);
+    // Fall back to file-based
+    if (!resolvedTask || !taskExists(resolvedTask.id)) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
 
-    if (logs.length === 0) {
-      if (!resolvedTask || !taskExists(resolvedTask.id)) {
-        return NextResponse.json({ error: "Task not found" }, { status: 404 });
-      }
+    if (!hasLogSources(resolvedTask.id)) {
       return NextResponse.json(
         { error: "No logs found for this task" },
         { status: 404 },
       );
     }
+
+    const logs = getTaskLogs(resolvedTask.id);
 
     return NextResponse.json(logs);
   } catch (err) {
