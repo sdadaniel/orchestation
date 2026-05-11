@@ -5,52 +5,59 @@ import { DollarSign, SquareTerminal, Settings, Activity, Moon } from "lucide-rea
 import { cn } from "@/lib/utils";
 import type { SidebarFooterProps } from "./types";
 
-const FOOTER_ITEMS = [
-  { href: "/cost", icon: DollarSign, label: "Cost" },
-  { href: "/log", icon: Activity, label: "Log" },
-  { href: "/terminal", icon: SquareTerminal, label: "Terminal" },
-  { href: "/night-worker", icon: Moon, label: "Night Worker" },
-  { href: "/settings", icon: Settings, label: "Settings" },
-] as const;
-
-export function SidebarFooter({ currentPath, collapsed }: SidebarFooterProps) {
-  if (collapsed) {
-    return (
-      <div className="border-t border-sidebar-border px-1.5 pt-2 pb-3 flex flex-col items-center gap-0.5">
-        {FOOTER_ITEMS.map(({ href, icon: Icon, label }) => (
-          <Link
-            key={href}
-            href={href}
-            aria-label={label}
-            title={label}
-            className={cn(
-              "flex items-center justify-center w-8 h-8 rounded-md transition-colors",
-              "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent no-underline",
-              currentPath === href && "bg-sidebar-accent text-primary",
-            )}
-          >
-            <Icon className="h-3.5 w-3.5 shrink-0" />
-          </Link>
-        ))}
-      </div>
-    );
-  }
-
+export function SidebarFooter({ currentPath }: SidebarFooterProps) {
   return (
     <div className="border-t border-sidebar-border px-2 pt-2 pb-3 flex flex-col gap-0.5">
-      {FOOTER_ITEMS.map(({ href, icon: Icon, label }) => (
-        <Link
-          key={href}
-          href={href}
-          className={cn(
-            "tree-item text-sidebar-foreground no-underline",
-            currentPath === href && "active",
-          )}
-        >
-          <Icon className="h-3.5 w-3.5 shrink-0" />
-          <span className="text-xs">{label}</span>
-        </Link>
-      ))}
+      <Link
+        href="/cost"
+        className={cn(
+          "tree-item text-sidebar-foreground no-underline",
+          currentPath === "/cost" && "active",
+        )}
+      >
+        <DollarSign className="h-3.5 w-3.5 shrink-0" />
+        <span className="text-xs">Cost</span>
+      </Link>
+      <Link
+        href="/log"
+        className={cn(
+          "tree-item text-sidebar-foreground no-underline",
+          currentPath === "/log" && "active",
+        )}
+      >
+        <Activity className="h-3.5 w-3.5 shrink-0" />
+        <span className="text-xs">Log</span>
+      </Link>
+      <Link
+        href="/terminal"
+        className={cn(
+          "tree-item text-sidebar-foreground no-underline",
+          currentPath === "/terminal" && "active",
+        )}
+      >
+        <SquareTerminal className="h-3.5 w-3.5 shrink-0" />
+        <span className="text-xs">Terminal</span>
+      </Link>
+      <Link
+        href="/night-worker"
+        className={cn(
+          "tree-item text-sidebar-foreground no-underline",
+          currentPath === "/night-worker" && "active",
+        )}
+      >
+        <Moon className="h-3.5 w-3.5" />
+        <span className="text-xs">Night Worker</span>
+      </Link>
+      <Link
+        href="/settings"
+        className={cn(
+          "tree-item text-sidebar-foreground no-underline",
+          currentPath === "/settings" && "active",
+        )}
+      >
+        <Settings className="h-3.5 w-3.5 shrink-0" />
+        <span className="text-xs">Settings</span>
+      </Link>
     </div>
   );
 }
