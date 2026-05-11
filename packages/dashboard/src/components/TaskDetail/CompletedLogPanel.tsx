@@ -1,15 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Copy, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TERMINAL_BG, TERMINAL_HEADER_BG } from "@/constants/theme";
-import { Button } from "@/components/ui/button";
 
 export function CompletedLogPanel({ taskId }: { taskId: string }) {
   const [lines, setLines] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch(`/api/tasks/${taskId}/logs`)
@@ -23,28 +21,12 @@ export function CompletedLogPanel({ taskId }: { taskId: string }) {
       .finally(() => setLoading(false));
   }, [taskId]);
 
-  useEffect(() => {
-    if (!copied) return;
-    const t = window.setTimeout(() => setCopied(false), 1200);
-    return () => window.clearTimeout(t);
-  }, [copied]);
-
   const lineColor = (line: string) => {
     if (/error|fail|exception|❌/i.test(line)) return "text-red-400";
     if (/warn|⚠️/i.test(line)) return "text-yellow-400";
     if (/🔧|Edit|Write/i.test(line)) return "text-blue-400";
     if (/✅|완료|success/i.test(line)) return "text-emerald-400";
     return "text-zinc-400";
-  };
-
-  const copyAll = async () => {
-    const text = [...lines].reverse().join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-    } catch {
-      // ignore
-    }
   };
 
   if (loading) {
@@ -79,24 +61,9 @@ export function CompletedLogPanel({ taskId }: { taskId: string }) {
         <span className="text-[11px] text-zinc-400 font-mono">
           LOG — {taskId}
         </span>
-        <div className="ml-auto flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-[11px] text-zinc-400 hover:text-zinc-200"
-            onClick={copyAll}
-            aria-label="Copy all logs"
-            title="Copy all logs"
-            disabled={lines.length === 0}
-          >
-            <Copy className="h-3.5 w-3.5" />
-            {copied ? "Copied" : "Copy"}
-          </Button>
-          <span className="text-[10px] text-zinc-600 font-mono">
-            {lines.length} lines
-          </span>
-        </div>
+        <span className="text-[10px] text-zinc-600 ml-auto font-mono">
+          {lines.length} lines
+        </span>
       </div>
       <div className="overflow-y-auto max-h-[500px] p-0 font-mono text-[11px] leading-[1.7] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {[...lines].reverse().map((line, i) => (

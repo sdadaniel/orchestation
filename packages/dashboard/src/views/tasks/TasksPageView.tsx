@@ -38,8 +38,6 @@ function TasksPageInner() {
   const updateTask = useTasksStore((s) => s.updateTask);
   const deleteTask = useTasksStore((s) => s.deleteTask);
   const reorderTask = useTasksStore((s) => s.reorderTask);
-  const stopTask = useTasksStore((s) => s.stopTask);
-  const retryTask = useTasksStore((s) => s.retryTask);
   const allWaterfallTasks = groups.flatMap((g) => g.tasks);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -484,8 +482,6 @@ function TasksPageInner() {
                 items={group.items}
                 onUpdate={updateTask}
                 onDelete={deleteTask}
-                onStop={stopTask}
-                onRetry={retryTask}
                 onReorder={
                   group.items[0].status === "pending"
                     ? reorderTask
@@ -501,8 +497,6 @@ function TasksPageInner() {
                   req={req}
                   onUpdate={updateTask}
                   onDelete={deleteTask}
-                  onStop={stopTask}
-                  onRetry={retryTask}
                   onReorder={
                     req.status === "pending" ? reorderTask : undefined
                   }

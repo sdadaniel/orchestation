@@ -4,7 +4,6 @@ Request title: {{title}}
 {{description_line}}
 
 Rules:
-
 - Default to **1 task** unless splitting is clearly justified. Avoid over-splitting small UI changes into multiple tasks.
 - If you split, produce **2-5 tasks max**, and only when at least one of these is true:
   - The work is **independently shippable/reviewable** (separate PRs would make sense).
@@ -32,4 +31,3 @@ Rules:
 - Output must be **strict JSON only** (no markdown fences, no commentary, no trailing text). If you feel tempted to wrap JSON in ``` fences, **do not** — return raw JSON only.
 - Return ONLY valid JSON in this exact format, no markdown, no explanation:
 {"tasks":[{"title":"...","description":"...","priority":"medium","criteria":["criterion 1"],"scope":["packages/dashboard/src/components/**"],"context":["packages/engine/src/lib/**"],"depends_on":[],"role":"frontend-dev"}]}
-

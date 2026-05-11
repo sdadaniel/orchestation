@@ -11,8 +11,7 @@
         "start": "node cli.js start",
         "status": "node cli.js status",
         "restart": "node cli.js restart",
-        "stop": "node cli.js stop",
-        "dev:dashboard:3001": "node packages/dashboard/scripts/dev-gateway-env.mjs 3001"
+        "stop": "node cli.js stop"
     },
     "files": [
         "cli.js",

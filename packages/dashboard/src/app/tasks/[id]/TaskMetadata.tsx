@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Loader2, Play, RotateCcw, Square, Trash2 } from "lucide-react";
+import { Loader2, Play, Square, Trash2 } from "lucide-react";
 import { HorseRunningIndicator } from "@/views/tasks/[id]/components/HorseRunningIndicator";
 import { BranchBadge } from "@/components/TaskDetail/BranchBadge";
 import { Select } from "@/components/ui/select";
@@ -14,7 +14,6 @@ interface TaskMetadataProps {
   onStatusChange: (newStatus: string) => Promise<void>;
   onRun: () => Promise<void>;
   onStop: () => Promise<void>;
-  onRetry: () => Promise<void>;
   onDelete: () => Promise<void>;
 }
 
@@ -25,14 +24,9 @@ export function TaskMetadata({
   onStatusChange,
   onRun,
   onStop,
-  onRetry,
   onDelete,
 }: TaskMetadataProps) {
   const displayId = task.display_id ?? task.id;
-  const isRetryable =
-    task.status === "failed" ||
-    task.status === "rejected" ||
-    task.status === "stopped";
 
   return (
     <>
@@ -102,15 +96,6 @@ export function TaskMetadata({
               <Square className="h-3 w-3" />
               중지
             </button>
-          ) : isRetryable ? (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
-            >
-              <RotateCcw className="h-3 w-3" />
-              재시도
-            </button>
           ) : (
             <button
               type="button"
@@ -119,17 +104,15 @@ export function TaskMetadata({
                 isPipelineRunning ||
                 task.status === "in_progress" ||
                 task.status === "done" ||
-                isRetryable
+                task.status === "rejected"
               }
               title={
                 isPipelineRunning
                   ? "파이프라인 실행 중에는 개별 실행 불가"
                   : task.status === "in_progress"
                     ? "이미 실행 중인 태스크입니다"
-                    : task.status === "done"
+                    : task.status === "done" || task.status === "rejected"
                       ? "완료된 태스크입니다"
-                      : isRetryable
-                        ? "실패/중지된 태스크는 재시도를 사용하세요"
                       : `${displayId} 실행`
               }
               className={cn(
@@ -137,7 +120,7 @@ export function TaskMetadata({
                 isPipelineRunning ||
                   task.status === "in_progress" ||
                   task.status === "done" ||
-                  isRetryable
+                  task.status === "rejected"
                   ? "bg-muted text-muted-foreground cursor-not-allowed"
                   : "bg-muted hover:bg-muted/80 text-foreground border border-border",
               )}

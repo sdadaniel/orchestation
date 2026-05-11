@@ -210,15 +210,6 @@ export async function PUT(
       "stopped",
       "failed",
     ];
-    if (
-      body.status === "pending" &&
-      ["failed", "rejected", "stopped"].includes(task.status)
-    ) {
-      return NextResponse.json(
-        { error: "failed/rejected/stopped 태스크는 Retry 액션을 사용하세요." },
-        { status: 409 },
-      );
-    }
     if (body.status && validStatuses.includes(body.status)) {
       updateTaskStatus(id, body.status, task.status);
     }

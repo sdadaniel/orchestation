@@ -10,8 +10,6 @@ export interface ChainGroupProps {
   ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onReorder?: (id: string, direction: "up" | "down") => Promise<void>;
-  onStop?: (id: string) => Promise<void>;
-  onRetry?: (id: string) => Promise<void>;
   isFirst?: boolean;
   isLast?: boolean;
 }

@@ -10,7 +10,6 @@ import {
   Pencil,
   Trash2,
   Square,
-  RotateCcw,
   Bot,
   Terminal,
   FileText,
@@ -30,8 +29,6 @@ export const RequestCard = memo(
     onUpdate,
     onDelete,
     onReorder,
-    onStop,
-    onRetry,
     isFirst,
     isLast,
   }: {
@@ -44,8 +41,6 @@ export const RequestCard = memo(
     ) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
     onReorder?: (id: string, direction: "up" | "down") => Promise<void>;
-    onStop?: (id: string) => Promise<void>;
-    onRetry?: (id: string) => Promise<void>;
     isFirst?: boolean;
     isLast?: boolean;
   }) {
@@ -153,26 +148,11 @@ export const RequestCard = memo(
               title="Stop"
               onClick={(e) => {
                 e.stopPropagation();
-                void onStop?.(req.id);
+                onUpdate(req.id, { status: "pending" });
               }}
               className="shrink-0 p-1 rounded hover:bg-red-500/15 text-muted-foreground hover:text-red-400 transition-colors"
             >
               <Square className="h-3 w-3" />
-            </button>
-          )}
-          {(req.status === "failed" ||
-            req.status === "rejected" ||
-            req.status === "stopped") && (
-            <button
-              type="button"
-              title="Retry"
-              onClick={(e) => {
-                e.stopPropagation();
-                void onRetry?.(req.id);
-              }}
-              className="shrink-0 p-1 rounded hover:bg-emerald-500/15 text-muted-foreground hover:text-emerald-400 transition-colors"
-            >
-              <RotateCcw className="h-3 w-3" />
             </button>
           )}
           <span className="text-[10px] text-muted-foreground/60 shrink-0 tabular-nums">

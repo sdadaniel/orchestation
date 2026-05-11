@@ -5,8 +5,8 @@
  * 시그널 파일 경로를 대체한다 — 잡 완료 시점(runJobTask/runJobReview의 .then)에서
  * 엔진이 직접 호출한다.
  */
+import { execSync } from "child_process";
 import fs from "fs";
-import os from "os";
 import path from "path";
 import { PROJECT_ROOT, OUTPUT_DIR } from "../../lib/config/paths";
 import { writeNotice } from "../../parser/notice-parser";
@@ -16,17 +16,11 @@ import {
   getTaskStep,
   getTaskSteps,
   getNextPendingStep,
-  resetTaskForRetry,
   recordStepEvent,
   updateTaskStep,
-  updateTask,
   updateTaskStatus,
 } from "../../service/task-store";
 import { runMergeTask } from "../ops/merge-utils";
-import {
-  cleanupBranchAndWorktree,
-  ensureBranchAndWorktree,
-} from "../ops/worktree-utils";
 import { SKIP_REVIEW_ROLES } from "../runner/task-runner-utils";
 import { scanTasks, taskRowToInfo, type TaskInfo } from "./scheduler";
 import type { JobTaskResult } from "../jobs/job-task";
@@ -248,50 +242,6 @@ export function markTaskRejected(
   writeNotice("warning", `${taskId} 거절`, `**${taskId}:** ${reason}`);
 }
 
-export function retryTask(taskId: string, ctx: TransitionContext): {
-  reactivatedDependentIds: string[];
-  resetStepCount: number;
-} {
-  const row = getTask(taskId);
-  if (!row) {
-    throw new Error("Task not found");
-  }
-
-  const branch = row.branch || `task/${taskId.toLowerCase()}`;
-  const shouldReuseWorkspace =
-    row.status !== "failed" &&
-    !!row.branch &&
-    !!row.worktree &&
-    fs.existsSync(path.resolve(PROJECT_ROOT, row.worktree));
-  const worktree = shouldReuseWorkspace
-    ? row.worktree!
-    : buildRetryWorktreePath(taskId);
-
-  if (!shouldReuseWorkspace) {
-    if (row.branch && row.worktree) {
-      cleanupBranchAndWorktree(row.branch, row.worktree, ctx.log);
-    }
-    ensureBranchAndWorktree(branch, worktree, ctx.baseBranch(), ctx.log);
-  }
-
-  cleanupRetryArtifacts(taskId);
-  updateTask(taskId, { branch, worktree });
-
-  const reset = resetTaskForRetry(taskId);
-  if (!reset) {
-    throw new Error("Task retry reset failed");
-  }
-
-  ctx.log(
-    `  🔄 ${taskId} retry 준비 완료 (steps=${reset.resetStepIds.length}, dependents=${reset.reactivatedDependentIds.length})`,
-  );
-
-  return {
-    reactivatedDependentIds: reset.reactivatedDependentIds,
-    resetStepCount: reset.resetStepIds.length,
-  };
-}
-
 // ── pure helpers (테스트 대상) ─────────────────────────
 
 /** 지금까지 누적 비용이 MAX_TASK_COST 초과면 true. 파일 I/O 있으나 순수에 가깝게 설계. */
@@ -350,8 +300,28 @@ function readTaskInfo(taskId: string): TaskInfo | null {
 function cleanupWorktreeAndBranch(taskId: string): void {
   const info = readTaskInfo(taskId);
   if (!info) return;
-  if (!info.branch || !info.worktree) return;
-  cleanupBranchAndWorktree(info.branch, info.worktree);
+  const worktreePath = info.worktree
+    ? path.resolve(PROJECT_ROOT, info.worktree)
+    : null;
+  if (worktreePath && fs.existsSync(worktreePath)) {
+    try {
+      execSync(
+        `git -C "${PROJECT_ROOT}" worktree remove "${worktreePath}" --force`,
+        { stdio: "ignore" },
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+  if (info.branch) {
+    try {
+      execSync(`git -C "${PROJECT_ROOT}" branch -D "${info.branch}"`, {
+        stdio: "ignore",
+      });
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 function stopDependents(failedId: string, log: (msg: string) => void): void {
@@ -364,25 +334,4 @@ function stopDependents(failedId: string, log: (msg: string) => void): void {
       stopDependents(task.id, log);
     }
   }
-}
-
-function cleanupRetryArtifacts(taskId: string): void {
-  const artifactNames = [
-    `${taskId}-task.json`,
-    `${taskId}-review.json`,
-    `${taskId}-rejection-reason.txt`,
-    `${taskId}-review-feedback.txt`,
-  ];
-
-  for (const fileName of artifactNames) {
-    try {
-      fs.unlinkSync(path.join(OUTPUT_DIR, fileName));
-    } catch {
-      /* ignore */
-    }
-  }
-}
-
-function buildRetryWorktreePath(taskId: string): string {
-  return path.join(os.tmpdir(), "orchestation-worktrees", taskId.toLowerCase());
 }

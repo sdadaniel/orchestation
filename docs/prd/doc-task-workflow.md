@@ -206,8 +206,8 @@ scripts/
   orchestrate-retry/      ← retry 카운트 (태스크별)
   worker-TASK-*.pid       ← 워커 PID 파일
 
-packages/engine/src/orchestrate/
-  orchestration-manager.ts ← Node.js 싱글톤 (spawn, stop, reconcile) 등 엔진 코어
+src/frontend/src/lib/
+  orchestration-manager.ts ← Node.js 싱글톤 (spawn, stop, reconcile)
 ```
 
 ## Source of Truth

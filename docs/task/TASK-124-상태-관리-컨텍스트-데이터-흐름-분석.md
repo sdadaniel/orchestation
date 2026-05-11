@@ -8,10 +8,10 @@ worktree: ../repo-wt-task-124
 priority: high
 sort_order: 1
 scope:
-  - packages/dashboard/src/**
-  - packages/dashboard/src/components/**
-  - packages/dashboard/src/app/**
-  - packages/dashboard/src/lib/**
+  - src/frontend/src/**
+  - src/frontend/src/components/**
+  - src/frontend/src/app/**
+  - src/frontend/src/lib/**
 depends_on:
   - TASK-123
 created: 2026-03-25
@@ -29,8 +29,8 @@ React 상태 관리 패턴, Context 사용 방식, props drilling, 데이터 fet
 
 # 분석 결과
 
-> 분석 기준일: 2026-03-25  
-> 대상 경로(당시): `src/frontend/src/` → 현재 모노레포에서는 `packages/dashboard/src/` 및 엔진 코드는 `packages/engine/src/`로 이전됨. 본문 내 구 경로 언급은 역사적 기록이다.  
+> 분석 기준일: 2026-03-25
+> 대상 경로: `src/frontend/src/`
 > Next.js 16.2.0 / React 19.2.4
 
 ---

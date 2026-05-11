@@ -10,8 +10,6 @@ export function ChainGroup({
   onUpdate,
   onDelete,
   onReorder,
-  onStop,
-  onRetry,
   isFirst,
   isLast,
 }: ChainGroupProps) {
@@ -111,8 +109,6 @@ export function ChainGroup({
               req={req}
               onUpdate={onUpdate}
               onDelete={onDelete}
-              onStop={onStop}
-              onRetry={onRetry}
               isFirst
               isLast
             />

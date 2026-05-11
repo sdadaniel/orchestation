@@ -16,7 +16,6 @@
 
 - **브랜치**: 이 플랜은 단일 장기 브랜치(`feat/gateway-unification`)에서 Phase 단위로 커밋하며 진행한다. Phase 3는 SSE 제거+WS 도입을 한 PR로 묶는 결정(§10 결정 5)에 따라 중간 커밋은 깨져도 PR 단위에서 통합된다.
 - **포트**: 테스트는 3001번 포트 사용(CLAUDE.md).
-- **dev 엔트리(중요)**: 대시보드 `npm run dev`는 `tsx ../gateway/src/server.ts`(게이트웨이+Next+WS+엔진 경로 한 프로세스)이다. `npx next dev` 단독은 이 레포의 공식 경로가 아니다. worktree/에이전트는 루트에서 `node cli.js start -p 3001` 또는 `PROJECT_ROOT`·`PACKAGE_DIR`을 리포 루트로 맞춘 뒤 `npm run dev`(dashboard)를 사용한다. 상세는 `packages/dashboard/README.md`의 런북 참고.
 - **macOS bash 3.x**: shell 스크립트에서 `declare -A`/`mapfile`/`readarray` 금지. `cli.js`는 node 기반이므로 해당 없음.
 - **포맷**: TS 변경 후 `prettier --check`, 타입체크 `tsc --noEmit` 필수.
 - **엔진 파일 이중 존재**: `packages/engine/src/orchestrate/orchestration-manager.ts`(루트)와 `orchestrate/managers/orchestration-manager.ts` 등이 공존할 수 있음. Phase 1 rename 시 둘 다 그대로 옮겨간 뒤 Phase 6에서 unused 제거 여부 검토.
@@ -340,10 +339,7 @@ case "gateway": {
 - **Step 5: dev 기동 스모크**
 
 ```bash
-# 권장: cli가 PORT·PROJECT_ROOT를 맞춤
-node cli.js start -p 3001
-# 또는 리포 루트에서 (worktree면 PROJECT_ROOT를 해당 워크트리 루트로)
-cd packages/dashboard && PORT=3001 PROJECT_ROOT="$(git rev-parse --show-toplevel)" PACKAGE_DIR="$(git rev-parse --show-toplevel)" npm run dev
+PORT=3001 npm run dev --prefix packages/dashboard
 ```
 
 브라우저에서 `http://localhost:3001` 접속. 페이지 로딩 확인 후 Ctrl+C.
@@ -372,8 +368,7 @@ Expected: 모두 에러 없음.
 - **Step 2: 대시보드 기동 + 기본 페이지/WS 스모크**
 
 ```bash
-node cli.js start -p 3001
-# 또는: cd packages/dashboard && PORT=3001 PROJECT_ROOT="$(git rev-parse --show-toplevel)" PACKAGE_DIR="$(git rev-parse --show-toplevel)" npm run dev
+PORT=3001 npm run dev --prefix packages/dashboard
 ```
 
 수동 확인:
@@ -1477,8 +1472,7 @@ git commit -am "refactor(dashboard): remove SSE route, provider, handlers, clien
 - **Step 1: dev 기동**
 
 ```bash
-node cli.js start -p 3001
-# 또는: cd packages/dashboard && PORT=3001 PROJECT_ROOT="$(git rev-parse --show-toplevel)" PACKAGE_DIR="$(git rev-parse --show-toplevel)" npm run dev
+PORT=3001 npm run dev --prefix packages/dashboard
 ```
 
 - **Step 2: 수동 검증 체크리스트**
@@ -1632,8 +1626,7 @@ Expected: `const dev = process.env.NODE_ENV !== "production";`
 
 ```bash
 cd packages/dashboard && npm run build && cd -
-ROOT="$(git rev-parse --show-toplevel)"
-PORT=3001 PROJECT_ROOT="$ROOT" PACKAGE_DIR="$ROOT" NODE_ENV=production npm --prefix packages/dashboard start &
+PORT=3001 NODE_ENV=production npm --prefix packages/dashboard start &
 sleep 3
 curl -s http://localhost:3001 | head -20
 ```
