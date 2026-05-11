@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       const model = CLAUDE_DEFAULT_MODEL;
       const child: ClaudeChildProcess = spawnClaude(prompt, {
         outputFormat: "stream-json",
-        extraArgs: ["--dangerously-skip-permissions"],
+        extraArgs: ["--verbose", "--dangerously-skip-permissions"],
       });
       let controllerClosed = false;
       let stdoutBuf = "";
@@ -92,9 +92,6 @@ export async function POST(request: Request) {
             if (h.textDelta) {
               safeEnqueue(new TextEncoder().encode(h.textDelta));
             }
-            if (h.resultText) {
-              safeEnqueue(new TextEncoder().encode(h.resultText));
-            }
             if (h.usage) {
               lastUsage = h.usage;
             }
@@ -127,9 +124,6 @@ export async function POST(request: Request) {
             const h = handleStreamJsonLine(obj);
             if (h.textDelta) {
               safeEnqueue(new TextEncoder().encode(h.textDelta));
-            }
-            if (h.resultText) {
-              safeEnqueue(new TextEncoder().encode(h.resultText));
             }
             if (h.usage) {
               lastUsage = h.usage;
