@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Plus, Square, Loader2 } from "lucide-react";
+import { ChevronDown, ListChecks, Plus, Square, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TaskListSectionProps } from "./types";
 
@@ -11,6 +11,7 @@ export function TaskListSection({
   totalCount,
   currentPath,
   onStopTask,
+  collapsed = false,
 }: TaskListSectionProps) {
   const [tasksExpanded, setTasksExpanded] = useState(true);
   const [stoppingTaskId, setStoppingTaskId] = useState<string | null>(null);
@@ -42,6 +43,31 @@ export function TaskListSection({
     })
     .slice(0, 10);
 
+  const isTasksActive = currentPath.startsWith("/tasks");
+
+  if (collapsed) {
+    return (
+      <div className="mb-2 flex justify-center">
+        <Link
+          href="/tasks"
+          title={`Tasks (${totalCount})`}
+          aria-label="Tasks"
+          className={cn(
+            "tree-item w-9 h-9 p-0 justify-center relative text-muted-foreground hover:text-foreground no-underline",
+            isTasksActive && "active",
+          )}
+        >
+          <ListChecks className="h-4 w-4 shrink-0" />
+          {totalCount > 0 && (
+            <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-primary text-primary-foreground rounded-full px-1 min-w-[14px] text-center leading-tight">
+              {totalCount}
+            </span>
+          )}
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="mb-2">
       <div className="sidebar-section-sep" />
@@ -61,7 +87,7 @@ export function TaskListSection({
             href="/tasks"
             className={cn(
               "no-underline text-muted-foreground hover:text-foreground transition-colors",
-              currentPath.startsWith("/tasks") && "text-primary",
+              isTasksActive && "text-primary",
             )}
             onClick={(e) => e.stopPropagation()}
           >
@@ -71,9 +97,7 @@ export function TaskListSection({
         <span
           className={cn(
             "text-[10px] font-medium tabular-nums px-1 rounded",
-            currentPath.startsWith("/tasks")
-              ? "text-primary"
-              : "text-muted-foreground",
+            isTasksActive ? "text-primary" : "text-muted-foreground",
           )}
         >
           {totalCount}

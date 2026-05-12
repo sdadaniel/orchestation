@@ -2,13 +2,46 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NoticesSectionProps } from "./types";
 
-const NoticesSection = ({ noticeSummary, currentPath }: NoticesSectionProps) => {
+const NoticesSection = ({
+  noticeSummary,
+  currentPath,
+  collapsed = false,
+}: NoticesSectionProps) => {
   const [noticesExpanded, setNoticesExpanded] = useState(true);
 
   const unreadNotices = useMemo(() => noticeSummary.items, [noticeSummary.items]);
+  const isActive = currentPath === "/notices";
+
+  if (collapsed) {
+    return (
+      <div className="mb-2 flex justify-center">
+        <Link
+          href="/notices"
+          title={
+            noticeSummary.unreadCount > 0
+              ? `Notices (${noticeSummary.unreadCount} unread)`
+              : `Notices (${noticeSummary.total})`
+          }
+          aria-label="Notices"
+          className={cn(
+            "tree-item w-9 h-9 p-0 justify-center relative text-muted-foreground hover:text-foreground no-underline",
+            isActive && "active",
+          )}
+        >
+          <Bell className="h-4 w-4 shrink-0" />
+          {noticeSummary.unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-red-500 text-white rounded-full px-1 min-w-[14px] text-center leading-tight">
+              {noticeSummary.unreadCount}
+            </span>
+          )}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-2">
@@ -31,7 +64,7 @@ const NoticesSection = ({ noticeSummary, currentPath }: NoticesSectionProps) => 
             href="/notices"
             className={cn(
               "no-underline text-muted-foreground hover:text-foreground transition-colors",
-              currentPath === "/notices" && "text-primary",
+              isActive && "text-primary",
             )}
             onClick={(e) => e.stopPropagation()}
           >

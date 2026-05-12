@@ -1,17 +1,25 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSidebarCollapsed } from "../hooks/useSidebarCollapsed";
 import { DocTreeNode, NewItemInput } from "./index";
 import type { DocsSectionProps } from "./types";
 
-const DocsSection = ({ docTree, currentPath, docActions }: DocsSectionProps) => {
+const DocsSection = ({
+  docTree,
+  currentPath,
+  docActions,
+  collapsed = false,
+}: DocsSectionProps) => {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [docsExpanded, setDocsExpanded] = useState(false);
   const [newRootItemType, setNewRootItemType] = useState<"doc" | "folder" | null>(
     null,
   );
   const [showNewMenu, setShowNewMenu] = useState(false);
+  const { setCollapsed } = useSidebarCollapsed();
 
   const toggleFolder = useCallback((id: string) => {
     setExpandedFolders((prev) => {
@@ -28,6 +36,22 @@ const DocsSection = ({ docTree, currentPath, docActions }: DocsSectionProps) => 
     }
     setNewRootItemType(null);
   };
+
+  if (collapsed) {
+    return (
+      <div className="mb-2 flex justify-center">
+        <button
+          type="button"
+          title={`Docs (${docTree.length})`}
+          aria-label="Docs"
+          onClick={() => setCollapsed(false)}
+          className="tree-item w-9 h-9 p-0 justify-center text-muted-foreground hover:text-foreground"
+        >
+          <FolderOpen className="h-4 w-4 shrink-0" />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-2">
