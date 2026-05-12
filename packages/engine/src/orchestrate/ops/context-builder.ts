@@ -219,6 +219,33 @@ export function buildLayeredContext(
   return parts.join("\n");
 }
 
+function toDisplayPath(realPath: string, worktreePath: string): string {
+  if (!worktreePath) return realPath;
+  return realPath.replace(worktreePath + "/", "");
+}
+
+function summarizeResolvedPatterns(
+  patterns: string[],
+  worktreePath: string,
+): string {
+  if (patterns.length === 0) return "";
+
+  return patterns
+    .filter((pattern) => pattern.trim().length > 0)
+    .map((pattern) => {
+      const resolved = resolveGlob(pattern.trim(), worktreePath)
+        .slice(0, 5)
+        .map((realPath) => toDisplayPath(realPath, worktreePath));
+
+      if (resolved.length === 0) {
+        return `- ${pattern} -> 일치 파일 없음`;
+      }
+
+      return `- ${pattern} -> ${resolved.join(", ")}`;
+    })
+    .join("\n");
+}
+
 // ── 태스크 프롬프트 빌드 ───────────────────────────────────
 
 export interface TaskPromptOptions {
@@ -240,6 +267,7 @@ export function buildTaskPrompt(opts: TaskPromptOptions): string {
   if (opts.scope.length > 0) {
     const scopeList = opts.scope.map((f) => `- ${f}`).join("\n");
     const layered = buildLayeredContext(opts.scope, opts.worktreePath);
+    const resolvedScope = summarizeResolvedPatterns(opts.scope, opts.worktreePath);
 
     scopeSection = `
 ## 작업 범위 (수정할 파일)
@@ -247,6 +275,10 @@ export function buildTaskPrompt(opts: TaskPromptOptions): string {
 ${scopeList}
 
 scope 외 파일은 수정하지 마라.
+
+## scope 해석 결과
+엔진이 미리 찾은 파일 목록이다. 먼저 이 목록과 아래 본문을 기준으로 작업해라:
+${resolvedScope}
 
 ## 작업 대상 파일 내용
 ${layered}
@@ -257,11 +289,19 @@ ${layered}
   if (opts.context.length > 0) {
     const contextList = opts.context.map((f) => `- ${f}`).join("\n");
     const contextContent = buildLayeredContext(opts.context, opts.worktreePath);
+    const resolvedContext = summarizeResolvedPatterns(
+      opts.context,
+      opts.worktreePath,
+    );
 
     scopeSection += `
 ## 참조 파일 (읽기 전용 — 수정 금지)
 아래 파일들을 반드시 읽고 참조해라. 단, 수정하지 마라:
 ${contextList}
+
+## context 해석 결과
+엔진이 미리 찾은 참조 파일 목록이다. 추가 탐색 전에 먼저 이 목록을 확인해라:
+${resolvedContext}
 
 ## 참조 파일 내용
 ${contextContent}
@@ -322,4 +362,3 @@ export function buildReviewPrompt(opts: ReviewPromptOptions): string {
     task_content: taskContent,
   });
 }
-
