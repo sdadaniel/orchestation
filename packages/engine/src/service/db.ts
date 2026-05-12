@@ -464,6 +464,12 @@ export function closeDb() {
   _writableDb = null;
 }
 
+/** Vitest 등에서 임시 PROJECT_ROOT로 DB를 바꿀 때 연결과 초기화 플래그를 초기화한다. */
+export function resetDbConnectionsForTests(): void {
+  closeDb();
+  _initialized = false;
+}
+
 // Helper: check if SQLite DB exists and has data
 export function isDbAvailable(): boolean {
   const db = getDb();
