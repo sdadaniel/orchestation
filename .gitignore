@@ -8,6 +8,8 @@ node_modules/
 package-lock.json
 .claude/worktrees/
 .playwright-mcp/
+packages/engine/agent-test-reports/
+claude-agent-team*.jsonl
 
 # Dashboard build output
 src/frontend/.next/
