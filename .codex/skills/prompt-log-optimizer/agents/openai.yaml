@@ -1,0 +1,7 @@
+interface:
+  display_name: "Prompt Log Optimizer"
+  short_description: "Reduce worker prompt cost and trace noise."
+  default_prompt: "Use $prompt-log-optimizer to reduce TASK-370 work prompt cost below $0.50."
+
+policy:
+  allow_implicit_invocation: false
