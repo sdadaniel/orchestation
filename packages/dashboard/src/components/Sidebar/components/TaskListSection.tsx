@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ListChecks, Plus, Square, Loader2 } from "lucide-react";
+import { ChevronDown, Plus, Square, Loader2, ListTodo } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SidebarTooltip } from "./SidebarTooltip";
 import type { TaskListSectionProps } from "./types";
 
 export function TaskListSection({
@@ -43,27 +44,22 @@ export function TaskListSection({
     })
     .slice(0, 10);
 
-  const isTasksActive = currentPath.startsWith("/tasks");
-
   if (collapsed) {
+    const active = currentPath.startsWith("/tasks");
     return (
-      <div className="mb-2 flex justify-center">
-        <Link
-          href="/tasks"
-          title={`Tasks (${totalCount})`}
-          aria-label="Tasks"
-          className={cn(
-            "tree-item w-9 h-9 p-0 justify-center relative text-muted-foreground hover:text-foreground no-underline",
-            isTasksActive && "active",
-          )}
-        >
-          <ListChecks className="h-4 w-4 shrink-0" />
-          {totalCount > 0 && (
-            <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-primary text-primary-foreground rounded-full px-1 min-w-[14px] text-center leading-tight">
-              {totalCount}
-            </span>
-          )}
-        </Link>
+      <div className="mb-2 mt-2 flex justify-center">
+        <SidebarTooltip label={`Tasks (${totalCount})`}>
+          <Link
+            href="/tasks"
+            aria-label={`Tasks (${totalCount}건)`}
+            className={cn(
+              "tree-item justify-center w-8 h-8 p-0 text-sidebar-foreground no-underline",
+              active && "active",
+            )}
+          >
+            <ListTodo className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          </Link>
+        </SidebarTooltip>
       </div>
     );
   }
@@ -87,7 +83,7 @@ export function TaskListSection({
             href="/tasks"
             className={cn(
               "no-underline text-muted-foreground hover:text-foreground transition-colors",
-              isTasksActive && "text-primary",
+              currentPath.startsWith("/tasks") && "text-primary",
             )}
             onClick={(e) => e.stopPropagation()}
           >
@@ -97,7 +93,9 @@ export function TaskListSection({
         <span
           className={cn(
             "text-[10px] font-medium tabular-nums px-1 rounded",
-            isTasksActive ? "text-primary" : "text-muted-foreground",
+            currentPath.startsWith("/tasks")
+              ? "text-primary"
+              : "text-muted-foreground",
           )}
         >
           {totalCount}

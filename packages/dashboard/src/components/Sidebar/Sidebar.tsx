@@ -14,12 +14,15 @@ import {
   TaskListSection,
 } from "./components";
 import useDocActions from "./hooks/useDocActions";
-import { useSidebarCollapsed } from "./hooks/useSidebarCollapsed";
 
-const COLLAPSED_WIDTH = 56;
-const EXPANDED_WIDTH = 220;
+export interface SidebarProps {
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
+}
 
-const Sidebar = () => {
+const COLLAPSED_WIDTH = 48;
+
+const Sidebar = ({ collapsed = false, onToggleCollapsed }: SidebarProps) => {
   const tasksSummary = useTasksStore((s) => s.tasksSummary);
   const stopTask = useTasksStore((s) => s.stopTask);
   const fetchTasksSummary = useTasksStore((s) => s.fetchTasksSummary);
@@ -36,14 +39,13 @@ const Sidebar = () => {
   const { summary: noticeSummary } = useNoticeSummary();
   const pathname = usePathname();
   const currentPath = pathname ?? "/";
-  const { collapsed, toggle } = useSidebarCollapsed();
 
-  const width = collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH;
+  const toggleLabel = collapsed ? "사이드바 펼치기" : "사이드바 접기";
 
   return (
     <div
-      className={cn("ide-sidebar flex flex-col h-full", collapsed && "is-collapsed")}
-      style={{ width, minWidth: width }}
+      className="ide-sidebar flex flex-col h-full"
+      style={collapsed ? { width: COLLAPSED_WIDTH } : undefined}
       data-collapsed={collapsed ? "true" : "false"}
     >
       <div
@@ -60,26 +62,22 @@ const Sidebar = () => {
             Home
           </Link>
         )}
-        <button
-          type="button"
-          onClick={toggle}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              toggle();
-            }
-          }}
-          title={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
-          aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
-          aria-expanded={!collapsed}
-          className="p-1 rounded hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </button>
+        {onToggleCollapsed && (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-label={toggleLabel}
+            aria-expanded={!collapsed}
+            title={toggleLabel}
+            className="inline-flex items-center justify-center w-6 h-6 rounded text-muted-foreground hover:text-foreground hover:bg-sidebar-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+          >
+            {collapsed ? (
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+          </button>
+        )}
       </div>
       <div
         className={cn(

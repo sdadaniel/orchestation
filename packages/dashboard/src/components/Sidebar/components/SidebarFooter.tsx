@@ -2,23 +2,17 @@
 
 import Link from "next/link";
 import { DollarSign, SquareTerminal, Settings, Activity, Moon } from "lucide-react";
-import type { ComponentType } from "react";
 import { cn } from "@/lib/utils";
+import { SidebarTooltip } from "./SidebarTooltip";
 import type { SidebarFooterProps } from "./types";
 
-type FooterLink = {
-  href: string;
-  label: string;
-  icon: ComponentType<{ className?: string }>;
-};
-
-const LINKS: FooterLink[] = [
-  { href: "/cost", label: "Cost", icon: DollarSign },
-  { href: "/log", label: "Log", icon: Activity },
-  { href: "/terminal", label: "Terminal", icon: SquareTerminal },
-  { href: "/night-worker", label: "Night Worker", icon: Moon },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
+const FOOTER_ITEMS = [
+  { href: "/cost", icon: DollarSign, label: "Cost" },
+  { href: "/log", icon: Activity, label: "Log" },
+  { href: "/terminal", icon: SquareTerminal, label: "Terminal" },
+  { href: "/night-worker", icon: Moon, label: "Night Worker" },
+  { href: "/settings", icon: Settings, label: "Settings" },
+] as const;
 
 export function SidebarFooter({ currentPath, collapsed = false }: SidebarFooterProps) {
   return (
@@ -28,24 +22,31 @@ export function SidebarFooter({ currentPath, collapsed = false }: SidebarFooterP
         collapsed ? "px-1 items-center" : "px-2",
       )}
     >
-      {LINKS.map(({ href, label, icon: Icon }) => {
-        const isActive = currentPath === href;
-        return (
+      {FOOTER_ITEMS.map(({ href, icon: Icon, label }) => {
+        const link = (
           <Link
             key={href}
             href={href}
-            title={collapsed ? label : undefined}
             aria-label={label}
+            title={collapsed ? label : undefined}
             className={cn(
               "tree-item text-sidebar-foreground no-underline",
-              isActive && "active",
-              collapsed && "justify-center w-9 h-9 p-0",
+              collapsed && "justify-center w-8 h-8 p-0",
+              currentPath === href && "active",
             )}
           >
-            <Icon className={cn("shrink-0", collapsed ? "h-4 w-4" : "h-3.5 w-3.5")} />
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {!collapsed && <span className="text-xs">{label}</span>}
           </Link>
         );
+        if (collapsed) {
+          return (
+            <SidebarTooltip key={href} label={label}>
+              {link}
+            </SidebarTooltip>
+          );
+        }
+        return link;
       })}
     </div>
   );

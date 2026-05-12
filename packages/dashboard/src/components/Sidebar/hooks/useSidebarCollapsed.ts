@@ -1,60 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-const STORAGE_KEY = "sidebar-collapsed";
-
-let currentValue = false;
-let initialized = false;
-const listeners = new Set<() => void>();
-
-function emit() {
-  for (const listener of listeners) listener();
-}
-
-function loadFromStorage() {
-  if (initialized || typeof window === "undefined") return;
-  initialized = true;
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored === "true") {
-      currentValue = true;
-      emit();
-    }
-  } catch {
-    // ignore (private mode, etc.)
-  }
-}
-
-function setValue(next: boolean) {
-  if (currentValue === next) return;
-  currentValue = next;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, String(next));
-  } catch {
-    // ignore
-  }
-  emit();
-}
-
-const subscribe = (listener: () => void) => {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-};
-
-const getSnapshot = () => currentValue;
-const getServerSnapshot = () => false;
+const STORAGE_KEY = "sidebar:collapsed";
 
 export function useSidebarCollapsed() {
+  const [collapsed, setCollapsed] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
   useEffect(() => {
-    loadFromStorage();
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (stored === "1") setCollapsed(true);
+    } catch {
+      /* ignore */
+    }
+    setHydrated(true);
   }, []);
 
-  const collapsed = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const setCollapsed = useCallback((next: boolean) => setValue(next), []);
-  const toggle = useCallback(() => setValue(!currentValue), []);
+  const toggle = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
 
-  return { collapsed, toggle, setCollapsed };
+  return { collapsed, toggle, hydrated };
 }
+
+export default useSidebarCollapsed;

@@ -6,14 +6,13 @@ import { useTasks } from "@/hooks/useTasks";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
 import { useTasksStore } from "@/store/tasksStore";
 import Sidebar from "@/components/Sidebar";
-import { useSidebarCollapsed } from "@/components/Sidebar/hooks/useSidebarCollapsed";
+import useSidebarCollapsed from "@/components/Sidebar/hooks/useSidebarCollapsed";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { ChatBot } from "@/components/ChatBot";
 import { GlobalHeader, HomeDashboard } from "./components";
 
-const SIDEBAR_COLLAPSED_WIDTH = 56;
-const SIDEBAR_EXPANDED_WIDTH = 220;
+const SIDEBAR_COLLAPSED_WIDTH = 48;
 
 const AppShell = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
@@ -21,10 +20,10 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
   const { groups, isLoading } = useTasks(shouldLoadTaskGroups);
   const { addToast } = useToast();
   const fetchTasksSummary = useTasksStore((s) => s.fetchTasksSummary);
-  const { collapsed: sidebarCollapsed } = useSidebarCollapsed();
-  const sidebarWidth = sidebarCollapsed
-    ? SIDEBAR_COLLAPSED_WIDTH
-    : SIDEBAR_EXPANDED_WIDTH;
+  const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebarCollapsed();
+  const collapsedStyle = sidebarCollapsed
+    ? { width: SIDEBAR_COLLAPSED_WIDTH }
+    : undefined;
 
   // 초기 데이터 로드 — 홈/사이드바는 요약만 먼저 가져오고, 상세 목록은 해당 화면에서 로드
   useEffect(() => {
@@ -92,10 +91,14 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
       <div className="flex h-full">
         <div
           className="ide-sidebar p-3"
-          style={{ width: sidebarWidth, minWidth: sidebarWidth }}
+          style={collapsedStyle}
+          data-collapsed={sidebarCollapsed ? "true" : "false"}
         >
           {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-5 w-full mb-2 rounded" />
+            <Skeleton
+              key={i}
+              className={`h-5 mb-2 rounded ${sidebarCollapsed ? "w-6" : "w-full"}`}
+            />
           ))}
         </div>
         <div className="flex-1 p-3">
@@ -109,7 +112,7 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="flex h-full">
-      <Sidebar />
+      <Sidebar collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} />
 
       {/* Content area */}
       <div className="flex-1 flex flex-col overflow-hidden">

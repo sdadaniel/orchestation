@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SidebarTooltip } from "./SidebarTooltip";
 import type { NoticesSectionProps } from "./types";
 
 const NoticesSection = ({
@@ -14,31 +15,40 @@ const NoticesSection = ({
   const [noticesExpanded, setNoticesExpanded] = useState(true);
 
   const unreadNotices = useMemo(() => noticeSummary.items, [noticeSummary.items]);
-  const isActive = currentPath === "/notices";
 
   if (collapsed) {
+    const active = currentPath === "/notices";
+    const hasUnread = noticeSummary.unreadCount > 0;
     return (
-      <div className="mb-2 flex justify-center">
-        <Link
-          href="/notices"
-          title={
-            noticeSummary.unreadCount > 0
+      <div className="mb-2 mt-2 flex justify-center">
+        <SidebarTooltip
+          label={
+            hasUnread
               ? `Notices (${noticeSummary.unreadCount} unread)`
               : `Notices (${noticeSummary.total})`
           }
-          aria-label="Notices"
-          className={cn(
-            "tree-item w-9 h-9 p-0 justify-center relative text-muted-foreground hover:text-foreground no-underline",
-            isActive && "active",
-          )}
         >
-          <Bell className="h-4 w-4 shrink-0" />
-          {noticeSummary.unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-red-500 text-white rounded-full px-1 min-w-[14px] text-center leading-tight">
-              {noticeSummary.unreadCount}
-            </span>
-          )}
-        </Link>
+          <Link
+            href="/notices"
+            aria-label={
+              hasUnread
+                ? `Notices, 읽지 않은 알림 ${noticeSummary.unreadCount}건`
+                : `Notices (${noticeSummary.total}건)`
+            }
+            className={cn(
+              "tree-item relative justify-center w-8 h-8 p-0 text-sidebar-foreground no-underline",
+              active && "active",
+            )}
+          >
+            <Bell className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {hasUnread && (
+              <span
+                aria-hidden="true"
+                className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500"
+              />
+            )}
+          </Link>
+        </SidebarTooltip>
       </div>
     );
   }
@@ -64,7 +74,7 @@ const NoticesSection = ({
             href="/notices"
             className={cn(
               "no-underline text-muted-foreground hover:text-foreground transition-colors",
-              isActive && "text-primary",
+              currentPath === "/notices" && "text-primary",
             )}
             onClick={(e) => e.stopPropagation()}
           >
