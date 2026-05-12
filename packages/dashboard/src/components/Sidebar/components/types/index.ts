@@ -17,6 +17,7 @@ export interface NewItemInputProps {
 
 export interface SidebarFooterProps {
   currentPath: string;
+  collapsed?: boolean;
 }
 
 export interface TaskListSectionProps {
