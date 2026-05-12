@@ -1,3 +1,7 @@
+[Routing] **Role ID:** `NightScanWorker` (보조 타입 설명). `docs/architecture/agent-onboarding.md` 참고. UI 디자인 시스템 문서는 읽지 않는다.
+
+---
+
 # Night Worker 스캔 타입별 프롬프트
 
 ## typecheck

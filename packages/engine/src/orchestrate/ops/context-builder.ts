@@ -279,11 +279,26 @@ ${contextContent}
 ${feedback}`;
   }
 
+  let optionalGuides = "";
+  const scopeOrContextTouchesDashboard = [...opts.scope, ...opts.context].some(
+    (p) => typeof p === "string" && p.includes("packages/dashboard"),
+  );
+  if (scopeOrContextTouchesDashboard) {
+    try {
+      const guideResolved = resolveTemplate("prompt/dashboard-design-system.md");
+      const guideBody = fs.readFileSync(guideResolved, "utf-8");
+      optionalGuides = `\n## packages/dashboard UI (엔진 주입)\nscope/context에 \`packages/dashboard\`가 포함되어 아래 디자인 시스템 규칙을 주입한다. 별도 파일을 열지 않아도 된다.\n\n${guideBody}\n`;
+    } catch {
+      optionalGuides = "";
+    }
+  }
+
   return renderTemplate("prompt/worker-task.md", {
     scope_section: scopeSection,
     task_filename: opts.taskFilename,
     task_content: taskContent,
     feedback_section: feedbackSection,
+    optional_guides: optionalGuides,
   });
 }
 

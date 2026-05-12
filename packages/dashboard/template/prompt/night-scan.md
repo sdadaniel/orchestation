@@ -1,3 +1,7 @@
+[Routing] **Role ID:** `NightScanWorker`. `docs/architecture/agent-onboarding.md` 표의 이 행만 따른다. `dashboard-design-system.md`는 **읽지 않는다**.
+
+---
+
 코드베이스를 스캔하여 이슈 1개를 찾고 아래 형식으로만 출력하세요.
 
 {{src_paths}}
