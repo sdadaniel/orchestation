@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useTasks } from "@/hooks/useTasks";
 import { useOrchestrationStore } from "@/store/orchestrationStore";
@@ -11,12 +11,29 @@ import { useToast } from "@/components/ui/toast";
 import { ChatBot } from "@/components/ChatBot";
 import { GlobalHeader, HomeDashboard } from "./components";
 
+const SIDEBAR_COLLAPSED_W = 56;
+const SIDEBAR_EXPANDED_W = 220;
+
 const AppShell = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const shouldLoadTaskGroups = (pathname ?? "").startsWith("/tasks");
   const { groups, isLoading } = useTasks(shouldLoadTaskGroups);
   const { addToast } = useToast();
   const fetchTasksSummary = useTasksStore((s) => s.fetchTasksSummary);
+
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    const stored = localStorage.getItem("sidebar:collapsed");
+    if (stored !== null) setCollapsed(stored === "true");
+  }, []);
+
+  const handleToggleCollapsed = () => {
+    setCollapsed((v) => {
+      const next = !v;
+      localStorage.setItem("sidebar:collapsed", String(next));
+      return next;
+    });
+  };
 
   // 초기 데이터 로드 — 홈/사이드바는 요약만 먼저 가져오고, 상세 목록은 해당 화면에서 로드
   useEffect(() => {
@@ -82,7 +99,10 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
   if (isLoading) {
     return (
       <div className="flex h-full">
-        <div className="ide-sidebar p-3">
+        <div
+          className="ide-sidebar p-3 shrink-0"
+          style={{ width: collapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W }}
+        >
           {[1, 2, 3, 4, 5].map((i) => (
             <Skeleton key={i} className="h-5 w-full mb-2 rounded" />
           ))}
@@ -98,7 +118,7 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="flex h-full">
-      <Sidebar />
+      <Sidebar collapsed={collapsed} onToggleCollapsed={handleToggleCollapsed} />
 
       {/* Content area */}
       <div className="flex-1 flex flex-col overflow-hidden">

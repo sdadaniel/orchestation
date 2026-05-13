@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DocTreeNode, NewItemInput } from "./index";
 import type { DocsSectionProps } from "./types";
 
-const DocsSection = ({ docTree, currentPath, docActions }: DocsSectionProps) => {
+const DocsSection = ({ docTree, currentPath, docActions, collapsed }: DocsSectionProps) => {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [docsExpanded, setDocsExpanded] = useState(false);
   const [newRootItemType, setNewRootItemType] = useState<"doc" | "folder" | null>(
@@ -28,6 +29,20 @@ const DocsSection = ({ docTree, currentPath, docActions }: DocsSectionProps) => 
     }
     setNewRootItemType(null);
   };
+
+  if (collapsed) {
+    return (
+      <div className="mb-2 flex justify-center">
+        <span
+          title="Docs"
+          aria-label="Docs"
+          className="flex items-center justify-center w-8 h-8 rounded text-muted-foreground"
+        >
+          <BookOpen className="h-4 w-4" />
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-2">

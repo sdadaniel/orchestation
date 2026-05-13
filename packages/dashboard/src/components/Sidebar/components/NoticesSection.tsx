@@ -2,13 +2,37 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NoticesSectionProps } from "./types";
 
-const NoticesSection = ({ noticeSummary, currentPath }: NoticesSectionProps) => {
+const NoticesSection = ({ noticeSummary, currentPath, collapsed }: NoticesSectionProps) => {
   const [noticesExpanded, setNoticesExpanded] = useState(true);
 
   const unreadNotices = useMemo(() => noticeSummary.items, [noticeSummary.items]);
+
+  if (collapsed) {
+    return (
+      <div className="mb-2 flex justify-center">
+        <Link
+          href="/notices"
+          aria-label="Notices"
+          title="Notices"
+          className={cn(
+            "relative flex items-center justify-center w-8 h-8 rounded text-sidebar-foreground no-underline hover:bg-sidebar-accent transition-colors",
+            currentPath === "/notices" && "active",
+          )}
+        >
+          <Bell className="h-4 w-4" />
+          {noticeSummary.unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 text-[9px] font-bold leading-none bg-red-500 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center">
+              {noticeSummary.unreadCount > 9 ? "9+" : noticeSummary.unreadCount}
+            </span>
+          )}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-2">
