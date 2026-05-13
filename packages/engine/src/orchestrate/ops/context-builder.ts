@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import { DASHBOARD_DIR, PROJECT_ROOT, TEMPLATE_DIR } from "../../lib/config/paths";
 import { loadSettings } from "../../lib/config/settings";
+import type { TaskExecutionHints } from "../../lib/task-execution-hints";
 import { getTasksByStatus } from "../../service/task-store";
 
 // ── Template 렌더링 ────────────────────────────────────────
@@ -155,65 +156,109 @@ function collectFiles(
   }
 }
 
-export function buildLayeredContext(
-  scope: string[],
-  worktreePath: string,
-): string {
-  if (scope.length === 0) return "";
+type ResolvedPattern = {
+  pattern: string;
+  hasWildcard: boolean;
+  files: string[];
+};
 
-  const allFiles: string[] = [];
-  for (const pattern of scope) {
-    if (!pattern.trim()) continue;
-    const resolved = resolveGlob(pattern.trim(), worktreePath);
-    allFiles.push(...resolved);
-    if (allFiles.length >= 15) break;
+const DASHBOARD_GUIDE_SUMMARY = [
+  "- OpenAI Assistants Playground 스타일의 단일 컬럼, 넉넉한 패딩/간격을 유지한다.",
+  "- raw HTML `<input>/<select>/<textarea>` 대신 `@/components/ui/` 컴포넌트를 사용한다.",
+  "- 페이지는 `<PageLayout>` + `<PageHeader>` 패턴, 섹션은 `space-y-4` 중심으로 구성한다.",
+  "- 입력 요소가 이미 border를 가지므로 바깥 카드/이중 보더를 추가하지 않는다.",
+  "- 같은 구조가 3회 이상 반복되면 컴포넌트로 추출하고, 새 UI 컴포넌트에는 `.stories.tsx`를 함께 둔다.",
+].join("\n");
+
+function resolvePatterns(
+  patterns: string[],
+  worktreePath: string,
+): ResolvedPattern[] {
+  return patterns
+    .map((pattern) => pattern.trim())
+    .filter((pattern) => pattern.length > 0)
+    .map((pattern) => ({
+      pattern,
+      hasWildcard: pattern.includes("*"),
+      files: resolveGlob(pattern, worktreePath),
+    }));
+}
+
+function renderInjectedFile(realPath: string, worktreePath: string): string {
+  if (!fs.existsSync(realPath)) return "";
+
+  const displayPath = toDisplayPath(realPath, worktreePath);
+
+  let content: string;
+  try {
+    content = fs.readFileSync(realPath, "utf-8");
+  } catch {
+    return "";
+  }
+  const lines = content.split("\n").length;
+
+  if (lines <= 300) {
+    return `### ${displayPath} (${lines}줄)\n\`\`\`\n${content}\n\`\`\`\n`;
+  }
+  if (lines <= 800) {
+    return `### ${displayPath} (${lines}줄 — 변경 최소화)\n\`\`\`\n${content}\n\`\`\`\n`;
   }
 
-  const uniqueFiles = [...new Set(allFiles)].slice(0, 15);
+  const sigs = content
+    .split("\n")
+    .map((line, i) => ({ line, num: i + 1 }))
+    .filter(({ line }) =>
+      /^(export |import |function |class |interface |type |const |async |def )/.test(
+        line,
+      ),
+    )
+    .slice(0, 60)
+    .map(({ line, num }) => `${num}: ${line}`)
+    .join("\n");
+  return `### ${displayPath} (${lines}줄 — 시그니처만, 필요 시 직접 읽어라)\n\`\`\`\n${sigs}\n\`\`\`\n`;
+}
+
+export function buildLayeredContext(
+  patterns: string[],
+  worktreePath: string,
+): string {
+  if (patterns.length === 0) return "";
+
+  const resolvedPatterns = resolvePatterns(patterns, worktreePath);
+  const exactFiles = resolvedPatterns
+    .filter((entry) => !entry.hasWildcard)
+    .flatMap((entry) => entry.files);
+  const uniqueExactFiles = [...new Set(exactFiles)].slice(0, 10);
   const parts: string[] = [];
 
-  for (const realPath of uniqueFiles) {
-    if (!fs.existsSync(realPath)) continue;
+  const wildcardEntries = resolvedPatterns.filter((entry) => entry.hasWildcard);
+  if (wildcardEntries.length > 0) {
+    const manifest = wildcardEntries
+      .map((entry) => {
+        const files = entry.files
+          .slice(0, 8)
+          .map((realPath) => toDisplayPath(realPath, worktreePath));
+        if (files.length === 0) return `- ${entry.pattern} -> 일치 파일 없음`;
+        const extra =
+          entry.files.length > files.length
+            ? ` 외 ${entry.files.length - files.length}개`
+            : "";
+        return `- ${entry.pattern} -> ${files.join(", ")}${extra}`;
+      })
+      .join("\n");
+    parts.push(
+      [
+        "### 와일드카드 범위 요약",
+        "아래 범위는 본문을 전부 주입하지 않았다. 먼저 이 목록을 신뢰하고 필요한 파일만 직접 읽어라.",
+        manifest,
+        "",
+      ].join("\n"),
+    );
+  }
 
-    // 표시용 상대 경로
-    let displayPath = realPath;
-    if (worktreePath) {
-      displayPath = realPath.replace(worktreePath + "/", "");
-    }
-
-    let content: string;
-    try {
-      content = fs.readFileSync(realPath, "utf-8");
-    } catch {
-      continue;
-    }
-    const lines = content.split("\n").length;
-
-    if (lines <= 300) {
-      parts.push(
-        `### ${displayPath} (${lines}줄)\n\`\`\`\n${content}\n\`\`\`\n`,
-      );
-    } else if (lines <= 800) {
-      parts.push(
-        `### ${displayPath} (${lines}줄 — 변경 최소화)\n\`\`\`\n${content}\n\`\`\`\n`,
-      );
-    } else {
-      // signature만 추출
-      const sigs = content
-        .split("\n")
-        .map((line, i) => ({ line, num: i + 1 }))
-        .filter(({ line }) =>
-          /^(export |import |function |class |interface |type |const |async |def )/.test(
-            line,
-          ),
-        )
-        .slice(0, 60)
-        .map(({ line, num }) => `${num}: ${line}`)
-        .join("\n");
-      parts.push(
-        `### ${displayPath} (${lines}줄 — 시그니처만, 필요 시 직접 읽어라)\n\`\`\`\n${sigs}\n\`\`\`\n`,
-      );
-    }
+  for (const realPath of uniqueExactFiles) {
+    const rendered = renderInjectedFile(realPath, worktreePath);
+    if (rendered) parts.push(rendered);
   }
 
   return parts.join("\n");
@@ -228,12 +273,12 @@ function summarizeResolvedPatterns(
   patterns: string[],
   worktreePath: string,
 ): string {
-  if (patterns.length === 0) return "";
+  const resolvedPatterns = resolvePatterns(patterns, worktreePath);
+  if (resolvedPatterns.length === 0) return "";
 
-  return patterns
-    .filter((pattern) => pattern.trim().length > 0)
-    .map((pattern) => {
-      const resolved = resolveGlob(pattern.trim(), worktreePath)
+  return resolvedPatterns
+    .map(({ pattern, files }) => {
+      const resolved = files
         .slice(0, 5)
         .map((realPath) => toDisplayPath(realPath, worktreePath));
 
@@ -253,6 +298,7 @@ export interface TaskPromptOptions {
   taskFilename: string;
   scope: string[];
   context: string[];
+  executionHints?: TaskExecutionHints | null;
   feedbackFile?: string;
   worktreePath: string;
 }
@@ -308,6 +354,29 @@ ${contextContent}
 `;
   }
 
+  if (opts.executionHints) {
+    const { edit_files, read_only_files, do_not_explore } = opts.executionHints;
+    const renderList = (items: string[]) =>
+      items.length > 0 ? items.map((item) => `- ${item}`).join("\n") : "- (없음)";
+
+    scopeSection += `
+## 실행 힌트 (우선 경로)
+아래 힌트는 scope를 대체하지 않는다. scope는 충돌/범위 경계이고, 이 섹션은 워커가 헤매지 않도록 주는 좁은 실행 안내다.
+
+### edit_files
+가능하면 아래 파일부터 바로 수정해라:
+${renderList(edit_files)}
+
+### read_only_files
+아래 파일은 필요 시 읽기만 하고 수정하지 마라:
+${renderList(read_only_files)}
+
+### do_not_explore
+아래 경로/패턴은 정말 필요한 근거가 생기기 전까지 탐색하지 마라:
+${renderList(do_not_explore)}
+`;
+  }
+
   // 피드백 섹션
   let feedbackSection = "";
   if (opts.feedbackFile && fs.existsSync(opts.feedbackFile)) {
@@ -325,9 +394,8 @@ ${feedback}`;
   );
   if (scopeOrContextTouchesDashboard) {
     try {
-      const guideResolved = resolveTemplate("prompt/dashboard-design-system.md");
-      const guideBody = fs.readFileSync(guideResolved, "utf-8");
-      optionalGuides = `\n## packages/dashboard UI (엔진 주입)\nscope/context에 \`packages/dashboard\`가 포함되어 아래 디자인 시스템 규칙을 주입한다. 별도 파일을 열지 않아도 된다.\n\n${guideBody}\n`;
+      resolveTemplate("prompt/dashboard-design-system.md");
+      optionalGuides = `\n## packages/dashboard UI (엔진 주입)\nscope/context에 \`packages/dashboard\`가 포함되어 핵심 디자인 규칙만 요약 주입한다. 더 자세한 기준이 정말 필요할 때만 \`packages/dashboard/template/prompt/dashboard-design-system.md\`를 직접 열어라.\n\n${DASHBOARD_GUIDE_SUMMARY}\n`;
     } catch {
       optionalGuides = "";
     }

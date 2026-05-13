@@ -7,6 +7,7 @@ import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import { PROJECT_ROOT } from "../lib/config/paths";
+import { parseTaskExecutionHints } from "../lib/task-execution-hints";
 import { parseContext, parseScope } from "../lib/task-row-parsers";
 import { buildTaskPrompt } from "../orchestrate/ops/context-builder";
 import { getTask, getTaskDisplayId, taskRowToMarkdown } from "../service/task-store";
@@ -107,6 +108,7 @@ export function writeWorkerTaskPromptLog(
       taskFilename: `${taskDisplayId}-task.md`,
       scope: parseScope(task),
       context: parseContext(task),
+      executionHints: parseTaskExecutionHints(task.content),
       worktreePath,
     });
 

@@ -34,6 +34,7 @@ export function TaskPreviewCard({
   // Within-batch deps labels: "Step N"
   const batchDepLabels = (task.depends_on ?? []).map((i) => `Step ${i + 1}`);
   const externalDeps = task.external_depends_on ?? [];
+  const execution = task.execution ?? {};
   const hasDeps = batchDepLabels.length > 0 || externalDeps.length > 0;
 
   return (
@@ -260,6 +261,162 @@ export function TaskPreviewCard({
               Add file
             </button>
           </div>
+          <div>
+            <Label size="sm" className="block mb-1 text-[11px]">
+              Execution / edit_files
+            </Label>
+            {(execution.edit_files ?? []).map((file, fileIndex) => (
+              <div key={fileIndex} className="flex items-center gap-1 mb-1">
+                <span className="text-muted-foreground text-xs">-</span>
+                <Input
+                  size="sm"
+                  type="text"
+                  value={file}
+                  onChange={(e) => {
+                    const next = [...(execution.edit_files ?? [])];
+                    next[fileIndex] = e.target.value;
+                    onUpdate({
+                      execution: { ...execution, edit_files: next },
+                    });
+                  }}
+                  className="flex-1 font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = (execution.edit_files ?? []).filter(
+                      (_, i) => i !== fileIndex,
+                    );
+                    onUpdate({
+                      execution: { ...execution, edit_files: next },
+                    });
+                  }}
+                  className="p-0.5 text-muted-foreground hover:text-red-400"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                onUpdate({
+                  execution: {
+                    ...execution,
+                    edit_files: [...(execution.edit_files ?? []), ""],
+                  },
+                })
+              }
+              className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 mt-1"
+            >
+              <Plus className="h-3 w-3" />
+              Add file
+            </button>
+          </div>
+          <div>
+            <Label size="sm" className="block mb-1 text-[11px]">
+              Execution / read_only_files
+            </Label>
+            {(execution.read_only_files ?? []).map((file, fileIndex) => (
+              <div key={fileIndex} className="flex items-center gap-1 mb-1">
+                <span className="text-muted-foreground text-xs">-</span>
+                <Input
+                  size="sm"
+                  type="text"
+                  value={file}
+                  onChange={(e) => {
+                    const next = [...(execution.read_only_files ?? [])];
+                    next[fileIndex] = e.target.value;
+                    onUpdate({
+                      execution: { ...execution, read_only_files: next },
+                    });
+                  }}
+                  className="flex-1 font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = (execution.read_only_files ?? []).filter(
+                      (_, i) => i !== fileIndex,
+                    );
+                    onUpdate({
+                      execution: { ...execution, read_only_files: next },
+                    });
+                  }}
+                  className="p-0.5 text-muted-foreground hover:text-red-400"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                onUpdate({
+                  execution: {
+                    ...execution,
+                    read_only_files: [...(execution.read_only_files ?? []), ""],
+                  },
+                })
+              }
+              className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 mt-1"
+            >
+              <Plus className="h-3 w-3" />
+              Add file
+            </button>
+          </div>
+          <div>
+            <Label size="sm" className="block mb-1 text-[11px]">
+              Execution / do_not_explore
+            </Label>
+            {(execution.do_not_explore ?? []).map((file, fileIndex) => (
+              <div key={fileIndex} className="flex items-center gap-1 mb-1">
+                <span className="text-muted-foreground text-xs">-</span>
+                <Input
+                  size="sm"
+                  type="text"
+                  value={file}
+                  onChange={(e) => {
+                    const next = [...(execution.do_not_explore ?? [])];
+                    next[fileIndex] = e.target.value;
+                    onUpdate({
+                      execution: { ...execution, do_not_explore: next },
+                    });
+                  }}
+                  className="flex-1 font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = (execution.do_not_explore ?? []).filter(
+                      (_, i) => i !== fileIndex,
+                    );
+                    onUpdate({
+                      execution: { ...execution, do_not_explore: next },
+                    });
+                  }}
+                  className="p-0.5 text-muted-foreground hover:text-red-400"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                onUpdate({
+                  execution: {
+                    ...execution,
+                    do_not_explore: [...(execution.do_not_explore ?? []), ""],
+                  },
+                })
+              }
+              className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 mt-1"
+            >
+              <Plus className="h-3 w-3" />
+              Add path
+            </button>
+          </div>
         </div>
       ) : (
         <div>
@@ -330,6 +487,66 @@ export function TaskPreviewCard({
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+          {((execution.edit_files?.length ?? 0) > 0 ||
+            (execution.read_only_files?.length ?? 0) > 0 ||
+            (execution.do_not_explore?.length ?? 0) > 0) && (
+            <div className="mt-2 space-y-2">
+              {(execution.edit_files?.length ?? 0) > 0 && (
+                <div>
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    Execution / edit_files:
+                  </span>
+                  <ul className="mt-1 space-y-0.5">
+                    {(execution.edit_files ?? []).map((file, fileIndex) => (
+                      <li
+                        key={fileIndex}
+                        className="text-xs text-muted-foreground font-mono flex items-start gap-1.5"
+                      >
+                        <span className="mt-0.5 shrink-0">-</span>
+                        <span>{file}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {(execution.read_only_files?.length ?? 0) > 0 && (
+                <div>
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    Execution / read_only_files:
+                  </span>
+                  <ul className="mt-1 space-y-0.5">
+                    {(execution.read_only_files ?? []).map((file, fileIndex) => (
+                      <li
+                        key={fileIndex}
+                        className="text-xs text-muted-foreground font-mono flex items-start gap-1.5"
+                      >
+                        <span className="mt-0.5 shrink-0">-</span>
+                        <span>{file}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {(execution.do_not_explore?.length ?? 0) > 0 && (
+                <div>
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    Execution / do_not_explore:
+                  </span>
+                  <ul className="mt-1 space-y-0.5">
+                    {(execution.do_not_explore ?? []).map((file, fileIndex) => (
+                      <li
+                        key={fileIndex}
+                        className="text-xs text-muted-foreground font-mono flex items-start gap-1.5"
+                      >
+                        <span className="mt-0.5 shrink-0">-</span>
+                        <span>{file}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>

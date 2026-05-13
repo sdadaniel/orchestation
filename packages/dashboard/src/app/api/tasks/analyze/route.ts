@@ -30,7 +30,14 @@ interface AnalyzedTask {
   context: string[];
   depends_on: number[];
   role: string;
+  execution?: {
+    edit_files: string[];
+    read_only_files: string[];
+    do_not_explore: string[];
+  };
 }
+
+type TaskExecutionHints = NonNullable<AnalyzedTask["execution"]>;
 
 /** docs/roles/ 폴더에서 role 목록을 동적으로 읽기 (reviewer-* 제외) */
 function getAvailableRoles(): string[] {
@@ -105,6 +112,63 @@ function dumpAnalyzeStreamsToDisk(opts: {
   }
 }
 
+function normalizePathLike(value: string): string {
+  return value.trim().replace(/\\/g, "/").replace(/\/+$/, "");
+}
+
+function scopeNeighborhoodPrefixes(scope: string[]): string[] {
+  const prefixes = scope
+    .map(normalizePathLike)
+    .map((entry) => entry.replace(/\/\*\*.*$/, ""))
+    .map((entry) => entry.split("/").filter(Boolean).slice(0, 4).join("/"))
+    .filter(Boolean);
+  return Array.from(new Set(prefixes));
+}
+
+function pathBelongsToScopeNeighborhood(
+  pathValue: string,
+  scopePrefixes: string[],
+): boolean {
+  if (scopePrefixes.length === 0) return true;
+  const normalized = normalizePathLike(pathValue);
+  return scopePrefixes.some(
+    (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
+  );
+}
+
+function sanitizeExecutionHints(
+  scope: string[],
+  execution: TaskExecutionHints,
+): TaskExecutionHints {
+  const scopePrefixes = scopeNeighborhoodPrefixes(scope);
+  const normalizeList = (items: string[]) =>
+    Array.from(
+      new Set(
+        items
+          .filter((value) => typeof value === "string")
+          .map(normalizePathLike)
+          .filter(Boolean),
+      ),
+    );
+
+  const editFiles = normalizeList(execution.edit_files);
+  const readOnlyFiles = normalizeList(execution.read_only_files).filter(
+    (value) => !editFiles.includes(value),
+  );
+  const doNotExplore = normalizeList(execution.do_not_explore).filter(
+    (value) =>
+      !editFiles.includes(value) &&
+      !readOnlyFiles.includes(value) &&
+      pathBelongsToScopeNeighborhood(value, scopePrefixes),
+  );
+
+  return {
+    edit_files: editFiles,
+    read_only_files: readOnlyFiles,
+    do_not_explore: doNotExplore,
+  };
+}
+
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
   try {
@@ -152,6 +216,7 @@ export async function POST(request: Request) {
         context: o.context,
         depends_on: o.depends_on,
         role: o.role,
+        execution: o.execution,
       };
     });
     prompt = renderTemplate("prompt/task-analyze-refine.md", {
@@ -342,6 +407,11 @@ export async function POST(request: Request) {
                 context: [],
                 depends_on: [],
                 role: "general",
+                execution: {
+                  edit_files: [],
+                  read_only_files: [],
+                  do_not_explore: [],
+                },
               },
             ],
           };
@@ -359,8 +429,40 @@ export async function POST(request: Request) {
         }
 
         // Validate and sanitize
-        const tasks: AnalyzedTask[] = parsed.tasks.map(
-          (t: Record<string, unknown>) => ({
+        const tasks: AnalyzedTask[] = parsed.tasks.map((t: Record<string, unknown>) => {
+          const scope = Array.isArray(t.scope)
+            ? t.scope.filter((s: unknown) => typeof s === "string")
+            : [];
+          const rawExecution =
+            t.execution && typeof t.execution === "object"
+              ? {
+                  edit_files: Array.isArray((t.execution as Record<string, unknown>).edit_files)
+                    ? ((t.execution as Record<string, unknown>).edit_files as unknown[]).filter(
+                        (s: unknown) => typeof s === "string",
+                      )
+                    : [],
+                  read_only_files: Array.isArray(
+                    (t.execution as Record<string, unknown>).read_only_files,
+                  )
+                    ? (
+                        (t.execution as Record<string, unknown>).read_only_files as unknown[]
+                      ).filter((s: unknown) => typeof s === "string")
+                    : [],
+                  do_not_explore: Array.isArray(
+                    (t.execution as Record<string, unknown>).do_not_explore,
+                  )
+                    ? (
+                        (t.execution as Record<string, unknown>).do_not_explore as unknown[]
+                      ).filter((s: unknown) => typeof s === "string")
+                    : [],
+                }
+              : {
+                  edit_files: [],
+                  read_only_files: [],
+                  do_not_explore: [],
+                };
+
+          return {
             title: typeof t.title === "string" ? t.title : title.trim(),
             description: typeof t.description === "string" ? t.description : "",
             priority: ["high", "medium", "low"].includes(t.priority as string)
@@ -369,9 +471,7 @@ export async function POST(request: Request) {
             criteria: Array.isArray(t.criteria)
               ? t.criteria.filter((c: unknown) => typeof c === "string")
               : [],
-            scope: Array.isArray(t.scope)
-              ? t.scope.filter((s: unknown) => typeof s === "string")
-              : [],
+            scope,
             context: Array.isArray(t.context)
               ? t.context.filter((s: unknown) => typeof s === "string")
               : [],
@@ -382,8 +482,9 @@ export async function POST(request: Request) {
               typeof t.role === "string" && getAvailableRoles().includes(t.role)
                 ? t.role
                 : "general",
-          }),
-        );
+            execution: sanitizeExecutionHints(scope, rawExecution),
+          };
+        });
 
         settle(
           new Response(JSON.stringify({ tasks }), {
@@ -403,6 +504,11 @@ export async function POST(request: Request) {
                   scope: [],
                   context: [],
                   role: "general",
+                  execution: {
+                    edit_files: [],
+                    read_only_files: [],
+                    do_not_explore: [],
+                  },
                 },
               ],
             }),

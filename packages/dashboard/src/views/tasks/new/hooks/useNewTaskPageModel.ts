@@ -20,6 +20,45 @@ import type { NewTaskPageGetValue, NewTaskPageSetValue } from "../context/types"
 
 type CreateFunnelContext = Record<string, never>;
 
+function renderYamlList(values: string[], indent: number): string[] {
+  const prefix = " ".repeat(indent);
+  if (values.length === 0) return [`${prefix}[]`];
+  return values.map((value) => `${prefix}- ${value}`);
+}
+
+function buildTaskContent(task: AnalyzedTask): string {
+  const execution = task.execution;
+  const hasExecution =
+    (execution?.edit_files?.length ?? 0) > 0 ||
+    (execution?.read_only_files?.length ?? 0) > 0 ||
+    (execution?.do_not_explore?.length ?? 0) > 0;
+
+  const body = [
+    task.description,
+    "",
+    "## Completion Criteria",
+    ...task.criteria.map((c) => `- ${c}`),
+  ].join("\n");
+
+  if (!hasExecution) return body;
+
+  const lines = [
+    "---",
+    "execution:",
+    "  edit_files:",
+    ...renderYamlList(execution?.edit_files ?? [], 4),
+    "  read_only_files:",
+    ...renderYamlList(execution?.read_only_files ?? [], 4),
+    "  do_not_explore:",
+    ...renderYamlList(execution?.do_not_explore ?? [], 4),
+    "---",
+    "",
+    body,
+  ];
+
+  return lines.join("\n");
+}
+
 export function useNewTaskPageModel(): {
   getValue: NewTaskPageGetValue;
   setValue: NewTaskPageSetValue;
@@ -361,12 +400,7 @@ export function useNewTaskPageModel(): {
       const createdIds: string[] = [];
       for (let i = 0; i < tasks.length; i++) {
         const task = tasks[i];
-        const content = [
-          task.description,
-          "",
-          "## Completion Criteria",
-          ...task.criteria.map((c) => `- ${c}`),
-        ].join("\n");
+        const content = buildTaskContent(task);
         const resolvedBatchDeps = (task.depends_on ?? [])
           .filter((idx) => idx >= 0 && idx < createdIds.length)
           .map((idx) => createdIds[idx]);

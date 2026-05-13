@@ -15,7 +15,7 @@ import { getPromptLogPath, type PromptLogCategory } from "./prompt-log-paths";
 
 type PromptKind = "analyze" | "refine" | "suggest";
 
-type CliOptions = {
+export type TaskCreatePromptCliOptions = {
   kind: PromptKind;
   title?: string;
   description?: string;
@@ -67,8 +67,8 @@ function readOptionValue(argv: string[], index: number, option: string): string 
   return value;
 }
 
-function parseArgs(argv: string[]): CliOptions {
-  const options: CliOptions = { kind: "analyze", stdout: false };
+function parseArgs(argv: string[]): TaskCreatePromptCliOptions {
+  const options: TaskCreatePromptCliOptions = { kind: "analyze", stdout: false };
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -171,7 +171,9 @@ function loadCurrentTasksJson(filePath: string): string {
   return JSON.stringify(tasks, null, 2);
 }
 
-function hydrateFromTask(options: CliOptions): { taskDisplayId?: string } {
+function hydrateFromTask(
+  options: TaskCreatePromptCliOptions,
+): { taskDisplayId?: string } {
   if (!options.fromTask) return {};
   const task = getTask(options.fromTask);
   if (!task) throw new Error(`Task not found: ${options.fromTask}`);
@@ -181,7 +183,7 @@ function hydrateFromTask(options: CliOptions): { taskDisplayId?: string } {
   return { taskDisplayId: getTaskDisplayId(task) };
 }
 
-function buildPrompt(options: CliOptions): {
+function buildPrompt(options: TaskCreatePromptCliOptions): {
   prompt: string;
   category: PromptLogCategory;
   filename: string;
@@ -243,11 +245,17 @@ export function writeTaskCreatePromptFromTask(
   kind: "analyze" | "suggest",
   opts?: { stdout?: boolean },
 ): string {
-  const options: CliOptions = {
+  const options: TaskCreatePromptCliOptions = {
     kind,
     stdout: opts?.stdout ?? false,
     fromTask: normalizeTaskRef(taskRef),
   };
+  return writeTaskCreatePromptLog(options);
+}
+
+export function writeTaskCreatePromptLog(
+  options: TaskCreatePromptCliOptions,
+): string {
   const { prompt, category, filename, taskDisplayId } = buildPrompt(options);
 
   if (options.stdout) {
@@ -270,17 +278,7 @@ function isCliEntry(): boolean {
 
 function main(): void {
   const options = parseArgs(process.argv.slice(2));
-  const { prompt, category, filename, taskDisplayId } = buildPrompt(options);
-
-  if (options.stdout) {
-    process.stdout.write(prompt);
-    if (!prompt.endsWith("\n")) process.stdout.write("\n");
-  }
-
-  const outFile = getPromptLogPath({ category, taskDisplayId, filename });
-  fs.mkdirSync(path.dirname(outFile), { recursive: true });
-  fs.writeFileSync(outFile, prompt);
-  console.error(`Prompt written: ${outFile}`);
+  writeTaskCreatePromptLog(options);
 }
 
 if (isCliEntry()) {

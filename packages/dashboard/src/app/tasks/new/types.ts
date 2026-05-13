@@ -1,6 +1,12 @@
 import type { TaskOption } from "@/views/tasks/new/components";
 import type { TaskPriority } from "@/entities/task";
 
+export interface TaskExecutionHints {
+  edit_files?: string[];
+  read_only_files?: string[];
+  do_not_explore?: string[];
+}
+
 export interface AnalyzedTask {
   title: string;
   description: string;
@@ -15,6 +21,8 @@ export interface AnalyzedTask {
   external_depends_on?: string[];
   /** Worker role assignment */
   role?: string;
+  /** Narrow execution guidance. scope remains the scheduling/conflict boundary. */
+  execution?: TaskExecutionHints;
 }
 
 export const PRIORITY_COLORS: Record<string, string> = {
