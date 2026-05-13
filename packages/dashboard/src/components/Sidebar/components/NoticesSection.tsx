@@ -2,56 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SidebarTooltip } from "./SidebarTooltip";
 import type { NoticesSectionProps } from "./types";
 
-const NoticesSection = ({
-  noticeSummary,
-  currentPath,
-  collapsed = false,
-}: NoticesSectionProps) => {
+const NoticesSection = ({ noticeSummary, currentPath }: NoticesSectionProps) => {
   const [noticesExpanded, setNoticesExpanded] = useState(true);
 
   const unreadNotices = useMemo(() => noticeSummary.items, [noticeSummary.items]);
-
-  if (collapsed) {
-    const active = currentPath === "/notices";
-    const hasUnread = noticeSummary.unreadCount > 0;
-    return (
-      <div className="mb-2 mt-2 flex justify-center">
-        <SidebarTooltip
-          label={
-            hasUnread
-              ? `Notices (${noticeSummary.unreadCount} unread)`
-              : `Notices (${noticeSummary.total})`
-          }
-        >
-          <Link
-            href="/notices"
-            aria-label={
-              hasUnread
-                ? `Notices, 읽지 않은 알림 ${noticeSummary.unreadCount}건`
-                : `Notices (${noticeSummary.total}건)`
-            }
-            className={cn(
-              "tree-item relative justify-center w-8 h-8 p-0 text-sidebar-foreground no-underline",
-              active && "active",
-            )}
-          >
-            <Bell className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            {hasUnread && (
-              <span
-                aria-hidden="true"
-                className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500"
-              />
-            )}
-          </Link>
-        </SidebarTooltip>
-      </div>
-    );
-  }
 
   return (
     <div className="mb-2">

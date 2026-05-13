@@ -1,19 +1,11 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import Link from "next/link";
-import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DocTreeNode, NewItemInput } from "./index";
-import { SidebarTooltip } from "./SidebarTooltip";
 import type { DocsSectionProps } from "./types";
 
-const DocsSection = ({
-  docTree,
-  currentPath,
-  docActions,
-  collapsed = false,
-}: DocsSectionProps) => {
+const DocsSection = ({ docTree, currentPath, docActions }: DocsSectionProps) => {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [docsExpanded, setDocsExpanded] = useState(false);
   const [newRootItemType, setNewRootItemType] = useState<"doc" | "folder" | null>(
@@ -36,28 +28,6 @@ const DocsSection = ({
     }
     setNewRootItemType(null);
   };
-
-  if (collapsed) {
-    const docsActive = docTree.some(
-      (n) => currentPath === `/docs/${n.id}` || currentPath.startsWith(`/docs/${n.id}/`),
-    );
-    return (
-      <div className="mb-2 flex justify-center">
-        <SidebarTooltip label={`Docs (${docTree.length})`}>
-          <Link
-            href="/"
-            aria-label={`Docs (${docTree.length}건)`}
-            className={cn(
-              "tree-item justify-center w-8 h-8 p-0 text-sidebar-foreground no-underline",
-              docsActive && "active",
-            )}
-          >
-            <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          </Link>
-        </SidebarTooltip>
-      </div>
-    );
-  }
 
   return (
     <div className="mb-2">

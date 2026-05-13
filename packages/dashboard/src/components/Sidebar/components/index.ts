@@ -4,7 +4,6 @@ export { InlineRename } from "./InlineRename";
 export { NewItemInput } from "./NewItemInput";
 export { default as NoticesSection } from "./NoticesSection";
 export { SidebarFooter } from "./SidebarFooter";
-export { SidebarTooltip } from "./SidebarTooltip";
 export { TaskListSection } from "./TaskListSection";
 export type {
   DocsSectionProps,
