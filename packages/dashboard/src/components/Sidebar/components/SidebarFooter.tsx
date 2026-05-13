@@ -13,7 +13,28 @@ const FOOTER_ITEMS = [
   { href: "/settings", icon: Settings, label: "Settings" },
 ] as const;
 
-export function SidebarFooter({ currentPath }: SidebarFooterProps) {
+export function SidebarFooter({ currentPath, collapsed }: SidebarFooterProps) {
+  if (collapsed) {
+    return (
+      <div className="border-t border-sidebar-border px-1 pt-2 pb-3 flex flex-col items-center gap-0.5">
+        {FOOTER_ITEMS.map(({ href, icon: Icon, label }) => (
+          <Link
+            key={href}
+            href={href}
+            aria-label={label}
+            title={label}
+            className={cn(
+              "flex items-center justify-center w-8 h-8 rounded text-sidebar-foreground no-underline hover:bg-sidebar-accent transition-colors",
+              currentPath === href && "active",
+            )}
+          >
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+          </Link>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="border-t border-sidebar-border px-2 pt-2 pb-3 flex flex-col gap-0.5">
       {FOOTER_ITEMS.map(({ href, icon: Icon, label }) => (

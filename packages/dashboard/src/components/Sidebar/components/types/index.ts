@@ -17,6 +17,7 @@ export interface NewItemInputProps {
 
 export interface SidebarFooterProps {
   currentPath: string;
+  collapsed?: boolean;
 }
 
 export interface TaskListSectionProps {
@@ -24,6 +25,7 @@ export interface TaskListSectionProps {
   totalCount: number;
   currentPath: string;
   onStopTask?: (id: string) => Promise<void>;
+  collapsed?: boolean;
 }
 
 export interface DocTreeNodeProps {
@@ -51,9 +53,11 @@ export interface DocsSectionProps {
   docTree: DocNode[];
   currentPath: string;
   docActions?: DocActions;
+  collapsed?: boolean;
 }
 
 export interface NoticesSectionProps {
   noticeSummary: NoticeSummaryData;
   currentPath: string;
+  collapsed?: boolean;
 }

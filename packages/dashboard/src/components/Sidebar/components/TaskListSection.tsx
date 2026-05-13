@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Plus, Square, Loader2 } from "lucide-react";
+import { ChevronDown, Plus, Square, Loader2, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TaskListSectionProps } from "./types";
 
@@ -11,6 +11,7 @@ export function TaskListSection({
   totalCount,
   currentPath,
   onStopTask,
+  collapsed,
 }: TaskListSectionProps) {
   const [tasksExpanded, setTasksExpanded] = useState(true);
   const [stoppingTaskId, setStoppingTaskId] = useState<string | null>(null);
@@ -41,6 +42,29 @@ export function TaskListSection({
       );
     })
     .slice(0, 10);
+
+  if (collapsed) {
+    return (
+      <div className="mb-2 flex justify-center">
+        <Link
+          href="/tasks"
+          aria-label="Tasks"
+          title="Tasks"
+          className={cn(
+            "relative flex items-center justify-center w-8 h-8 rounded text-sidebar-foreground no-underline hover:bg-sidebar-accent transition-colors",
+            currentPath.startsWith("/tasks") && "active",
+          )}
+        >
+          <CheckSquare className="h-4 w-4" />
+          {totalCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 text-[9px] font-bold leading-none bg-primary text-primary-foreground rounded-full w-3.5 h-3.5 flex items-center justify-center">
+              {totalCount > 9 ? "9+" : totalCount}
+            </span>
+          )}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-2">
